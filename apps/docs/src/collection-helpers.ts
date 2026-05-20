@@ -7,6 +7,17 @@ import type { z } from "zod"
 import { AllDocumentation } from "./collections"
 import type { frontmatterSchema } from "./validations"
 
+export interface LlmsTreeItem {
+  title: string
+  description: string | undefined
+  docsHref: string
+  rawHref: string
+  isDirectory: boolean
+  children: LlmsTreeItem[]
+}
+
+type TreeNode = Awaited<ReturnType<typeof AllDocumentation.getTree>>[number]
+
 export type Frontmatter = z.infer<typeof frontmatterSchema>
 export interface TransformedEntry {
   group: string
@@ -43,9 +54,30 @@ export interface ResolvedDocEntry {
 
 export type EntryType = Awaited<ReturnType<typeof AllDocumentation.getEntry>>
 
+/**
+ * Build-scope cache for slug -> entry resolution.
+ *
+ * Why this exists in addition to React `cache()`:
+ * - `cache()` dedupes inside one render/request boundary.
+ * - Static export triggers many independent boundaries (layout, page, metadata).
+ * - This Map keeps a shared Promise for the whole Node.js build process,
+ *   so repeated lookups for the same slug are resolved once.
+ */
+const _documentationEntryBySlugCache = new Map<string, Promise<EntryType>>()
+
 const getDocumentationEntryBySlugCached = cache(async (slugKey: string) => {
-  const segments = slugKey ? slugKey.split("/") : []
-  return AllDocumentation.getEntry(segments)
+  const cached = _documentationEntryBySlugCache.get(slugKey)
+  if (cached) {
+    return cached
+  }
+
+  const promise = (async () => {
+    const segments = slugKey ? slugKey.split("/") : []
+    return AllDocumentation.getEntry(segments)
+  })()
+
+  _documentationEntryBySlugCache.set(slugKey, promise)
+  return promise
 })
 
 export async function getDocumentationEntryBySlug(slug: string[]) {
@@ -187,31 +219,57 @@ async function getFrontmatterFromStructure(entry: EntryType) {
   return readFrontmatterFromStructure(structure)
 }
 
-export async function getEntryFrontmatter(entry: EntryType) {
-  const directFrontmatter = await getFrontmatterFromStructure(entry)
+/**
+ * Build-scope cache for expensive frontmatter resolution.
+ *
+ * A single entry's frontmatter can be requested from navigation, breadcrumbs,
+ * metadata generation and llms/raw helpers during one build. Keeping the
+ * in-flight Promise avoids repeated filesystem/tree traversals.
+ */
+const _entryFrontmatterCache = new Map<
+  string,
+  Promise<Frontmatter | undefined>
+>()
 
-  if (directFrontmatter) {
-    return directFrontmatter
+export async function getEntryFrontmatter(entry: EntryType) {
+  const cacheKey = entry.getPathname({ includeBasePathname: true })
+  const cached = _entryFrontmatterCache.get(cacheKey)
+
+  if (cached) {
+    return cached
   }
 
-  if (isDirectory(entry)) {
-    const segments = entry.getPathnameSegments({ includeBasePathname: true })
-    const [indexEntry, readmeEntry] = await Promise.all([
-      AllDocumentation.getEntry([...segments, "index"]).catch(() => null),
-      AllDocumentation.getEntry([...segments, "readme"]).catch(() => null),
-    ])
+  const promise = (async () => {
+    const directFrontmatter = await getFrontmatterFromStructure(entry)
 
-    if (indexEntry) {
-      const indexFrontmatter = await getFrontmatterFromStructure(indexEntry)
-      if (indexFrontmatter) {
-        return indexFrontmatter
+    if (directFrontmatter) {
+      return directFrontmatter
+    }
+
+    if (isDirectory(entry)) {
+      const segments = entry.getPathnameSegments({ includeBasePathname: true })
+      const [indexEntry, readmeEntry] = await Promise.all([
+        AllDocumentation.getEntry([...segments, "index"]).catch(() => null),
+        AllDocumentation.getEntry([...segments, "readme"]).catch(() => null),
+      ])
+
+      if (indexEntry) {
+        const indexFrontmatter = await getFrontmatterFromStructure(indexEntry)
+        if (indexFrontmatter) {
+          return indexFrontmatter
+        }
+      }
+
+      if (readmeEntry) {
+        return getFrontmatterFromStructure(readmeEntry)
       }
     }
 
-    if (readmeEntry) {
-      return getFrontmatterFromStructure(readmeEntry)
-    }
-  }
+    return undefined
+  })()
+
+  _entryFrontmatterCache.set(cacheKey, promise)
+  return promise
 }
 
 export async function resolveDocEntry(
@@ -275,11 +333,25 @@ export function getRootSections() {
   return AllDocumentation.getRootEntries() as EntryType[]
 }
 
+/**
+ * Build-scope singleton for static route discovery.
+ *
+ * The docs tree scan is one of the most expensive operations in this app.
+ * Reusing the Promise ensures all call sites (`generateStaticParams`, raw/llms
+ * helpers, etc.) share one traversal during a build.
+ */
+let _staticRoutesPromise: Promise<string[][]> | null = null
+
 export const staticRoutes = cache(async () => {
-  const rootEntries = await AllDocumentation.getTree({
-    includeIndexAndReadmeFiles: true,
-  })
-  return await parseTree(rootEntries)
+  if (!_staticRoutesPromise) {
+    _staticRoutesPromise = (async () => {
+      const rootEntries = await AllDocumentation.getTree({
+        includeIndexAndReadmeFiles: true,
+      })
+      return parseTree(rootEntries)
+    })()
+  }
+  return _staticRoutesPromise
 })
 
 async function parseTree(
@@ -316,29 +388,51 @@ async function parseTree(
 export async function getBreadcrumbItems(
   slug: string[] = []
 ): Promise<BreadcrumbItem[]> {
-  // "index" should not appear as a visible breadcrumb element
-  const cleanedSlug = slug.filter((segment) => segment !== "index")
-  const combinations = cleanedSlug.map((_, idx) =>
-    cleanedSlug.slice(0, idx + 1)
-  )
+  const cacheKey = slug.join("/")
+  const cached = _breadcrumbItemsCache.get(cacheKey)
+  if (cached) {
+    return cached
+  }
 
-  const entries = await Promise.all(
-    combinations.map(async (segments) => {
-      const entry = await AllDocumentation.getEntry(segments)
-      if (!entry) {
-        return null
-      }
+  const promise = (async () => {
+    // "index" should not appear as a visible breadcrumb element
+    const cleanedSlug = slug.filter((segment) => segment !== "index")
+    const combinations = cleanedSlug.map((_, idx) =>
+      cleanedSlug.slice(0, idx + 1)
+    )
 
-      const resolved = await resolveDocEntry(entry)
-      return {
-        title: resolved.title,
-        path: resolved.entry.getPathnameSegments({ includeBasePathname: true }),
-      }
-    })
-  )
+    const entries = await Promise.all(
+      combinations.map(async (segments) => {
+        const entry = await getDocumentationEntryBySlug(segments)
+        if (!entry) {
+          return null
+        }
 
-  return entries.filter((e): e is BreadcrumbItem => !!e)
+        const resolved = await resolveDocEntry(entry)
+        return {
+          title: resolved.title,
+          path: resolved.entry.getPathnameSegments({
+            includeBasePathname: true,
+          }),
+        }
+      })
+    )
+
+    return entries.filter((e): e is BreadcrumbItem => !!e)
+  })()
+
+  _breadcrumbItemsCache.set(cacheKey, promise)
+  return promise
 }
+
+/**
+ * Build-scope cache for breadcrumb computation by slug.
+ *
+ * Breadcrumbs are requested from both layout and metadata/page code paths.
+ * Sharing the Promise keeps those repeated computations effectively O(1)
+ * after the first request per slug.
+ */
+const _breadcrumbItemsCache = new Map<string, Promise<BreadcrumbItem[]>>()
 
 /**
  * Flattens the docs tree into a de-duplicated navigation sequence.
@@ -421,4 +515,111 @@ export function isExternal(
   entry: Awaited<ReturnType<typeof AllDocumentation.getEntry>>
 ) {
   return entry.baseName.includes(".external")
+}
+
+async function mapLlmsTreeNode(
+  node: TreeNode,
+  parentDocsHref?: string
+): Promise<LlmsTreeItem | null> {
+  const { entry } = node
+
+  if (isHidden(entry) || isExternal(entry)) {
+    return null
+  }
+
+  const {
+    entry: targetEntry,
+    frontmatter,
+    title,
+  } = await resolveDocEntry(entry)
+  const pathnameSegments = targetEntry.getPathnameSegments({
+    includeBasePathname: true,
+  })
+
+  const docsHref = `/${["docs", ...pathnameSegments].join("/")}`
+  const lastSegment = pathnameSegments.at(-1)
+  const rawSlug =
+    lastSegment === undefined
+      ? pathnameSegments
+      : [...pathnameSegments.slice(0, -1), `${lastSegment}.md`]
+  const rawHref = `/${["raw", ...rawSlug].join("/")}`
+
+  // Index/readme entries can canonicalize to the same path as their parent.
+  // Skip these self-referential nodes to avoid duplicated subtrees in llms output.
+  if (parentDocsHref && docsHref === parentDocsHref) {
+    return null
+  }
+
+  const children: LlmsTreeItem[] = []
+  const seenChildHrefs = new Set<string>()
+
+  if (node.children) {
+    for (const child of node.children) {
+      const mappedChild = await mapLlmsTreeNode(child, docsHref)
+
+      if (!mappedChild || seenChildHrefs.has(mappedChild.docsHref)) {
+        continue
+      }
+
+      seenChildHrefs.add(mappedChild.docsHref)
+      children.push(mappedChild)
+    }
+  }
+
+  return {
+    title,
+    description: frontmatter?.description,
+    docsHref,
+    rawHref,
+    isDirectory: isDirectory(targetEntry),
+    children,
+  }
+}
+
+/**
+ * Build-scope cache for llms tree generation per collection.
+ *
+ * `getCollectionLlmsTree` performs a full tree traversal + canonical mapping.
+ * This cache ensures each collection is computed once and reused by both
+ * collection-specific and aggregated llms endpoints.
+ */
+const _llmsTreeCache = new Map<string, Promise<LlmsTreeItem[]>>()
+
+export async function getCollectionLlmsTree(
+  collection: string // intentionally string, can be narrowed by consumer
+): Promise<LlmsTreeItem[]> {
+  const cached = _llmsTreeCache.get(collection)
+  if (cached) {
+    return cached
+  }
+
+  const promise = (async () => {
+    const tree = await AllDocumentation.getTree({
+      includeIndexAndReadmeFiles: true,
+    })
+
+    const rootNode = tree.find((node) => {
+      const segments = node.entry.getPathnameSegments({
+        includeBasePathname: true,
+      })
+      return segments[0] === collection
+    })
+
+    if (!rootNode) {
+      return []
+    }
+
+    const mappedRoot = await mapLlmsTreeNode(rootNode)
+
+    if (!mappedRoot) {
+      return []
+    }
+
+    // Always expose the collection root once as top-level item.
+    // Child self-references are already filtered in mapLlmsTreeNode.
+    return [mappedRoot]
+  })()
+
+  _llmsTreeCache.set(collection, promise)
+  return promise
 }

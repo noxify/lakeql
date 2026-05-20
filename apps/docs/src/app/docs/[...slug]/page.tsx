@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import { Space_Grotesk } from "next/font/google"
 import { notFound } from "next/navigation"
 import { isDirectory, isFile, MDX } from "renoun"
@@ -9,6 +10,8 @@ import {
   getSections,
   getTitle,
   staticRoutes,
+  getBreadcrumbItems,
+  getEntryFrontmatter,
 } from "@/collection-helpers"
 import type { EntryType } from "@/collection-helpers"
 import SectionGrid from "@/components/section-grid"
@@ -21,7 +24,29 @@ export async function generateStaticParams() {
   const routes = await staticRoutes()
   return routes.map((slug) => ({ slug }))
 }
+export async function generateMetadata(
+  params: PageProps<"/docs/[...slug]">
+): Promise<Metadata> {
+  const { slug } = await params.params
 
+  let entry: EntryType | null = null
+
+  try {
+    entry = await getDocumentationEntryBySlug(slug)
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  } catch {
+    entry = null
+  }
+  const breadcrumbItems = await getBreadcrumbItems(slug)
+  const metadata = entry ? await getEntryFrontmatter(entry) : null
+
+  const titles = breadcrumbItems.map((ele) => ele.title)
+
+  return {
+    title: `${titles.join(" - ")}`,
+    description: metadata?.description ?? "",
+  }
+}
 export default async function DocsPage({
   params,
 }: PageProps<"/docs/[...slug]">) {
