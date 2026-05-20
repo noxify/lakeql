@@ -21,6 +21,8 @@
     "dev:ui": "pnpm -F ui dev",
     "preview:backend": "pnpm -F backend preview",
     "build": "turbo build",
+    "build:docs": "turbo build --filter='docs'",
+    "preview:docs": "pnpm -F docs preview",
     "build:pkg": "turbo build --filter='@lakeql/*'",
     "clean": "git clean -xdf node_modules",
     "clean:workspaces": "turbo clean",
