@@ -68,8 +68,7 @@ export const rootCollections = cache(async () => {
 
       return await Promise.all(
         collections.map(async (entry) => {
-          const collectionFile = await getFileContent(entry)
-          const metadata = await getMetadata(collectionFile)
+          const metadata = await getEntryFrontmatter(entry)
 
           return {
             description: metadata?.description,
