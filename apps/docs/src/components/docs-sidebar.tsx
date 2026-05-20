@@ -49,7 +49,7 @@ export function DocsSidebar({
     >
       <SidebarHeader className="p-4 group-data-[collapsible=offcanvas]:hidden">
         <div className="flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-3">
+          <Link href="/" prefetch={false} className="flex items-center gap-3">
             <LakeqlLogo className="size-10" />
 
             <div

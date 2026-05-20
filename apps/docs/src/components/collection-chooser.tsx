@@ -45,7 +45,7 @@ export function CollectionChooser({
       </DropdownMenuTrigger>
       <DropdownMenuContent>
         {collections.map((item) => (
-          <Link href={item.entrypoint} key={item.group}>
+          <Link href={item.entrypoint} prefetch={false} key={item.group}>
             <DropdownMenuItem className="hover:cursor-pointer">
               <Item size="xs">
                 <ItemContent className="gap-0">

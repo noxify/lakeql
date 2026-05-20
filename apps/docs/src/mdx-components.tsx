@@ -39,7 +39,11 @@ export function useMDXComponents() {
     h6: (props) => <Heading level={6} {...props} />,
     a: ({ href, children, ...props }: AnchorProps) => {
       if (!href) {
-        return <Link href="/">###INVALID_LINK###</Link>
+        return (
+          <Link href="/" prefetch={false}>
+            ###INVALID_LINK###
+          </Link>
+        )
       }
 
       if (
@@ -65,7 +69,7 @@ export function useMDXComponents() {
 
       return (
         <>
-          <Link href={href} {...props} prefetch={true}>
+          <Link href={href} {...props} prefetch={false}>
             {children ?? href}
           </Link>
         </>

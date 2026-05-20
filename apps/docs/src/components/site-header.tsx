@@ -32,7 +32,7 @@ export function SiteHeader() {
       <div className="mx-auto flex h-14 max-w-6xl items-center px-6">
         {/* Left: logo + nav */}
         <div className="flex items-center gap-6">
-          <Link href="/" className="flex items-center gap-2.5">
+          <Link href="/" prefetch={false} className="flex items-center gap-2.5">
             <LakeqlLogo className="size-6" />
             <span
               className="text-sm font-semibold"
@@ -44,12 +44,14 @@ export function SiteHeader() {
           <nav className="flex items-center gap-1">
             <Link
               href="/"
+              prefetch={false}
               className="text-muted-foreground hover:text-foreground rounded-md px-3 py-1.5 text-sm transition-colors"
             >
               Home
             </Link>
             <Link
               href="/docs"
+              prefetch={false}
               className="text-muted-foreground hover:text-foreground rounded-md px-3 py-1.5 text-sm transition-colors"
             >
               Docs

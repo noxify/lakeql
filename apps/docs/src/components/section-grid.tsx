@@ -55,7 +55,7 @@ export default async function SectionGrid({
       {elements.map((ele, index) => (
         <Link
           href={ele.path}
-          prefetch={true}
+          prefetch={false}
           key={index}
           className="not-prose group block h-full"
         >

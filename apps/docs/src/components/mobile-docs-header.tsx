@@ -22,7 +22,7 @@ export function MobileDocsHeader() {
     >
       <div className="flex w-full justify-between">
         <div>
-          <Link href="/" className="flex items-center gap-2.5">
+          <Link href="/" prefetch={false} className="flex items-center gap-2.5">
             <LakeqlLogo className="size-6" />
             <span
               className="text-sm font-semibold"

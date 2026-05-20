@@ -94,7 +94,7 @@ export function SidebarItem({
             isActive={isActive}
             variant="default"
             className={buttonClass}
-            render={<Link href={item.url} />}
+            render={<Link href={item.url} prefetch={false} />}
           >
             <div className="line-clamp-1 flex w-full items-center gap-2">
               <RenderIcon
@@ -129,7 +129,7 @@ export function SidebarItem({
             variant="default"
             isActive={isActive}
             className="hover:bg-transparent data-[active=true]:bg-transparent"
-            render={<Link prefetch href={item.url} />}
+            render={<Link prefetch={false} href={item.url} />}
           >
             <div className="flex min-w-0 items-center gap-2">
               <RenderIcon

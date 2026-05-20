@@ -29,7 +29,8 @@ const nextConfig: NextConfig = {
   pageExtensions: ["js", "jsx", "ts", "tsx", "md", "mdx"],
   poweredByHeader: false,
   reactStrictMode: true,
-  trailingSlash: true,
+
+  trailingSlash: false,
   /** Enables hot reloading for local packages without a build step */
   transpilePackages: ["@lakeql/core", "@lakeql/cli", "@lakeql/create-app"],
   typescript: {

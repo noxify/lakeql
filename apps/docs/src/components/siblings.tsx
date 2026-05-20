@@ -49,7 +49,7 @@ export default async function Siblings({ entry }: { entry: EntryType }) {
       <div className="flex w-0 flex-1">
         {previousItem && (
           <Link
-            prefetch={true}
+            prefetch={false}
             href={previousItem.url}
             className="text-gray-700"
             title={`Go to previous page: ${previousItem.title}`}
@@ -70,7 +70,7 @@ export default async function Siblings({ entry }: { entry: EntryType }) {
       <div className="-mt-px flex w-0 flex-1 justify-end">
         {nextItem && (
           <Link
-            prefetch={true}
+            prefetch={false}
             href={nextItem.url}
             className="text-gray-700"
             title={`Go to next page: ${nextItem.title}`}

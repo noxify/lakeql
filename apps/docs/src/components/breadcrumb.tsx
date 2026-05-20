@@ -67,7 +67,10 @@ export function SiteBreadcrumb({
               <BreadcrumbItem>
                 <BreadcrumbLink
                   render={
-                    <Link href={`/docs/${item.path.join("/")}`} prefetch={true}>
+                    <Link
+                      href={`/docs/${item.path.join("/")}`}
+                      prefetch={false}
+                    >
                       {item.title}
                     </Link>
                   }
@@ -88,7 +91,7 @@ export function SiteBreadcrumb({
                         render={
                           <Link
                             href={`/docs/${subItem.path.join("/")}`}
-                            prefetch={true}
+                            prefetch={false}
                           >
                             {subItem.title}
                           </Link>

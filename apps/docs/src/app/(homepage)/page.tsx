@@ -135,7 +135,11 @@ export default function Page() {
               with LakeQL&apos;s type-safe runtime and schema generation CLI.
             </p>
             <div className="flex items-center gap-3">
-              <Link href="/docs" className={buttonVariants({ size: "lg" })}>
+              <Link
+                href="/docs"
+                prefetch={false}
+                className={buttonVariants({ size: "lg" })}
+              >
                 Get started
                 <ArrowRight className="size-4" />
               </Link>
@@ -231,6 +235,7 @@ export default function Page() {
             </p>
             <Link
               href="/docs"
+              prefetch={false}
               className={`${buttonVariants({ size: "lg" })} mt-8`}
             >
               Read the docs
@@ -328,12 +333,14 @@ export default function Page() {
                 <span className="font-semibold">Navigation</span>
                 <Link
                   href="/"
+                  prefetch={false}
                   className="text-muted-foreground hover:text-foreground transition-colors"
                 >
                   Home
                 </Link>
                 <Link
                   href="/docs"
+                  prefetch={false}
                   className="text-muted-foreground hover:text-foreground transition-colors"
                 >
                   Docs
