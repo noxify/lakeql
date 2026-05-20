@@ -1,15 +1,8 @@
 import { cache } from "react"
-import { isDirectory, isFile } from "renoun/file-system"
 
 import { AllDocumentation } from "@/collections"
 
-import {
-  getFileContent,
-  getMetadata,
-  getTitle,
-  isExternal,
-  isHidden,
-} from "../collection-helpers"
+import { isExternal, isHidden, resolveDocEntry } from "../collection-helpers"
 
 export type NavBadge =
   | "new"
@@ -29,33 +22,6 @@ export interface TreeItem {
 }
 
 type TreeNode = Awaited<ReturnType<typeof AllDocumentation.getTree>>[number]
-type TreeEntry = TreeNode["entry"]
-
-function isIndexOrReadme(entry: TreeEntry) {
-  return (
-    isFile(entry) && (entry.baseName === "index" || entry.baseName === "readme")
-  )
-}
-
-function toStartCase(value: string) {
-  return value
-    .replaceAll(/[._-]+/gu, " ")
-    .replaceAll(/\s+/gu, " ")
-    .trim()
-    .replaceAll(/\b\w/gu, (char) => char.toUpperCase())
-}
-
-function getFallbackTitle(entry: TreeEntry) {
-  if (isDirectory(entry)) {
-    if (entry.depth < 0) {
-      return entry.title
-    }
-
-    return toStartCase(entry.baseName)
-  }
-
-  return entry.title
-}
 
 async function mapTreeNode(
   node: TreeNode,
@@ -67,25 +33,8 @@ async function mapTreeNode(
     return null
   }
 
-  const targetEntry = isIndexOrReadme(entry) ? entry.getParent() : entry
-  let frontmatter: Awaited<ReturnType<typeof getMetadata>>
-  let title: string
-
-  if (isIndexOrReadme(entry)) {
-    const file = await getFileContent(entry)
-    frontmatter = await getMetadata(file)
-    title = getTitle(targetEntry, frontmatter, true)
-  } else if (isDirectory(targetEntry)) {
-    const file = await getFileContent(targetEntry)
-    frontmatter = await getMetadata(file)
-    title = frontmatter
-      ? getTitle(targetEntry, frontmatter, false)
-      : getFallbackTitle(targetEntry)
-  } else {
-    const file = await getFileContent(targetEntry)
-    frontmatter = await getMetadata(file)
-    title = getTitle(targetEntry, frontmatter, false)
-  }
+  const resolved = await resolveDocEntry(entry)
+  const { entry: targetEntry, frontmatter, title } = resolved
 
   const external = Boolean(frontmatter?.externalLink) || isExternal(entry)
   const internalUrl = `/${["docs", ...targetEntry.getPathnameSegments({ includeBasePathname: true })].join("/")}`
@@ -104,7 +53,7 @@ async function mapTreeNode(
   return {
     navBadge: frontmatter?.navBadge,
     navIcon: frontmatter?.navIcon,
-    title: title || getFallbackTitle(targetEntry),
+    title,
     url,
     external,
     children,

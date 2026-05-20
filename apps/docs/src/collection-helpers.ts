@@ -35,6 +35,12 @@ export interface BreadcrumbEntry {
   pageTitle: string
 }
 
+export interface ResolvedDocEntry {
+  entry: EntryType
+  frontmatter?: Frontmatter
+  title: string
+}
+
 export type EntryType = Awaited<ReturnType<typeof AllDocumentation.getEntry>>
 
 const getDocumentationEntryBySlugCached = cache(async (slugKey: string) => {
@@ -115,6 +121,111 @@ export async function getMetadata(
   file: Awaited<ReturnType<typeof getFileContent>>
 ) {
   return (await file?.getExportValue("frontmatter")) ?? undefined
+}
+
+function isIndexOrReadmeEntry(entry: EntryType) {
+  return (
+    isFile(entry) && (entry.baseName === "index" || entry.baseName === "readme")
+  )
+}
+
+export function getCanonicalEntry(entry: EntryType): EntryType {
+  return isIndexOrReadmeEntry(entry) ? entry.getParent() : entry
+}
+
+type EntryWithStructure = EntryType & {
+  getStructure?: () => unknown | Promise<unknown>
+}
+
+async function resolveEntryWithStructure(entry: EntryType) {
+  const entryWithStructure = entry as EntryWithStructure
+
+  if (typeof entryWithStructure.getStructure === "function") {
+    return entry
+  }
+
+  const resolved = await AllDocumentation.getEntry(
+    entry.getPathnameSegments({ includeBasePathname: true })
+  )
+
+  return resolved ?? entry
+}
+
+function readFrontmatterFromStructure(structure: unknown) {
+  const nodes = Array.isArray(structure) ? structure : [structure]
+  const orderedNodes = Array.isArray(structure)
+    ? nodes.filter((node) => {
+        if (typeof node !== "object" || node === null) {
+          return false
+        }
+
+        const maybeBaseName = (node as { baseName?: unknown }).baseName
+        return maybeBaseName === "index" || maybeBaseName === "readme"
+      })
+    : nodes
+
+  for (const node of orderedNodes) {
+    if (
+      typeof node === "object" &&
+      node !== null &&
+      "frontmatter" in node &&
+      (node as { frontmatter?: Frontmatter }).frontmatter
+    ) {
+      return (node as { frontmatter?: Frontmatter }).frontmatter
+    }
+  }
+}
+
+async function getFrontmatterFromStructure(entry: EntryType) {
+  const resolvedEntry = await resolveEntryWithStructure(entry)
+  const entryWithStructure = resolvedEntry as EntryWithStructure
+
+  if (typeof entryWithStructure.getStructure !== "function") {
+    return
+  }
+
+  const structure = await entryWithStructure.getStructure()
+  return readFrontmatterFromStructure(structure)
+}
+
+export async function getEntryFrontmatter(entry: EntryType) {
+  const directFrontmatter = await getFrontmatterFromStructure(entry)
+
+  if (directFrontmatter) {
+    return directFrontmatter
+  }
+
+  if (isDirectory(entry)) {
+    const segments = entry.getPathnameSegments({ includeBasePathname: true })
+    const [indexEntry, readmeEntry] = await Promise.all([
+      AllDocumentation.getEntry([...segments, "index"]).catch(() => null),
+      AllDocumentation.getEntry([...segments, "readme"]).catch(() => null),
+    ])
+
+    if (indexEntry) {
+      const indexFrontmatter = await getFrontmatterFromStructure(indexEntry)
+      if (indexFrontmatter) {
+        return indexFrontmatter
+      }
+    }
+
+    if (readmeEntry) {
+      return getFrontmatterFromStructure(readmeEntry)
+    }
+  }
+}
+
+export async function resolveDocEntry(
+  entry: EntryType
+): Promise<ResolvedDocEntry> {
+  const canonicalEntry = getCanonicalEntry(entry)
+  const frontmatter = await getEntryFrontmatter(entry)
+
+  return {
+    entry: canonicalEntry,
+    frontmatter,
+    title: getTitle(canonicalEntry, frontmatter, false),
+  }
 }
 
 export function getTitle(
@@ -218,11 +329,11 @@ export async function getBreadcrumbItems(
       if (!entry) {
         return null
       }
-      const file = await getFileContent(entry)
-      const metadata = await getMetadata(file)
+
+      const resolved = await resolveDocEntry(entry)
       return {
-        title: getTitle(entry, metadata, true),
-        path: entry.getPathnameSegments({ includeBasePathname: true }),
+        title: resolved.title,
+        path: resolved.entry.getPathnameSegments({ includeBasePathname: true }),
       }
     })
   )

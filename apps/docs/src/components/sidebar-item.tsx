@@ -124,11 +124,23 @@ export function SidebarItem({
         defaultOpen={isActive}
         className="group/collapsible"
       >
-        <div className="relative">
+        <div className="group relative">
+          <CollapsibleTrigger
+            render={
+              <SidebarMenuAction
+                showOnHover={false} // Always show the Chevron
+                className="peer z-10 cursor-pointer opacity-100 [&[data-panel-open]>svg]:rotate-90"
+                aria-label={`Toggle ${item.title}`}
+              />
+            }
+          >
+            <ChevronRight className="transition-transform" />
+          </CollapsibleTrigger>
+
           <SidebarMenuButton
             variant="default"
             isActive={isActive}
-            className="hover:bg-transparent data-[active=true]:bg-transparent"
+            className="peer-hover:bg-transparent hover:bg-transparent data-[active=true]:bg-transparent"
             render={<Link prefetch={false} href={item.url} />}
           >
             <div className="flex min-w-0 items-center gap-2">
@@ -138,13 +150,12 @@ export function SidebarItem({
                 className="size-3.5 shrink-0"
               />
               <span
-                className={cn(
-                  "truncate text-sidebar-foreground/60 hover:text-foreground group-hover/menu-button:text-foreground",
-                  {
-                    "text-brand-900 hover:text-foreground group-hover/menu-button:text-foreground dark:text-brand-400":
-                      isActive,
-                  }
-                )}
+                className={cn("truncate", {
+                  "text-brand-900 hover:text-brand-900 group-hover/menu-button:text-brand-900 dark:text-brand-400 dark:hover:text-brand-400 dark:group-hover/menu-button:text-brand-400":
+                    isActive,
+                  "text-sidebar-foreground/60 hover:text-foreground group-hover/menu-button:text-foreground":
+                    !isActive,
+                })}
               >
                 {item.title}
               </span>
@@ -159,18 +170,6 @@ export function SidebarItem({
               {item.navBadge}
             </SidebarMenuBadge>
           ) : null}
-
-          <CollapsibleTrigger
-            render={
-              <SidebarMenuAction
-                showOnHover={false} // Always show the Chevron
-                className="z-10 opacity-100 [&[data-panel-open]>svg]:rotate-90"
-                aria-label={`Toggle ${item.title}`}
-              />
-            }
-          >
-            <ChevronRight className="transition-transform" />
-          </CollapsibleTrigger>
         </div>
         <CollapsibleContent>
           <SidebarMenuSub className="mr-0 ml-2 pr-0 pl-2">
