@@ -1,0 +1,65 @@
+{
+  "name": "@lakeql/logger",
+  "version": "0.1.0",
+  "homepage": "https://lakeql.dev",
+  "license": "Apache-2.0",
+  "author": {
+    "name": "Marcus Reinhardt",
+    "url": "https://github.com/noxify"
+  },
+  "contributors": [
+    {
+      "name": "Marcus Reinhardt",
+      "url": "https://github.com/noxify"
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/noxify/lakeql",
+    "directory": "packages/logger"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.mjs",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs"
+    },
+    "./console": {
+      "types": "./dist/console.d.mts",
+      "import": "./dist/console.mjs"
+    }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "clean": "git clean -xdf .cache .turbo dist node_modules dist",
+    "clean:cache": "git clean -xdf .cache .turbo",
+    "clean:dist": "git clean -xdf dist",
+    "dev": "tsdown --watch",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@loglayer/plugin-redaction": "3.0.2",
+    "@loglayer/transport-winston": "3.0.3",
+    "@t3-oss/env-core": "0.13.11",
+    "fast-redact": "3.5.0",
+    "kleur": "4.1.5",
+    "loglayer": "9.1.1",
+    "serialize-error": "13.0.1",
+    "winston": "3.19.0",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@lakeql/tsconfig": "workspace:*",
+    "@types/fast-redact": "3.0.4",
+    "@types/node": "24.12.4",
+    "globby": "16.2.0",
+    "tsdown": "0.22.0",
+    "typescript": "6.0.3"
+  }
+}

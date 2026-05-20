@@ -1,0 +1,58 @@
+{
+  "name": "@lakeql/create-app",
+  "version": "0.1.0",
+  "homepage": "https://lakeql.dev",
+  "license": "Apache-2.0",
+  "author": {
+    "name": "Marcus Reinhardt",
+    "url": "https://github.com/noxify"
+  },
+  "contributors": [
+    {
+      "name": "Marcus Reinhardt",
+      "url": "https://github.com/noxify"
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/noxify/lakeql",
+    "directory": "packages/create-app"
+  },
+  "bin": {
+    "create-lakeql-app": "dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "clean": "git clean -xdf .cache .turbo dist node_modules dist",
+    "clean:cache": "git clean -xdf .cache .turbo",
+    "clean:dist": "git clean -xdf dist",
+    "dev": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@antfu/install-pkg": "1.1.0",
+    "@clack/prompts": "1.4.0",
+    "giget": "3.2.0",
+    "picocolors": "1.1.1",
+    "read-pkg": "10.1.0",
+    "terminal-link": "5.0.0"
+  },
+  "devDependencies": {
+    "@lakeql/tsconfig": "workspace:*",
+    "@types/node": "24.12.4",
+    "tsdown": "0.22.0",
+    "typescript": "6.0.3",
+    "vitest": "4.1.6"
+  }
+}

@@ -1,0 +1,70 @@
+{
+  "name": "@lakeql/api",
+  "version": "0.1.0",
+  "homepage": "https://lakeql.dev",
+  "bugs": "https://github.com/noxify/lakeql/issues",
+  "license": "Apache-2.0",
+  "author": {
+    "name": "Marcus Reinhardt",
+    "url": "https://github.com/noxify"
+  },
+  "contributors": [
+    {
+      "name": "Marcus Reinhardt",
+      "url": "https://github.com/noxify"
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/noxify/lakeql",
+    "directory": "packages/api"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    "./*": {
+      "types": "./src/*.ts",
+      "import": "./dist/*.mjs"
+    }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "clean": "git clean -xdf .cache .turbo dist node_modules dist",
+    "clean:cache": "git clean -xdf .cache .turbo",
+    "clean:dist": "git clean -xdf dist",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@hono/node-server": "2.0.3",
+    "@lakeql/logger": "workspace:*",
+    "@lakeql/query-builder": "workspace:*",
+    "@lakeql/response-transformer": "workspace:*",
+    "@lakeql/trino-client": "workspace:*",
+    "@pothos/core": "4.12.0",
+    "@pothos/plugin-scope-auth": "4.1.6",
+    "@pothos/plugin-validation": "4.3.0",
+    "@t3-oss/env-core": "0.13.11",
+    "dedent": "1.7.2",
+    "globby": "16.2.0",
+    "graphql": "16.14.0",
+    "graphql-scalars": "1.25.0",
+    "graphql-yoga": "5.21.0",
+    "hono": "4.12.21",
+    "jose": "6.2.3",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@lakeql/tsconfig": "workspace:*",
+    "@standard-schema/spec": "1.1.0",
+    "@types/json-schema": "7.0.15",
+    "@types/node": "24.12.4",
+    "dotenv-cli": "11.0.0",
+    "tsdown": "0.22.0",
+    "tsx": "4.22.3",
+    "type-fest": "5.6.0",
+    "typescript": "6.0.3"
+  }
+}

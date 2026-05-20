@@ -1,0 +1,12 @@
+node_modules
+**/dist/**
+docker-configs
+docker-compose.yaml
+wrapper-compose.yaml
+trino-compose.yaml
+coverage
+.changeset
+.turbo
+.vscode
+.env
+.env.example

@@ -1,0 +1,26 @@
+{
+  "extends": "../../tooling/typescript/base.json",
+  "compilerOptions": {
+    "target": "esnext",
+
+    "lib": ["dom", "dom.iterable", "ESNext"],
+    "jsx": "preserve",
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+    "strictNullChecks": true
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts"
+  ],
+  "exclude": ["node_modules", "dist", "build"]
+}

@@ -1,0 +1,75 @@
+{
+  "name": "lakeql",
+  "private": true,
+  "license": "Apache-2.0",
+  "author": {
+    "name": "Marcus Reinhardt",
+    "url": "https://github.com/noxify"
+  },
+  "maintainers": [
+    {
+      "name": "Marcus Reinhardt",
+      "url": "https://github.com/noxify"
+    }
+  ],
+  "type": "module",
+  "scripts": {
+    "ldap:server": "pnpm -F @lakeql/ldap-server start",
+    "oauth:server": "pnpm -F @lakeql/oauth-server start",
+    "dev": "turbo dev",
+    "dev:backend": "pnpm -F backend dev",
+    "dev:ui": "pnpm -F ui dev",
+    "preview:backend": "pnpm -F backend preview",
+    "build": "turbo build",
+    "build:pkg": "turbo build --filter='@lakeql/*'",
+    "clean": "git clean -xdf node_modules",
+    "clean:workspaces": "turbo clean",
+    "clean:dist": "turbo clean:dist",
+    "clean:cache": "turbo clean:cache",
+    "cli": "pnpm -F cli cli",
+    "lint": "ultracite check",
+    "lint:fix": "ultracite fix && pnpm format:fix",
+    "format": "oxfmt --check",
+    "format:fix": "oxfmt .",
+    "lint:docker": "turbo run lint:docker --continue",
+    "lint:ws": "sherif",
+    "postinstall": "pnpm lint:ws",
+    "typecheck": "turbo typecheck",
+    "deps:check": "pnpm outdated -r",
+    "deps:update": "pnpm update -i -L -r",
+    "audit": "pnpm audit --prod",
+    "audit:ci": "pnpm audit --prod --ignore GHSA-qx2v-qp2m-jg93 --ignore-unfixable",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "prune": "turbo prune --docker",
+    "cs": "changeset",
+    "ci:publish": "pnpm build:pkg && pnpm publish -r --access public --publish-branch main && pnpm changeset tag",
+    "ci:version": "pnpm changeset version && pnpm install --no-frozen-lockfile && git add .",
+    "with-env": "dotenv -e ./.env --",
+    "infra": "uv run --directory infra python cli.py",
+    "infra:setup": "uv run --directory infra python cli.py setup-docs",
+    "infra:provision": "uv run --directory infra python cli.py provision",
+    "infra:status": "uv run --directory infra python cli.py status -v",
+    "infra:shell": "uv run --directory infra python cli.py shell",
+    "infra:sql": "uv run --directory infra python cli.py sql",
+    "infra:ui": "uv run --directory infra python cli.py ui",
+    "infra:down": "uv run --directory infra python cli.py down"
+  },
+  "devDependencies": {
+    "@changesets/cli": "2.31.0",
+    "@vitest/coverage-v8": "4.1.6",
+    "@vitest/ui": "4.1.6",
+    "dotenv-cli": "11.0.0",
+    "oxfmt": "^0.51.0",
+    "oxlint": "^1.63.0",
+    "sherif": "1.11.1",
+    "turbo": "2.9.14",
+    "typescript": "6.0.3",
+    "ultracite": "7.7.0",
+    "vitest": "4.1.6"
+  },
+  "engines": {
+    "node": "24"
+  },
+  "packageManager": "pnpm@11.1.3"
+}

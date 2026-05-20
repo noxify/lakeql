@@ -1,0 +1,54 @@
+{
+  "name": "@lakeql/trino-client",
+  "version": "0.1.0",
+  "homepage": "https://lakeql.dev",
+  "license": "Apache-2.0",
+  "author": {
+    "name": "Marcus Reinhardt",
+    "url": "https://github.com/noxify"
+  },
+  "contributors": [
+    {
+      "name": "Marcus Reinhardt",
+      "url": "https://github.com/noxify"
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/noxify/lakeql",
+    "directory": "packages/trino-client"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "types": "./types/trino-client.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs"
+    }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "clean": "git clean -xdf .cache .turbo dist node_modules dist",
+    "clean:cache": "git clean -xdf .cache .turbo",
+    "clean:dist": "git clean -xdf dist",
+    "dev": "tsdown --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@hapi/bourne": "3.0.0",
+    "@t3-oss/env-core": "0.13.11",
+    "got": "15.0.5"
+  },
+  "devDependencies": {
+    "@lakeql/tsconfig": "workspace:*",
+    "@types/node": "24.12.4",
+    "msw": "2.14.6",
+    "tsdown": "0.22.0",
+    "typescript": "6.0.3",
+    "vitest": "4.1.6"
+  }
+}

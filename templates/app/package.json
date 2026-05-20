@@ -1,0 +1,35 @@
+{
+  "name": "lakeql-app",
+  "version": "0.0.1",
+  "private": true,
+  "license": "MIT",
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "scripts": {
+    "build": "tsdown",
+    "clean": "git clean -xdf .cache .turbo dist node_modules dist",
+    "clean:cache": "git clean -xdf .cache .turbo",
+    "clean:dit": "git clean -xdf dist",
+    "dev": "pnpm with-env tsx ./src/index.ts",
+    "preview": "pnpm with-env node ./dist/index.mjs",
+    "start": "node ./dist/index.mjs",
+    "typecheck": "tsc --noEmit",
+    "with-env": "dotenv -e ../../.env --",
+    "cli": "pnpm with-env lakeql-cli"
+  },
+  "dependencies": {
+    "@lakeql/api": "workspace:*",
+    "@t3-oss/env-core": "0.13.11",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@lakeql/cli": "workspace:*",
+    "@types/node": "24.12.4",
+    "dotenv-cli": "11.0.0",
+    "tsdown": "0.22.0",
+    "tsx": "4.22.3",
+    "typescript": "6.0.3"
+  }
+}

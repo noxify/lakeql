@@ -1,0 +1,64 @@
+{
+  "name": "@lakeql/helpers",
+  "version": "0.1.0",
+  "homepage": "https://lakeql.dev",
+  "license": "Apache-2.0",
+  "author": {
+    "name": "Marcus Reinhardt",
+    "url": "https://github.com/noxify"
+  },
+  "contributors": [
+    {
+      "name": "Marcus Reinhardt",
+      "url": "https://github.com/noxify"
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/noxify/lakeql",
+    "directory": "packages/helpers"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    "./calculate-page-info": {
+      "types": "./dist/calculate-page-info.d.mts",
+      "import": "./dist/calculate-page-info.mjs"
+    },
+    "./format-code": {
+      "types": "./dist/format-code.d.mts",
+      "import": "./dist/format-code.mjs"
+    },
+    "./object-helper": {
+      "types": "./dist/object-helper.d.mts",
+      "import": "./dist/object-helper.mjs"
+    },
+    "./special-characters": {
+      "types": "./dist/special-characters.d.mts",
+      "import": "./dist/special-characters.mjs"
+    }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "clean": "git clean -xdf .cache .turbo dist node_modules dist",
+    "clean:cache": "git clean -xdf .cache .turbo",
+    "clean:dist": "git clean -xdf dist",
+    "dev": "tsdown --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ianvs/prettier-plugin-sort-imports": "^4.7.1",
+    "dot-path-value": "0.0.12",
+    "prettier": "3.8.3"
+  },
+  "devDependencies": {
+    "@lakeql/tsconfig": "workspace:*",
+    "@types/node": "24.12.4",
+    "tsdown": "0.22.0",
+    "typescript": "6.0.3",
+    "vitest": "4.1.6"
+  }
+}

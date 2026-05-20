@@ -1,0 +1,9 @@
+[project]
+name = "lakeql-infra"
+version = "0.1.0"
+description = "Infrastructure management for LakeQL with minitrino"
+requires-python = ">=3.11"
+dependencies = ["minitrino>=3.0.3", "click>=8.3", "pyyaml>=6.0"]
+
+[tool.uv]
+managed = true

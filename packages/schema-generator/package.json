@@ -1,0 +1,64 @@
+{
+  "name": "@lakeql/schema-generator",
+  "version": "0.1.0",
+  "homepage": "https://lakeql.dev",
+  "license": "Apache-2.0",
+  "author": {
+    "name": "Marcus Reinhardt",
+    "url": "https://github.com/noxify"
+  },
+  "contributors": [
+    {
+      "name": "Marcus Reinhardt",
+      "url": "https://github.com/noxify"
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/noxify/lakeql",
+    "directory": "packages/schema-generator"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    "./graphql-schema": {
+      "types": "./dist/graphql-schema.d.mts",
+      "import": "./dist/graphql-schema.mjs"
+    },
+    "./hive-table": {
+      "types": "./dist/hive-table.d.mts",
+      "import": "./dist/hive-table.mjs"
+    },
+    "./json-schema": {
+      "types": "./dist/json-schema.d.mts",
+      "import": "./dist/json-schema.mjs"
+    }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "clean": "git clean -xdf .cache .turbo dist node_modules dist",
+    "clean:cache": "git clean -xdf .cache .turbo",
+    "clean:dist": "git clean -xdf dist",
+    "dev": "tsdown --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@lakeql/helpers": "workspace:*",
+    "kysely": "0.29.2",
+    "lodash-es": "4.18.1",
+    "magic-regexp": "0.11.0"
+  },
+  "devDependencies": {
+    "@lakeql/tsconfig": "workspace:*",
+    "@types/json-schema": "7.0.15",
+    "@types/lodash-es": "4.17.12",
+    "@types/node": "24.12.4",
+    "json-column-parser": "2.0.0",
+    "tsdown": "0.22.0",
+    "typescript": "6.0.3",
+    "vitest": "4.1.6"
+  }
+}
