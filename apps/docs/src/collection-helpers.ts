@@ -265,6 +265,7 @@ export async function getEntryFrontmatter(entry: EntryType) {
       }
     }
 
+    // oxlint-disable-next-line unicorn/no-useless-undefined
     return undefined
   })()
 
