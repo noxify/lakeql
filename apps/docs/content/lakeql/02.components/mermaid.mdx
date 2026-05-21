@@ -1,0 +1,207 @@
+---
+title: Mermaid Diagrams
+description: Learn how to create and use Mermaid diagrams in your documentation.
+---
+
+## State Diagrams
+
+```mermaid
+stateDiagram-v2
+  [*] --> Idle
+  Idle --> Processing: start
+  Processing --> Complete: done
+  Complete --> [*]
+```
+
+## State Diagrams 2
+
+```mermaid compact preview
+stateDiagram-v2
+  [*] --> Idle
+  Idle --> Processing: start
+  Processing --> Complete: done
+  Complete --> [*]
+```
+
+## Sequence Diagrams
+
+```mermaid preview
+sequenceDiagram
+  Alice->>Bob: Hello Bob!
+  Bob-->>Alice: Hi Alice!
+  Alice->>Bob: How are you?
+  Bob-->>Alice: Great, thanks!
+```
+
+## Class Diagrams
+
+```mermaid
+classDiagram
+  Animal <|-- Duck
+  Animal <|-- Fish
+  Animal: +int age
+  Animal: +String gender
+  Animal: +isMammal() bool
+  Duck: +String beakColor
+  Duck: +swim()
+  Duck: +quack()
+```
+
+## Class Diagrams with preview
+
+```mermaid preview
+classDiagram
+  Animal <|-- Duck
+  Animal <|-- Fish
+  Animal: +int age
+  Animal: +String gender
+  Animal: +isMammal() bool
+  Duck: +String beakColor
+  Duck: +swim()
+  Duck: +quack()
+```
+
+## ER Diagrams
+
+```mermaid
+erDiagram
+  CUSTOMER ||--o{ ORDER : places
+  ORDER ||--|{ LINE_ITEM : contains
+  PRODUCT ||--o{ LINE_ITEM : "is in"
+```
+
+## Cap Test (Vertical)
+
+```mermaid
+flowchart TB
+  N01[Step 01] --> N02[Step 02]
+  N02 --> N03[Step 03]
+  N03 --> N04[Step 04]
+  N04 --> N05[Step 05]
+  N05 --> N06[Step 06]
+  N06 --> N07[Step 07]
+  N07 --> N08[Step 08]
+  N08 --> N09[Step 09]
+  N09 --> N10[Step 10]
+  N10 --> N11[Step 11]
+  N11 --> N12[Step 12]
+  N12 --> N13[Step 13]
+  N13 --> N14[Step 14]
+  N14 --> N15[Step 15]
+  N15 --> N16[Step 16]
+  N16 --> N17[Step 17]
+  N17 --> N18[Step 18]
+  N18 --> N19[Step 19]
+  N19 --> N20[Step 20]
+  N20 --> N21[Step 21]
+  N21 --> N22[Step 22]
+  N22 --> N23[Step 23]
+  N23 --> N24[Step 24]
+  N24 --> N25[Step 25]
+  N25 --> N26[Step 26]
+  N26 --> N27[Step 27]
+  N27 --> N28[Step 28]
+  N28 --> N29[Step 29]
+  N29 --> N30[Step 30]
+```
+
+## Cap Test (Horizontal)
+
+```mermaid
+flowchart LR
+  H0[Gateway] --> H1[Service 01]
+  H1 --> H2[Service 02]
+  H2 --> H3[Service 03]
+  H3 --> H4[Service 04]
+  H4 --> H5[Service 05]
+  H5 --> H6[Service 06]
+  H6 --> H7[Service 07]
+  H7 --> H8[Service 08]
+  H8 --> H9[Service 09]
+  H9 --> H10[Service 10]
+  H10 --> H11[Service 11]
+  H11 --> H12[Service 12]
+  H12 --> H13[Service 13]
+  H13 --> H14[Service 14]
+  H14 --> H15[Service 15]
+  H15 --> H16[Service 16]
+  H16 --> H17[Service 17]
+  H17 --> H18[Service 18]
+  H18 --> H19[Service 19]
+  H19 --> H20[Service 20]
+
+  H0 --> A1[Lane A-01]
+  A1 --> A2[Lane A-02]
+  A2 --> A3[Lane A-03]
+  A3 --> A4[Lane A-04]
+  A4 --> A5[Lane A-05]
+
+  H0 --> B1[Lane B-01]
+  B1 --> B2[Lane B-02]
+  B2 --> B3[Lane B-03]
+  B3 --> B4[Lane B-04]
+  B4 --> B5[Lane B-05]
+
+  H0 --> C1[Lane C-01]
+  C1 --> C2[Lane C-02]
+  C2 --> C3[Lane C-03]
+  C3 --> C4[Lane C-04]
+  C4 --> C5[Lane C-05]
+```
+
+## Cap Test (Combined: Vertical + Horizontal)
+
+```mermaid preview
+flowchart TB
+  ROOT[Root Gateway]
+
+  ROOT --> L1[Level 01]
+  L1 --> L2[Level 02]
+  L2 --> L3[Level 03]
+  L3 --> L4[Level 04]
+  L4 --> L5[Level 05]
+  L5 --> L6[Level 06]
+  L6 --> L7[Level 07]
+  L7 --> L8[Level 08]
+  L8 --> L9[Level 09]
+  L9 --> L10[Level 10]
+  L10 --> L11[Level 11]
+  L11 --> L12[Level 12]
+  L12 --> L13[Level 13]
+  L13 --> L14[Level 14]
+  L14 --> L15[Level 15]
+  L15 --> L16[Level 16]
+  L16 --> L17[Level 17]
+  L17 --> L18[Level 18]
+
+  L6 --> H1[Wide Hub 01]
+  H1 --> H2[Wide Hub 02]
+  H2 --> H3[Wide Hub 03]
+  H3 --> H4[Wide Hub 04]
+  H4 --> H5[Wide Hub 05]
+  H5 --> H6[Wide Hub 06]
+  H6 --> H7[Wide Hub 07]
+  H7 --> H8[Wide Hub 08]
+  H8 --> H9[Wide Hub 09]
+  H9 --> H10[Wide Hub 10]
+  H10 --> H11[Wide Hub 11]
+  H11 --> H12[Wide Hub 12]
+
+  H4 --> A1[Branch A-01]
+  A1 --> A2[Branch A-02]
+  A2 --> A3[Branch A-03]
+  A3 --> A4[Branch A-04]
+  A4 --> A5[Branch A-05]
+
+  H8 --> B1[Branch B-01]
+  B1 --> B2[Branch B-02]
+  B2 --> B3[Branch B-03]
+  B3 --> B4[Branch B-04]
+  B4 --> B5[Branch B-05]
+
+  H12 --> C1[Branch C-01]
+  C1 --> C2[Branch C-02]
+  C2 --> C3[Branch C-03]
+  C3 --> C4[Branch C-04]
+  C4 --> C5[Branch C-05]
+```

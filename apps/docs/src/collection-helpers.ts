@@ -4,6 +4,8 @@ import { cache } from "react"
 import { isDirectory, isFile } from "renoun/file-system"
 import type { z } from "zod"
 
+import { cachePromise } from "@/lib/cache-promise"
+
 import { AllDocumentation } from "./collections"
 import type { frontmatterSchema } from "./validations"
 
@@ -66,18 +68,10 @@ export type EntryType = Awaited<ReturnType<typeof AllDocumentation.getEntry>>
 const _documentationEntryBySlugCache = new Map<string, Promise<EntryType>>()
 
 const getDocumentationEntryBySlugCached = cache(async (slugKey: string) => {
-  const cached = _documentationEntryBySlugCache.get(slugKey)
-  if (cached) {
-    return cached
-  }
-
-  const promise = (async () => {
+  return cachePromise(_documentationEntryBySlugCache, slugKey, async () => {
     const segments = slugKey ? slugKey.split("/") : []
     return AllDocumentation.getEntry(segments)
-  })()
-
-  _documentationEntryBySlugCache.set(slugKey, promise)
-  return promise
+  })
 })
 
 export async function getDocumentationEntryBySlug(slug: string[]) {
@@ -233,13 +227,7 @@ const _entryFrontmatterCache = new Map<
 
 export async function getEntryFrontmatter(entry: EntryType) {
   const cacheKey = entry.getPathname({ includeBasePathname: true })
-  const cached = _entryFrontmatterCache.get(cacheKey)
-
-  if (cached) {
-    return cached
-  }
-
-  const promise = (async () => {
+  return cachePromise(_entryFrontmatterCache, cacheKey, async () => {
     const directFrontmatter = await getFrontmatterFromStructure(entry)
 
     if (directFrontmatter) {
@@ -267,10 +255,7 @@ export async function getEntryFrontmatter(entry: EntryType) {
 
     // oxlint-disable-next-line unicorn/no-useless-undefined
     return undefined
-  })()
-
-  _entryFrontmatterCache.set(cacheKey, promise)
-  return promise
+  })
 }
 
 export async function resolveDocEntry(
@@ -390,12 +375,7 @@ export async function getBreadcrumbItems(
   slug: string[] = []
 ): Promise<BreadcrumbItem[]> {
   const cacheKey = slug.join("/")
-  const cached = _breadcrumbItemsCache.get(cacheKey)
-  if (cached) {
-    return cached
-  }
-
-  const promise = (async () => {
+  return cachePromise(_breadcrumbItemsCache, cacheKey, async () => {
     // "index" should not appear as a visible breadcrumb element
     const cleanedSlug = slug.filter((segment) => segment !== "index")
     const combinations = cleanedSlug.map((_, idx) =>
@@ -420,10 +400,7 @@ export async function getBreadcrumbItems(
     )
 
     return entries.filter((e): e is BreadcrumbItem => !!e)
-  })()
-
-  _breadcrumbItemsCache.set(cacheKey, promise)
-  return promise
+  })
 }
 
 /**
@@ -589,12 +566,7 @@ const _llmsTreeCache = new Map<string, Promise<LlmsTreeItem[]>>()
 export async function getCollectionLlmsTree(
   collection: string // intentionally string, can be narrowed by consumer
 ): Promise<LlmsTreeItem[]> {
-  const cached = _llmsTreeCache.get(collection)
-  if (cached) {
-    return cached
-  }
-
-  const promise = (async () => {
+  return cachePromise(_llmsTreeCache, collection, async () => {
     const tree = await AllDocumentation.getTree({
       includeIndexAndReadmeFiles: true,
     })
@@ -619,8 +591,5 @@ export async function getCollectionLlmsTree(
     // Always expose the collection root once as top-level item.
     // Child self-references are already filtered in mapLlmsTreeNode.
     return [mappedRoot]
-  })()
-
-  _llmsTreeCache.set(collection, promise)
-  return promise
+  })
 }

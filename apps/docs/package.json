@@ -17,6 +17,10 @@
   },
   "dependencies": {
     "@base-ui/react": "1.4.1",
+    "@choo-choo/core": "^0.2.1",
+    "@choo-choo/parser-ebnf": "^0.1.3",
+    "@choo-choo/parser-utils": "^0.1.3",
+    "@choo-choo/react": "^0.1.3",
     "@icons-pack/react-simple-icons": "13.13.0",
     "@mdx-js/loader": "3.1.1",
     "@mdx-js/node-loader": "3.1.1",
@@ -26,6 +30,7 @@
     "@orama/plugin-data-persistence": "3.1.18",
     "@renoun/screenshot": "0.3.3",
     "@tailwindcss/typography": "0.5.19",
+    "beautiful-mermaid": "1.1.3",
     "better-themes": "1.1.0",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",

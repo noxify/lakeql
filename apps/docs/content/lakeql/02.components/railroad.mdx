@@ -1,0 +1,70 @@
+---
+title: Railroad Diagrams
+description: Visualize grammar rules with railroad diagrams using EBNF syntax.
+---
+
+## Basic Rule
+
+```railroad
+identifier = letter , { letter | digit | "_" } ;
+```
+
+## Example - EBNF Syntax
+
+```railroad
+name = [ "+" ] , (name start char | escape) , { name char | escape } ;
+name start char = letter ;
+name char = letter | digit | "-" ;
+escape = "\\" , letter ;
+```
+
+## Example - Legacy Syntax ( DSL from railroad-diagrams library )
+
+```railroad
+Diagram(
+  Optional('+', 'skip'),
+  Choice(0,
+    NonTerminal('name-start char'),
+    NonTerminal('escape')),
+  ZeroOrMore(
+    Choice(0,
+      NonTerminal('name char'),
+      NonTerminal('escape'))))
+
+```
+
+## Optional and Repetition
+
+```railroad
+where clause = "WHERE" , condition , { ("AND" | "OR") , condition } ;
+condition = field , operator , value ;
+operator = "=" | "!=" | ">" | ">=" | "<" | "<=" ;
+```
+
+## Grouped Alternatives
+
+```railroad
+select stmt =
+  "SELECT" , projection ,
+  "FROM" , source ,
+  [ "WHERE" , predicate ] ,
+  [ "ORDER" , "BY" , order expr , { "," , order expr } ] ;
+
+projection = "*" | field , { "," , field } ;
+order expr = field , [ "ASC" | "DESC" ] ;
+```
+
+## Expression Grammar (Preview)
+
+```railroad preview
+expr = term , { ("+" | "-") , term } ;
+term = factor , { ("*" | "/") , factor } ;
+factor = number | identifier | "(" , expr , ")" ;
+```
+
+## Notes
+
+- Syntax follows EBNF style and each rule should end with `;`.
+- Legacy `Diagram(...)` / `Choice(...)` style blocks are also supported.
+- Use `preview` to render a compact card with click-to-zoom interaction.
+- Multiple rules in one block are supported.

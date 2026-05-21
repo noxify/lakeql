@@ -1,6 +1,7 @@
 import { cache } from "react"
 
 import { AllDocumentation } from "@/collections"
+import { cachePromise } from "@/lib/cache-promise"
 
 import { isExternal, isHidden, resolveDocEntry } from "../collection-helpers"
 
@@ -124,44 +125,40 @@ export function getFavoriteNavigationItems(
     .filter((item) => item.favorite)
 }
 
-const _collectionNavigationCache = new Map<string, NavigationGroup[]>()
+const _collectionNavigationCache = new Map<string, Promise<NavigationGroup[]>>()
 
 export const getCollectionNavigation = cache(
   async (collection: string): Promise<NavigationGroup[]> => {
-    const cached = _collectionNavigationCache.get(collection)
-    if (cached) {
-      return cached
-    }
+    return cachePromise(_collectionNavigationCache, collection, async () => {
+      const tree = await getNavigationTree()
+      const collectionRootPath = `/docs/${collection}`
+      const rootNode = tree.find(
+        (item) => !item.external && item.url === collectionRootPath
+      )
 
-    const tree = await getNavigationTree()
-    const collectionRootPath = `/docs/${collection}`
-    const rootNode = tree.find(
-      (item) => !item.external && item.url === collectionRootPath
-    )
-
-    if (!rootNode) {
-      return []
-    }
-
-    // Trenne Blätter (ohne Children) und Gruppen (mit Children)
-    const leaves: TreeItem[] = []
-    const groups: NavigationGroup[] = []
-
-    for (const child of rootNode.children) {
-      if (child.children.length === 0) {
-        leaves.push(child)
-      } else {
-        groups.push({ label: child.title, items: child.children })
+      if (!rootNode) {
+        return []
       }
-    }
 
-    const result: NavigationGroup[] = []
-    if (leaves.length > 0) {
-      result.push({ label: "", items: leaves })
-    }
-    result.push(...groups)
-    _collectionNavigationCache.set(collection, result)
-    return result
+      // Trenne Blätter (ohne Children) und Gruppen (mit Children)
+      const leaves: TreeItem[] = []
+      const groups: NavigationGroup[] = []
+
+      for (const child of rootNode.children) {
+        if (child.children.length === 0) {
+          leaves.push(child)
+        } else {
+          groups.push({ label: child.title, items: child.children })
+        }
+      }
+
+      const result: NavigationGroup[] = []
+      if (leaves.length > 0) {
+        result.push({ label: "", items: leaves })
+      }
+      result.push(...groups)
+      return result
+    })
   }
 )
 
@@ -179,47 +176,42 @@ function flattenItems(items: TreeItem[]): TreeItem[] {
   return result
 }
 
-const _linearNavigationCache = new Map<string, TreeItem[]>()
+const _linearNavigationCache = new Map<string, Promise<TreeItem[]>>()
 
 export const getCollectionLinearNavigation = cache(
   async (collection: string): Promise<TreeItem[]> => {
-    const cached = _linearNavigationCache.get(collection)
-    if (cached) {
-      return cached
-    }
+    return cachePromise(_linearNavigationCache, collection, async () => {
+      const tree = await getNavigationTree()
+      const collectionRootPath = `/docs/${collection}`
+      const rootNode = tree.find(
+        (item) => !item.external && item.url === collectionRootPath
+      )
 
-    const tree = await getNavigationTree()
-    const collectionRootPath = `/docs/${collection}`
-    const rootNode = tree.find(
-      (item) => !item.external && item.url === collectionRootPath
-    )
-
-    if (!rootNode) {
-      return []
-    }
-
-    const leaves: TreeItem[] = []
-    const groupedParents: TreeItem[] = []
-
-    for (const child of rootNode.children) {
-      if (child.children.length === 0) {
-        leaves.push(child)
-      } else {
-        groupedParents.push(child)
+      if (!rootNode) {
+        return []
       }
-    }
 
-    const ordered: TreeItem[] = [...leaves]
+      const leaves: TreeItem[] = []
+      const groupedParents: TreeItem[] = []
 
-    for (const parent of groupedParents) {
-      // Include parent landing pages in sibling navigation before nested pages.
-      ordered.push(parent)
-      ordered.push(...flattenItems(parent.children))
-    }
+      for (const child of rootNode.children) {
+        if (child.children.length === 0) {
+          leaves.push(child)
+        } else {
+          groupedParents.push(child)
+        }
+      }
 
-    // Previous/next navigation should stay within internal docs pages.
-    const result = ordered.filter((item) => !item.external)
-    _linearNavigationCache.set(collection, result)
-    return result
+      const ordered: TreeItem[] = [...leaves]
+
+      for (const parent of groupedParents) {
+        // Include parent landing pages in sibling navigation before nested pages.
+        ordered.push(parent)
+        ordered.push(...flattenItems(parent.children))
+      }
+
+      // Previous/next navigation should stay within internal docs pages.
+      return ordered.filter((item) => !item.external)
+    })
   }
 )
