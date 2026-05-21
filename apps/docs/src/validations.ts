@@ -14,6 +14,7 @@ export const frontmatterSchema = z.object({
   tags: z.array(z.string()).optional(),
   title: z.string().optional(),
   toc: z.boolean().optional().default(true),
+  favorite: z.boolean().optional().default(false),
 })
 
 export const headingSchema = z.array(

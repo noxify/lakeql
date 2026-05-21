@@ -20,7 +20,10 @@ import {
 import { TableOfContentsScript } from "@/components/toc"
 import { SidebarInset } from "@/components/ui/sidebar"
 import { SidebarGridProvider } from "@/components/ui/sidebar-grid-provider"
-import { getCollectionNavigation } from "@/lib/navigation"
+import {
+  getCollectionNavigation,
+  getFavoriteNavigationItems,
+} from "@/lib/navigation"
 import { cn } from "@/lib/utils"
 
 function createDocsLayoutConfig(input: {
@@ -110,6 +113,7 @@ export default async function DocsSlugLayout({
   const currentCollection = availableCollections.find(
     (item) => item.group === collection
   )
+  const favoriteItems = getFavoriteNavigationItems(navigationItems)
 
   let headings: ContentSection[] = []
 
@@ -134,6 +138,7 @@ export default async function DocsSlugLayout({
         <DocsLeftRailBackground />
         <DocsSidebar
           wrapperClassName="xl:col-start-2"
+          favoriteItems={favoriteItems}
           navigationItems={navigationItems}
           collectionChooser={
             <CollectionChooser

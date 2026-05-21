@@ -14,7 +14,7 @@ import {
   SidebarGroupLabel,
   SidebarGroupContent,
 } from "@/components/ui/sidebar"
-import type { NavigationGroup } from "@/lib/navigation"
+import type { NavigationGroup, TreeItem } from "@/lib/navigation"
 import { cn } from "@/lib/utils"
 
 import { LakeqlLogo } from "./lakeql-logo"
@@ -32,12 +32,16 @@ const spaceGrotesk = Space_Grotesk({ subsets: ["latin"] })
 export function DocsSidebar({
   className,
   collectionChooser,
+  favoriteItems,
   navigationItems,
   ...props
 }: React.ComponentProps<typeof Sidebar> & {
   collectionChooser?: React.ReactNode
+  favoriteItems?: TreeItem[]
   navigationItems?: NavigationGroup[]
 }) {
+  const quickLinks = favoriteItems ?? []
+
   return (
     <Sidebar
       variant="sidebar"
@@ -96,6 +100,19 @@ export function DocsSidebar({
       </SidebarHeader>
 
       <SidebarContent className="gap-0 p-4 group-data-[collapsible=offcanvas]:hidden">
+        {quickLinks.length > 0 && (
+          <SidebarGroup className="px-0">
+            <SidebarGroupLabel>Quick Links</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {quickLinks.map((item) => (
+                  <SidebarItem key={item.url} item={item} />
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
         {(navigationItems ?? []).map((group, groupIdx) => (
           <SidebarGroup key={group.label + groupIdx} className="px-0">
             {group.label && (

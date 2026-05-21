@@ -1,6 +1,7 @@
 import { ExternalLinkIcon, Table } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
+import { Children, isValidElement } from "react"
 import type { ComponentPropsWithoutRef, ReactNode } from "react"
 import { CodeBlock, Command } from "renoun/components"
 import type { MDXComponents } from "renoun/mdx"
@@ -31,6 +32,44 @@ type AnchorProps = ComponentPropsWithoutRef<"a">
 
 export function useMDXComponents() {
   return {
+    p(paragraph) {
+      const children = Children.toArray(paragraph.children)
+
+      const hasImageChild = children.some((child) => {
+        if (!isValidElement(child)) {
+          return false
+        }
+
+        if (child.type === "img") {
+          return true
+        }
+
+        if (typeof child.type === "function") {
+          const component = child.type as {
+            name?: string
+            displayName?: string
+          }
+          const componentName = component.displayName ?? component.name ?? ""
+          return /image|img/iu.test(componentName)
+        }
+
+        return false
+      })
+
+      // Image-only paragraphs should not be wrapped in <p>, otherwise block
+      // wrappers inside the mapped image component can cause hydration errors.
+      if (hasImageChild && children.length === 1) {
+        return <>{paragraph.children}</>
+      }
+
+      // If text and image are mixed, prefer a <div> to avoid invalid HTML
+      // descendants (<section>/<div>) inside a paragraph element.
+      if (hasImageChild) {
+        return <div>{paragraph.children}</div>
+      }
+
+      return <p>{paragraph.children}</p>
+    },
     h1: (props) => <Heading level={1} {...props} />,
     h2: (props) => <Heading level={2} {...props} />,
     h3: (props) => <Heading level={3} {...props} />,
@@ -142,15 +181,12 @@ export function useMDXComponents() {
     tbody: ({ children }: { children?: ReactNode }) => (
       <TableBody>{children}</TableBody>
     ),
-
     th: ({ children }: { children?: ReactNode }) => (
       <TableHead>{children}</TableHead>
     ),
-
     tr: ({ children }: { children?: ReactNode }) => (
       <TableRow>{children}</TableRow>
     ),
-
     td: ({ children }: { children?: ReactNode }) => (
       <TableCell>{children}</TableCell>
     ),

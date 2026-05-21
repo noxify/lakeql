@@ -19,6 +19,7 @@ export interface TreeItem {
   url: string
   external: boolean
   children: TreeItem[]
+  favorite?: boolean
 }
 
 type TreeNode = Awaited<ReturnType<typeof AllDocumentation.getTree>>[number]
@@ -57,6 +58,7 @@ async function mapTreeNode(
     url,
     external,
     children,
+    favorite: frontmatter?.favorite ?? false,
   }
 }
 
@@ -98,6 +100,28 @@ export const getNavigationTree = cache(async (): Promise<TreeItem[]> => {
 export interface NavigationGroup {
   label: string
   items: TreeItem[]
+}
+
+export function flattenNavigationItems(items: TreeItem[]): TreeItem[] {
+  const result: TreeItem[] = []
+
+  for (const item of items) {
+    result.push(item)
+
+    if (item.children.length > 0) {
+      result.push(...flattenNavigationItems(item.children))
+    }
+  }
+
+  return result
+}
+
+export function getFavoriteNavigationItems(
+  groups: NavigationGroup[]
+): TreeItem[] {
+  return groups
+    .flatMap((group) => flattenNavigationItems(group.items))
+    .filter((item) => item.favorite)
 }
 
 const _collectionNavigationCache = new Map<string, NavigationGroup[]>()
