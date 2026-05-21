@@ -97,7 +97,7 @@ export function DocsSidebar({
 
       <SidebarContent className="gap-0 p-4 group-data-[collapsible=offcanvas]:hidden">
         {(navigationItems ?? []).map((group, groupIdx) => (
-          <SidebarGroup key={group.label + groupIdx}>
+          <SidebarGroup key={group.label + groupIdx} className="px-0">
             {group.label && (
               <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
             )}
