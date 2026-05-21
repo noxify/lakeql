@@ -18,7 +18,7 @@ function renderLlmsTree(
       const rawPart = ` (raw: ${baseUrl}${item.rawHref})`
 
       const line = item.isDirectory
-        ? `${indent}- ${item.title}${descriptionPart}${rawPart}`
+        ? `${indent}- [${item.title}](${baseUrl}${item.docsHref})${descriptionPart}${rawPart}`
         : `${indent}- [${item.title}](${baseUrl}${item.docsHref})${descriptionPart}${rawPart}`
 
       const children =
@@ -40,10 +40,12 @@ export async function GET(): Promise<Response> {
       const tree = await getCollectionLlmsTree(collection)
 
       if (tree.length === 0) {
-        return `## ${collection}\n\n_No entries found._`
+        return ["", `## ${collection}\n\n_No entries found._`]
       }
 
-      return [`## ${collection}`, "", renderLlmsTree(tree, baseUrl)].join("\n")
+      return ["", `## ${collection}`, "", renderLlmsTree(tree, baseUrl)].join(
+        "\n"
+      )
     })
   )
 
@@ -51,7 +53,6 @@ export async function GET(): Promise<Response> {
     "# llms full",
     "",
     "Complete LLM-oriented tree for all documentation collections.",
-    "",
     ...sections,
   ].join("\n")
 
