@@ -1,5 +1,4 @@
 import { ExternalLinkIcon, Table } from "lucide-react"
-import Image from "next/image"
 import Link from "next/link"
 import { Children, isValidElement } from "react"
 import type { ComponentPropsWithoutRef, ReactNode } from "react"
@@ -8,6 +7,7 @@ import type { MDXComponents } from "renoun/mdx"
 import { createSlug } from "renoun/mdx"
 
 import { Heading } from "@/components/mdx/heading"
+import { ImageWithLightbox } from "@/components/mdx/image-with-lightbox"
 import {
   StepperComponent,
   StepperItemComponent,
@@ -115,44 +115,12 @@ export function useMDXComponents() {
       )
     },
     // markdown image handler
-    img: (props) => (
-      <section>
-        <div className="flex items-center justify-center">
-          <div className="dot-background rounded-md border p-8 md:w-3/4 dark:border-gray-700">
-            <div className="bg-background border p-4">
-              <Image
-                {...props}
-                width={0}
-                height={0}
-                style={{ height: "auto", width: "100%" }}
-                className="not-prose object-contain"
-              />
-            </div>
-          </div>
-        </div>
-      </section>
-    ),
+    img: (props) => <ImageWithLightbox {...props} />,
     // if you decide to use `<Image />` inside your mdx, you have the possibility to overwrite
     // the default values ( e.g. for width, height or className ) - we do this differently from the `img` tag above
     // because we think if you use `<Image />` inside your mdx, you should have this flexibility
     // if this is not what you want - feel free to change the code below or import the `Image` component directly
-    Image: (props) => (
-      <section>
-        <div className="flex items-center justify-center">
-          <div className="dot-background rounded-md border p-8 md:w-3/4 dark:border-gray-700">
-            <div className="bg-background border p-4">
-              <Image
-                width={0}
-                height={0}
-                style={{ height: "auto", width: "100%" }}
-                className="not-prose object-contain"
-                {...props}
-              />
-            </div>
-          </div>
-        </div>
-      </section>
-    ),
+    Image: (props) => <ImageWithLightbox {...props} />,
 
     Note: ({ title, children }: { title?: string; children: ReactNode }) => (
       <Alert variant={"default"} className="my-4">
