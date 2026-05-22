@@ -1,14 +1,30 @@
-import { Collection, Directory } from "renoun/file-system"
+import {
+  Collection,
+  Directory,
+  Repository,
+  NodeFileSystem,
+} from "renoun/file-system"
 
 import { docSchema } from "./validations"
 
 export const availableCollections = ["lakeql", "cli"] as const
 export type AvailableCollection = (typeof availableCollections)[number]
 
+const repository = Repository.remote({
+  owner: "noxify",
+  repository: "lakeql",
+  host: "github",
+  baseUrl: "https://github.com",
+})
+
+const fileSystem = new NodeFileSystem()
+
 export function createDirectories() {
   return availableCollections.map(
     (collection) =>
       new Directory({
+        fileSystem,
+        repository,
         basePathname: collection,
         filter: (entry) =>
           !entry.baseName.startsWith("_") &&

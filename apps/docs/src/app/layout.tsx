@@ -53,7 +53,6 @@ export default function RootLayout({
         ],
       }}
       languages={["ts", "tsx", "mdx", "bash"]}
-      git="noxify/lakeql"
       siteUrl="https://lakeql.dev"
     >
       <html lang="en" suppressHydrationWarning className={cn("antialiased")}>

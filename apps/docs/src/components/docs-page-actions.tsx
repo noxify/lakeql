@@ -59,9 +59,11 @@ type CopyState = "idle" | "copied" | "failed"
 export function DocsPageActions({
   rawContent,
   rawHref,
+  sourceHref,
 }: {
   rawContent: string
   rawHref: string
+  sourceHref: string
 }) {
   const [copyState, setCopyState] = React.useState<CopyState>("idle")
   const resetTimeoutRef = React.useRef<number | null>(null)
@@ -165,7 +167,7 @@ export function DocsPageActions({
                 </Button>
               }
             />
-            <DropdownMenuContent className="w-64" align="start">
+            <DropdownMenuContent className="w-72" align="start">
               <DropdownMenuGroup>
                 <DropdownMenuItem className="cursor-pointer p-0">
                   <a
@@ -179,6 +181,23 @@ export function DocsPageActions({
                         <ItemTitle>View as Markdown</ItemTitle>
                         <ItemDescription className="leading-none">
                           Opens the raw source in a new tab
+                        </ItemDescription>
+                      </ItemContent>
+                    </Item>
+                  </a>
+                </DropdownMenuItem>
+                <DropdownMenuItem className="cursor-pointer p-0">
+                  <a
+                    href={sourceHref}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="w-full"
+                  >
+                    <Item size="sm" className="w-full p-2">
+                      <ItemContent className="gap-0">
+                        <ItemTitle>View Source</ItemTitle>
+                        <ItemDescription className="leading-none">
+                          Opens the source location for this page
                         </ItemDescription>
                       </ItemContent>
                     </Item>

@@ -142,10 +142,11 @@ export default async function DocsPage({
     notFound()
   }
 
-  const [Content, frontmatter, rawContent] = await Promise.all([
+  const [Content, frontmatter, rawContent, sourceUrl] = await Promise.all([
     contentFile.getContent().catch(() => null),
     getMetadata(contentFile),
     contentFile.getText(),
+    entry.getSourceUrl(),
   ])
 
   const rawHref = toRawHref(slug)
@@ -173,7 +174,11 @@ export default async function DocsPage({
         {frontmatter?.description ?? "&nbsp;"}
       </MDX>
 
-      <DocsPageActions rawContent={rawContent} rawHref={rawHref} />
+      <DocsPageActions
+        rawContent={rawContent}
+        rawHref={rawHref}
+        sourceHref={sourceUrl}
+      />
 
       <article>
         <div
