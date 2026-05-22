@@ -20,9 +20,17 @@ import {
 } from "@/components/ui/item"
 
 const RESET_DELAY_MS = 2000
-const AI_PROMPT_TEMPLATE = "Read {{url}}, I want to ask questions about it."
+const AI_PROMPT_TEMPLATE =
+  "Use this docs page: {{docs_url}} and this raw markdown source: {{raw_url}}. Answer questions based primarily on the raw source, with concise explanations and practical examples."
 
 const AI_PROVIDERS = [
+  {
+    key: "t3chat",
+    title: "Open in T3Chat",
+    description: "Ask questions about this page",
+    toUrl: (prompt: string) =>
+      `https://t3.chat/new?q=${encodeURIComponent(prompt)}`,
+  },
   {
     key: "cursor",
     title: "Open in Cursor",
@@ -68,14 +76,25 @@ export function DocsPageActions({
     return window.location.href
   }, [rawHref])
 
+  const rawUrl = React.useMemo(() => {
+    if (typeof window === "undefined") {
+      return rawHref
+    }
+
+    return new URL(rawHref, window.location.origin).toString()
+  }, [rawHref])
+
   const providerLinks = React.useMemo(() => {
-    const prompt = AI_PROMPT_TEMPLATE.replace("{{url}}", pageUrl)
+    const prompt = AI_PROMPT_TEMPLATE.replace("{{docs_url}}", pageUrl).replace(
+      "{{raw_url}}",
+      rawUrl
+    )
 
     return AI_PROVIDERS.map((provider) => ({
       ...provider,
       href: provider.toUrl(prompt),
     }))
-  }, [pageUrl])
+  }, [pageUrl, rawUrl])
 
   React.useEffect(
     () => () => {
@@ -109,7 +128,7 @@ export function DocsPageActions({
   }, [rawContent, scheduleReset])
 
   return (
-    <div className="flex w-full">
+    <div className="mb-12 flex w-full">
       <div className="ml-auto flex items-center gap-2">
         <ButtonGroup>
           <Button

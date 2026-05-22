@@ -4,14 +4,35 @@ import type { z } from "zod"
 import type { getSections } from "@/collection-helpers"
 import { getFileContent, isExternal, isHidden } from "@/collection-helpers"
 import { GradientGridBackground } from "@/components/grid-background"
+import { cn } from "@/lib/utils"
 import type { frontmatterSchema } from "@/validations"
 
-export default async function SectionGrid({
-  sections,
-}: {
-  sections: Awaited<ReturnType<typeof getSections>>
-}) {
-  if (sections.length === 0) {
+interface SectionGridItem {
+  title: string
+  description?: string
+  path: string
+}
+
+type SectionGridProps =
+  | {
+      sections: Awaited<ReturnType<typeof getSections>>
+      items?: never
+      className?: string
+    }
+  | {
+      items: readonly SectionGridItem[]
+      sections?: never
+      className?: string
+    }
+
+export default async function SectionGrid(props: SectionGridProps) {
+  const sections = "sections" in props ? props.sections : undefined
+  const inputItems = "items" in props ? props.items : undefined
+
+  if (
+    (!sections || sections.length === 0) &&
+    (!inputItems || inputItems.length === 0)
+  ) {
     return <></>
   }
 
@@ -21,37 +42,52 @@ export default async function SectionGrid({
     path: string
   }[] = []
 
-  for (const section of sections) {
-    if (isHidden(section) || isExternal(section)) {
-      continue
-    }
-
-    let frontmatter: z.infer<typeof frontmatterSchema> | undefined
-    try {
-      const file = await getFileContent(section)
-      frontmatter = await file?.getExportValue("frontmatter")
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    } catch {
-      continue
-    }
-
-    if (frontmatter) {
+  if (inputItems) {
+    for (const item of inputItems) {
       elements.push({
-        description: frontmatter.description ?? "",
-        path: `/docs${section.getPathname({ includeBasePathname: true })}`,
-        title: section.title,
+        description: item.description ?? "",
+        path: item.path,
+        title: item.title,
       })
-    } else {
-      elements.push({
-        description: "",
-        path: `/docs${section.getPathname({ includeBasePathname: true })}`,
-        title: section.title,
-      })
+    }
+  } else if (sections) {
+    for (const section of sections) {
+      if (isHidden(section) || isExternal(section)) {
+        continue
+      }
+
+      let frontmatter: z.infer<typeof frontmatterSchema> | undefined
+      try {
+        const file = await getFileContent(section)
+        frontmatter = await file?.getExportValue("frontmatter")
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      } catch {
+        continue
+      }
+
+      if (frontmatter) {
+        elements.push({
+          description: frontmatter.description ?? "",
+          path: `/docs${section.getPathname({ includeBasePathname: true })}`,
+          title: section.title,
+        })
+      } else {
+        elements.push({
+          description: "",
+          path: `/docs${section.getPathname({ includeBasePathname: true })}`,
+          title: section.title,
+        })
+      }
     }
   }
 
   return (
-    <div className="mt-12 grid auto-rows-fr gap-4 md:grid-cols-2 2xl:grid-cols-2">
+    <div
+      className={cn(
+        "mt-12 grid auto-rows-fr gap-4 md:grid-cols-2 2xl:grid-cols-2",
+        props.className
+      )}
+    >
       {elements.map((ele, index) => (
         <Link
           href={ele.path}

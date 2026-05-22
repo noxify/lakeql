@@ -8,6 +8,8 @@ import { CodeBlock, MDX } from "renoun"
 import { GradientGridBackground } from "@/components/grid-background"
 import { LakeqlLogo } from "@/components/lakeql-logo"
 import { CommandWrapper } from "@/components/mdx/command"
+import { PageContainer } from "@/components/page-container"
+import { SiteFooter } from "@/components/site-footer"
 import { SiteHeader } from "@/components/site-header"
 import { buttonVariants } from "@/components/ui/button"
 import {
@@ -115,7 +117,7 @@ export default function Page() {
           fadeRadiusXPercent={100}
           fadeRadiusYPercent={80}
         >
-          <div className="relative mx-auto flex max-w-6xl flex-col items-center gap-8 px-6 text-center">
+          <PageContainer className="relative flex flex-col items-center gap-8 text-center">
             <span className="bg-muted text-muted-foreground rounded-full px-4 py-1.5 text-sm font-medium ring-1 ring-black/5 dark:ring-white/10">
               Streamlined Data Access Layer for Data Platforms
             </span>
@@ -152,63 +154,65 @@ export default function Page() {
                 View on GitHub
               </a>
             </div>
-          </div>
+          </PageContainer>
         </GradientGridBackground>
       </section>
 
       {/* Getting Started */}
-      <section className="mx-auto max-w-6xl px-6 py-24">
-        <div className="mb-12 text-center">
-          <h2 className="text-3xl font-semibold tracking-tight">
-            Getting started
-          </h2>
-          <p className="text-muted-foreground mt-3 text-lg">
-            Up and running in four steps.
-          </p>
-        </div>
+      <section className="py-24">
+        <PageContainer>
+          <div className="mb-12 text-center">
+            <h2 className="text-3xl font-semibold tracking-tight">
+              Getting started
+            </h2>
+            <p className="text-muted-foreground mt-3 text-lg">
+              Up and running in four steps.
+            </p>
+          </div>
 
-        <div className="mx-auto flex w-full max-w-xl min-w-0 flex-col gap-0">
-          {steps.map((step, index) => (
-            <div key={index} className="flex min-w-0 gap-6">
-              {/* Step indicator + connector */}
-              <div className="flex flex-col items-center">
-                <div className="bg-primary text-primary-foreground flex size-8 shrink-0 items-center justify-center rounded-full text-sm font-semibold">
-                  {index + 1}
-                </div>
-                {index < steps.length - 1 && (
-                  <div className="bg-border mt-1 w-px grow" />
-                )}
-              </div>
-
-              {/* Content */}
-              <div className="w-full min-w-0 pt-0.5 pb-10">
-                <h3 className="text-base font-semibold">{step.title}</h3>
-                <div className="text-muted-foreground mt-1 mb-2">
-                  <MDX
-                    components={{
-                      code: (props) => (
-                        <code className="text-foreground" {...props} />
-                      ),
-                    }}
-                  >
-                    {step.description}
-                  </MDX>
+          <div className="mx-auto flex w-full max-w-xl min-w-0 flex-col gap-0">
+            {steps.map((step, index) => (
+              <div key={index} className="flex min-w-0 gap-6">
+                {/* Step indicator + connector */}
+                <div className="flex flex-col items-center">
+                  <div className="bg-primary text-primary-foreground flex size-8 shrink-0 items-center justify-center rounded-full text-sm font-semibold">
+                    {index + 1}
+                  </div>
+                  {index < steps.length - 1 && (
+                    <div className="bg-border mt-1 w-px grow" />
+                  )}
                 </div>
 
-                {step.command && (
-                  <CommandWrapper variant={step.command}>
-                    {step.code}
-                  </CommandWrapper>
-                )}
-                {!step.command && (
-                  <CodeBlock language="ts" shouldAnalyze={false}>
-                    {step.code}
-                  </CodeBlock>
-                )}
+                {/* Content */}
+                <div className="w-full min-w-0 pt-0.5 pb-10">
+                  <h3 className="text-base font-semibold">{step.title}</h3>
+                  <div className="text-muted-foreground mt-1 mb-2">
+                    <MDX
+                      components={{
+                        code: (props) => (
+                          <code className="text-foreground" {...props} />
+                        ),
+                      }}
+                    >
+                      {step.description}
+                    </MDX>
+                  </div>
+
+                  {step.command && (
+                    <CommandWrapper variant={step.command}>
+                      {step.code}
+                    </CommandWrapper>
+                  )}
+                  {!step.command && (
+                    <CodeBlock language="ts" shouldAnalyze={false}>
+                      {step.code}
+                    </CodeBlock>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        </PageContainer>
       </section>
 
       {/* CTA */}
@@ -225,7 +229,7 @@ export default function Page() {
           fadeRadiusXPercent={100}
           fadeRadiusYPercent={80}
         >
-          <div className="mx-auto max-w-6xl px-6 py-24 text-center">
+          <PageContainer className="py-24 text-center">
             <h2 className="text-3xl font-semibold tracking-tight">
               Ready to dive deeper?
             </h2>
@@ -241,31 +245,33 @@ export default function Page() {
               Read the docs
               <ArrowRight className="size-4" />
             </Link>
-          </div>
+          </PageContainer>
         </GradientGridBackground>
       </section>
 
       {/* Feature Grid */}
-      <section className="mx-auto max-w-6xl px-6 py-24">
-        <div className="mb-12 text-center">
-          <h2 className="text-3xl font-semibold tracking-tight">
-            Powerful features
-          </h2>
-          <p className="text-muted-foreground mt-3 text-lg">
-            Everything you need to build predictable, type-safe data APIs with
-            LakeQL.
-          </p>
-        </div>
-        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
-          {features.map((feature, idx) => (
-            <Card key={idx}>
-              <CardHeader>
-                <CardTitle>{feature.title}</CardTitle>
-                <CardDescription>{feature.description}</CardDescription>
-              </CardHeader>
-            </Card>
-          ))}
-        </div>
+      <section className="py-24">
+        <PageContainer>
+          <div className="mb-12 text-center">
+            <h2 className="text-3xl font-semibold tracking-tight">
+              Powerful features
+            </h2>
+            <p className="text-muted-foreground mt-3 text-lg">
+              Everything you need to build predictable, type-safe data APIs with
+              LakeQL.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
+            {features.map((feature, idx) => (
+              <Card key={idx}>
+                <CardHeader>
+                  <CardTitle>{feature.title}</CardTitle>
+                  <CardDescription>{feature.description}</CardDescription>
+                </CardHeader>
+              </Card>
+            ))}
+          </div>
+        </PageContainer>
       </section>
 
       {/* Free & Open Source */}
@@ -282,7 +288,7 @@ export default function Page() {
           fadeRadiusXPercent={100}
           fadeRadiusYPercent={80}
         >
-          <div className="mx-auto max-w-6xl px-6 py-24 text-center">
+          <PageContainer className="py-24 text-center">
             <h2 className="text-3xl font-semibold tracking-tight">
               Free &amp; open source
             </h2>
@@ -299,104 +305,11 @@ export default function Page() {
               <span className="text-muted-foreground">&middot;</span>
               <span className="text-muted-foreground">No Vendor Lock-in</span>
             </div>
-          </div>
+          </PageContainer>
         </GradientGridBackground>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t">
-        <div className="mx-auto max-w-6xl px-6">
-          <div className="flex flex-col gap-8 py-12 md:flex-row md:items-start md:justify-between">
-            {/* Brand */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-white/95 shadow-sm ring-1 ring-black/5 dark:bg-slate-700/70 dark:ring-white/10">
-                  <LakeqlLogo className="size-5" />
-                </div>
-                <span
-                  className="text-lg font-bold"
-                  style={{ fontFamily: spaceGrotesk.style.fontFamily }}
-                >
-                  LakeQL
-                </span>
-              </div>
-              <p className="text-muted-foreground max-w-md text-sm">
-                A type-safe GraphQL access layer for Trino-powered data
-                platforms. Built for developers who need predictable, secure
-                data APIs.
-              </p>
-            </div>
-
-            {/* Nav */}
-            <nav className="flex gap-8 text-sm">
-              <div className="flex flex-col gap-3">
-                <span className="font-semibold">Navigation</span>
-                <Link
-                  href="/"
-                  prefetch={false}
-                  className="text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  Home
-                </Link>
-                <Link
-                  href="/docs"
-                  prefetch={false}
-                  className="text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  Docs
-                </Link>
-              </div>
-              <div className="flex flex-col gap-3">
-                <span className="font-semibold">Project</span>
-                <a
-                  href="https://github.com/noxify/lakeql"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  GitHub
-                </a>
-                <a
-                  href="https://github.com/noxify/lakeql/blob/main/LICENSE"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  License
-                </a>
-              </div>
-            </nav>
-          </div>
-
-          {/* Bottom bar */}
-          <div className="border-t py-6 text-center text-sm">
-            <p className="text-muted-foreground">
-              © {new Date().getFullYear()} LakeQL. Released under the Apache 2.0
-              License.
-            </p>
-            <p className="text-muted-foreground mt-1">
-              Powered by{" "}
-              <a
-                href="https://nextjs.org"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:text-foreground font-semibold transition-colors"
-              >
-                Next.js
-              </a>{" "}
-              and{" "}
-              <a
-                href="https://renoun.dev"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:text-foreground font-semibold transition-colors"
-              >
-                Renoun
-              </a>
-            </p>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   )
 }

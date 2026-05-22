@@ -120,16 +120,30 @@ export function flattenNavigationItems(items: TreeItem[]): TreeItem[] {
 export function getFavoriteNavigationItems(
   groups: NavigationGroup[]
 ): TreeItem[] {
+  const seenUrls = new Set<string>()
+
   return groups
     .flatMap((group) => flattenNavigationItems(group.items))
     .filter((item) => item.favorite)
+    .filter((item) => {
+      if (seenUrls.has(item.url)) {
+        return false
+      }
+
+      seenUrls.add(item.url)
+      return true
+    })
+    .map((item) => ({
+      ...item,
+      children: [],
+    }))
 }
 
 const _collectionNavigationCache = new Map<string, Promise<NavigationGroup[]>>()
 
 export const getCollectionNavigation = cache(
-  async (collection: string): Promise<NavigationGroup[]> => {
-    return cachePromise(_collectionNavigationCache, collection, async () => {
+  async (collection: string): Promise<NavigationGroup[]> =>
+    cachePromise(_collectionNavigationCache, collection, async () => {
       const tree = await getNavigationTree()
       const collectionRootPath = `/docs/${collection}`
       const rootNode = tree.find(
@@ -159,7 +173,6 @@ export const getCollectionNavigation = cache(
       result.push(...groups)
       return result
     })
-  }
 )
 
 function flattenItems(items: TreeItem[]): TreeItem[] {
@@ -179,8 +192,8 @@ function flattenItems(items: TreeItem[]): TreeItem[] {
 const _linearNavigationCache = new Map<string, Promise<TreeItem[]>>()
 
 export const getCollectionLinearNavigation = cache(
-  async (collection: string): Promise<TreeItem[]> => {
-    return cachePromise(_linearNavigationCache, collection, async () => {
+  async (collection: string): Promise<TreeItem[]> =>
+    cachePromise(_linearNavigationCache, collection, async () => {
       const tree = await getNavigationTree()
       const collectionRootPath = `/docs/${collection}`
       const rootNode = tree.find(
@@ -213,5 +226,4 @@ export const getCollectionLinearNavigation = cache(
       // Previous/next navigation should stay within internal docs pages.
       return ordered.filter((item) => !item.external)
     })
-  }
 )

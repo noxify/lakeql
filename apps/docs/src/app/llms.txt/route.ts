@@ -16,6 +16,7 @@ export async function GET(): Promise<Response> {
       ) ?? [collection]
 
       return [
+        "",
         `## ${collection}`,
         `- llm.txt: /llms/${collection}.txt`,
         `- Docs root: /docs/${collection}`,
@@ -29,7 +30,7 @@ export async function GET(): Promise<Response> {
     "",
     "This file lists the available documentation collections for LLM ingestion.",
     "Prefer the collection-specific llms files for complete link trees.",
-    "",
+
     ...collectionLines,
   ].join("\n")
 
