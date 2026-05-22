@@ -14,9 +14,11 @@ import {
   getEntryFrontmatter,
 } from "@/collection-helpers"
 import type { EntryType } from "@/collection-helpers"
+import { DocsPageActions } from "@/components/docs-page-actions"
 import SectionGrid from "@/components/section-grid"
 import Siblings from "@/components/siblings"
 import { cn } from "@/lib/utils"
+import { toRawHref } from "@/shared/doc-paths"
 
 const spaceGrotesk = Space_Grotesk({ subsets: ["latin"] })
 
@@ -140,10 +142,13 @@ export default async function DocsPage({
     notFound()
   }
 
-  const [Content, frontmatter] = await Promise.all([
+  const [Content, frontmatter, rawContent] = await Promise.all([
     contentFile.getContent().catch(() => null),
     getMetadata(contentFile),
+    contentFile.getText(),
   ])
+
+  const rawHref = toRawHref(slug)
 
   return (
     <div>
@@ -167,6 +172,8 @@ export default async function DocsPage({
       >
         {frontmatter?.description ?? "&nbsp;"}
       </MDX>
+
+      <DocsPageActions rawContent={rawContent} rawHref={rawHref} />
 
       <article>
         <div
