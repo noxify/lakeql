@@ -2,7 +2,7 @@
 
 import { CheckIcon, ChevronsUpDown, SquareChartGanttIcon } from "lucide-react"
 import type { ReactNode } from "react"
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useReducer, useRef } from "react"
 import type { TableOfContentsProps } from "renoun"
 
 import { TableOfContents as RenounTableOfContents } from "@/components/toc"
@@ -203,7 +203,10 @@ function findSectionTitle(
 }
 
 function useActiveItem(itemIds: string[], activationRatio = 0.2) {
-  const [activeId, setActiveId] = useState<string | null>(null)
+  const [activeId, setActiveId] = useReducer(
+    (_current: string | null, next: string | null) => next,
+    null
+  )
   const clickedIdRef = useRef<string | null>(null)
 
   useEffect(() => {
@@ -223,7 +226,8 @@ function useActiveItem(itemIds: string[], activationRatio = 0.2) {
         // flicker near the end of long pages where headings cannot reach the
         // activation line anymore.
         if (clickedId) {
-          const clickedElement = document.querySelector(`#${clickedId}`)
+          // oxlint-disable-next-line unicorn/prefer-query-selector
+          const clickedElement = document.getElementById(clickedId)
           if (clickedElement) {
             const clickedRect = clickedElement.getBoundingClientRect()
             const isClickedVisible =
@@ -248,7 +252,8 @@ function useActiveItem(itemIds: string[], activationRatio = 0.2) {
           if (!id) {
             continue
           }
-          const element = document.querySelector(`#${id}`)
+          // oxlint-disable-next-line unicorn/prefer-query-selector
+          const element = document.getElementById(id)
           if (!element) {
             continue
           }
@@ -274,7 +279,8 @@ function useActiveItem(itemIds: string[], activationRatio = 0.2) {
     )
 
     for (const id of itemIds) {
-      const element = document.querySelector(`#${id}`)
+      // oxlint-disable-next-line unicorn/prefer-query-selector
+      const element = document.getElementById(id)
       if (element) {
         observer.observe(element)
       }
@@ -297,7 +303,8 @@ function useActiveItem(itemIds: string[], activationRatio = 0.2) {
       }
 
       const id = href.slice(href.indexOf("#") + 1)
-      const section = document.querySelector(`#${id}`)
+      // oxlint-disable-next-line unicorn/prefer-query-selector
+      const section = document.getElementById(id)
       if (!section) {
         return
       }

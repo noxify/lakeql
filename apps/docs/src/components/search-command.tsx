@@ -4,12 +4,13 @@ import { Autocomplete } from "@base-ui/react/autocomplete"
 import { search as oramaSearch } from "@orama/orama"
 import { restore } from "@orama/plugin-data-persistence"
 import { FileIcon, HashIcon, Search, TextIcon } from "lucide-react"
+import { addBasePath } from "next/dist/client/add-base-path"
 import { useRouter } from "next/navigation"
 import * as React from "react"
 
-import PlatformModifierKey from "./platform-modifier-key"
+import { normalizeInternalHref } from "@/lib/normalize-internal-href"
+
 import { Dialog, DialogContent } from "./ui/dialog"
-import { Kbd } from "./ui/kbd"
 import { ScrollArea } from "./ui/scroll-area"
 
 export interface SearchCommandItem {
@@ -43,9 +44,15 @@ interface SearchCommandProps {
 interface SearchCommandProviderProps {
   children: React.ReactNode
   items?: SearchCommandItem[]
+  availableCollections?: SearchCollectionOption[]
   placeholder?: string
   emptyMessage?: string
   enableKeyboardShortcut?: boolean
+}
+
+interface SearchCollectionOption {
+  value: string
+  label: string
 }
 
 interface SearchCommandContextValue {
@@ -77,52 +84,40 @@ interface OramaSearchResult {
 type RestoredSearchIndex = Awaited<ReturnType<typeof restore>>
 
 const defaultItems: SearchCommandItem[] = [
-  {
-    value: "docs-home",
-    label: "Documentation",
-    href: "/docs",
-    group: "Navigate",
-  },
-  {
-    value: "lakeql-intro",
-    label: "LakeQL Introduction",
-    href: "/docs/lakeql",
-    group: "Navigate",
-  },
-  {
-    value: "cli-overview",
-    label: "CLI Overview",
-    href: "/docs/cli",
-    group: "Navigate",
-  },
-  {
-    value: "toggle-sidebar",
-    label: "Toggle Sidebar",
-    group: "Actions",
-    hint: "Cmd/Ctrl + B",
-    onSelect: () => {
-      window.dispatchEvent(
-        new KeyboardEvent("keydown", { key: "b", metaKey: true })
-      )
-      window.dispatchEvent(
-        new KeyboardEvent("keydown", { key: "b", ctrlKey: true })
-      )
-    },
-  },
-  {
-    value: "toggle-theme",
-    label: "Toggle Theme",
-    group: "Actions",
-    hint: "D",
-    onSelect: () => {
-      window.dispatchEvent(
-        new KeyboardEvent("keydown", { key: "d", metaKey: false })
-      )
-      window.dispatchEvent(
-        new KeyboardEvent("keydown", { key: "d", ctrlKey: false })
-      )
-    },
-  },
+  // {
+  //   value: "docs-home",
+  //   label: "Documentation",
+  //   href: "/docs",
+  //   group: "Navigate",
+  // },
+  // {
+  //   value: "toggle-sidebar",
+  //   label: "Toggle Sidebar",
+  //   group: "Actions",
+  //   hint: "Cmd/Ctrl + B",
+  //   onSelect: () => {
+  //     window.dispatchEvent(
+  //       new KeyboardEvent("keydown", { key: "b", metaKey: true })
+  //     )
+  //     window.dispatchEvent(
+  //       new KeyboardEvent("keydown", { key: "b", ctrlKey: true })
+  //     )
+  //   },
+  // },
+  // {
+  //   value: "toggle-theme",
+  //   label: "Toggle Theme",
+  //   group: "Actions",
+  //   hint: "D",
+  //   onSelect: () => {
+  //     window.dispatchEvent(
+  //       new KeyboardEvent("keydown", { key: "d", metaKey: false })
+  //     )
+  //     window.dispatchEvent(
+  //       new KeyboardEvent("keydown", { key: "d", ctrlKey: false })
+  //     )
+  //   },
+  // },
 ]
 
 function typeOrder(type?: SearchCommandItem["documentType"]): number {
@@ -240,11 +235,9 @@ function groupItems(items: SearchCommandItem[]): SearchCommandGroup[] {
 }
 
 function normalizeHref(pathname: string): string {
-  if (pathname.startsWith("/")) {
-    return pathname
-  }
-
-  return `/${pathname}`
+  return normalizeInternalHref(
+    pathname.startsWith("/") ? pathname : `/${pathname}`
+  )
 }
 
 function normalizeCollection(value: string): string {
@@ -368,7 +361,7 @@ function orderHitsByScore(hits: OramaSearchHit[]): OramaSearchHit[] {
 const SearchCommandContext =
   React.createContext<SearchCommandContextValue | null>(null)
 
-export function useSearchCommand() {
+function useSearchCommand() {
   const context = React.useContext(SearchCommandContext)
 
   if (!context) {
@@ -389,8 +382,10 @@ export function useSearchCommand() {
 export function SearchCommandProvider({
   children,
   items = defaultItems,
-  placeholder = "Search documentation and commands...",
-  emptyMessage = "No results found.",
+  // oxlint-disable-next-line react/no-object-type-as-default-prop
+  availableCollections = [],
+  placeholder = "Dokumentation durchsuchen...",
+  emptyMessage = "Keine Ergebnisse gefunden.",
   enableKeyboardShortcut = true,
 }: SearchCommandProviderProps) {
   const [open, setOpen] = React.useState(false)
@@ -413,33 +408,42 @@ export function SearchCommandProvider({
   const router = useRouter()
 
   const collectionOptions = React.useMemo(() => {
-    const optionSet = new Set<string>()
+    const optionMap = new Map<string, string>()
 
-    for (const item of items) {
+    for (const collection of availableCollections) {
+      const value = normalizeCollection(collection.value)
+      const label = collection.label.trim()
+      if (value.length > 0) {
+        optionMap.set(value, label.length > 0 ? label : value)
+      }
+    }
+
+    for (const item of [...items, ...searchResults]) {
       const collection = item.collection ?? getCollectionFromHref(item.href)
       if (!collection) {
         continue
       }
-      optionSet.add(normalizeCollection(collection))
-    }
-
-    const collator = new Intl.Collator("en")
-    const sorted: string[] = []
-
-    for (const option of optionSet) {
-      const insertAt = sorted.findIndex(
-        (current) => collator.compare(option, current) < 0
-      )
-
-      if (insertAt === -1) {
-        sorted.push(option)
-      } else {
-        sorted.splice(insertAt, 0, option)
+      const normalized = normalizeCollection(collection)
+      if (!optionMap.has(normalized)) {
+        optionMap.set(normalized, normalized)
       }
     }
 
-    return ["all", ...sorted]
-  }, [items])
+    if (selectedCollection !== "all" && !optionMap.has(selectedCollection)) {
+      optionMap.set(selectedCollection, selectedCollection)
+    }
+
+    const collator = new Intl.Collator("de", {
+      numeric: true,
+      sensitivity: "base",
+    })
+
+    const sorted = [...optionMap.entries()]
+      .toSorted(([, aLabel], [, bLabel]) => collator.compare(aLabel, bLabel))
+      .map(([value, label]) => ({ value, label }))
+
+    return [{ value: "all", label: "Alle" }, ...sorted]
+  }, [availableCollections, items, searchResults, selectedCollection])
 
   React.useEffect(() => {
     if (searchValue.length > 0) {
@@ -456,7 +460,7 @@ export function SearchCommandProvider({
 
     if (!indexRequestRef.current) {
       indexRequestRef.current = (async () => {
-        const response = await fetch("/search-index.json")
+        const response = await fetch(addBasePath("/search-index.json"))
         if (!response.ok) {
           throw new Error(`Failed to load search index (${response.status})`)
         }
@@ -578,9 +582,10 @@ export function SearchCommandProvider({
                 : href,
             resultOrder: indexPosition,
             collection:
-              typeof document.section === "string"
+              getCollectionFromHref(href) ??
+              (typeof document.section === "string"
                 ? normalizeCollection(document.section)
-                : undefined,
+                : undefined),
           }
         })
         .filter((item): item is SearchCommandItem => item !== null)
@@ -734,11 +739,23 @@ export function SearchCommandProvider({
                   </div>
                 ) : null}
               </Autocomplete.Status>
-              <Autocomplete.Empty>
-                <div className="text-muted-foreground flex min-h-24 items-center justify-center px-4 py-6 text-sm">
-                  {emptyMessage}
-                </div>
-              </Autocomplete.Empty>
+              {searchValue.length > 0 &&
+              searchResults.length === 0 &&
+              !isPending ? (
+                <Autocomplete.Empty>
+                  <div className="text-muted-foreground flex min-h-24 items-center justify-center px-4 py-6 text-sm">
+                    {emptyMessage}
+                  </div>
+                </Autocomplete.Empty>
+              ) : null}
+
+              {!searchValue && (
+                <Autocomplete.Empty>
+                  <div className="text-muted-foreground flex min-h-24 items-center justify-center px-4 py-6 text-sm">
+                    Um loszulegen, gib einen Suchbegriff ein.
+                  </div>
+                </Autocomplete.Empty>
+              )}
 
               <Autocomplete.List className="p-2">
                 {(group: SearchCommandGroup) => (
@@ -749,7 +766,7 @@ export function SearchCommandProvider({
                   >
                     <Autocomplete.GroupLabel className="text-muted-foreground px-2 py-1 text-xs font-medium tracking-wide uppercase">
                       {group.subtitle ? (
-                        <span className="text-muted-foreground/80 ml-2 normal-case">
+                        <span className="text-muted-foreground/80 normal-case">
                           {group.subtitle}
                         </span>
                       ) : (
@@ -762,7 +779,7 @@ export function SearchCommandProvider({
                           key={item.value}
                           value={item}
                           onClick={() => handleItemSelect(item)}
-                          className={`data-highlighted:bg-muted grid min-h-8 cursor-default grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-md px-2 py-1.5 text-sm outline-none ${item.documentType && item.documentType !== "page" ? "border-border/70 ml-5 border-l pl-3" : ""}`}
+                          className={`data-highlighted:bg-muted grid min-h-8 cursor-pointer grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-md px-2 py-1.5 text-sm outline-none ${item.documentType && item.documentType !== "page" ? "border-border/70 ml-5 border-l pl-3" : ""}`}
                         >
                           <div className="flex min-w-0 items-start gap-2">
                             {item.documentType === "page" ? (
@@ -794,8 +811,8 @@ export function SearchCommandProvider({
 
             <div className="bg-muted/40 flex items-center justify-between border-t px-3 py-2 text-xs">
               <div className="text-muted-foreground flex items-center gap-2">
-                <span>Navigate</span>
-                <Kbd>Enter</Kbd>
+                <span>Filter</span>
+
                 <select
                   value={selectedCollection}
                   onChange={(event) => {
@@ -807,17 +824,14 @@ export function SearchCommandProvider({
                   aria-label="Filter collection"
                 >
                   {collectionOptions.map((collectionOption) => (
-                    <option key={collectionOption} value={collectionOption}>
-                      {collectionOption === "all" ? "All" : collectionOption}
+                    <option
+                      key={collectionOption.value}
+                      value={collectionOption.value}
+                    >
+                      {collectionOption.label}
                     </option>
                   ))}
                 </select>
-              </div>
-              <div className="text-muted-foreground flex items-center gap-2">
-                <span>Open</span>
-                <Kbd>
-                  <PlatformModifierKey />K
-                </Kbd>
               </div>
             </div>
           </Autocomplete.Root>

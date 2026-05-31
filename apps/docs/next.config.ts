@@ -1,6 +1,23 @@
 import createMDXPlugin from "@next/mdx"
 import type { NextConfig } from "next"
 
+function normalizeBasePath(basePath: string | undefined): string {
+  if (!basePath) {
+    return ""
+  }
+
+  const withLeadingSlash = basePath.startsWith("/") ? basePath : `/${basePath}`
+
+  if (withLeadingSlash === "/") {
+    return ""
+  }
+
+  return withLeadingSlash.replace(/\/+$/u, "")
+}
+
+// oxlint-disable-next-line no-restricted-properties
+const basePath = normalizeBasePath(process.env.BASE_PATH)
+
 const withMDX = createMDXPlugin({
   options: {
     rehypePlugins: [
@@ -22,6 +39,12 @@ const withMDX = createMDXPlugin({
 })
 
 const nextConfig: NextConfig = {
+  ...(basePath
+    ? {
+        assetPrefix: basePath,
+        basePath,
+      }
+    : {}),
   images: {
     unoptimized: true,
   },
@@ -30,7 +53,7 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
 
-  trailingSlash: false,
+  trailingSlash: true,
   /** Enables hot reloading for local packages without a build step */
   transpilePackages: ["@lakeql/core", "@lakeql/cli", "@lakeql/create-app"],
   typescript: {

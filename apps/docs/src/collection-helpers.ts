@@ -20,6 +20,20 @@ export interface LlmsTreeItem {
 
 type TreeNode = Awaited<ReturnType<typeof AllDocumentation.getTree>>[number]
 
+type CollectionHelperGlobals = typeof globalThis & {
+  __docsRootCollectionsPromise?: Promise<
+    {
+      description: string | undefined
+      entrypoint: string
+      group: string
+      title: string
+    }[]
+  >
+  __docsEntryFrontmatterCache?: Map<string, Promise<Frontmatter | undefined>>
+}
+
+const collectionHelperGlobals = globalThis as CollectionHelperGlobals
+
 export type Frontmatter = z.infer<typeof frontmatterSchema>
 export interface TransformedEntry {
   group: string
@@ -67,12 +81,12 @@ export type EntryType = Awaited<ReturnType<typeof AllDocumentation.getEntry>>
  */
 const _documentationEntryBySlugCache = new Map<string, Promise<EntryType>>()
 
-const getDocumentationEntryBySlugCached = cache(async (slugKey: string) => {
-  return cachePromise(_documentationEntryBySlugCache, slugKey, async () => {
+const getDocumentationEntryBySlugCached = cache(async (slugKey: string) =>
+  cachePromise(_documentationEntryBySlugCache, slugKey, async () => {
     const segments = slugKey ? slugKey.split("/") : []
     return AllDocumentation.getEntry(segments)
   })
-})
+)
 
 export async function getDocumentationEntryBySlug(slug: string[]) {
   return getDocumentationEntryBySlugCached(slug.join("/"))
@@ -85,7 +99,7 @@ let _rootCollectionsPromise: Promise<
     group: string
     title: string
   }[]
-> | null = null
+> | null = collectionHelperGlobals.__docsRootCollectionsPromise ?? null
 
 export const rootCollections = cache(async () => {
   if (!_rootCollectionsPromise) {
@@ -107,6 +121,9 @@ export const rootCollections = cache(async () => {
         })
       )
     })()
+
+    collectionHelperGlobals.__docsRootCollectionsPromise =
+      _rootCollectionsPromise
   }
 
   return _rootCollectionsPromise
@@ -202,6 +219,11 @@ function readFrontmatterFromStructure(structure: unknown) {
 }
 
 async function getFrontmatterFromStructure(entry: EntryType) {
+  if (isFile(entry)) {
+    const file = await getFileContent(entry)
+    return getMetadata(file)
+  }
+
   const resolvedEntry = await resolveEntryWithStructure(entry)
   const entryWithStructure = resolvedEntry as EntryWithStructure
 
@@ -225,15 +247,13 @@ const _entryFrontmatterCache = new Map<
   Promise<Frontmatter | undefined>
 >()
 
+const _sharedEntryFrontmatterCache =
+  (collectionHelperGlobals.__docsEntryFrontmatterCache ??=
+    _entryFrontmatterCache)
+
 export async function getEntryFrontmatter(entry: EntryType) {
   const cacheKey = entry.getPathname({ includeBasePathname: true })
-  return cachePromise(_entryFrontmatterCache, cacheKey, async () => {
-    const directFrontmatter = await getFrontmatterFromStructure(entry)
-
-    if (directFrontmatter) {
-      return directFrontmatter
-    }
-
+  return cachePromise(_sharedEntryFrontmatterCache, cacheKey, async () => {
     if (isDirectory(entry)) {
       const segments = entry.getPathnameSegments({ includeBasePathname: true })
       const [indexEntry, readmeEntry] = await Promise.all([
@@ -251,6 +271,15 @@ export async function getEntryFrontmatter(entry: EntryType) {
       if (readmeEntry) {
         return getFrontmatterFromStructure(readmeEntry)
       }
+
+      // oxlint-disable-next-line unicorn/no-useless-undefined
+      return undefined
+    }
+
+    const directFrontmatter = await getFrontmatterFromStructure(entry)
+
+    if (directFrontmatter) {
+      return directFrontmatter
     }
 
     // oxlint-disable-next-line unicorn/no-useless-undefined

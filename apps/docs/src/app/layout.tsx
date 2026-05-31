@@ -8,11 +8,22 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 
+const SITE_URL = "https://lakeql.dev"
+
+function toJsonLd(value: unknown) {
+  return JSON.stringify(value).replaceAll("</", "<\\/")
+}
+
 export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
     title: "LakeQL",
+  },
+  alternates: {
+    types: {
+      "application/x-ndjson": "/docs.snapshot.jsonl",
+    },
   },
   description:
     "Build predictable, secure GraphQL APIs on top of Trino metadata with LakeQL’s type-safe runtime and schema generation CLI.",
@@ -37,6 +48,19 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  const websiteJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    inLanguage: "en",
+    name: "LakeQL",
+    potentialAction: {
+      "@type": "SearchAction",
+      query: "required name=search_term_string",
+      target: `${SITE_URL}/docs?search={search_term_string}`,
+    },
+    url: SITE_URL,
+  }
+
   return (
     <RootProvider
       theme={{
@@ -53,10 +77,14 @@ export default function RootLayout({
         ],
       }}
       languages={["ts", "tsx", "mdx", "bash"]}
-      siteUrl="https://lakeql.dev"
+      siteUrl={SITE_URL}
     >
       <html lang="en" suppressHydrationWarning className={cn("antialiased")}>
         <body>
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{ __html: toJsonLd(websiteJsonLd) }}
+          />
           <ThemeProvider
             attribute={["class", "data-theme"]}
             defaultTheme="system"

@@ -21,6 +21,11 @@ import { cn } from "@/lib/utils"
 import { toRawHref } from "@/shared/doc-paths"
 
 const spaceGrotesk = Space_Grotesk({ subsets: ["latin"] })
+const SITE_URL = "https://lakeql.dev"
+
+function toJsonLd(value: unknown) {
+  return JSON.stringify(value).replaceAll("</", "<\\/")
+}
 
 export async function generateStaticParams() {
   const routes = await staticRoutes()
@@ -30,6 +35,7 @@ export async function generateMetadata(
   params: PageProps<"/docs/[...slug]">
 ): Promise<Metadata> {
   const { slug } = await params.params
+  const [collection] = slug
 
   let entry: EntryType | null = null
 
@@ -44,15 +50,31 @@ export async function generateMetadata(
 
   const titles = breadcrumbItems.map((ele) => ele.title)
 
+  const alternateTypes: NonNullable<Metadata["alternates"]>["types"] = {
+    "application/x-ndjson": "/docs.snapshot.jsonl",
+  }
+
+  if (collection) {
+    alternateTypes["application/x-ndjson+collection"] =
+      `/docs.snapshot/${collection}.jsonl`
+  }
+
   return {
     title: `${titles.join(" - ")}`,
     description: metadata?.description ?? "",
+    alternates: {
+      types: alternateTypes,
+    },
   }
 }
 export default async function DocsPage({
   params,
 }: PageProps<"/docs/[...slug]">) {
   const { slug } = await params
+  const normalizedSlug = slug.filter((segment) => segment !== "index")
+  const docsPath =
+    normalizedSlug.length > 0 ? `/docs/${normalizedSlug.join("/")}` : "/docs"
+  const pageUrl = `${SITE_URL}${docsPath}`
 
   let entry: EntryType | null = null
   try {
@@ -63,10 +85,48 @@ export default async function DocsPage({
   }
 
   const sections = await getSections(entry)
+  const breadcrumbItems = await getBreadcrumbItems(slug)
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        item: `${SITE_URL}/docs`,
+        name: "Docs",
+        position: 1,
+      },
+      ...breadcrumbItems.map((item, index) => ({
+        "@type": "ListItem",
+        item: `${SITE_URL}/docs/${item.path.join("/")}`,
+        name: item.title,
+        position: index + 2,
+      })),
+    ],
+  }
 
   if (!isFile(entry) && isDirectory(entry)) {
+    const pageJsonLd = {
+      "@context": "https://schema.org",
+      "@type": "WebPage",
+      inLanguage: "en",
+      isPartOf: {
+        "@id": SITE_URL,
+      },
+      name: getTitle(entry),
+      url: pageUrl,
+    }
+
     return (
       <div>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: toJsonLd(breadcrumbJsonLd) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: toJsonLd(pageJsonLd) }}
+        />
         <MDX
           components={{
             h1: (props) => (
@@ -150,9 +210,29 @@ export default async function DocsPage({
   ])
 
   const rawHref = toRawHref(slug)
+  const articleJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    description: frontmatter?.description,
+    headline: getTitle(entry, frontmatter, true),
+    inLanguage: "en",
+    isPartOf: {
+      "@id": SITE_URL,
+    },
+    mainEntityOfPage: pageUrl,
+    url: pageUrl,
+  }
 
   return (
     <div>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: toJsonLd(breadcrumbJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: toJsonLd(articleJsonLd) }}
+      />
       <h1
         className="no-prose mt-20 mb-2 scroll-m-20 text-3xl font-light tracking-tight sm:text-4xl md:mt-0 md:text-5xl"
         style={{ fontFamily: spaceGrotesk.style.fontFamily }}

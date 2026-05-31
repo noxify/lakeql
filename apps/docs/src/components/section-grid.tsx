@@ -1,17 +1,28 @@
 import Link from "next/link"
-import type { z } from "zod"
 
 import type { getSections } from "@/collection-helpers"
-import { getFileContent, isExternal, isHidden } from "@/collection-helpers"
+import {
+  getTitle,
+  isExternal,
+  isHidden,
+  resolveDocEntry,
+} from "@/collection-helpers"
 import { GradientGridBackground } from "@/components/grid-background"
 import { cn } from "@/lib/utils"
-import type { frontmatterSchema } from "@/validations"
 
 interface SectionGridItem {
   title: string
   description?: string
   path: string
 }
+
+interface GridElement {
+  title: string
+  description: string
+  path: string
+}
+
+type SectionItem = Awaited<ReturnType<typeof getSections>>[number]
 
 type SectionGridProps =
   | {
@@ -25,59 +36,93 @@ type SectionGridProps =
       className?: string
     }
 
+function isEmptyInput(
+  sections: Awaited<ReturnType<typeof getSections>> | undefined,
+  inputItems: readonly SectionGridItem[] | undefined
+): boolean {
+  return (
+    (!sections || sections.length === 0) &&
+    (!inputItems || inputItems.length === 0)
+  )
+}
+
+function toElementFromItem(item: SectionGridItem): GridElement {
+  return {
+    description: item.description ?? "",
+    path: item.path,
+    title: item.title,
+  }
+}
+
+function shouldSkipEntry(entry: SectionItem): boolean {
+  return isHidden(entry) || isExternal(entry)
+}
+
+async function resolveSectionElement(
+  section: SectionItem
+): Promise<GridElement | null> {
+  if (shouldSkipEntry(section)) {
+    return null
+  }
+
+  try {
+    const resolved = await resolveDocEntry(section)
+
+    if (shouldSkipEntry(resolved.entry)) {
+      return null
+    }
+
+    const frontmatterWithSectionGridFlag = resolved.frontmatter as
+      | (typeof resolved.frontmatter & { hideFromSectionGrid?: boolean })
+      | undefined
+
+    if (frontmatterWithSectionGridFlag?.hideFromSectionGrid) {
+      return null
+    }
+
+    return {
+      description: resolved.frontmatter?.description ?? "",
+      path: `/docs${resolved.entry.getPathname({ includeBasePathname: true })}`,
+      title: getTitle(resolved.entry, resolved.frontmatter, true),
+    }
+  } catch {
+    return null
+  }
+}
+
 export default async function SectionGrid(props: SectionGridProps) {
   const sections = "sections" in props ? props.sections : undefined
   const inputItems = "items" in props ? props.items : undefined
 
-  if (
-    (!sections || sections.length === 0) &&
-    (!inputItems || inputItems.length === 0)
-  ) {
+  if (isEmptyInput(sections, inputItems)) {
     return <></>
   }
 
-  const elements: {
-    title: string
-    description: string
-    path: string
-  }[] = []
+  const elements: GridElement[] = []
 
   if (inputItems) {
     for (const item of inputItems) {
-      elements.push({
-        description: item.description ?? "",
-        path: item.path,
-        title: item.title,
-      })
+      elements.push(toElementFromItem(item))
     }
   } else if (sections) {
-    for (const section of sections) {
-      if (isHidden(section) || isExternal(section)) {
+    const resolvedElements = await Promise.all(
+      sections.map((section) => resolveSectionElement(section))
+    )
+    const seenPaths = new Set<string>()
+
+    for (const element of resolvedElements) {
+      if (!element) {
         continue
       }
 
-      let frontmatter: z.infer<typeof frontmatterSchema> | undefined
-      try {
-        const file = await getFileContent(section)
-        frontmatter = await file?.getExportValue("frontmatter")
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      } catch {
+      const { path } = element
+
+      if (seenPaths.has(path)) {
         continue
       }
 
-      if (frontmatter) {
-        elements.push({
-          description: frontmatter.description ?? "",
-          path: `/docs${section.getPathname({ includeBasePathname: true })}`,
-          title: section.title,
-        })
-      } else {
-        elements.push({
-          description: "",
-          path: `/docs${section.getPathname({ includeBasePathname: true })}`,
-          title: section.title,
-        })
-      }
+      seenPaths.add(path)
+      elements.push(element)
     }
   }
 

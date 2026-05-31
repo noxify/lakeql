@@ -1,6 +1,9 @@
+"use client"
+
 import { SiGithub as Github } from "@icons-pack/react-simple-icons"
 import { Space_Grotesk } from "next/font/google"
 import Link from "next/link"
+import { usePathname } from "next/navigation"
 import * as React from "react"
 
 import {
@@ -40,7 +43,54 @@ export function DocsSidebar({
   favoriteItems?: TreeItem[]
   navigationItems?: NavigationGroup[]
 }) {
+  const pathname = usePathname()
   const quickLinks = favoriteItems ?? []
+  const scrollContainerRef = React.useRef<HTMLDivElement | null>(null)
+  const navigationContainerRef = React.useRef<HTMLDivElement | null>(null)
+
+  React.useEffect(() => {
+    const scrollContainerElement = scrollContainerRef.current
+    const navigationContainerElement = navigationContainerRef.current
+
+    if (!scrollContainerElement || !navigationContainerElement) {
+      return
+    }
+
+    const frameId = window.requestAnimationFrame(() => {
+      const activeElements = [
+        ...navigationContainerElement.querySelectorAll<HTMLElement>(
+          "[data-active]"
+        ),
+      ]
+      const targetElement = activeElements.at(-1)
+
+      if (!targetElement) {
+        return
+      }
+
+      const containerRect = scrollContainerElement.getBoundingClientRect()
+      const targetRect = targetElement.getBoundingClientRect()
+      const isAboveViewport = targetRect.top < containerRect.top
+      const isBelowViewport = targetRect.bottom > containerRect.bottom
+
+      if (!isAboveViewport && !isBelowViewport) {
+        return
+      }
+
+      const targetTop =
+        targetRect.top - containerRect.top + scrollContainerElement.scrollTop
+      const nextScrollTop =
+        targetTop -
+        scrollContainerElement.clientHeight / 2 +
+        targetRect.height / 2
+
+      scrollContainerElement.scrollTo({ top: nextScrollTop })
+    })
+
+    return () => {
+      window.cancelAnimationFrame(frameId)
+    }
+  }, [pathname])
 
   return (
     <Sidebar
@@ -99,7 +149,10 @@ export function DocsSidebar({
         {collectionChooser}
       </SidebarHeader>
 
-      <SidebarContent className="gap-0 p-4 group-data-[collapsible=offcanvas]:hidden">
+      <SidebarContent
+        ref={scrollContainerRef}
+        className="gap-0 p-4 group-data-[collapsible=offcanvas]:hidden"
+      >
         {quickLinks.length > 0 && (
           <SidebarGroup className="px-0">
             <SidebarGroupLabel>Quick Links</SidebarGroupLabel>
@@ -113,20 +166,22 @@ export function DocsSidebar({
           </SidebarGroup>
         )}
 
-        {(navigationItems ?? []).map((group, groupIdx) => (
-          <SidebarGroup key={group.label + groupIdx} className="px-0">
-            {group.label && (
-              <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
-            )}
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {group.items.map((item) => (
-                  <SidebarItem key={item.url} item={item} />
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        ))}
+        <div ref={navigationContainerRef}>
+          {(navigationItems ?? []).map((group, groupIdx) => (
+            <SidebarGroup key={group.label + groupIdx} className="px-0">
+              {group.label && (
+                <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+              )}
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {group.items.map((item) => (
+                    <SidebarItem key={item.url} item={item} />
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          ))}
+        </div>
       </SidebarContent>
       <SidebarFooter className="group-data-[collapsible=offcanvas]:hidden">
         <div className="flex items-center justify-end">

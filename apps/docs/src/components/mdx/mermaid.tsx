@@ -1,11 +1,12 @@
 "use client"
 
-import { renderMermaidSVG, THEMES } from "beautiful-mermaid"
 import { useTheme } from "better-themes/rsc"
 import React from "react"
 
 import { PanZoomControl } from "@/components/pan-zoom/pan-zoom-control"
 import { PanZoomDialog } from "@/components/pan-zoom/pan-zoom-dialog"
+
+import { renderMermaidSVG, THEMES } from "../beautiful-mermaid"
 
 const DEFAULT_ASPECT_RATIO = 16 / 9
 

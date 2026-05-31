@@ -1,5 +1,7 @@
 import { cache } from "react"
+import { isDirectory } from "renoun/file-system"
 
+import type { EntryType } from "@/collection-helpers"
 import { AllDocumentation } from "@/collections"
 import { cachePromise } from "@/lib/cache-promise"
 
@@ -23,7 +25,64 @@ export interface TreeItem {
   favorite?: boolean
 }
 
-type TreeNode = Awaited<ReturnType<typeof AllDocumentation.getTree>>[number]
+interface TreeNode {
+  entry: EntryType
+  children?: TreeNode[]
+}
+
+type NavigationCacheGlobals = typeof globalThis & {
+  __docsCollectionTreeCache?: Map<string, Promise<TreeNode[]>>
+  __docsCollectionNavigationCache?: Map<string, Promise<NavigationGroup[]>>
+  __docsLinearNavigationCache?: Map<string, Promise<TreeItem[]>>
+}
+
+const navigationGlobals = globalThis as NavigationCacheGlobals
+
+const _collectionTreeCache = (navigationGlobals.__docsCollectionTreeCache ??=
+  new Map())
+
+const _collectionNavigationCache =
+  (navigationGlobals.__docsCollectionNavigationCache ??= new Map())
+
+const _linearNavigationCache =
+  (navigationGlobals.__docsLinearNavigationCache ??= new Map())
+
+async function buildCollectionTreeNode(
+  entry: EntryType
+): Promise<TreeNode | null> {
+  if (isHidden(entry)) {
+    return null
+  }
+
+  if (!isDirectory(entry)) {
+    return { entry }
+  }
+
+  const entries = await entry.getEntries()
+  const children = await Promise.all(
+    entries.map((childEntry) => buildCollectionTreeNode(childEntry))
+  )
+
+  return {
+    entry,
+    children: children.filter((child): child is TreeNode => child !== null),
+  }
+}
+
+async function getCollectionTree(collection: string): Promise<TreeNode[]> {
+  return cachePromise(_collectionTreeCache, collection, async () => {
+    const rootEntry =
+      (await AllDocumentation.getDirectory([collection]).catch(() => null)) ??
+      (await AllDocumentation.getEntry([collection]).catch(() => null))
+
+    if (!rootEntry || isHidden(rootEntry)) {
+      return []
+    }
+
+    const rootNode = await buildCollectionTreeNode(rootEntry)
+    return rootNode ? [rootNode] : []
+  })
+}
 
 async function mapTreeNode(
   node: TreeNode,
@@ -64,20 +123,14 @@ async function mapTreeNode(
 }
 
 async function toTreeItems(
-  nodes: Awaited<ReturnType<typeof AllDocumentation.getTree>>,
+  nodes: TreeNode[],
   seenUrls = new Set<string>()
 ): Promise<TreeItem[]> {
-  const result: TreeItem[] = []
+  const items = await Promise.all(
+    nodes.map((node) => mapTreeNode(node, seenUrls))
+  )
 
-  for (const node of nodes) {
-    const item = await mapTreeNode(node, seenUrls)
-
-    if (item) {
-      result.push(item)
-    }
-  }
-
-  return result
+  return items.filter((item): item is TreeItem => item !== null)
 }
 
 // Module-level singleton: computed once per build process (or dev-server lifecycle).
@@ -139,15 +192,16 @@ export function getFavoriteNavigationItems(
     }))
 }
 
-const _collectionNavigationCache = new Map<string, Promise<NavigationGroup[]>>()
-
 export const getCollectionNavigation = cache(
   async (collection: string): Promise<NavigationGroup[]> =>
     cachePromise(_collectionNavigationCache, collection, async () => {
-      const tree = await getNavigationTree()
-      const collectionRootPath = `/docs/${collection}`
+      const tree = await toTreeItems(await getCollectionTree(collection))
+      const collectionRootPaths = new Set([
+        `/docs/${collection}`,
+        `/docs/${collection}/`,
+      ])
       const rootNode = tree.find(
-        (item) => !item.external && item.url === collectionRootPath
+        (item) => !item.external && collectionRootPaths.has(item.url)
       )
 
       if (!rootNode) {
@@ -189,15 +243,16 @@ function flattenItems(items: TreeItem[]): TreeItem[] {
   return result
 }
 
-const _linearNavigationCache = new Map<string, Promise<TreeItem[]>>()
-
 export const getCollectionLinearNavigation = cache(
   async (collection: string): Promise<TreeItem[]> =>
     cachePromise(_linearNavigationCache, collection, async () => {
-      const tree = await getNavigationTree()
-      const collectionRootPath = `/docs/${collection}`
+      const tree = await toTreeItems(await getCollectionTree(collection))
+      const collectionRootPaths = new Set([
+        `/docs/${collection}`,
+        `/docs/${collection}/`,
+      ])
       const rootNode = tree.find(
-        (item) => !item.external && item.url === collectionRootPath
+        (item) => !item.external && collectionRootPaths.has(item.url)
       )
 
       if (!rootNode) {
