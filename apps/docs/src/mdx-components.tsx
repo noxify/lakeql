@@ -1,5 +1,3 @@
-import { ExternalLinkIcon } from "lucide-react"
-import Link from "next/link"
 import { Children, isValidElement } from "react"
 import type { ComponentPropsWithoutRef, ReactNode } from "react"
 import { CodeBlock, Command } from "renoun/components"
@@ -32,6 +30,7 @@ import {
 } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
+import { LinkHandler } from "./components/mdx/link-handler"
 import { MermaidDiagram } from "./components/mdx/mermaid"
 import { RailroadDiagram } from "./components/mdx/railroad"
 
@@ -83,44 +82,11 @@ export function useMDXComponents() {
     h4: (props) => <Heading level={4} {...props} />,
     h5: (props) => <Heading level={5} {...props} />,
     h6: (props) => <Heading level={6} {...props} />,
-    a: ({ href, children, ...props }: AnchorProps) => {
-      if (!href) {
-        return (
-          <Link href="/" prefetch={false}>
-            ###INVALID_LINK###
-          </Link>
-        )
-      }
-
-      if (
-        href.startsWith("http") ||
-        href.startsWith("https") ||
-        href.startsWith("mailto")
-      ) {
-        return (
-          <a href={href} target="_blank" rel="noopener noreferrer">
-            {children}
-            <ExternalLinkIcon className="ml-1 inline h-4 w-4" />
-          </a>
-        )
-      }
-
-      if (href.startsWith("#")) {
-        return (
-          <a href={href} {...props}>
-            {children}
-          </a>
-        )
-      }
-
-      return (
-        <>
-          <Link href={href} {...props} prefetch={false}>
-            {children ?? href}
-          </Link>
-        </>
-      )
-    },
+    a: ({ href, children, ...props }: AnchorProps) => (
+      <LinkHandler href={href} {...props}>
+        {children}
+      </LinkHandler>
+    ),
     // markdown image handler
     img: (props) => <MarkdownImageHandler {...props} />,
     // if you decide to use `<Image />` inside your mdx, you have the possibility to overwrite
@@ -130,18 +96,37 @@ export function useMDXComponents() {
     Image: (props) => <ImageHandler {...props} />,
 
     Note: ({ title, children }: { title?: string; children: ReactNode }) => (
-      <Alert variant={"default"} className="my-4">
-        {title && <AlertTitle>{title}</AlertTitle>}
-        <AlertDescription className="block">{children}</AlertDescription>
-      </Alert>
-    ),
-    Warning: ({ title, children }: { title?: string; children: ReactNode }) => (
-      <Alert variant={"destructive"} className="my-4">
+      <Alert variant={"note"} className="my-4">
         {title && <AlertTitle>{title}</AlertTitle>}
         <AlertDescription className="block">{children}</AlertDescription>
       </Alert>
     ),
 
+    Callout: ({ title, children }: { title?: string; children: ReactNode }) => (
+      <Alert variant={"default"} className="my-4">
+        {title && <AlertTitle>{title}</AlertTitle>}
+        <AlertDescription className="block">{children}</AlertDescription>
+      </Alert>
+    ),
+
+    Success: ({ title, children }: { title?: string; children: ReactNode }) => (
+      <Alert variant={"success"} className="my-4">
+        {title && <AlertTitle>{title}</AlertTitle>}
+        <AlertDescription className="block">{children}</AlertDescription>
+      </Alert>
+    ),
+    Warning: ({ title, children }: { title?: string; children: ReactNode }) => (
+      <Alert variant={"warning"} className="my-4">
+        {title && <AlertTitle>{title}</AlertTitle>}
+        <AlertDescription className="block">{children}</AlertDescription>
+      </Alert>
+    ),
+    Error: ({ title, children }: { title?: string; children: ReactNode }) => (
+      <Alert variant={"destructive"} className="my-4">
+        {title && <AlertTitle>{title}</AlertTitle>}
+        <AlertDescription className="block">{children}</AlertDescription>
+      </Alert>
+    ),
     table: ({ children }: { children?: ReactNode }) => (
       <div className="my-4 rounded-md border bg-white dark:border-gray-700 dark:bg-transparent">
         <div className="w-full overflow-auto">

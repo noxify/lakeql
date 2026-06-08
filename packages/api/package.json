@@ -38,7 +38,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@hono/node-server": "2.0.3",
+    "@hono/node-server": "2.0.4",
     "@lakeql/logger": "workspace:*",
     "@lakeql/query-builder": "workspace:*",
     "@lakeql/response-transformer": "workspace:*",
@@ -49,10 +49,10 @@
     "@t3-oss/env-core": "0.13.11",
     "dedent": "1.7.2",
     "globby": "16.2.0",
-    "graphql": "16.14.0",
+    "graphql": "16.14.1",
     "graphql-scalars": "1.25.0",
-    "graphql-yoga": "5.21.0",
-    "hono": "4.12.21",
+    "graphql-yoga": "5.21.1",
+    "hono": "4.12.23",
     "jose": "6.2.3",
     "zod": "4.4.3"
   },
@@ -60,11 +60,11 @@
     "@lakeql/tsconfig": "workspace:*",
     "@standard-schema/spec": "1.1.0",
     "@types/json-schema": "7.0.15",
-    "@types/node": "24.12.4",
+    "@types/node": "25.9.2",
     "dotenv-cli": "11.0.0",
-    "tsdown": "0.22.0",
-    "tsx": "4.22.3",
-    "type-fest": "5.6.0",
+    "tsdown": "0.22.2",
+    "tsx": "4.22.4",
+    "type-fest": "5.7.0",
     "typescript": "6.0.3"
   }
 }

@@ -45,10 +45,10 @@
   },
   "devDependencies": {
     "@lakeql/tsconfig": "workspace:*",
-    "@types/node": "24.12.4",
+    "@types/node": "25.9.2",
     "msw": "2.14.6",
-    "tsdown": "0.22.0",
+    "tsdown": "0.22.2",
     "typescript": "6.0.3",
-    "vitest": "4.1.6"
+    "vitest": "4.1.8"
   }
 }

@@ -42,7 +42,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@commander-js/extra-typings": "14.0.0",
+    "@commander-js/extra-typings": "15.0.0",
     "@lakeql/column-parser": "workspace:*",
     "@lakeql/file-generator": "workspace:*",
     "@lakeql/helpers": "workspace:*",
@@ -53,7 +53,7 @@
     "@t3-oss/env-core": "0.13.11",
     "@topcli/prompts": "3.1.0",
     "climt": "0.2.0",
-    "commander": "14.0.3",
+    "commander": "15.0.0",
     "dotenv": "17.4.2",
     "globby": "16.2.0",
     "handlebars": "4.7.9",
@@ -66,9 +66,9 @@
   "devDependencies": {
     "@lakeql/tsconfig": "workspace:*",
     "@types/lodash-es": "4.17.12",
-    "@types/node": "24.12.4",
-    "tsdown": "0.22.0",
-    "tsx": "4.22.3",
+    "@types/node": "25.9.2",
+    "tsdown": "0.22.2",
+    "tsx": "4.22.4",
     "typescript": "6.0.3"
   }
 }
