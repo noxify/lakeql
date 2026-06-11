@@ -88,6 +88,7 @@ function primitiveFromJsonSchema(
       if (format === "date-time") {
         return { type: "INT64", converted_type: "TIMESTAMP_MILLIS" }
       }
+      // oxlint-disable-next-line unicorn/text-encoding-identifier-case
       return { type: "BYTE_ARRAY", converted_type: "UTF8" }
     }
     case "integer": {
