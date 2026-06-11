@@ -26,7 +26,7 @@
   "sideEffects": false,
   "exports": {
     "./*": {
-      "types": "./src/*.ts",
+      "types": "./dist/*.d.mts",
       "import": "./dist/*.mjs"
     }
   },

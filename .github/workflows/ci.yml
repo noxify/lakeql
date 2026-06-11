@@ -65,6 +65,9 @@ jobs:
       - name: Generate next routes
         run: pnpm -F docs typegen
 
+      - name: Build packages
+        run: pnpm build:pkg
+
       - name: Typecheck
         run: pnpm typecheck
 
