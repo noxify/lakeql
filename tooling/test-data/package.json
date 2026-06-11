@@ -1,0 +1,28 @@
+{
+  "name": "@lakeql/test-data",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "clean": "git clean -xdf .cache .turbo dist node_modules dist",
+    "clean:cache": "git clean -xdf .cache .turbo",
+    "clean:dist": "git clean -xdf dist",
+    "generate": "tsx ./src/index.ts",
+    "sync": "tsx ./src/sync.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@aws-sdk/client-s3": "3.1065.0",
+    "@aws-sdk/s3-presigned-post": "3.1065.0",
+    "@aws-sdk/s3-request-presigner": "3.1065.0",
+    "@faker-js/faker": "10.4.0",
+    "@lakeql/tsconfig": "workspace:*",
+    "@types/node": "24.13.2",
+    "cleye": "2.6.0",
+    "files-sdk": "1.8.0",
+    "hyparquet-writer": "0.15.6",
+    "ora": "9.4.0",
+    "p-map": "7.0.4",
+    "tsx": "4.22.4"
+  }
+}

@@ -54,6 +54,7 @@ yarn-error.log*
 docker-volumes
 docker-configs/jars/
 test-data/
+!tooling/test-data/
 
 # project-local minitrino state
 .minitrino/
