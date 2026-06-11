@@ -1,5 +1,17 @@
 # @lakeql/api
 
+## 0.1.1
+
+### Patch Changes
+
+- 974e04d: Add package README files
+- Updated dependencies [974e04d]
+  - @lakeql/helpers@0.1.1
+  - @lakeql/logger@0.1.1
+  - @lakeql/query-builder@0.1.1
+  - @lakeql/response-transformer@0.1.1
+  - @lakeql/trino-client@0.1.1
+
 ## 0.1.0
 
 ### Minor Changes

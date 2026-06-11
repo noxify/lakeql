@@ -1,5 +1,14 @@
 # @lakeql/file-generator
 
+## 0.1.1
+
+### Patch Changes
+
+- 974e04d: Add package README files
+- Updated dependencies [974e04d]
+  - @lakeql/helpers@0.1.1
+  - @lakeql/schema-generator@0.1.1
+
 ## 0.1.0
 
 ### Minor Changes
