@@ -108,7 +108,7 @@ export default function Page() {
         <GradientGridBackground
           className="relative w-full py-28"
           gridSize={48}
-          gridColor="rgba(107,114,128,0.15)"
+          gridColor="rgba(107,114,128,0.2)"
           transparentBackground
           fadeStartPercent={20}
           fadeMidPercent={84}

@@ -140,7 +140,7 @@ export default async function SectionGrid(props: SectionGridProps) {
           key={index}
           className="not-prose group block h-full"
         >
-          <div className="hover:border-brand/50 hover:dark:border-brand/70 relative h-full overflow-hidden rounded-2xl border border-black/10 shadow transition-transform duration-200 dark:border-white/10">
+          <div className="hover:border-brand/50 hover:dark:border-brand/30 relative h-full overflow-hidden rounded-2xl border border-black/10 shadow transition-transform duration-200 dark:border-white/10">
             <div className="bg-sidebar pointer-events-none absolute inset-0" />
 
             <GradientGridBackground

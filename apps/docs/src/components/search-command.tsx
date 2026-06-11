@@ -384,8 +384,8 @@ export function SearchCommandProvider({
   items = defaultItems,
   // oxlint-disable-next-line react/no-object-type-as-default-prop
   availableCollections = [],
-  placeholder = "Dokumentation durchsuchen...",
-  emptyMessage = "Keine Ergebnisse gefunden.",
+  placeholder = "Search...",
+  emptyMessage = "Nothing found with this search params.",
   enableKeyboardShortcut = true,
 }: SearchCommandProviderProps) {
   const [open, setOpen] = React.useState(false)
@@ -442,7 +442,7 @@ export function SearchCommandProvider({
       .toSorted(([, aLabel], [, bLabel]) => collator.compare(aLabel, bLabel))
       .map(([value, label]) => ({ value, label }))
 
-    return [{ value: "all", label: "Alle" }, ...sorted]
+    return [{ value: "all", label: "All" }, ...sorted]
   }, [availableCollections, items, searchResults, selectedCollection])
 
   React.useEffect(() => {
@@ -752,7 +752,7 @@ export function SearchCommandProvider({
               {!searchValue && (
                 <Autocomplete.Empty>
                   <div className="text-muted-foreground flex min-h-24 items-center justify-center px-4 py-6 text-sm">
-                    Um loszulegen, gib einen Suchbegriff ein.
+                    To get started, enter a search term.
                   </div>
                 </Autocomplete.Empty>
               )}
