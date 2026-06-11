@@ -1,6 +1,6 @@
 {
   "name": "@lakeql/api",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "homepage": "https://lakeql.dev",
   "bugs": "https://github.com/noxify/lakeql/issues",
   "license": "Apache-2.0",
