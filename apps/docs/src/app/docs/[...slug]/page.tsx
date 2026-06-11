@@ -129,6 +129,7 @@ export default async function DocsPage({
         />
         <MDX
           components={{
+            // oxlint-disable-next-line react/no-unstable-nested-components
             h1: (props) => (
               // oxlint-disable-next-line jsx-a11y/heading-has-content
               <h1
@@ -143,7 +144,9 @@ export default async function DocsPage({
 
         <MDX
           components={{
+            // oxlint-disable-next-line react/no-unstable-nested-components
             code: (props) => <code>{props.children ?? ""}</code>,
+            // oxlint-disable-next-line react/no-unstable-nested-components
             p: (props) => (
               <p
                 {...props}
@@ -242,7 +245,9 @@ export default async function DocsPage({
 
       <MDX
         components={{
+          // oxlint-disable-next-line react/no-unstable-nested-components
           code: (props) => <code>{props.children ?? ""}</code>,
+          // oxlint-disable-next-line react/no-unstable-nested-components
           p: (props) => (
             <p
               {...props}

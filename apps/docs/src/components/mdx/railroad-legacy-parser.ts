@@ -227,21 +227,24 @@ class LegacyDslParser {
     }
 
     const body = raw.slice(1, -1)
-    return body.replaceAll(/\\([\\'"nrtb])/gu, (_match, escaped: string) => {
-      if (escaped === "n") {
-        return "\n"
+    return body.replaceAll(
+      /\\(?<escaped>[\\'"nrtb])/gu,
+      (_match, escaped: string) => {
+        if (escaped === "n") {
+          return "\n"
+        }
+        if (escaped === "r") {
+          return "\r"
+        }
+        if (escaped === "t") {
+          return "\t"
+        }
+        if (escaped === "b") {
+          return "\b"
+        }
+        return escaped
       }
-      if (escaped === "r") {
-        return "\r"
-      }
-      if (escaped === "t") {
-        return "\t"
-      }
-      if (escaped === "b") {
-        return "\b"
-      }
-      return escaped
-    })
+    )
   }
 
   private peek(): LegacyToken | null {
@@ -622,7 +625,7 @@ function diagramFromRoot(call: LegacyCall): Diagram {
 }
 
 export function looksLikeLegacyRailroad(source: string): boolean {
-  return /^\s*(Diagram|ComplexDiagram)\s*\(/u.test(source)
+  return /^\s*(?<diagramType>Diagram|ComplexDiagram)\s*\(/u.test(source)
 }
 
 export function parseLegacyRailroadDiagram(source: string): Diagram {

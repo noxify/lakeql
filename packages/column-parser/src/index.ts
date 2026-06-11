@@ -21,8 +21,8 @@ export const parseColumns = (elements: ParseFieldsProps[]) => {
      * In our case, we only have to remove some spaces after each `,``
      * and replace spaces between fieldname and type with an `:`
      */
-    let custom_source = element.type.replaceAll(new RegExp(", ", "gu"), ",")
-    custom_source = custom_source.replaceAll(new RegExp(" ", "gu"), ":")
+    let custom_source = element.type.replaceAll(", ", ",")
+    custom_source = custom_source.replaceAll(" ", ":")
 
     const columnType = parser.parseColumnType(custom_source)
 

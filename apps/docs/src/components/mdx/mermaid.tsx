@@ -13,10 +13,10 @@ const DEFAULT_ASPECT_RATIO = 16 / 9
 function parseMermaidDimensions(
   svg: string
 ): { width: number; height: number } | null {
-  const viewBoxMatch = svg.match(/viewBox=["']([^"']+)["']/iu)
+  const viewBoxMatch = svg.match(/viewBox=["'](?<value>[^"']+)["']/iu)
 
-  if (viewBoxMatch?.[1]) {
-    const parts = viewBoxMatch[1]
+  if (viewBoxMatch?.groups?.value) {
+    const parts = viewBoxMatch.groups.value
       .split(/[\s,]+/u)
       .map(Number)
       .filter((part) => Number.isFinite(part))
@@ -31,12 +31,16 @@ function parseMermaidDimensions(
     }
   }
 
-  const widthMatch = svg.match(/\bwidth=["']([0-9]*\.?[0-9]+)(?:px)?["']/iu)
-  const heightMatch = svg.match(/\bheight=["']([0-9]*\.?[0-9]+)(?:px)?["']/iu)
+  const widthMatch = svg.match(
+    /\bwidth=["'](?<value>[0-9]*\.?[0-9]+)(?:px)?["']/iu
+  )
+  const heightMatch = svg.match(
+    /\bheight=["'](?<value>[0-9]*\.?[0-9]+)(?:px)?["']/iu
+  )
 
   if (widthMatch && heightMatch) {
-    const width = Number(widthMatch[1])
-    const height = Number(heightMatch[1])
+    const width = Number(widthMatch.groups?.value)
+    const height = Number(heightMatch.groups?.value)
 
     if (
       Number.isFinite(width) &&

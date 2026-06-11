@@ -6,7 +6,8 @@ import { Command } from "@commander-js/extra-typings"
 import { question, select } from "@topcli/prompts"
 import kleur from "kleur"
 
-import { CONFIG_FILE_NAME, type LakeQLConfig } from "@/config"
+import { CONFIG_FILE_NAME } from "@/config"
+import type { LakeQLConfig } from "@/config"
 import { getInvocationCwd } from "@/path-utils"
 
 export default function initCommand() {
@@ -28,6 +29,7 @@ export default function initCommand() {
         )
 
         if (overwrite === "no") {
+          // oxlint-disable-next-line no-console
           console.log(kleur.yellow("Aborted."))
           return
         }
@@ -41,6 +43,7 @@ export default function initCommand() {
       if (hasSrc) {
         // If src/ exists, schemas always go in src/
         resolvedSourcePath = "src"
+        // oxlint-disable-next-line no-console
         console.log(
           kleur.cyan(
             `Detected src/ directory — generated code will be placed in src/`
@@ -76,6 +79,7 @@ export default function initCommand() {
 
       await writeFile(configPath, `${JSON.stringify(config, null, 2)}\n`)
 
+      // oxlint-disable-next-line no-console
       console.log(kleur.green(`Created ${CONFIG_FILE_NAME} at ${configPath}`))
     })
 

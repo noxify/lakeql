@@ -387,6 +387,7 @@ async function parseTree(
     }
 
     if (node.children) {
+      // oxlint-disable-next-line no-await-in-loop
       const childResults = await parseTree(node.children, seen)
       result.push(...childResults)
     }
@@ -562,6 +563,7 @@ async function mapLlmsTreeNode(
 
   if (node.children) {
     for (const child of node.children) {
+      // oxlint-disable-next-line no-await-in-loop
       const mappedChild = await mapLlmsTreeNode(child, docsHref)
 
       if (!mappedChild || seenChildHrefs.has(mappedChild.docsHref)) {

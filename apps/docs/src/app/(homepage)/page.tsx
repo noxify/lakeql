@@ -189,6 +189,7 @@ export default function Page() {
                   <div className="text-muted-foreground mt-1 mb-2">
                     <MDX
                       components={{
+                        // oxlint-disable-next-line react/no-unstable-nested-components
                         code: (props) => (
                           <code className="text-foreground" {...props} />
                         ),

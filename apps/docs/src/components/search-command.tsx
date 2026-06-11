@@ -249,12 +249,12 @@ function getCollectionFromHref(href?: string): string | undefined {
     return undefined
   }
 
-  const match = href.match(/^\/docs\/([^/]+)/u)
-  if (!match?.[1]) {
+  const match = href.match(/^\/docs\/(?<collection>[^/]+)/u)
+  if (!match?.groups?.collection) {
     return undefined
   }
 
-  return normalizeCollection(match[1])
+  return normalizeCollection(match.groups.collection)
 }
 
 function matchesCollection(
@@ -295,7 +295,7 @@ function formatHint(
 
 function stripMarkdown(content: string): string {
   return content
-    .replaceAll(/`([^`]*)`/gu, "$1")
+    .replaceAll(/`(?<code>[^`]*)`/gu, "$<code>")
     .replaceAll(/[#>*_~-]+/gu, " ")
     .replaceAll(/\s+/gu, " ")
     .trim()

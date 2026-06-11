@@ -77,7 +77,7 @@ export const generateModel = ({
     const fieldName = replaceSpecialCharacters(rawFieldName)
       .replace("-", "_")
       .replace(".", "_")
-      .replace(/^(\d)/, "_$1")
+      .replace(/^(?<digit>\d)/u, "_$<digit>")
 
     const field = generateFieldDefinition({
       fieldDefinition: fieldDefinition as JSONSchema7,

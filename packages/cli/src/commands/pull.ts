@@ -1,6 +1,7 @@
+// oxlint-disable no-await-in-loop
 import { existsSync } from "node:fs"
 import { mkdir, rm, writeFile } from "node:fs/promises"
-import { join } from "node:path"
+import path from "node:path"
 
 import { Command } from "@commander-js/extra-typings"
 import { parseColumns } from "@lakeql/column-parser"
@@ -53,9 +54,10 @@ export default function PullCommand() {
 
     // CLI --source-path overrides config; if it's the default (invocation cwd), use config
     const cliOverride =
-      sourcePath !== (process.env.INIT_CWD ?? process.cwd())
-        ? sourcePath
-        : undefined
+      // oxlint-disable-next-line no-restricted-properties
+      sourcePath === (process.env.INIT_CWD ?? process.cwd())
+        ? undefined
+        : sourcePath
     const resolvedTargetPath = resolveSourcePath(cliOverride)
 
     const trinoClient = new TrinoClient({
@@ -183,7 +185,7 @@ export default function PullCommand() {
         ),
       ]
 
-      const targetPath = join(
+      const targetPath = path.join(
         resolvedTargetPath,
         "schemas/generated",
         catalog,
@@ -233,19 +235,19 @@ export default function PullCommand() {
       await mkdir(targetPath, { recursive: true })
 
       await writeFile(
-        join(targetPath, configTemplate.fileName),
+        path.join(targetPath, configTemplate.fileName),
         configTemplate.text
       )
       await writeFile(
-        join(targetPath, interfaceTemplate.fileName),
+        path.join(targetPath, interfaceTemplate.fileName),
         interfaceTemplate.text
       )
       await writeFile(
-        join(targetPath, querySchemaTemplate.fileName),
+        path.join(targetPath, querySchemaTemplate.fileName),
         querySchemaTemplate.text
       )
       await writeFile(
-        join(targetPath, "json-schema.json"),
+        path.join(targetPath, "json-schema.json"),
         `${JSON.stringify(jsonSchema, null, 2)}\n`
       )
 

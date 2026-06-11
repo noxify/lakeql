@@ -82,6 +82,7 @@ function Stepper({
   orientation = "horizontal",
   className,
   children,
+  // oxlint-disable-next-line react/no-object-type-as-default-prop
   indicators = {},
   ...props
 }: StepperProps) {

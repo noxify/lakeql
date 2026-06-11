@@ -70,12 +70,12 @@ function parseSearchParams(search: string): Record<string, string | string[]> {
 }
 
 function parseProtocolAndHost(rest: string, result: UrlObject): string {
-  const protoMatch = /^([a-z][a-z0-9+.-]*):\/\//iu.exec(rest)
+  const protoMatch = /^(?<protocol>[a-z][a-z0-9+.-]*):\/\//iu.exec(rest)
   if (!protoMatch) {
     return rest
   }
 
-  const [, protocol] = protoMatch
+  const { protocol } = protoMatch.groups ?? {}
   if (!protocol) {
     return rest
   }

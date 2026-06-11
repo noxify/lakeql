@@ -9,6 +9,7 @@ export async function asyncFilter<T>(
   const filtered: T[] = []
 
   for (const element of arr) {
+    // oxlint-disable-next-line no-await-in-loop
     if (await predicate(element)) {
       filtered.push(element)
     }

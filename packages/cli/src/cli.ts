@@ -36,6 +36,7 @@ async function main() {
   await program.parseAsync()
 }
 
+// oxlint-disable-next-line promise/prefer-await-to-then
 main().catch(() => {
   process.exit(1)
 })

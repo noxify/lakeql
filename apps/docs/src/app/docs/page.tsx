@@ -1,3 +1,4 @@
+// oxlint-disable react/no-unstable-nested-components
 import {
   ArrowRightIcon,
   BotIcon,

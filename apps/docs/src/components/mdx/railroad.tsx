@@ -73,6 +73,7 @@ export function RailroadDiagram({
   }
 
   const diagram = (
+    // oxlint-disable-next-line react/no-unstable-nested-components
     <RailroadErrorBoundary fallback={(error) => <pre>{error.message}</pre>}>
       {parsed.mode === "legacy" ? (
         <ChooChoo

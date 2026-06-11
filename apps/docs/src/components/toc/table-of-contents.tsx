@@ -135,6 +135,7 @@ function renderSections(
 /** A table of contents that displays links to the sections in the current document. */
 export function TableOfContents({
   sections,
+  // oxlint-disable-next-line react/no-object-type-as-default-prop
   components = {},
   children,
 }: TableOfContentsProps) {

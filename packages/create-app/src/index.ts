@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 import { existsSync, mkdirSync, writeFileSync } from "node:fs"
-import { resolve } from "node:path"
+import path from "node:path"
 
 import { installPackage } from "@antfu/install-pkg"
 import {
@@ -113,7 +113,7 @@ async function updatePackageJson(
     delete updatedPackageJson.private
 
     writeFileSync(
-      resolve(targetDir, "package.json"),
+      path.resolve(targetDir, "package.json"),
       JSON.stringify(updatedPackageJson, null, 2)
     )
     s.stop("Package.json updated!")
@@ -250,7 +250,7 @@ async function installDependencies(
   } catch {
     s.stop("Failed to install dependencies")
     console.log(pc.yellow("You can install them manually with:"))
-    console.log(pc.cyan(`  cd ${resolve(targetDir).split("/").pop()}`))
+    console.log(pc.cyan(`  cd ${path.resolve(targetDir).split("/").pop()}`))
     console.log(pc.cyan(`  ${packageManager} install`))
   }
 }
@@ -312,7 +312,7 @@ async function main() {
         : "npm"
 
   // Setup project
-  const targetDir = resolve(projectName)
+  const targetDir = path.resolve(projectName)
 
   if (existsSync(targetDir)) {
     cancel(`Directory ${projectName} already exists`)

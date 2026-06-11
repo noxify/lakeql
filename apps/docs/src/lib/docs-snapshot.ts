@@ -397,6 +397,7 @@ async function buildDocsSnapshotLines(
   const lines: string[] = []
 
   for (const entry of entries) {
+    // oxlint-disable-next-line no-await-in-loop
     const record = await buildRecord(entry, generatedAt, buildId)
     if (!record) {
       continue

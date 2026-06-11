@@ -29,7 +29,7 @@ export default function scrollHandler({
   const smoothScrollBehavior: ScrollBehavior = prefersReducedMotion
     ? "auto"
     : "smooth"
-  const OVERFLOW_REGEX = /(auto|scroll)/u
+  const OVERFLOW_REGEX = /(?<overflow>auto|scroll)/u
   const viewportCache = new WeakMap<HTMLElement, HTMLElement>()
 
   let previousActiveLink: HTMLAnchorElement | null = null

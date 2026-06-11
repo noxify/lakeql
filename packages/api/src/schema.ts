@@ -47,6 +47,7 @@ async function buildSchema(schemaDir: string) {
   }
 
   for (const filePath of uniqueSchemaFiles) {
+    // oxlint-disable-next-line no-await-in-loop
     await import(pathToFileURL(filePath).href)
   }
 

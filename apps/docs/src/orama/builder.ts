@@ -96,7 +96,7 @@ export function cleanMdxContent(input: string): string {
     .replaceAll(/```[\s\S]*?```/gu, " ")
     .replaceAll(/`[^`]*`/gu, " ")
     .replaceAll(/!\[[^\]]*\]\([^)]*\)/gu, " ")
-    .replaceAll(/\[([^\]]+)\]\(([^)]+)\)/gu, "$1")
+    .replaceAll(/\[(?<text>[^\]]+)\]\((?<url>[^)]+)\)/gu, "$<text>")
     .replaceAll(/<[^>]+>/gu, " ")
     .replaceAll(/\s+/gu, " ")
     .trim()
@@ -112,16 +112,16 @@ export function splitContentByHeadings(
 ): { heading: HeadingSection | null; content: string }[] {
   const withoutFrontmatter = rawContent.replace(/^---[\s\S]*?---\s*/mu, "")
   const lines = withoutFrontmatter.split(/\r?\n/u)
-  const headingLineRegex = /^(#{2,6})\s+(.+?)\s*$/u
+  const headingLineRegex = /^(?<hashes>#{2,6})\s+(?<title>.+?)\s*$/u
   const headingMatches: { lineIndex: number; title: string }[] = []
 
   for (const [index, line] of lines.entries()) {
     const match = headingLineRegex.exec(line)
-    if (!match?.[2]) {
+    if (!match?.groups?.title) {
       continue
     }
 
-    headingMatches.push({ lineIndex: index, title: match[2].trim() })
+    headingMatches.push({ lineIndex: index, title: match.groups.title.trim() })
   }
 
   if (headingMatches.length === 0) {

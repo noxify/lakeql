@@ -19,6 +19,7 @@ export default function configRegistryCommand() {
     .action(async ({ sourcePath }) => {
       // CLI parameter overrides config; if default (invocation cwd), use config
       const cliOverride =
+        // oxlint-disable-next-line no-restricted-properties
         sourcePath !== process.env.INIT_CWD && sourcePath !== process.cwd()
           ? sourcePath
           : undefined

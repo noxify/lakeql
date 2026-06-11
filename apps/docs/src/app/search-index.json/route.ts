@@ -7,6 +7,7 @@ import { persist } from "@orama/plugin-data-persistence"
 import type { NextRequest } from "next/server"
 
 import { buildSearchDocuments, getAllSearchableEntries } from "@/orama/builder"
+
 export const dynamic = "force-static"
 export const runtime = "nodejs"
 

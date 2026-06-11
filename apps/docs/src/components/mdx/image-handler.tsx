@@ -28,11 +28,13 @@ function parsePositiveInt(value?: string): number | undefined {
 
 function parseMode(normalized: string): ImageMode | undefined {
   const modeMatch = normalized.match(
-    /\bmode\s*[:=]\s*(default|preview|zoom)\b/u
+    /\bmode\s*[:=]\s*(?<mode>default|preview|zoom)\b/u
   )
 
-  if (modeMatch?.[1]) {
-    return modeMatch[1] === "preview" ? "zoom" : (modeMatch[1] as ImageMode)
+  if (modeMatch?.groups?.mode) {
+    return modeMatch.groups.mode === "preview"
+      ? "zoom"
+      : (modeMatch.groups.mode as ImageMode)
   }
 
   if (normalized.includes("preview") || normalized.includes("zoom")) {
@@ -47,10 +49,10 @@ function parseMode(normalized: string): ImageMode | undefined {
 }
 
 function parsePreviewFit(normalized: string): ImagePreviewFit | undefined {
-  const fitMatch = normalized.match(/\bfit\s*[:=]\s*(cover|contain)\b/u)
+  const fitMatch = normalized.match(/\bfit\s*[:=]\s*(?<fit>cover|contain)\b/u)
 
-  if (fitMatch?.[1]) {
-    return fitMatch[1] as ImagePreviewFit
+  if (fitMatch?.groups?.fit) {
+    return fitMatch.groups.fit as ImagePreviewFit
   }
 
   if (normalized.includes("contain")) {
@@ -68,12 +70,14 @@ function parseSizeOptions(normalized: string): {
   width?: number
   height?: number
 } {
-  const widthMatch = normalized.match(/\b(?:width|w)\s*[:=]\s*(\d+)\b/u)
-  const heightMatch = normalized.match(/\b(?:height|h)\s*[:=]\s*(\d+)\b/u)
+  const widthMatch = normalized.match(/\b(?:width|w)\s*[:=]\s*(?<value>\d+)\b/u)
+  const heightMatch = normalized.match(
+    /\b(?:height|h)\s*[:=]\s*(?<value>\d+)\b/u
+  )
 
   return {
-    width: parsePositiveInt(widthMatch?.[1]),
-    height: parsePositiveInt(heightMatch?.[1]),
+    width: parsePositiveInt(widthMatch?.groups?.value),
+    height: parsePositiveInt(heightMatch?.groups?.value),
   }
 }
 
