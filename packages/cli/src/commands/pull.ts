@@ -16,16 +16,16 @@ import { TrinoClient } from "@lakeql/trino-client"
 import { multiselect, select, validators } from "@topcli/prompts"
 import { camelCase, upperFirst } from "lodash-es"
 
+import { resolveSourcePath } from "@/config"
 import { env } from "@/env"
 import {
   catalogOption,
   schemaOption,
   skipRegistry as skipRegistryOption,
+  sourcePathOption,
   tableOption,
   tableOrSchemaOption,
-  targetOption,
 } from "@/options"
-import { resolveFromInvocationCwd } from "@/path-utils"
 
 import { runConfigRegistryGeneration } from "./config-registry"
 
@@ -45,12 +45,18 @@ export default function PullCommand() {
         .argParser((value, previous: string[]) => [...previous, value])
     )
     .addOption(skipRegistryOption)
-    .addOption(targetOption)
+    .addOption(sourcePathOption)
 
   pullCommand.action(async (props) => {
-    const { catalog, skipRegistry, target } = props
+    const { catalog, skipRegistry, sourcePath } = props
     let { schema, table: tables, type } = props
-    const resolvedTargetPath = resolveFromInvocationCwd(target)
+
+    // CLI --source-path overrides config; if it's the default (invocation cwd), use config
+    const cliOverride =
+      sourcePath !== (process.env.INIT_CWD ?? process.cwd())
+        ? sourcePath
+        : undefined
+    const resolvedTargetPath = resolveSourcePath(cliOverride)
 
     const trinoClient = new TrinoClient({
       auth: {
@@ -244,7 +250,7 @@ export default function PullCommand() {
       )
 
       if (!skipRegistry) {
-        await runConfigRegistryGeneration(resolvedTargetPath)
+        await runConfigRegistryGeneration(cliOverride)
       }
       //await writeFile(join(targetPath, "model_definition.json"), JSON.stringify(models, null, 2))
     }

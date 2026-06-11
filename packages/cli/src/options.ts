@@ -17,14 +17,9 @@ export const tableOrSchemaOption = new Option(
   "Show tables or views"
 )
 
-export const targetOption = new Option(
-  "--target <path>",
-  "Target path for generated schemas (resolved from the command invocation directory). Files are created in `schemas/generated` inside this path."
-).default(getInvocationCwd(), "command invocation directory")
-
-export const schemaPathOption = new Option(
-  "--schema-path <path>",
-  "Path to schema files (resolved from the command invocation directory). If you used a custom `--target`, use the same base path here."
+export const sourcePathOption = new Option(
+  "--source-path <path>",
+  "Base path for generated code (resolved from the command invocation directory). Files are created in `schemas/generated` inside this path."
 ).default(getInvocationCwd(), "command invocation directory")
 
 export const skipRegistry = new Option(

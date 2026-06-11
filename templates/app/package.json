@@ -16,17 +16,20 @@
     "preview": "pnpm with-env node ./dist/index.mjs",
     "start": "node ./dist/index.mjs",
     "typecheck": "tsc --noEmit",
-    "with-env": "dotenv -e ../../.env --",
+    "with-env": "dotenv -e ./.env --",
     "cli": "pnpm with-env lakeql-cli"
   },
   "dependencies": {
     "@lakeql/api": "workspace:*",
+    "@lakeql/query-builder": "workspace:*",
+    "@lakeql/trino-client": "workspace:*",
     "@t3-oss/env-core": "0.13.11",
     "zod": "4.4.3"
   },
   "devDependencies": {
     "@lakeql/cli": "workspace:*",
-    "@types/node": "25.9.2",
+    "@types/json-schema": "7.0.15",
+    "@types/node": "24.13.2",
     "dotenv-cli": "11.0.0",
     "tsdown": "0.22.2",
     "tsx": "4.22.4",

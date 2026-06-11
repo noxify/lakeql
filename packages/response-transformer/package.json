@@ -44,8 +44,8 @@
   "devDependencies": {
     "@faker-js/faker": "10.4.0",
     "@lakeql/tsconfig": "workspace:*",
-    "@types/node": "25.9.2",
-    "@valibot/to-json-schema": "1.7.0",
+    "@types/node": "24.13.2",
+    "@valibot/to-json-schema": "1.7.1",
     "tsdown": "0.22.2",
     "tsx": "4.22.4",
     "typescript": "6.0.3",

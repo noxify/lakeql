@@ -296,15 +296,15 @@ function generateModelImplement({
           [property("nullable", bool(true))]
         )
 
-        if (field.graphqlType === "DateTime") {
+        if (field.graphqlType === "DateTime" || field.graphqlType === "Date") {
           ts.addSyntheticLeadingComment(
-            propertyAssignment,
+            propertyAssignment.initializer,
             ts.SyntaxKind.SingleLineCommentTrivia,
             ` @ts-expect-error not sure why, but it doesn't get the type`,
             true
           )
           ts.addSyntheticLeadingComment(
-            propertyAssignment,
+            propertyAssignment.initializer,
             ts.SyntaxKind.SingleLineCommentTrivia,
             ` GH Issue: https://github.com/hayes/pothos/issues/1277`,
             true
@@ -494,8 +494,14 @@ function createClientStatement(): ts.VariableStatement {
         objectLiteral([
           property("host", access("env", "HIVE_HOST")),
           property("port", access("env", "HIVE_PORT")),
-          property("username", access("env", "HIVE_USERNAME")),
-          property("password", access("env", "HIVE_PASSWORD")),
+          property(
+            "auth",
+            objectLiteral([
+              property("type", stringLiteral("basic")),
+              property("username", access("env", "HIVE_USERNAME")),
+              property("password", access("env", "HIVE_PASSWORD")),
+            ])
+          ),
           property("catalog", access("env", "HIVE_CATALOG")),
           property("source", access("env", "HIVE_SOURCE")),
         ]),
@@ -528,7 +534,7 @@ function createRecordsStatement(): ts.VariableStatement {
                       )
                     ),
                   ],
-                  false
+                  true
                 ),
               ]
             ),

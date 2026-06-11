@@ -7,24 +7,29 @@ import { generateCode } from "@lakeql/file-generator"
 import { generateConfigReqistry } from "@lakeql/file-generator/config-registry"
 import { globby } from "globby"
 
-import { schemaPathOption } from "@/options"
-import { resolveFromInvocationCwd } from "@/path-utils"
+import { resolveSourcePath } from "@/config"
+import { sourcePathOption } from "@/options"
 
 export default function configRegistryCommand() {
   const program = new Command("create-registry")
     .description(
       "Generates the config registry to ensure the type-safety while using `createPermission`"
     )
-    .addOption(schemaPathOption)
-    .action(async ({ schemaPath }) => {
-      await runConfigRegistryGeneration(schemaPath)
+    .addOption(sourcePathOption)
+    .action(async ({ sourcePath }) => {
+      // CLI parameter overrides config; if default (invocation cwd), use config
+      const cliOverride =
+        sourcePath !== process.env.INIT_CWD && sourcePath !== process.cwd()
+          ? sourcePath
+          : undefined
+      await runConfigRegistryGeneration(cliOverride)
     })
 
   return program
 }
 
-export async function runConfigRegistryGeneration(schemaPath: string) {
-  const targetPath = resolveFromInvocationCwd(schemaPath)
+export async function runConfigRegistryGeneration(cliOverride?: string) {
+  const targetPath = resolveSourcePath(cliOverride)
 
   const configFiles = await globby("schemas/**/config.ts", {
     cwd: targetPath,

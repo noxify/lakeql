@@ -69,7 +69,15 @@ export const generateModel = ({
   for (const [rawFieldName, fieldDefinition] of Object.entries(
     currentElement.properties as JSONSchema7
   )) {
-    const fieldName = replaceSpecialCharacters(rawFieldName).replace("-", "_")
+    // * Replaces `-` and `.` with `_`
+    // * appends an `_` to all fields which starts with a number
+    // to be honest, i don't understand why people are doing it
+    // but they're doing it - so we have to make sure, we catch these cases
+    // to make sure the schema is generated correctly
+    const fieldName = replaceSpecialCharacters(rawFieldName)
+      .replace("-", "_")
+      .replace(".", "_")
+      .replace(/^(\d)/, "_$1")
 
     const field = generateFieldDefinition({
       fieldDefinition: fieldDefinition as JSONSchema7,

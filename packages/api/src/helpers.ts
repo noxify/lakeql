@@ -1,3 +1,4 @@
+import { swap } from "@lakeql/helpers/object-helper"
 import { error } from "@lakeql/logger/console"
 import { convertTrinoResponse, transform } from "@lakeql/response-transformer"
 import { AuthScopeFailureType } from "@pothos/plugin-scope-auth"
@@ -256,8 +257,13 @@ export const transformTrinoResponse = <T>({
     // since we already fetched the `total_count` above, we can exclude it here
     const [_count, ...rest] = record
 
+    // Map GraphQL field names back to DB column names for correct key assignment.
+    // The SQL query uses the DB column names (e.g. "2bs"), so the response values
+    // are in that order. We need to use those as keys for the JSON schema lookup.
+    const keys = selectFields.map((f) => transformFields?.[f] ?? f)
+
     const dataAsObject = convertTrinoResponse({
-      keys: selectFields,
+      keys,
       values: rest,
     })
 
@@ -265,7 +271,9 @@ export const transformTrinoResponse = <T>({
       data: dataAsObject,
       dateFields,
       definition: jsonSchema,
-      transformFields,
+      // swap transformFields from { graphqlName: dbName } to { dbName: graphqlName }
+      // so that transform() can map DB column names back to GraphQL field names
+      transformFields: transformFields ? swap(transformFields) : undefined,
       utcDates,
     })
 
