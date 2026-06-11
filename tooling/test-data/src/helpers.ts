@@ -9,7 +9,7 @@ type JsonSchemaType =
   | "boolean"
   | "null"
 
-type JsonSchema = {
+interface JsonSchema {
   type?: JsonSchemaType | JsonSchemaType[]
   format?: string
   properties?: Record<string, JsonSchema>
@@ -17,7 +17,7 @@ type JsonSchema = {
   required?: string[] | boolean
 }
 
-type PrimitiveSchemaFields = {
+interface PrimitiveSchemaFields {
   type: NonNullable<SchemaElement["type"]>
   converted_type?: SchemaElement["converted_type"]
 }
@@ -41,7 +41,7 @@ function normalizeJsonSchemaType(
 ): { type: Exclude<JsonSchemaType, "null">; optionalFromNull: boolean } {
   if (!schema.type) {
     throw new Error(
-      `JSON schema field \"${fieldName}\" in \"${parentName}\" is missing a type`
+      `JSON schema field "${fieldName}" in "${parentName}" is missing a type`
     )
   }
 
@@ -53,14 +53,14 @@ function normalizeJsonSchemaType(
 
     if (nonNullTypes.length !== 1 || schema.type.length > 2) {
       throw new Error(
-        `Unsupported JSON schema union on field \"${fieldName}\": ${JSON.stringify(schema.type)}`
+        `Unsupported JSON schema union on field "${fieldName}": ${JSON.stringify(schema.type)}`
       )
     }
 
     const [singleType] = nonNullTypes
     if (!singleType) {
       throw new Error(
-        `Unsupported JSON schema union on field \"${fieldName}\": ${JSON.stringify(schema.type)}`
+        `Unsupported JSON schema union on field "${fieldName}": ${JSON.stringify(schema.type)}`
       )
     }
 
@@ -72,7 +72,7 @@ function normalizeJsonSchemaType(
 
   if (schema.type === "null") {
     throw new Error(
-      `Unsupported JSON schema type \"null\" on field \"${fieldName}\"`
+      `Unsupported JSON schema type "null" on field "${fieldName}"`
     )
   }
 
@@ -84,21 +84,24 @@ function primitiveFromJsonSchema(
   format: string | undefined
 ): PrimitiveSchemaFields {
   switch (schemaType) {
-    case "string":
+    case "string": {
       if (format === "date-time") {
         return { type: "INT64", converted_type: "TIMESTAMP_MILLIS" }
       }
       return { type: "BYTE_ARRAY", converted_type: "UTF8" }
-    case "integer":
+    }
+    case "integer": {
       return { type: "INT64" }
-    case "number":
+    }
+    case "number": {
       return { type: "DOUBLE" }
-    case "boolean":
+    }
+    case "boolean": {
       return { type: "BOOLEAN" }
-    default:
-      throw new Error(
-        `Unsupported JSON schema primitive type \"${schemaType}\"`
-      )
+    }
+    default: {
+      throw new Error(`Unsupported JSON schema primitive type "${schemaType}"`)
+    }
   }
 }
 
@@ -142,7 +145,7 @@ function jsonSchemaFieldToElements(
   if (type === "array") {
     if (!schema.items) {
       throw new Error(
-        `JSON schema array field \"${fieldName}\" is missing \"items\"`
+        `JSON schema array field "${fieldName}" is missing "items"`
       )
     }
 

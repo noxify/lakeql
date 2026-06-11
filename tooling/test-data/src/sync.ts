@@ -1,5 +1,5 @@
-import fs from "fs/promises"
-import path from "path"
+import fs from "node:fs/promises"
+import path from "node:path"
 
 import { cli } from "cleye"
 import { Files } from "files-sdk"
@@ -42,11 +42,13 @@ async function syncFile(props: typeof parsed.flags) {
   })
 
   if (!props.source || !props.target) {
+    // oxlint-disable-next-line no-console
     console.error("Source and/or target are missing.")
     process.exit(1)
   }
 
   // INIT_CWD is set by pnpm/npm to the directory from which the command was invoked
+  // oxlint-disable-next-line no-restricted-properties
   const root = process.env["INIT_CWD"] ?? process.cwd()
   const source = path.resolve(root, props.source)
 
@@ -54,16 +56,15 @@ async function syncFile(props: typeof parsed.flags) {
 
   const sourceFileName = path.basename(source)
 
-  const uploaded = await files.upload(
-    path.join(props.target, sourceFileName),
-    file
-  )
+  await files.upload(path.join(props.target, sourceFileName), file)
 
   process.exit(0)
 }
 
-syncFile(parsed.flags).catch((error) => {
+try {
+  await syncFile(parsed.flags)
+} catch (error) {
   // eslint-disable-next-line no-console
   console.error(error)
   process.exit(1)
-})
+}

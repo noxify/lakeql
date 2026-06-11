@@ -1,5 +1,5 @@
-import fs from "fs/promises"
-import path from "path"
+import fs from "node:fs/promises"
+import path from "node:path"
 
 import { faker } from "@faker-js/faker"
 import { cli } from "cleye"
@@ -62,7 +62,7 @@ async function generateTestData(props: typeof parsed.flags) {
   }
 
   switch (props.dataset) {
-    case "simple":
+    case "simple": {
       await simpleDataset({
         amount: props.amount,
         targetPath: props.path,
@@ -70,8 +70,9 @@ async function generateTestData(props: typeof parsed.flags) {
         dataset: props.dataset,
       })
       break
+    }
 
-    case "complex":
+    case "complex": {
       await complexDataset({
         amount: props.amount,
         targetPath: props.path,
@@ -79,11 +80,17 @@ async function generateTestData(props: typeof parsed.flags) {
         dataset: props.dataset,
       })
       break
+    }
+
+    default: {
+      break
+    }
   }
 }
 
 async function prepareTargetDir(targetPath: string, clean: boolean) {
   // INIT_CWD is set by pnpm/npm to the directory from which the command was invoked
+  // oxlint-disable-next-line no-restricted-properties
   const root = process.env["INIT_CWD"] ?? process.cwd()
   const targetDir = path.resolve(root, targetPath)
 
@@ -215,7 +222,7 @@ async function complexDataset({
 
   const name: string[] = []
   const colours: string[][] = []
-  const stock: Array<Array<{ price: number; quantity: bigint }>> = []
+  const stock: { price: number; quantity: bigint }[][] = []
 
   for (let i = 0; i < amount; i += 1) {
     name.push(faker.commerce.productName())
@@ -243,8 +250,10 @@ async function complexDataset({
   })
 }
 
-generateTestData(parsed.flags).catch((error) => {
+try {
+  await generateTestData(parsed.flags)
+} catch (error) {
   // eslint-disable-next-line no-console
   console.error(error)
   process.exit(1)
-})
+}
