@@ -1,0 +1,67 @@
+---
+title: Scalar Types
+description: Custom GraphQL scalar types for Date, DateTime, and File uploads.
+---
+
+LakeQL registers three custom scalar types on the shared builder. These extend the standard GraphQL scalars to handle common data types from Trino.
+
+## Date
+
+A date-only scalar (no time component). Uses `DateResolver` from `graphql-scalars`.
+
+- **Input:** ISO 8601 date string (e.g., `"2024-01-15"`)
+- **Output:** JavaScript `Date` object
+
+## DateTime
+
+A full timestamp scalar with timezone support. Uses `DateTimeResolver` from `graphql-scalars`.
+
+- **Input:** ISO 8601 datetime string (e.g., `"2024-01-15T10:30:00Z"`)
+- **Output:** JavaScript `Date` object
+
+## File
+
+An input-only scalar for file uploads. Attempting to serialize (output) a `File` scalar throws an error.
+
+- **Input:** `File` object (from multipart form data)
+- **Output:** Not supported (throws `"Uploads can only be used as input types"`)
+
+## Source code
+
+```typescript
+import { DateResolver, DateTimeResolver } from "graphql-scalars"
+import { builder } from "@lakeql/api/builder"
+
+builder.addScalarType("Date", DateResolver, {})
+builder.addScalarType("DateTime", DateTimeResolver, {})
+
+builder.scalarType("File", {
+  serialize: () => {
+    throw new Error("Uploads can only be used as input types")
+  },
+})
+```
+
+## Usage in custom schemas
+
+Reference these scalars by name when defining fields:
+
+```typescript
+import { builder } from "@lakeql/api/builder"
+
+const EventType = builder
+  .objectRef<{
+    id: string
+    name: string
+    createdAt: Date
+    occurredOn: Date
+  }>("Event")
+  .implement({
+    fields: (t) => ({
+      id: t.exposeID("id"),
+      name: t.exposeString("name"),
+      createdAt: t.expose("createdAt", { type: "DateTime" }),
+      occurredOn: t.expose("occurredOn", { type: "Date" }),
+    }),
+  })
+```

@@ -1,0 +1,69 @@
+---
+title: Operators
+description: All supported filter operators and their SQL translations.
+---
+
+## Supported Operators
+
+The query builder supports a comprehensive set of comparison and pattern-matching operators. Each operator in `FieldOptions` maps to a specific SQL expression.
+
+| Operator        | SQL Output           | Description                               |
+| --------------- | -------------------- | ----------------------------------------- |
+| `eq`            | `= value`            | Equals                                    |
+| `neq`           | `!= value`           | Not equals                                |
+| `in`            | `IN (values)`        | Matches any value in the list             |
+| `notIn`         | `NOT IN (values)`    | Does not match any value in the list      |
+| `lt`            | `< value`            | Less than                                 |
+| `lte`           | `<= value`           | Less than or equal                        |
+| `gt`            | `> value`            | Greater than                              |
+| `gte`           | `>= value`           | Greater than or equal                     |
+| `like`          | `LIKE '%value%'`     | Contains (wraps value with wildcards)     |
+| `notLike`       | `NOT LIKE '%value%'` | Does not contain                          |
+| `startsWith`    | `LIKE 'value%'`      | Starts with the given prefix              |
+| `notStartsWith` | `NOT LIKE 'value%'`  | Does not start with the given prefix      |
+| `endsWith`      | `LIKE '%value'`      | Ends with the given suffix                |
+| `notEndsWith`   | `NOT LIKE '%value'`  | Does not end with the given suffix        |
+| `is`            | `= value`            | Equality check (typically for booleans)   |
+| `isNot`         | `!= value`           | Inequality check (typically for booleans) |
+
+## Pattern Matching Examples
+
+```typescript
+import type { Where } from "@lakeql/query-builder"
+
+// Contains "smith" anywhere in the name
+const containsFilter: Where = {
+  and: [{ name: { like: "smith" } }],
+}
+// SQL: WHERE "name" LIKE '%smith%'
+
+// Starts with "prod-"
+const prefixFilter: Where = {
+  and: [{ environment: { startsWith: "prod-" } }],
+}
+// SQL: WHERE "environment" LIKE 'prod-%'
+
+// Ends with ".csv"
+const suffixFilter: Where = {
+  and: [{ filename: { endsWith: ".csv" } }],
+}
+// SQL: WHERE "filename" LIKE '%.csv'
+```
+
+## Comparison Examples
+
+```typescript
+import type { Where } from "@lakeql/query-builder"
+
+// Numeric range
+const rangeFilter: Where = {
+  and: [{ price: { gte: "10" } }, { price: { lte: "100" } }],
+}
+// SQL: WHERE "price" >= '10' AND "price" <= '100'
+
+// Membership
+const membershipFilter: Where = {
+  and: [{ status: { in: ["active", "pending"] } }],
+}
+// SQL: WHERE "status" IN ('active', 'pending')
+```

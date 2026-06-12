@@ -1,0 +1,68 @@
+---
+title: createApiServer
+description: Create a configured Hono application with GraphQL Yoga integration, CORS, and logging middleware.
+---
+
+`createApiServer` is the primary factory function for building a LakeQL API instance. It wires together Hono, GraphQL Yoga, and all middleware into a ready-to-use server object.
+
+## Signature
+
+```typescript
+function createApiServer(options?: ApiRuntimeConfig): Promise<ApiServer>
+```
+
+## Return type
+
+```typescript
+interface ApiServer {
+  app: Hono
+  logger: ReturnType<typeof createLogger>
+  yoga: ApiYoga
+}
+```
+
+| Field    | Description                                           |
+| -------- | ----------------------------------------------------- |
+| `app`    | The Hono application instance with all routes mounted |
+| `logger` | Configured logger instance from `@lakeql/logger`      |
+| `yoga`   | The GraphQL Yoga server handling `/graphql` requests  |
+
+## What it sets up
+
+1. Creates a structured logger via `@lakeql/logger`
+2. Initializes GraphQL Yoga with the loaded schema and context
+3. Mounts Hono logger middleware on all routes
+4. Configures CORS on the GraphQL path (POST, GET, OPTIONS)
+5. Connects the Yoga request handler to Hono
+
+## Usage
+
+```typescript
+import { createApiServer } from "@lakeql/api/server"
+
+const { app, logger, yoga } = await createApiServer({
+  schemaPath: "./src/schemas",
+  graphqlPath: "/graphql",
+  port: 4000,
+})
+
+// Add custom middleware or routes to the Hono app
+app.get("/health", (c) => c.json({ status: "ok" }))
+```
+
+## Starting the server
+
+If you don't need access to the `app` instance, use `startApiServer` which calls `createApiServer` internally and binds to a port:
+
+```typescript
+import { startApiServer } from "@lakeql/api/server"
+
+await startApiServer({
+  schemaPath: "./src/schemas",
+  port: 4000,
+})
+// Server URL: http://localhost:4000
+// GraphQL Endpoint: http://localhost:4000/graphql
+```
+
+`startApiServer` uses `@hono/node-server` to serve the application via Node.js `http` module.

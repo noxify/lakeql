@@ -1,0 +1,65 @@
+---
+title: Overview
+description: LakeQL is a toolkit for generating type-safe GraphQL APIs on top of Trino data lakehouses.
+---
+
+## What is LakeQL?
+
+LakeQL is a toolkit that automatically generates a type-safe GraphQL API on top of your Trino data lakehouse. It introspects your Trino schemas, generates TypeScript interfaces and query schemas, and serves them through a production-ready GraphQL API with built-in pagination, filtering, and sorting.
+
+## The Problem
+
+Manually writing GraphQL resolvers for data lakehouse tables is repetitive and error-prone. Every time a table changes, you update interfaces, resolvers, and type definitions by hand. Schema drift, missing fields, and inconsistent filtering logic creep in fast — especially when your lakehouse has dozens of tables across multiple schemas.
+
+## The Solution
+
+LakeQL flips the workflow. Instead of writing resolvers manually, you introspect your Trino catalog and generate everything:
+
+- **TypeScript interfaces** from column metadata
+- **Pothos query schemas** with filtering, sorting, and pagination baked in
+- **JSON schemas** for response transformation
+- **A config registry** that ties it all together at runtime
+
+The generated code is fully typed end-to-end, from GraphQL input to SQL output.
+
+```bash
+# Pull a schema from Trino and generate all artifacts
+npx lakeql-cli pull --catalog hive --schema sales
+```
+
+## Key Benefits
+
+- **Type safety** — Generated TypeScript interfaces ensure compile-time correctness from GraphQL layer to SQL queries
+- **Automatic schema generation** — Run one CLI command to generate resolvers, types, and configs for entire schemas
+- **Pothos-based schema builder** — Leverage the Pothos GraphQL schema builder for type-safe, declarative schema construction
+- **Built-in pagination** — Connection-based pagination with `pageInfo` metadata out of the box
+- **Flexible filtering** — AND/OR combinable filters with operators like `eq`, `neq`, `like`, `in`, `gt`, `lt`, and more
+- **Sorting** — Multi-field sorting with ASC/DESC direction
+- **Permission model** — Read/write permission checks per table with support for user-level and system-user flows
+- **Kysely SQL generation** — SQL queries are built with Kysely, giving you type-safe query construction without raw strings
+
+## How It Works
+
+```
+┌─────────────┐     ┌──────────────┐     ┌───────────────┐
+│  Trino      │────▶│  LakeQL CLI  │────▶│  Generated    │
+│  Catalog    │     │  (pull)      │     │  TypeScript   │
+└─────────────┘     └──────────────┘     └───────────────┘
+                                                 │
+                                                 ▼
+                                         ┌───────────────┐
+                                         │  LakeQL API   │
+                                         │  (serve)      │
+                                         └───────────────┘
+                                                 │
+                                                 ▼
+                                         ┌───────────────┐
+                                         │  GraphQL      │
+                                         │  Endpoint     │
+                                         └───────────────┘
+```
+
+1. **Introspect** — The CLI connects to Trino and discovers table structures
+2. **Generate** — TypeScript files are written with interfaces, query schemas, and configs
+3. **Serve** — The API server loads generated schemas and exposes a GraphQL endpoint
+4. **Query** — Clients send GraphQL queries that are translated into optimized Trino SQL

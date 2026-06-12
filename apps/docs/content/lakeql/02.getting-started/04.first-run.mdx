@@ -1,0 +1,170 @@
+---
+title: First Run
+description: Walk through pulling your first schema, understanding the generated files, and executing a GraphQL query.
+---
+
+## Pulling a Table Schema
+
+After configuring your environment variables, pull a schema from Trino:
+
+```bash
+npx lakeql-cli pull --catalog hive --schema sales --target ./src
+```
+
+This command introspects every table in `hive.sales` and generates four files per table.
+
+### Generated Files
+
+For a table called `orders`, the CLI creates:
+
+```
+src/schemas/generated/hive/sales/orders/
+├── config.ts           # Table metadata and column mappings
+├── interface.ts        # TypeScript interface for the table
+├── query-schema.ts     # Pothos query schema with resolvers
+└── json-schema.json    # JSON Schema for response transformation
+```
+
+**config.ts** — Contains the table's catalog, schema, table name, select fields, and field transform mappings:
+
+```typescript
+export const ordersConfig = {
+  catalog: "hive",
+  schema: "sales",
+  table: "orders",
+  selectFields: ["id", "customer_id", "status", "total", "created_at"],
+  dateFields: ["created_at"],
+  transformFields: {},
+} as const
+```
+
+**interface.ts** — A TypeScript interface matching the table's column types:
+
+```typescript
+export interface Orders {
+  id: number
+  customer_id: number
+  status: string
+  total: number
+  created_at: Date
+}
+```
+
+**query-schema.ts** — A Pothos query schema defining the GraphQL type, comparison inputs, and resolver with filtering, sorting, and pagination:
+
+```typescript
+import { builder } from "@lakeql/api"
+import { ordersConfig } from "./config"
+
+// Defines: OrdersType, OrdersFilter, OrdersSort, OrdersConnection
+// Registers: Query.orders(filter, sort, paging) → OrdersConnection
+```
+
+**json-schema.json** — Used at runtime by `@lakeql/response-transformer` to map Trino's array responses into typed objects:
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "id": { "type": "number" },
+    "customer_id": { "type": "number" },
+    "status": { "type": "string" },
+    "total": { "type": "number" },
+    "created_at": { "type": "string" }
+  }
+}
+```
+
+## Starting the API Server
+
+With schemas generated, start the server:
+
+```bash
+npx tsx src/server.ts
+```
+
+The server loads all query schemas from the configured `schemaPath` directory and registers them with the Pothos builder. On startup you'll see:
+
+```
+* Server URL: http://localhost:4000/
+* GraphQL Endpoint: http://localhost:4000/graphql
+```
+
+## Executing a Query
+
+Open GraphiQL at `http://localhost:4000/graphql` and run:
+
+```graphql
+query {
+  orders(
+    filter: { and: [{ status: { eq: "shipped" } }] }
+    paging: { limit: 10, offset: 0 }
+    sort: [{ field: "created_at", direction: "DESC" }]
+  ) {
+    totalCount
+    pageInfo {
+      hasNext
+      hasPrevious
+      currentPage
+      maxPages
+      nextPage
+      previousPage
+    }
+    nodes {
+      id
+      customer_id
+      status
+      total
+    }
+  }
+}
+```
+
+<Note>
+  If `AUTH_MOCK=true`, include the `Authorization` header with your
+  `AUTH_MOCK_TOKEN` value. You can also set `x-username` to simulate different
+  users.
+</Note>
+
+### Example Response
+
+```json
+{
+  "data": {
+    "orders": {
+      "totalCount": 142,
+      "pageInfo": {
+        "hasNext": true,
+        "hasPrevious": false,
+        "currentPage": 1,
+        "maxPages": 15,
+        "nextPage": 2,
+        "previousPage": null
+      },
+      "nodes": [
+        {
+          "id": 1001,
+          "customer_id": 42,
+          "status": "shipped",
+          "total": 249.99
+        },
+        {
+          "id": 998,
+          "customer_id": 17,
+          "status": "shipped",
+          "total": 89.5
+        }
+      ]
+    }
+  }
+}
+```
+
+## What Happens Under the Hood
+
+1. GraphQL Yoga receives the query and resolves the `orders` field
+2. The resolver extracts selected fields from the GraphQL resolve info
+3. `@lakeql/query-builder` generates a Trino SQL query with two CTEs (`total_count` and `records`)
+4. `@lakeql/trino-client` executes the SQL against your Trino instance
+5. `@lakeql/response-transformer` converts Trino's array response into typed objects using the JSON schema
+6. Pagination metadata is calculated and the connection response is returned

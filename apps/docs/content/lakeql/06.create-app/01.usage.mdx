@@ -1,0 +1,104 @@
+---
+title: Usage
+description: How to use create-lakeql-app to scaffold a new project.
+---
+
+## Scaffolding a New Project
+
+`create-lakeql-app` is LakeQL's project scaffolding tool. It downloads a starter template, configures dependencies, and sets up your project structure.
+
+## Quick Start
+
+```bash
+npx create-lakeql-app my-api
+```
+
+## Interactive Mode
+
+When run without arguments, the CLI prompts you for:
+
+1. **Project name** — lowercase letters, numbers, hyphens, and underscores
+2. **Install dependencies** — yes/no
+3. **Package manager** — npm, pnpm, or yarn
+
+```bash
+npx create-lakeql-app
+```
+
+```
+◆  create-lakeql-app
+│
+◇  What is your project name?
+│  my-lakeql-api
+│
+◇  Install dependencies?
+│  Yes
+│
+◇  Which package manager?
+│  pnpm
+│
+◇  Template downloaded successfully!
+◇  Package.json updated!
+◇  Dependencies installed!
+│
+└  🎉 Project created successfully!
+```
+
+## CLI Flags
+
+| Flag                                   | Description                                        |
+| -------------------------------------- | -------------------------------------------------- |
+| `[project-name]`                       | Project name as positional argument (skips prompt) |
+| `--package-manager=<pm>` or `-pm=<pm>` | Package manager: `npm`, `pnpm`, `yarn`, `bun`      |
+| `--no-install`                         | Skip dependency installation                       |
+| `--quiet` or `-q`                      | Suppress output (useful for scripts/CI)            |
+
+### Examples
+
+```bash
+# Non-interactive with pnpm
+npx create-lakeql-app my-api --package-manager=pnpm
+
+# Skip install for CI
+npx create-lakeql-app my-api --no-install --quiet
+
+# Short form
+npx create-lakeql-app my-api -pm=yarn
+```
+
+## What Happens
+
+<Stepper>
+<StepperItem title="Download template">
+
+The tool downloads the app template from the LakeQL GitHub repository using [giget](https://github.com/unjs/giget). No git clone required.
+
+</StepperItem>
+<StepperItem title="Update package.json">
+
+The `package.json` is updated with:
+
+- Your chosen project name
+- Latest published versions of `@lakeql/api` and `@lakeql/cli` (fetched from npm registry)
+- Removal of workspace-specific fields
+
+</StepperItem>
+<StepperItem title="Install dependencies">
+
+If selected, dependencies are installed with your chosen package manager.
+
+</StepperItem>
+</Stepper>
+
+## Project Name Validation
+
+Project names must match the pattern: `^[a-z0-9-_]+$`
+
+- Lowercase letters, numbers, hyphens, and underscores only
+- No spaces or special characters
+- The name becomes both the directory name and the `name` field in `package.json`
+
+<Warning>
+  The scaffolding tool will exit with an error if the target directory already
+  exists. Choose a new name or remove the existing directory first.
+</Warning>

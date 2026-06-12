@@ -1,0 +1,32 @@
+---
+title: "lakeql-cli create-registry"
+navTitle: "create-registry"
+description: Generates the config registry for type-safe permissions.
+---
+
+Scans your project for all `schemas/**/config.ts` files and generates a unified `config-registry.ts`. This registry enables type-safe usage of `createPermission` across your endpoints.
+
+## Syntax
+
+```bash
+lakeql-cli create-registry [options]
+```
+
+## Options
+
+| Flag                   | Type   | Required | Default              | Description                  |
+| ---------------------- | ------ | -------- | -------------------- | ---------------------------- |
+| `--source-path <path>` | string | No       | Invocation directory | Base path for generated code |
+
+## Usage
+
+```bash
+lakeql-cli create-registry
+```
+
+```
+✔ Found 4 config files in schemas/
+✔ Generated config-registry.ts
+```
+
+The generated file imports all discovered config modules and re-exports them as a typed registry object.

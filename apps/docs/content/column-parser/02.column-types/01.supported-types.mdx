@@ -1,0 +1,78 @@
+---
+title: Supported Types
+description: Complete list of supported Trino column types and how they map to parsed structures.
+---
+
+The column parser supports all common Trino data types, including primitives, date/time types, and complex nested structures.
+
+## Primitive types
+
+| Trino Type | Parsed As | Description            |
+| ---------- | --------- | ---------------------- |
+| `varchar`  | string    | Variable-length string |
+| `integer`  | number    | 32-bit signed integer  |
+| `bigint`   | number    | 64-bit signed integer  |
+| `double`   | number    | 64-bit floating point  |
+| `boolean`  | boolean   | True/false value       |
+
+## Date and time types
+
+| Trino Type  | Parsed As | Description                      |
+| ----------- | --------- | -------------------------------- |
+| `date`      | Date      | Calendar date (year, month, day) |
+| `timestamp` | DateTime  | Date and time with precision     |
+
+## Complex types
+
+Complex types are parsed recursively. The parser handles arbitrary nesting depth.
+
+### array
+
+`array(element_type)` — An ordered collection of elements. The element type can be any supported type, including other complex types.
+
+```
+array(varchar)         → string[]
+array(integer)         → number[]
+array(row(name varchar, age integer)) → object[]
+```
+
+### map
+
+`map(key_type, value_type)` — A key-value mapping. Keys are typically `varchar`.
+
+```
+map(varchar, integer)  → { [key: string]: number }
+```
+
+### row (struct)
+
+`row(field1 type1, field2 type2, ...)` — A structured type with named fields. Each field has its own type which can be any supported type.
+
+```
+row(name varchar, age integer)
+→ { name: string, age: number }
+
+row(name varchar, addresses array(row(street varchar, city varchar)))
+→ { name: string, addresses: { street: string, city: string }[] }
+```
+
+## Recursive parsing
+
+Nested types are parsed recursively. The parser normalizes Trino's syntax by removing spaces after commas and converting `field type` pairs to `field:type` notation before delegating to `json-column-parser`.
+
+```typescript
+import { parseColumns } from "@lakeql/column-parser"
+
+// Deeply nested type
+const columns = [
+  {
+    name: "metadata",
+    type: "row(tags array(varchar), attributes map(varchar, row(key varchar, value varchar)))",
+    extra: "",
+    description: "Nested metadata field",
+  },
+]
+
+const result = parseColumns(columns)
+// metadata → fully structured type tree with nested arrays, maps, and rows
+```

@@ -1,0 +1,55 @@
+---
+title: Installation
+description: How to install and run the LakeQL CLI for schema introspection and code generation.
+---
+
+The LakeQL CLI (`@lakeql/cli`) orchestrates schema introspection from Trino and generates TypeScript code — interfaces, query schemas, and configs — that power type-safe GraphQL query endpoints in your project.
+
+## Install globally
+
+```bash
+npm install -g @lakeql/cli
+```
+
+## Run without installing
+
+Use `npx` or `pnpm dlx` to invoke the CLI without a global install:
+
+```bash
+npx lakeql-cli
+```
+
+```bash
+pnpm dlx @lakeql/cli
+```
+
+## Run within the monorepo
+
+If you're working inside the LakeQL monorepo:
+
+```bash
+pnpm -F cli cli
+```
+
+## Environment variables
+
+The CLI connects to Trino for schema introspection. Set the following environment variables before running any command:
+
+| Variable        | Required | Description                       |
+| --------------- | -------- | --------------------------------- |
+| `HIVE_HOST`     | Yes      | Trino host URL including protocol |
+| `HIVE_PORT`     | Yes      | Trino port                        |
+| `HIVE_USERNAME` | Yes      | Authentication username           |
+| `HIVE_PASSWORD` | Yes      | Authentication password           |
+| `HIVE_CATALOG`  | Yes      | Default catalog name              |
+
+Create a `.env` file in your project root:
+
+```bash
+# .env.example
+HIVE_HOST=https://trino.example.com
+HIVE_PORT=443
+HIVE_USERNAME=your-username
+HIVE_PASSWORD=your-password
+HIVE_CATALOG=hive
+```

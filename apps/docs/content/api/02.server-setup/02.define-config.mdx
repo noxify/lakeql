@@ -1,0 +1,89 @@
+---
+title: defineConfig
+description: Type-safe configuration wrapper that provides createYogaServer and startServer methods.
+---
+
+`defineConfig` is the recommended way to configure your LakeQL API server. It provides full type safety for permissions by inferring catalog, schema, and table names from your generated configs.
+
+## Signature
+
+```typescript
+function defineConfig<const TConfig extends readonly SchemaConfigEntry[]>(
+  input: TConfig | DefineConfigOptions<TConfig>
+): DefinedApiConfig<TConfig>
+```
+
+## Configuration options
+
+The `DefineConfigOptions` interface extends `ApiRuntimeConfig` with a required `allConfigs` field:
+
+| Field                 | Type                           | Default                                  | Description                                        |
+| --------------------- | ------------------------------ | ---------------------------------------- | -------------------------------------------------- |
+| `port`                | `number`                       | `API_PORT` env or `4000`                 | Server port                                        |
+| `graphqlPath`         | `string`                       | `"/graphql"`                             | GraphQL endpoint path                              |
+| `healthCheckEndpoint` | `string`                       | `"/live"`                                | Health check endpoint path                         |
+| `maxRecordsPerPage`   | `number`                       | `API_MAX_RECORDS_PER_PAGE` env or `2000` | Maximum records per paginated response             |
+| `schemaPath`          | `string`                       | —                                        | Path to query schema files                         |
+| `baseDir`             | `string`                       | `process.cwd()`                          | Base directory for resolving relative paths        |
+| `getUser`             | `GetUserResolver`              | Built-in mock auth resolver              | Custom JWT authentication resolver                 |
+| `hasReadPermission`   | `ReadPermissionResolver`       | Built-in read permission check           | Custom read permission resolver                    |
+| `hasWritePermission`  | `WritePermissionResolver`      | Built-in write permission check          | Custom write permission resolver                   |
+| `yogaConfig`          | `YogaConfigOverrides`          | —                                        | Override GraphQL Yoga options                      |
+| `permissions`         | `Permission[]`                 | `[]`                                     | Permission rules for technical users               |
+| `allConfigs`          | `readonly SchemaConfigEntry[]` | —                                        | Generated schema configs for type-safe permissions |
+
+## Return type
+
+`defineConfig` returns a `DefinedApiConfig` object that includes all your config options plus two convenience methods:
+
+```typescript
+interface DefinedApiConfig<TConfig> {
+  // ...all config options
+  allConfigs: TConfig
+  createYogaServer: (logger) => Promise<ApiYoga>
+  startServer: () => Promise<void>
+}
+```
+
+## Usage
+
+### Minimal — pass only configs
+
+```typescript
+import { defineConfig } from "@lakeql/api/config"
+import { allConfigs } from "./generated/configs"
+
+export default defineConfig(allConfigs)
+```
+
+### Full configuration
+
+```typescript
+import { defineConfig } from "@lakeql/api/config"
+import { allConfigs } from "./generated/configs"
+import { permissions } from "./permissions"
+import { customGetUser } from "./auth"
+
+export default defineConfig({
+  allConfigs,
+  schemaPath: "./src/schemas",
+  port: 4000,
+  graphqlPath: "/graphql",
+  maxRecordsPerPage: 500,
+  getUser: customGetUser,
+  permissions,
+  yogaConfig: {
+    graphiql: true,
+  },
+})
+```
+
+### Using startServer
+
+```typescript
+import config from "./lakeql.config"
+
+await config.startServer()
+```
+
+This calls `startApiServer` internally with your defined configuration.

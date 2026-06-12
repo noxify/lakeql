@@ -1,0 +1,39 @@
+---
+title: Introduction
+description: What @lakeql/response-transformer provides and how it converts Trino responses into typed objects.
+---
+
+`@lakeql/response-transformer` converts Trino's raw query responses — which arrive as positional arrays — into properly typed JavaScript objects with named keys. It handles date conversion using `@formkit/tempo`, applies field name mappings between database columns and GraphQL field names, and recursively transforms nested objects and arrays.
+
+The package exports two core functions:
+
+- **`convertTrinoResponse`** — Maps a positional array of values to a keyed object using a list of column names.
+- **`transform`** — Applies type coercion, date formatting, and field renaming on the converted data using a JSON Schema definition.
+
+## How it fits in
+
+When Trino returns query results, each row is an array of values in column order. The response transformer sits between the Trino client and the GraphQL resolver, converting these arrays into the shape expected by the API's type system.
+
+```typescript
+import { convertTrinoResponse, transform } from "@lakeql/response-transformer"
+
+// Step 1: Convert positional array to keyed object
+const row = convertTrinoResponse({
+  keys: ["user_name", "created_at", "is_active"],
+  values: ["alice", 1700000000, true],
+})
+// { user_name: "alice", created_at: 1700000000, is_active: true }
+
+// Step 2: Apply schema-based transformation
+const result = transform({
+  data: row,
+  definition: schema, // JSON Schema describing the response shape
+  dateFields: ["created_at"],
+  transformFields: { user_name: "userName" },
+})
+// { userName: "alice", created_at: 1700000000000, is_active: true }
+```
+
+## Dependencies
+
+The package uses `@formkit/tempo` for date formatting and timezone handling. No other runtime dependencies are required.

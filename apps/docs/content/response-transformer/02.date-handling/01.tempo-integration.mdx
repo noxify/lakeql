@@ -1,0 +1,45 @@
+---
+title: Tempo Integration
+description: How date fields are detected and converted using @formkit/tempo for timezone-aware formatting.
+---
+
+The response transformer detects date/time fields via the `dateFields` configuration array. When a field is listed in `dateFields`, its value is treated as a Unix timestamp (seconds since epoch) and converted to milliseconds for JavaScript `Date` compatibility.
+
+## Date field detection
+
+Fields are identified as dates by name — you pass an array of field names to the `dateFields` option. This matches the pattern used in LakeQL's SQL queries where `to_unixtime()` converts timestamps to Unix seconds.
+
+```typescript
+import { transform } from "@lakeql/response-transformer"
+
+const result = transform({
+  data: { created_at: 1700000000, name: "alice" },
+  definition: schema,
+  dateFields: ["created_at"],
+})
+// created_at is multiplied by 1000 → 1700000000000 (milliseconds)
+```
+
+## UTC date handling
+
+For fields that require formatted UTC output, list them in the `utcDates` array. These fields are formatted using `@formkit/tempo`'s `format` function with the `Europe/Berlin` timezone and returned as an ISO-style string with a `Z` suffix.
+
+```typescript
+import { transform } from "@lakeql/response-transformer"
+
+const result = transform({
+  data: { published_at: 1700000000 },
+  definition: schema,
+  dateFields: ["published_at"],
+  utcDates: ["published_at"],
+})
+// published_at → "2023-11-14T19:13:20Z" (formatted in Europe/Berlin timezone)
+```
+
+## Conversion pipeline
+
+1. The raw value from Trino is a Unix timestamp in seconds (via `to_unixtime()` in SQL)
+2. For standard date fields: multiply by 1000 to get JavaScript milliseconds
+3. For UTC date fields: create a `Date` from milliseconds, format with `@formkit/tempo` using `YYYY-MM-DDTHH:mm:ss` pattern, append `Z`
+
+Fields not listed in `dateFields` are passed through without modification.

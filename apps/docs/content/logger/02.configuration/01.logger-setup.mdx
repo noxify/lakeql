@@ -1,0 +1,56 @@
+---
+title: Logger Setup
+description: How createLogger() builds a configured LogLayer instance with winston transport and redaction.
+---
+
+The `createLogger()` function returns a fully configured `LogLayer` instance. It sets up a winston transport with colorized development formatting, structured context/metadata fields, and automatic error serialization.
+
+## Basic usage
+
+```typescript
+import { createLogger } from "@lakeql/logger"
+
+const logger = createLogger()
+
+// Simple message
+logger.info("Application started")
+
+// With context (persisted across calls)
+const reqLogger = logger.withContext({ requestId: "req-123" })
+reqLogger.info("Handling request")
+reqLogger.debug("Query executed", { duration: 45 })
+
+// Error logging with serialization
+try {
+  await queryTrino(sql)
+} catch (err) {
+  logger.error("Query failed", err as Error)
+}
+```
+
+## Winston transport configuration
+
+The logger uses a single `Console` transport with a custom development format:
+
+- Log level is uppercased for visibility
+- Timestamps are included on every entry
+- Context and metadata objects are pretty-printed with color using `node:util.inspect`
+- Error details are extracted and formatted separately
+- Network errors (ETIMEDOUT, ECONNREFUSED, etc.) receive special formatting
+
+## LogLayer configuration
+
+| Option                 | Value            | Description                             |
+| ---------------------- | ---------------- | --------------------------------------- |
+| `contextFieldName`     | `"context"`      | Key for persistent context data         |
+| `metadataFieldName`    | `"metadata"`     | Key for per-call metadata               |
+| `errorFieldInMetadata` | `false`          | Errors are logged at top level          |
+| `errorSerializer`      | `serializeError` | Converts Error objects to plain objects |
+
+## Environment variables
+
+The log level is controlled by the `LOG_LEVEL` environment variable, validated by `@t3-oss/env-core` with Zod:
+
+```bash
+LOG_LEVEL=debug  # Options: error, warn, info, debug (default: warn)
+```

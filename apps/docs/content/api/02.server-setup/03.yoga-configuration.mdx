@@ -1,0 +1,70 @@
+---
+title: Yoga Configuration
+description: Customize GraphQL Yoga options like GraphiQL, error masking, logging, and landing page.
+---
+
+The `yogaConfig` option in `defineConfig` (or `createApiServer`) lets you override GraphQL Yoga's built-in behavior. It accepts all Yoga options except `schema` and `context`, which are managed internally.
+
+## Type
+
+```typescript
+type YogaConfigOverrides = Omit<
+  NonNullable<Parameters<typeof createYoga>[0]>,
+  "schema" | "context"
+>
+```
+
+## Available overrides
+
+| Option                | Type                  | Default                   | Description                              |
+| --------------------- | --------------------- | ------------------------- | ---------------------------------------- |
+| `healthCheckEndpoint` | `string`              | `"/live"`                 | Path for the health check endpoint       |
+| `graphiql`            | `boolean \| object`   | `true` in development     | Enable/configure GraphiQL IDE            |
+| `logging`             | `boolean \| LogLevel` | Based on `API_LOGGER` env | Control Yoga's internal logging          |
+| `maskedErrors`        | `boolean`             | `true`                    | Hide internal error details from clients |
+| `landingPage`         | `boolean`             | `false`                   | Show Yoga's default landing page         |
+
+## Default behavior
+
+Without any overrides, the server applies these defaults:
+
+- **GraphiQL** is enabled when `NODE_ENV=development`
+- **maskedErrors** is `true` — internal errors are replaced with generic messages
+- **Logging** level is controlled by the `API_LOGGER` environment variable (default: `warn`). Set to `silent` to disable Yoga logging entirely.
+- **Landing page** is disabled
+
+## Usage
+
+```typescript
+import { defineConfig } from "@lakeql/api/config"
+import { allConfigs } from "./generated/configs"
+
+export default defineConfig({
+  allConfigs,
+  yogaConfig: {
+    graphiql: {
+      title: "LakeQL Explorer",
+      defaultQuery: "{ __typename }",
+    },
+    maskedErrors: false, // expose full errors in development
+    healthCheckEndpoint: "/healthz",
+  },
+})
+```
+
+## Logging configuration
+
+The `API_LOGGER` environment variable accepts these values:
+
+| Value    | Effect                        |
+| -------- | ----------------------------- |
+| `debug`  | All messages                  |
+| `info`   | Info, warnings, and errors    |
+| `warn`   | Warnings and errors (default) |
+| `error`  | Errors only                   |
+| `silent` | No Yoga logging output        |
+
+```bash
+# .env
+API_LOGGER=debug
+```

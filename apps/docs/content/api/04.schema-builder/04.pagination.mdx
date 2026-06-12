@@ -1,0 +1,110 @@
+---
+title: Pagination
+description: Built-in page-based pagination with Paging input, PageInfo output, and ConnectionInterface.
+---
+
+LakeQL uses offset-based pagination (page + perPage) rather than cursor-based pagination. This maps naturally to Trino's `LIMIT` and `OFFSET` clauses and provides predictable navigation for tabular data.
+
+## Paging input
+
+The `Paging` input type is available on all generated query fields:
+
+```graphql
+input Paging {
+  page: Int = 1
+  perPage: Int = 100
+}
+```
+
+| Field     | Default | Constraints                         |
+| --------- | ------- | ----------------------------------- |
+| `page`    | `1`     | Must be ≥ 1                         |
+| `perPage` | `100`   | Must be ≥ 1 and ≤ maxRecordsPerPage |
+
+## PageInfo output
+
+Every paginated response includes a `PageInfo` object:
+
+```graphql
+type PageInfo {
+  currentPage: Int!
+  hasNext: Boolean!
+  hasPrevious: Boolean!
+  maxPages: Int!
+  nextPage: Int
+  previousPage: Int
+}
+```
+
+| Field          | Description                                           |
+| -------------- | ----------------------------------------------------- |
+| `currentPage`  | The current page number                               |
+| `hasNext`      | Whether more pages exist after the current one        |
+| `hasPrevious`  | Whether pages exist before the current one            |
+| `maxPages`     | Total number of pages based on totalCount and perPage |
+| `nextPage`     | Page number for the next page (null if on last page)  |
+| `previousPage` | Page number for the previous page (null if on first)  |
+
+## ConnectionInterface
+
+All paginated query responses conform to the `ConnectionInterface`:
+
+```typescript
+interface ConnectionInterface<T> {
+  totalCount: number
+  pageInfo: PageInfoInterface
+  nodes: T[]
+}
+```
+
+In GraphQL, this looks like:
+
+```graphql
+type UserConnection {
+  totalCount: Int!
+  pageInfo: PageInfo!
+  nodes: [User!]!
+}
+```
+
+## Configuring maxRecordsPerPage
+
+The maximum allowed value for `perPage` is controlled by:
+
+1. The `API_MAX_RECORDS_PER_PAGE` environment variable (default: `2000`)
+2. The `maxRecordsPerPage` option in `defineConfig`
+
+```typescript
+import { defineConfig } from "@lakeql/api/config"
+import { allConfigs } from "./generated/configs"
+
+export default defineConfig({
+  allConfigs,
+  maxRecordsPerPage: 500, // override the env default
+})
+```
+
+Requesting more than `maxRecordsPerPage` returns a validation error.
+
+## Example query
+
+```graphql
+query PaginatedUsers {
+  users(paging: { page: 2, perPage: 25 }) {
+    totalCount
+    pageInfo {
+      currentPage
+      hasNext
+      hasPrevious
+      maxPages
+      nextPage
+      previousPage
+    }
+    nodes {
+      id
+      name
+      email
+    }
+  }
+}
+```

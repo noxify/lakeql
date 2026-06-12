@@ -1,0 +1,80 @@
+---
+title: Key Concepts
+description: Core concepts behind LakeQL — data lakehouses, GraphQL-over-Trino, schema introspection, and code generation.
+---
+
+## Data Lakehouse
+
+A data lakehouse combines the flexibility of data lakes with the structured query capabilities of data warehouses. In a typical LakeQL setup:
+
+- **Storage** — Data lives in object storage (S3, MinIO) in open formats like Parquet or ORC
+- **Metastore** — Apache Hive Metastore tracks table metadata (schemas, partitions, locations)
+- **Query Engine** — Trino provides SQL access across all catalogs and schemas
+
+LakeQL sits on top of this stack, exposing lakehouse data through a GraphQL API without requiring you to build a separate application layer.
+
+## GraphQL-over-Trino
+
+LakeQL translates incoming GraphQL queries into Trino SQL. This translation uses Kysely as a type-safe query builder:
+
+```typescript
+// A GraphQL query like this:
+query {
+  orders(filter: { status: { eq: "shipped" } }, paging: { limit: 10 }) {
+    nodes { id, status, total }
+    pageInfo { hasNext, currentPage }
+  }
+}
+
+// Becomes a Trino SQL query like this:
+WITH total_count AS (
+  SELECT COUNT(*) AS total_records
+  FROM hive.sales.orders
+  WHERE status = 'shipped'
+),
+records AS (
+  SELECT id, status, total
+  FROM hive.sales.orders
+  WHERE status = 'shipped'
+  ORDER BY id ASC
+  FETCH FIRST 10 ROWS ONLY
+)
+SELECT * FROM total_count FULL JOIN records ON TRUE
+```
+
+The query builder handles field selection, WHERE clause generation, pagination (FETCH/OFFSET), and sorting — all derived from the GraphQL resolve info and input arguments.
+
+## Schema Introspection
+
+LakeQL discovers table structures by querying Trino metadata. When you run `lakeql-cli pull`, the CLI:
+
+1. Connects to your Trino instance via the REST API
+2. Executes `SHOW COLUMNS FROM catalog.schema.table` for each table
+3. Parses column type strings (including complex types like `array(row(...))`)
+4. Produces structured column definitions with names, types, and nullability
+
+This means your GraphQL schema always reflects the actual state of your lakehouse tables.
+
+## Code Generation
+
+From introspected metadata, LakeQL generates four artifacts per table:
+
+| File               | Purpose                                                       |
+| ------------------ | ------------------------------------------------------------- |
+| `config.ts`        | Table metadata — catalog, schema, table name, column mappings |
+| `interface.ts`     | TypeScript interface matching the table's column types        |
+| `query-schema.ts`  | Pothos query schema with filtering, sorting, and pagination   |
+| `json-schema.json` | JSON Schema used by the response transformer at runtime       |
+
+These files are committed to your repository and imported by the API server at startup. When your table schema changes, re-run `pull` to regenerate them.
+
+```bash
+# Generated file structure after pulling the "orders" table
+src/schemas/generated/
+└── sales/
+    └── orders/
+        ├── config.ts
+        ├── interface.ts
+        ├── query-schema.ts
+        └── json-schema.json
+```

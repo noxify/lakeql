@@ -1,0 +1,89 @@
+---
+title: Combining Filters
+description: How AND/OR logic works and how filters are normalized before query compilation.
+---
+
+## WhereOperator Enum
+
+The `WhereOperator` enum defines the two logical combinators available for grouping filter conditions:
+
+```typescript
+import { WhereOperator } from "@lakeql/query-builder"
+
+enum WhereOperator {
+  AND = "and",
+  OR = "or",
+}
+```
+
+Every `Where` object must have either `and` or `or` as its root key. Conditions within an `and` array are combined with SQL `AND`; conditions within an `or` array are combined with SQL `OR`.
+
+## normalizeUserQuery
+
+User-supplied filter objects might not always follow the strict `{ and: [...] }` or `{ or: [...] }` root format. The `normalizeUserQuery` function ensures a consistent structure by wrapping bare field objects into an `and` root.
+
+```typescript
+import { normalizeUserQuery } from "@lakeql/query-builder"
+
+// Input: bare fields without a root operator
+const input = { status: { eq: "active" }, region: { eq: "us-east" } }
+
+// Output: wrapped in an AND root
+const normalized = normalizeUserQuery(input)
+// { and: [{ status: { eq: "active" } }, { region: { eq: "us-east" } }] }
+```
+
+## normalizeFilter
+
+The `normalizeFilter` function handles another edge case: filter objects where multiple fields are combined in a single array element. It splits multi-field objects into separate entries so each condition is processed independently.
+
+```typescript
+import { normalizeFilter } from "@lakeql/query-builder"
+
+// Input: multiple fields in one object
+const input = {
+  and: [{ status: { eq: "active" }, region: { eq: "us-east" } }],
+}
+
+// Output: each field in its own object
+const normalized = normalizeFilter(input)
+// { and: [{ status: { eq: "active" } }, { region: { eq: "us-east" } }] }
+```
+
+## Processing Pipeline
+
+Inside `generateQuery`, both normalization functions are applied before building the WHERE clause:
+
+1. `normalizeUserQuery(userQuery)` — ensures there's a root `and`/`or` key
+2. `normalizeFilter(...)` — splits multi-field objects into single-field entries
+3. `conditionBuilder(...)` — recursively walks the tree and builds Kysely expressions
+
+## Nested Example
+
+```typescript
+import type { Where } from "@lakeql/query-builder"
+
+const complexFilter: Where = {
+  and: [
+    { status: { eq: "active" } },
+    {
+      or: [
+        { region: { eq: "us-east" } },
+        {
+          and: [{ region: { eq: "eu-west" } }, { tier: { eq: "premium" } }],
+        },
+      ],
+    },
+  ],
+}
+```
+
+This translates to:
+
+```sql
+WHERE "status" = 'active'
+  AND (
+    "region" = 'us-east'
+    OR ("region" = 'eu-west' AND "tier" = 'premium')
+  )
+```

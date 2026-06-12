@@ -1,0 +1,32 @@
+---
+title: "lakeql-cli init"
+navTitle: "init"
+description: Initialize a lakeql.config.json configuration file in your project.
+---
+
+Scaffolds a `lakeql.config.json` file in the current directory. This config controls where generated code is placed.
+
+If no `src/` directory is detected, the CLI prompts you to choose or specify a source path. If `src/` exists, it is used automatically.
+
+## Syntax
+
+```bash
+lakeql-cli init
+```
+
+## Options
+
+This command has no options.
+
+## Usage
+
+```bash
+lakeql-cli init
+```
+
+```
+Detected src/ directory — generated code will be placed in src/
+Created lakeql.config.json at /path/to/project/lakeql.config.json
+```
+
+If `lakeql.config.json` already exists, the CLI asks whether to overwrite it.

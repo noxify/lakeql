@@ -1,0 +1,41 @@
+---
+title: Config File
+description: Reference for the lakeql.config.json configuration file.
+---
+
+The `lakeql.config.json` file controls where the CLI places generated code. It is created by running `lakeql-cli init`.
+
+## Schema
+
+```typescript
+interface LakeQLConfig {
+  /**
+   * Base path for code generation (schemas, config-registry, etc.).
+   * Relative paths are resolved from the config file location.
+   * @default "."
+   */
+  sourcePath: string
+}
+```
+
+## Fields
+
+| Field        | Type   | Default | Description                              |
+| ------------ | ------ | ------- | ---------------------------------------- |
+| `sourcePath` | string | `"."`   | Base directory for generated code output |
+
+## Path resolution
+
+- Relative paths are resolved from the directory where `lakeql.config.json` lives.
+- If `src/` is detected during `lakeql-cli init`, `sourcePath` is set to `"src"` automatically.
+- The CLI `--source-path` flag overrides the config value for that invocation.
+
+## Example
+
+```json
+{
+  "sourcePath": "src"
+}
+```
+
+With this config, running `lakeql-cli pull` places generated files under `src/schemas/generated/{catalog}/{schema}/{table}/`.

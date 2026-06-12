@@ -1,0 +1,91 @@
+---
+title: Builder Configuration
+description: Pothos SchemaBuilder setup with scope auth, validation plugins, and the GraphQL context type.
+---
+
+The Pothos `SchemaBuilder` is the foundation of LakeQL's type-safe GraphQL schema. It's pre-configured with auth scopes and validation, and shared across all query schema files.
+
+## Builder setup
+
+```typescript
+import SchemaBuilder from "@pothos/core"
+import ScopeAuthPlugin from "@pothos/plugin-scope-auth"
+import ValidationPlugin from "@pothos/plugin-validation"
+
+const builder = new SchemaBuilder<{
+  Context: Context
+  Scalars: Partial<UserScalars["Scalars"]>
+  AuthScopes: {
+    authorized: boolean
+    readPermission: PermissionFields
+    writePermission: PermissionFields
+  }
+}>({
+  plugins: [ScopeAuthPlugin, ValidationPlugin],
+  scopeAuth: {
+    /* ... */
+  },
+  validation: {
+    /* ... */
+  },
+})
+```
+
+## Context type
+
+Every resolver receives this context object:
+
+```typescript
+interface Context {
+  currentUser: JWTPayload | null
+  permissions: Permission[]
+  hasReadPermission?: ReadPermissionResolver
+  hasWritePermission?: WritePermissionResolver
+}
+```
+
+| Field                | Description                          |
+| -------------------- | ------------------------------------ |
+| `currentUser`        | Authenticated user payload or `null` |
+| `permissions`        | Configured permission rules          |
+| `hasReadPermission`  | Resolver for read permission checks  |
+| `hasWritePermission` | Resolver for write permission checks |
+
+A `logger` instance is also injected into the context by the Yoga server setup.
+
+## Auth scopes
+
+The builder defines three scopes that can be applied to any field:
+
+```typescript
+AuthScopes: {
+  authorized: boolean // user is authenticated
+  readPermission: PermissionFields // { catalog, schema, tableName }
+  writePermission: PermissionFields // { catalog, schema, tableName }
+}
+```
+
+## SortDirection enum
+
+A shared enum for ordering query results:
+
+```typescript
+import { SortDirection } from "@lakeql/api/builder"
+// Values: "ASC" | "DESC"
+```
+
+## Importing the builder
+
+Custom query schemas import the shared builder instance to register types and fields:
+
+```typescript
+import { builder } from "@lakeql/api/builder"
+
+builder.queryField("hello", (t) =>
+  t.string({
+    resolve: () => "world",
+  })
+)
+```
+
+All files that import `builder` and define types or fields are automatically discovered during schema loading — no explicit registration needed.

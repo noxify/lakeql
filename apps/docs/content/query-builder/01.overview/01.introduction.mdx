@@ -1,0 +1,57 @@
+---
+title: Introduction
+description: Learn how the query builder uses Kysely to generate Trino-compatible SQL from GraphQL queries.
+---
+
+## What is the Query Builder?
+
+The `@lakeql/query-builder` package is responsible for translating GraphQL query parameters — field selections, filters, sorting, and pagination — into Trino-compatible SQL statements. It uses [Kysely](https://kysely.dev/) as a type-safe SQL query builder under the hood.
+
+The package never executes queries against a database. Instead, it uses Kysely's `DummyDriver` to compile SQL strings that are later sent to Trino via the `@lakeql/trino-client`. This separation keeps query construction fully testable and free of I/O.
+
+## Core Responsibilities
+
+- Extract requested fields from GraphQL resolve info
+- Build parameterized SQL with CTEs for total count and paginated records
+- Apply user-supplied filters (AND/OR logic with multiple operators)
+- Apply sorting and Trino-specific paging syntax
+- Map GraphQL field names to database column names via `transformFields`
+- Wrap date/time columns in `to_unixtime()` for serialization
+
+```typescript
+import { generateQuery, getSelectFields } from "@lakeql/query-builder"
+
+const query = generateQuery({
+  catalog: "hive",
+  schema: "sales",
+  table: "orders",
+  selectFields: ["id", "customer_name", "created_at"],
+  userQuery: { and: [{ status: { eq: "shipped" } }] },
+  sorting: [{ field: "created_at", direction: "desc" }],
+  paging: { limit: 25, offset: 0 },
+  dateFields: ["created_at"],
+})
+```
+
+## DummyDriver Approach
+
+Kysely normally requires a database dialect with a real driver. The query builder configures Kysely with a `PostgresAdapter`, `PostgresQueryCompiler`, and a `DummyDriver` that never opens a connection. This gives you full SQL compilation (including parameter binding) without any runtime dependency on a database.
+
+```typescript
+import {
+  DummyDriver,
+  Kysely,
+  PostgresAdapter,
+  PostgresIntrospector,
+  PostgresQueryCompiler,
+} from "kysely"
+
+const db = new Kysely({
+  dialect: {
+    createAdapter: () => new PostgresAdapter(),
+    createDriver: () => new DummyDriver(),
+    createIntrospector: (db) => new PostgresIntrospector(db),
+    createQueryCompiler: () => new PostgresQueryCompiler(),
+  },
+})
+```

@@ -1,0 +1,140 @@
+---
+title: Custom Resolvers
+description: Add custom queries and mutations beyond the generated schema.
+---
+
+## Adding Custom Resolvers
+
+Generated schemas cover standard CRUD patterns, but you'll often need custom queries, computed fields, or business-logic-specific endpoints. LakeQL makes this straightforward — create a new query schema file and it will be picked up automatically.
+
+## Creating a Custom Query
+
+Create a new file in your schema path directory:
+
+```typescript
+// src/schemas/custom/analytics-query-schema.ts
+import { builder } from "@lakeql/api"
+
+const AnalyticsResult = builder.objectRef<{
+  period: string
+  totalOrders: number
+  revenue: number
+}>("AnalyticsResult")
+
+AnalyticsResult.implement({
+  fields: (t) => ({
+    period: t.exposeString("period"),
+    totalOrders: t.exposeInt("totalOrders"),
+    revenue: t.exposeFloat("revenue"),
+  }),
+})
+
+builder.queryField("orderAnalytics", (t) =>
+  t.field({
+    type: [AnalyticsResult],
+    args: {
+      schema: t.arg.string({ required: true }),
+      startDate: t.arg.string({ required: true }),
+      endDate: t.arg.string({ required: true }),
+    },
+    resolve: async (_root, args, context) => {
+      // Your custom Trino query logic here
+      const sql = `
+        SELECT
+          date_format(created_at, '%Y-%m') AS period,
+          COUNT(*) AS total_orders,
+          SUM(total) AS revenue
+        FROM hive.${args.schema}.orders
+        WHERE created_at BETWEEN TIMESTAMP '${args.startDate}' AND TIMESTAMP '${args.endDate}'
+        GROUP BY date_format(created_at, '%Y-%m')
+        ORDER BY period DESC
+      `
+
+      // Execute via trino-client
+      // Return mapped results
+      return []
+    },
+  })
+)
+```
+
+## File Discovery
+
+The API server loads all schema files from the configured `schemaPath` directory. Any file ending in `query-schema.ts` (or placed in the schema directory) that imports and uses `builder` will be included in the final GraphQL schema.
+
+```typescript
+// In your defineConfig, specify where schemas live
+import { defineConfig } from "@lakeql/api"
+import { allConfigs } from "./config-registry"
+
+export default defineConfig({
+  allConfigs,
+  schemaPath: "./src/schemas", // All .ts files here are loaded
+})
+```
+
+<Note>
+  Custom schema files are loaded alongside generated ones. Make sure your custom
+  types and field names don't conflict with generated names.
+</Note>
+
+## Custom Types
+
+Define custom GraphQL types that aren't tied to a Trino table:
+
+```typescript
+// src/schemas/custom/health-query-schema.ts
+import { builder } from "@lakeql/api"
+
+const HealthStatus = builder.objectRef<{
+  status: string
+  version: string
+  uptime: number
+}>("HealthStatus")
+
+HealthStatus.implement({
+  fields: (t) => ({
+    status: t.exposeString("status"),
+    version: t.exposeString("version"),
+    uptime: t.exposeFloat("uptime"),
+  }),
+})
+
+builder.queryField("health", (t) =>
+  t.field({
+    type: HealthStatus,
+    resolve: () => ({
+      status: "healthy",
+      version: process.env.npm_package_version ?? "unknown",
+      uptime: process.uptime(),
+    }),
+  })
+)
+```
+
+## Accessing Context
+
+Custom resolvers have full access to the GraphQL context, including the authenticated user:
+
+```typescript
+builder.queryField("myProfile", (t) =>
+  t.field({
+    type: UserProfile,
+    resolve: async (_root, _args, context) => {
+      if (!context.currentUser) {
+        throw new GraphQLError("Not authenticated")
+      }
+
+      // Use context.currentUser.userName
+      return fetchProfile(context.currentUser.userName)
+    },
+  })
+)
+```
+
+## Best Practices
+
+- **Separate files** — Keep custom resolvers in their own files so `lakeql-cli pull` won't overwrite them
+- **Name carefully** — Prefix custom types to avoid conflicts (e.g. `CustomAnalyticsResult` vs generated `OrdersResult`)
+- **Use the builder** — Always import `builder` from `@lakeql/api` to ensure types are registered in the same schema
+- **Check permissions** — Call `context.hasReadPermission` or implement your own auth checks in custom resolvers

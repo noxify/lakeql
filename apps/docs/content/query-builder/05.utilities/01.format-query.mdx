@@ -1,0 +1,77 @@
+---
+title: formatQuery
+description: Pretty-prints a compiled query with interpolated parameters for debugging and logging.
+---
+
+## Overview
+
+The `formatQuery` function takes a Kysely `CompiledQuery` and returns a human-readable SQL string with parameters interpolated inline. It uses [sql-formatter](https://github.com/sql-formatter-org/sql-formatter) for pretty-printing.
+
+## Usage
+
+```typescript
+import { generateQuery, formatQuery } from "@lakeql/query-builder"
+
+const compiled = generateQuery<MyTable>({
+  catalog: "hive",
+  schema: "sales",
+  table: "orders",
+  selectFields: ["id", "status"],
+  userQuery: { and: [{ status: { eq: "shipped" } }] },
+  sorting: [{ field: "id", direction: "asc" }],
+})
+
+const formatted = formatQuery({ query: compiled })
+console.log(formatted)
+```
+
+Output:
+
+```sql
+WITH total_count AS (
+  SELECT
+    COUNT(*) AS "total_records"
+  FROM
+    "hive"."sales"."orders"
+  WHERE
+    "status" = 'shipped'
+),
+records AS (
+  SELECT
+    "id",
+    "status"
+  FROM
+    "hive"."sales"."orders"
+  WHERE
+    "status" = 'shipped'
+  ORDER BY
+    "id" ASC
+  FETCH FIRST 100 ROWS ONLY
+)
+SELECT
+  *
+FROM
+  total_count
+  FULL JOIN records ON TRUE
+```
+
+## Formatter Configuration
+
+The formatter is configured with:
+
+| Option        | Value          | Description                             |
+| ------------- | -------------- | --------------------------------------- |
+| `keywordCase` | `"upper"`      | SQL keywords are uppercased             |
+| `language`    | `"postgresql"` | PostgreSQL dialect for formatting rules |
+| `tabWidth`    | `0`            | No tab indentation                      |
+| `useTabs`     | `false`        | Spaces only                             |
+
+## Parameter Interpolation
+
+Compiled queries use positional parameters (`$1`, `$2`, etc.). The `formatQuery` function replaces these placeholders with their actual values (strings are single-quoted, numbers are left as-is) so the output is a complete, runnable SQL statement. This is intended for debugging and logging — not for executing directly.
+
+```typescript
+// compiled.sql: '... WHERE "status" = $1'
+// compiled.parameters: ["shipped"]
+// formatted: '... WHERE "status" = \'shipped\''
+```

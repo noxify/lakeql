@@ -1,0 +1,50 @@
+---
+title: "lakeql-cli pull"
+navTitle: "pull"
+description: Interactive query endpoint generation based on a remote table.
+---
+
+Connects to Trino, introspects table columns, and generates a full set of TypeScript files for type-safe query endpoints. When run without flags, the command walks you through interactive prompts to select a schema and tables.
+
+## Syntax
+
+```bash
+lakeql-cli pull [options]
+```
+
+## Options
+
+| Flag                   | Type    | Required | Default                | Description                     |
+| ---------------------- | ------- | -------- | ---------------------- | ------------------------------- |
+| `--catalog <catalog>`  | string  | No       | `HIVE_CATALOG` env var | Catalog to use                  |
+| `--type <type>`        | string  | No       | —                      | Show tables or views            |
+| `--schema <schema>`    | string  | No       | —                      | Schema to use                   |
+| `--table <table>`      | string  | No       | —                      | Table to use (can be repeated)  |
+| `--skip-registry`      | boolean | No       | `false`                | Skip config registry generation |
+| `--source-path <path>` | string  | No       | Invocation directory   | Base path for generated code    |
+
+The `--table` flag can be passed multiple times to generate endpoints for several tables in one run.
+
+## Generated files
+
+For each selected table, the following files are created under `schemas/generated/{catalog}/{schema}/{table}/`:
+
+- `config.ts` — Endpoint configuration
+- `interface.ts` — TypeScript interface for the table columns
+- `query-schema.ts` — GraphQL query schema definition
+- `json-schema.json` — JSON Schema representation
+
+## Usage
+
+```bash
+lakeql-cli pull --catalog hive --schema myschema --table users
+```
+
+```
+✔ Introspecting hive.myschema.users
+  → schemas/generated/hive/myschema/users/config.ts
+  → schemas/generated/hive/myschema/users/interface.ts
+  → schemas/generated/hive/myschema/users/query-schema.ts
+  → schemas/generated/hive/myschema/users/json-schema.json
+✔ Config registry updated
+```

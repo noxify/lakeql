@@ -1,0 +1,77 @@
+---
+title: Streaming
+description: Stream query results row-by-row using an async generator for memory-efficient processing.
+---
+
+## stream Method
+
+The `stream` method executes a SQL statement and returns an async generator that yields rows one at a time as pages are fetched from Trino. This is ideal for large result sets where holding all data in memory would be impractical.
+
+```typescript
+async stream<T>({ sql, impersonateAs?, gotOpts? }): Promise<AsyncGenerator<T>>
+```
+
+| Parameter       | Type      | Description                        |
+| --------------- | --------- | ---------------------------------- |
+| `sql`           | `string`  | The SQL statement to execute       |
+| `impersonateAs` | `string?` | Optional Trino user to impersonate |
+| `gotOpts`       | `object?` | Optional got request options       |
+
+Returns a promise that resolves to an `AsyncGenerator<T>` yielding individual rows.
+
+## Basic Usage
+
+```typescript
+import { TrinoClient } from "@lakeql/trino-client"
+
+const client = new TrinoClient({
+  host: "https://trino.example.com",
+  port: 8443,
+  auth: { type: "basic", username: "analyst", password: "secret" },
+  catalog: "hive",
+  schema: "logs",
+})
+
+const stream = await client.stream<[string, string, number]>({
+  sql: "SELECT timestamp, level, duration FROM request_logs",
+})
+
+for await (const [timestamp, level, duration] of stream) {
+  if (duration > 5000) {
+    console.warn(`Slow request at ${timestamp}: ${duration}ms`)
+  }
+}
+```
+
+## When to Use stream vs query
+
+| Scenario                          | Method   |
+| --------------------------------- | -------- |
+| Result fits comfortably in memory | `query`  |
+| Large or unbounded result sets    | `stream` |
+| Need all rows before processing   | `query`  |
+| Can process rows incrementally    | `stream` |
+| ETL pipelines / file exports      | `stream` |
+
+## Memory Efficiency
+
+With `query`, all pages are collected into a single array before the promise resolves. With `stream`, each page is fetched on-demand and rows are yielded immediately — only one page of data is held in memory at a time.
+
+```typescript
+// Processing millions of rows without loading them all into memory
+const stream = await client.stream<[string, number]>({
+  sql: "SELECT user_id, event_count FROM daily_aggregates",
+})
+
+let processed = 0
+for await (const [userId, count] of stream) {
+  await writeToFile(userId, count)
+  processed++
+}
+
+console.log(`Processed ${processed} rows`)
+```
+
+## Pagination Under the Hood
+
+The stream uses the same `nextUri` pagination as `query`, but instead of stacking all items, it yields rows from each page as they arrive. The `requestLimit` is set to 10 concurrent page requests to balance throughput and resource usage.

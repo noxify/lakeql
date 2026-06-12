@@ -1,0 +1,51 @@
+---
+title: Introduction
+description: The schema generator converts Trino column metadata into GraphQL models, Hive DDL, and JSON schemas.
+---
+
+## What is the Schema Generator?
+
+The `@lakeql/schema-generator` package takes parsed Trino column metadata and generates three types of artifacts:
+
+- **GraphQL schema models** — TypeScript model definitions with field types, filter flags, and transform mappings
+- **Hive table DDL** — `CREATE TABLE` statements for provisioning Hive/Iceberg tables
+- **JSON schemas** — Draft-07 JSON Schema documents used for response transformation
+
+The package is structured as three independent sub-modules, each with its own export path:
+
+```typescript
+import { generateModel } from "@lakeql/schema-generator/graphql-schema"
+import { generateCreateTableStatement } from "@lakeql/schema-generator/hive-table"
+import { generateJsonSchema } from "@lakeql/schema-generator/json-schema"
+```
+
+## Input: Parsed Column Data
+
+All three sub-modules consume parsed column data produced by the `json-column-parser` library (via `@lakeql/column-parser`). This parser converts Trino's column type strings (like `row(name varchar, age bigint)` or `array(varchar)`) into a structured JSON representation that the generators can walk recursively.
+
+## Dependencies
+
+| Package           | Purpose                                                          |
+| ----------------- | ---------------------------------------------------------------- |
+| `@lakeql/helpers` | Shared utilities (special character replacement, object helpers) |
+| `kysely`          | Used by the Hive table generator for SQL construction            |
+| `lodash-es`       | `capitalize`, `omit` utilities                                   |
+| `magic-regexp`    | Type-safe regex for normalizing Trino type strings               |
+
+## How It Fits Together
+
+```
+┌──────────────────┐     ┌───────────────────────┐     ┌──────────────────┐
+│  Trino Columns   │────▶│  json-column-parser   │────▶│  Parsed Columns  │
+│  (type strings)  │     │                       │     │  (JSON tree)     │
+└──────────────────┘     └───────────────────────┘     └──────────────────┘
+                                                               │
+                         ┌─────────────────────────────────────┼──────────────────┐
+                         ▼                                     ▼                  ▼
+                  ┌──────────────┐                   ┌──────────────┐    ┌──────────────┐
+                  │  GraphQL     │                   │  Hive Table  │    │  JSON Schema │
+                  │  Models      │                   │  DDL         │    │  (Draft-07)  │
+                  └──────────────┘                   └──────────────┘    └──────────────┘
+```
+
+The CLI orchestrates this pipeline: it fetches columns from Trino, parses them, then runs each generator to produce the output files.

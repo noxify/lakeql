@@ -7,7 +7,19 @@ import {
 
 import { docSchema } from "./validations"
 
-export const availableCollections = ["lakeql", "cli"] as const
+export const availableCollections = [
+  "lakeql",
+  "cli",
+  "api",
+  "query-builder",
+  "trino-client",
+  "schema-generator",
+  "column-parser",
+  "response-transformer",
+  "file-generator",
+  "helpers",
+  "logger",
+] as const
 export type AvailableCollection = (typeof availableCollections)[number]
 
 const repository = Repository.remote({

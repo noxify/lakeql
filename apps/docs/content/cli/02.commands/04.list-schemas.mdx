@@ -1,0 +1,36 @@
+---
+title: "lakeql-cli list-schemas"
+navTitle: "list-schemas"
+description: Lists available schemas for the configured catalog.
+---
+
+Queries Trino and prints all schemas available in the specified catalog.
+
+## Syntax
+
+```bash
+lakeql-cli list-schemas [options]
+```
+
+## Options
+
+| Flag                  | Type   | Required | Default                | Description    |
+| --------------------- | ------ | -------- | ---------------------- | -------------- |
+| `--catalog <catalog>` | string | No       | `HIVE_CATALOG` env var | Catalog to use |
+
+## Usage
+
+```bash
+lakeql-cli list-schemas --catalog hive
+```
+
+```
+┌─────────────┐
+│ Schema Name │
+├─────────────┤
+│ default     │
+│ analytics   │
+│ staging     │
+│ raw         │
+└─────────────┘
+```

@@ -1,0 +1,84 @@
+---
+title: generateQuery
+description: The main entry point for building a compiled SQL query from GraphQL parameters.
+---
+
+## Overview
+
+`generateQuery` is the primary function exported by the query builder. It accepts catalog, schema, table, field selections, filters, sorting, and paging options, then returns a Kysely `CompiledQuery` containing the SQL string and bound parameters.
+
+## GenerateQueryProps Interface
+
+```typescript
+import type { CompiledQuery, SelectExpression } from "kysely"
+
+interface GenerateQueryProps<TableDefinition> {
+  catalog: string
+  schema: string
+  table: string
+  selectFields: SelectExpression<
+    KyselyDatabase<TableDefinition>,
+    keyof KyselyDatabase<TableDefinition>
+  >[]
+  userQuery: Where
+  sorting: SortInput<TableDefinition>[]
+  paging?: PagingInput
+  transformFields?: Record<string, string>
+  dateFields?: string[]
+}
+```
+
+| Property          | Description                                               |
+| ----------------- | --------------------------------------------------------- |
+| `catalog`         | Trino catalog name (e.g. `"hive"`)                        |
+| `schema`          | Trino schema name (e.g. `"sales"`)                        |
+| `table`           | Table name to query                                       |
+| `selectFields`    | Array of field names to include in the SELECT clause      |
+| `userQuery`       | Filter object using AND/OR operators and field conditions |
+| `sorting`         | Array of sort specifications (field + direction)          |
+| `paging`          | Optional limit/offset pagination                          |
+| `transformFields` | Maps GraphQL field names to actual database column names  |
+| `dateFields`      | Fields to wrap in `to_unixtime()` for epoch serialization |
+
+## Usage
+
+```typescript
+import { generateQuery, formatQuery } from "@lakeql/query-builder"
+
+interface OrderTable {
+  id: string
+  customer_name: string
+  created_at: string
+  status: string
+}
+
+const compiled = generateQuery<OrderTable>({
+  catalog: "hive",
+  schema: "sales",
+  table: "orders",
+  selectFields: ["id", "customer_name", "created_at"],
+  userQuery: { and: [{ status: { eq: "shipped" } }] },
+  sorting: [{ field: "created_at", direction: "desc" }],
+  paging: { limit: 10 },
+  transformFields: { customer_name: "customer" },
+  dateFields: ["created_at"],
+})
+
+// compiled.sql contains the parameterized SQL
+// compiled.parameters contains the bound values
+const formatted = formatQuery({ query: compiled })
+```
+
+## Return Value
+
+The function returns a `CompiledQuery` object from Kysely:
+
+```typescript
+interface CompiledQuery<T> {
+  sql: string
+  parameters: readonly unknown[]
+  query: RootOperationNode
+}
+```
+
+The `sql` string uses positional parameters (`$1`, `$2`, etc.) and the `parameters` array holds the corresponding values.

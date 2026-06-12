@@ -1,0 +1,73 @@
+---
+title: Paging
+description: Trino-specific pagination using FETCH FIRST/NEXT and OFFSET.
+---
+
+## PagingInput Interface
+
+```typescript
+interface PagingInput {
+  limit?: number
+  offset?: number
+}
+```
+
+| Property | Default     | Description                            |
+| -------- | ----------- | -------------------------------------- |
+| `limit`  | `100`       | Maximum number of rows to return       |
+| `offset` | `undefined` | Number of rows to skip before fetching |
+
+## Trino Pagination Syntax
+
+Trino uses SQL standard `FETCH FIRST N ROWS ONLY` syntax rather than the MySQL-style `LIMIT` clause. The query builder generates two different patterns depending on whether an offset is provided.
+
+### Without Offset
+
+When `offset` is not set or is `0`, the query uses:
+
+```sql
+FETCH FIRST 25 ROWS ONLY
+```
+
+### With Offset
+
+When `offset` is a positive number, the query uses:
+
+```sql
+OFFSET 50
+FETCH NEXT 25 ROWS ONLY
+```
+
+Note the difference: `FETCH FIRST` becomes `FETCH NEXT` when an offset is present.
+
+## Usage Example
+
+```typescript
+import { generateQuery } from "@lakeql/query-builder"
+
+// First page: 25 rows, no offset
+const page1 = generateQuery<MyTable>({
+  catalog: "hive",
+  schema: "analytics",
+  table: "events",
+  selectFields: ["id", "event_type", "timestamp"],
+  userQuery: {},
+  sorting: [{ field: "timestamp", direction: "desc" }],
+  paging: { limit: 25 },
+})
+
+// Second page: next 25 rows
+const page2 = generateQuery<MyTable>({
+  catalog: "hive",
+  schema: "analytics",
+  table: "events",
+  selectFields: ["id", "event_type", "timestamp"],
+  userQuery: {},
+  sorting: [{ field: "timestamp", direction: "desc" }],
+  paging: { limit: 25, offset: 25 },
+})
+```
+
+## Default Behavior
+
+If no `paging` option is provided, the query builder defaults to `FETCH FIRST 100 ROWS ONLY` with no offset. This prevents unbounded result sets from being returned accidentally.

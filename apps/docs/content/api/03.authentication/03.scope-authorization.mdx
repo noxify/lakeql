@@ -1,0 +1,109 @@
+---
+title: Scope Authorization
+description: Three authorization scopes control access to GraphQL fields — authorized, readPermission, and writePermission.
+---
+
+LakeQL uses Pothos's scope auth plugin to enforce authorization at the field level. Every query or mutation field can declare which scope is required to access it.
+
+## Auth scopes
+
+| Scope             | Check                                              | Description                            |
+| ----------------- | -------------------------------------------------- | -------------------------------------- |
+| `authorized`      | `!!context.currentUser`                            | User is authenticated (any valid JWT)  |
+| `readPermission`  | Evaluates catalog/schema/table against permissions | User can read from the specified table |
+| `writePermission` | Evaluates catalog/schema/table against permissions | User can write to the specified table  |
+
+## Read permission logic
+
+The default `hasReadPermission` resolver follows this decision model:
+
+1. **No user** → deny
+2. **No permission entry for user** → allow (Trino handles auth for human users)
+3. **Permission entry exists but no Query rules** → allow
+4. **Query rules exist** → at least one rule must match the catalog, schema, and table name
+
+This default-allow model works because human users (OAuth2 Authorization Code Flow) typically have direct Trino identities. Technical users that go through a shared system account need explicit rules.
+
+## Write permission logic
+
+The default `hasWritePermission` resolver is stricter:
+
+1. **No user** → deny
+2. **No permission entry for user** → deny
+3. **Permission entry exists but no Mutation rules** → deny
+4. **Mutation rules exist** → at least one rule must match the catalog, schema, and table name
+
+Writes always require explicit permission because they execute via a system user in Trino and bypass Trino's per-user authorization.
+
+## Custom resolvers
+
+Override the default logic by providing custom resolvers in `defineConfig`:
+
+```typescript
+import { defineConfig } from "@lakeql/api/config"
+import { allConfigs } from "./generated/configs"
+
+export default defineConfig({
+  allConfigs,
+  hasReadPermission: ({ context, catalog, schema, tableName }) => {
+    // Custom logic: check external authorization service
+    return checkExternalAuthService(context.currentUser, {
+      action: "read",
+      resource: `${catalog}.${schema}.${tableName}`,
+    })
+  },
+  hasWritePermission: ({ context, catalog, schema, tableName }) => {
+    // Custom logic: all writes require admin role
+    return context.currentUser?.role === "admin"
+  },
+})
+```
+
+## Applying scopes to fields
+
+When building custom query schemas, use `authScopes` to protect fields:
+
+```typescript
+import { builder } from "@lakeql/api/builder"
+
+builder.queryField("sensitiveData", (t) =>
+  t.field({
+    type: "String",
+    authScopes: {
+      readPermission: {
+        catalog: "hive",
+        schema: "internal",
+        tableName: "secrets",
+      },
+    },
+    resolve: () => "classified information",
+  })
+)
+```
+
+For mutations, use `writePermission`:
+
+```typescript
+builder.mutationField("updateRecord", (t) =>
+  t.field({
+    type: "Boolean",
+    authScopes: {
+      writePermission: {
+        catalog: "hive",
+        schema: "production",
+        tableName: "records",
+      },
+    },
+    args: {
+      id: t.arg.string({ required: true }),
+      value: t.arg.string({ required: true }),
+    },
+    resolve: async (_parent, args, context) => {
+      // perform the write operation
+      return true
+    },
+  })
+)
+```
+
+Fields without `authScopes` are publicly accessible (no authentication required).

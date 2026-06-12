@@ -1,0 +1,165 @@
+---
+title: Authentication
+description: Configure JWT authentication, mock auth for development, and custom user resolvers.
+---
+
+## Authentication Model
+
+LakeQL uses a pluggable authentication system. The `getUser` function resolves the current user from each incoming request and makes it available in the GraphQL context.
+
+## Default Mock Authentication
+
+For development, LakeQL provides mock authentication controlled by environment variables:
+
+```bash
+AUTH_MOCK=true
+AUTH_MOCK_TOKEN="my-dev-token"
+```
+
+When mock auth is enabled, requests are authenticated if:
+
+1. `AUTH_MOCK` is `true`
+2. The `Authorization` header matches `AUTH_MOCK_TOKEN`
+
+The user's identity is read from the `x-username` header, falling back to a placeholder if not provided:
+
+```typescript
+// Default getUser implementation (simplified)
+async function getUser(req: Request): Promise<JWTPayload | null> {
+  const authHeader = req.headers.get("authorization")
+
+  if (
+    authHeader &&
+    env.AUTH_MOCK === true &&
+    authHeader === env.AUTH_MOCK_TOKEN
+  ) {
+    return {
+      userName: req.headers.get("x-username") ?? "###FALLBACK_MOCK_USER###",
+    }
+  }
+
+  return null
+}
+```
+
+## Custom getUser Resolver
+
+For production, provide your own `getUser` function that validates real tokens:
+
+```typescript
+import { defineConfig } from "@lakeql/api"
+import { jwtVerify } from "jose"
+import { allConfigs } from "./config-registry"
+
+export default defineConfig({
+  allConfigs,
+  async getUser(req) {
+    const authHeader = req.headers.get("authorization")
+    if (!authHeader?.startsWith("Bearer ")) {
+      return null
+    }
+
+    const token = authHeader.slice(7)
+
+    try {
+      const { payload } = await jwtVerify(token, publicKey, {
+        issuer: "https://auth.example.com",
+        audience: "lakeql-api",
+      })
+
+      return { userName: payload.sub ?? "unknown" }
+    } catch {
+      return null
+    }
+  },
+})
+```
+
+## JWTPayload Interface
+
+The user object conforms to the `JWTPayload` interface from the `jose` library, extended with a `userName` field:
+
+```typescript
+interface JWTPayload {
+  userName: string
+  // ... additional JWT standard claims available
+}
+```
+
+The `userName` is used by the permission system to look up user-specific access rules.
+
+## Permission System
+
+After authentication, LakeQL checks table-level permissions using two functions:
+
+### Read Permission (`hasReadPermission`)
+
+- **Unauthenticated users** — Always denied
+- **Users without explicit rules** — Allowed (Trino enforces access)
+- **Users with Query rules** — Must match the target catalog, schema, and table
+
+The default-allow model for reads makes sense because human users typically exist in Trino and are subject to Trino's own authorization. Technical users (service accounts) that don't exist in Trino should have explicit rules.
+
+### Write Permission (`hasWritePermission`)
+
+- **Unauthenticated users** — Always denied
+- **Users without explicit rules** — Always denied
+- **Users with Mutation rules** — Must match the target catalog, schema, and table
+
+Writes default to deny because they often execute under a shared system user in Trino.
+
+### Permission Configuration
+
+Define permissions in `defineConfig`:
+
+```typescript
+import { defineConfig } from "@lakeql/api"
+import { allConfigs } from "./config-registry"
+
+export default defineConfig({
+  allConfigs,
+  permissions: [
+    {
+      name: "data-ingestion-service",
+      useSystemUser: true,
+      permissions: {
+        Query: [{ catalog: "hive", schema: "raw", tables: ["*"] }],
+        Mutation: [
+          { catalog: "hive", schema: "raw", tables: ["events", "users"] },
+        ],
+      },
+    },
+    {
+      name: "analytics-dashboard",
+      useSystemUser: false,
+      permissions: {
+        Query: [{ catalog: "hive", schema: "curated", tables: ["*"] }],
+        Mutation: [],
+      },
+    },
+  ],
+})
+```
+
+<Note>
+  The wildcard `"*"` in the tables array grants access to all tables in that
+  catalog/schema combination. Use with caution for write permissions.
+</Note>
+
+### Custom Permission Resolvers
+
+Override the default permission logic entirely:
+
+```typescript
+export default defineConfig({
+  allConfigs,
+  hasReadPermission({ context, catalog, schema, tableName }) {
+    // Your custom read permission logic
+    return context.currentUser !== null
+  },
+  hasWritePermission({ context, catalog, schema, tableName }) {
+    // Your custom write permission logic
+    return context.currentUser?.userName === "admin"
+  },
+})
+```

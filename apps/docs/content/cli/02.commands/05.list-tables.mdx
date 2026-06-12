@@ -1,0 +1,37 @@
+---
+title: "lakeql-cli list-tables"
+navTitle: "list-tables"
+description: Lists available tables for the configured catalog and schema.
+---
+
+Queries Trino and prints all tables in the specified catalog and schema. If `--schema` is not provided, the CLI prompts you to select one interactively.
+
+## Syntax
+
+```bash
+lakeql-cli list-tables [options]
+```
+
+## Options
+
+| Flag                  | Type   | Required | Default                | Description                                 |
+| --------------------- | ------ | -------- | ---------------------- | ------------------------------------------- |
+| `--catalog <catalog>` | string | No       | `HIVE_CATALOG` env var | Catalog to use                              |
+| `--schema <schema>`   | string | No       | —                      | Schema to use (interactive if not provided) |
+
+## Usage
+
+```bash
+lakeql-cli list-tables --catalog hive --schema analytics
+```
+
+```
+┌────────────────┐
+│ Table Name     │
+├────────────────┤
+│ users          │
+│ events         │
+│ sessions       │
+│ page_views     │
+└────────────────┘
+```

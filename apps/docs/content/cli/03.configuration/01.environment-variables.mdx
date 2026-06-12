@@ -1,0 +1,37 @@
+---
+title: Environment Variables
+description: All environment variables used by the LakeQL CLI for Trino connectivity.
+---
+
+The LakeQL CLI reads connection details from environment variables. These are required for any command that communicates with Trino.
+
+## Required variables
+
+| Variable        | Type   | Description                                                          |
+| --------------- | ------ | -------------------------------------------------------------------- |
+| `HIVE_HOST`     | string | Trino host URL including protocol (e.g. `https://trino.example.com`) |
+| `HIVE_PORT`     | number | Trino port (e.g. `443`)                                              |
+| `HIVE_USERNAME` | string | Authentication username                                              |
+| `HIVE_PASSWORD` | string | Authentication password                                              |
+| `HIVE_CATALOG`  | string | Default catalog name used when `--catalog` is not provided           |
+
+## Optional variables
+
+| Variable      | Type   | Default | Description                                        |
+| ------------- | ------ | ------- | -------------------------------------------------- |
+| `HIVE_SOURCE` | string | —       | Optional source identifier sent to Trino           |
+| `LOG_LEVEL`   | string | `warn`  | Log verbosity: `debug`, `info`, `warn`, or `error` |
+
+## Example .env file
+
+```bash
+# .env
+HIVE_HOST=https://trino.example.com
+HIVE_PORT=443
+HIVE_USERNAME=service-account
+HIVE_PASSWORD=s3cur3-p4ssw0rd
+HIVE_CATALOG=hive
+LOG_LEVEL=info
+```
+
+The CLI loads `.env` from the project root automatically using `dotenv`. Place the file at the root of your workspace or monorepo.

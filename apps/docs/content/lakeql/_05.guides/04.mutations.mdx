@@ -1,0 +1,229 @@
+---
+title: Mutations
+description: Enable write operations with mutations, configure the permission model, and use system user impersonation.
+---
+
+## Working with Mutations
+
+By default, LakeQL generates read-only query schemas. To enable write operations, you need to configure mutation support and define appropriate permissions.
+
+## Enabling Mutations
+
+The Pothos builder supports mutation types. Generate mutation schemas or create them manually:
+
+```typescript
+// src/schemas/custom/orders-mutation-schema.ts
+import { builder } from "@lakeql/api"
+
+const CreateOrderInput = builder.inputType("CreateOrderInput", {
+  fields: (t) => ({
+    customerId: t.int({ required: true }),
+    status: t.string({ required: true }),
+    total: t.float({ required: true }),
+  }),
+})
+
+builder.mutationField("createOrder", (t) =>
+  t.field({
+    type: "Boolean",
+    args: {
+      input: t.arg({ type: CreateOrderInput, required: true }),
+    },
+    resolve: async (_root, args, context) => {
+      // Check write permission
+      if (
+        !context.hasWritePermission?.({
+          context,
+          catalog: "hive",
+          schema: "sales",
+          tableName: "orders",
+        })
+      ) {
+        throw new Error("Write access denied")
+      }
+
+      // Execute Trino INSERT statement
+      const sql = `
+        INSERT INTO hive.sales.orders (customer_id, status, total, created_at)
+        VALUES (${args.input.customerId}, '${args.input.status}', ${args.input.total}, current_timestamp)
+      `
+
+      // Submit via trino-client with system user credentials
+      return true
+    },
+  })
+)
+```
+
+## Write Permission Model
+
+LakeQL's write permission model is **default-deny**. Users must have explicit `Mutation` rules to perform any write operation.
+
+This design is intentional:
+
+- Write operations are more sensitive than reads
+- Writes often execute via a shared system user in Trino
+- Each table typically has a defined data owner (source system)
+- Explicit rules enforce data ownership boundaries
+
+### Configuring Write Permissions
+
+```typescript
+import { defineConfig } from "@lakeql/api"
+import { allConfigs } from "./config-registry"
+
+export default defineConfig({
+  allConfigs,
+  permissions: [
+    {
+      name: "ingestion-service",
+      useSystemUser: true,
+      permissions: {
+        Query: [{ catalog: "hive", schema: "raw", tables: ["*"] }],
+        Mutation: [
+          {
+            catalog: "hive",
+            schema: "raw",
+            tables: ["events", "user_actions"],
+          },
+        ],
+      },
+    },
+    {
+      name: "admin-user",
+      useSystemUser: false,
+      permissions: {
+        Query: [{ catalog: "hive", schema: "*", tables: ["*"] }],
+        Mutation: [{ catalog: "hive", schema: "config", tables: ["*"] }],
+      },
+    },
+  ],
+})
+```
+
+### Permission Resolution
+
+For write operations, the permission check follows this logic:
+
+1. **No authenticated user** → Denied
+2. **No `Mutation` rules for this user** → Denied
+3. **Rules exist but don't match catalog/schema/table** → Denied
+4. **Matching rule found** → Allowed
+
+```typescript
+// Internal logic (simplified)
+function hasWritePermission({ context, catalog, schema, tableName }) {
+  if (!context.currentUser) return false
+
+  const userPerms = permissions.find(
+    (p) => p.name === context.currentUser.userName
+  )
+  if (!userPerms || userPerms.permissions.Mutation.length === 0) return false
+
+  return userPerms.permissions.Mutation.some(
+    (rule) =>
+      rule.catalog === catalog &&
+      rule.schema === schema &&
+      (rule.tables.includes(tableName) || rule.tables[0] === "*")
+  )
+}
+```
+
+## System User Impersonation
+
+Write statements in Trino often need to execute as a system user with broad permissions, even when the request originates from a regular user.
+
+When `useSystemUser: true` is set for a permission entry, the Trino client uses system credentials for that user's write operations instead of their own identity. This means:
+
+- Trino sees the system user as the executor
+- The application layer (`hasWritePermission`) controls which tables a given client can write to
+- Audit trails should track both the requesting user and the executing identity
+
+```typescript
+// The permission entry controls both:
+// 1. Whether the user may issue the write (application-level check)
+// 2. Which identity executes the write in Trino (useSystemUser flag)
+{
+  name: "etl-pipeline",
+  useSystemUser: true,  // Execute writes as system user in Trino
+  permissions: {
+    Query: [],
+    Mutation: [
+      { catalog: "hive", schema: "staging", tables: ["*"] }
+    ]
+  }
+}
+```
+
+<Note>
+  When `useSystemUser` is `false`, the write is executed with the authenticated
+  user's Trino credentials. This requires that user to exist in Trino with
+  appropriate table privileges.
+</Note>
+
+## Mutation Patterns
+
+### INSERT
+
+```typescript
+builder.mutationField("insertEvent", (t) =>
+  t.field({
+    type: "Boolean",
+    args: {
+      /* ... */
+    },
+    resolve: async (_root, args, context) => {
+      const sql = `INSERT INTO hive.raw.events VALUES (...)`
+      // Execute with trino-client
+      return true
+    },
+  })
+)
+```
+
+### CREATE TABLE
+
+```typescript
+builder.mutationField("createTable", (t) =>
+  t.field({
+    type: "Boolean",
+    args: {
+      schema: t.arg.string({ required: true }),
+      tableName: t.arg.string({ required: true }),
+    },
+    resolve: async (_root, args, context) => {
+      const sql = `
+        CREATE TABLE IF NOT EXISTS hive.${args.schema}.${args.tableName} (
+          id BIGINT,
+          created_at TIMESTAMP
+        ) WITH (format = 'PARQUET')
+      `
+      return true
+    },
+  })
+)
+```
+
+### DELETE (DROP PARTITION)
+
+```typescript
+builder.mutationField("dropPartition", (t) =>
+  t.field({
+    type: "Boolean",
+    args: {
+      table: t.arg.string({ required: true }),
+      partitionValue: t.arg.string({ required: true }),
+    },
+    resolve: async (_root, args, context) => {
+      const sql = `DELETE FROM hive.raw.${args.table} WHERE partition_date = '${args.partitionValue}'`
+      return true
+    },
+  })
+)
+```
+
+<Warning>
+  Always validate and sanitize input arguments before interpolating them into
+  SQL strings. Consider using parameterized queries or the Kysely query builder
+  for mutation SQL construction.
+</Warning>

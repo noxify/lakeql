@@ -1,0 +1,66 @@
+---
+title: Mutation Schema Files
+description: Reference for mutation schema generation — produces Pothos mutation types for INSERT and CREATE TABLE operations.
+---
+
+The mutation schema generator produces Pothos GraphQL mutation types for write operations against Trino tables. This covers patterns like inserting rows into existing tables and creating new tables from data.
+
+## Generated structure
+
+A generated mutation schema includes:
+
+1. **Input type** — Pothos input type defining the fields accepted by the mutation
+2. **Mutation field** — Resolver that builds the appropriate SQL (INSERT or CREATE TABLE) and executes it against Trino
+
+```typescript
+// Simplified example of generated output
+import { builder } from "../builder"
+
+const CreateUserInput = builder.inputType("CreateUserInput", {
+  fields: (t) => ({
+    name: t.string({ required: true }),
+    email: t.string({ required: true }),
+    isActive: t.boolean({ required: false }),
+  }),
+})
+
+builder.mutationField("createUser", (t) =>
+  t.field({
+    type: "Boolean",
+    args: {
+      input: t.arg({ type: CreateUserInput, required: true }),
+    },
+    resolve: async (root, args, ctx) => {
+      // INSERT SQL construction and execution
+      return true
+    },
+  })
+)
+```
+
+## Supported patterns
+
+| Pattern        | SQL Operation            | Use Case                               |
+| -------------- | ------------------------ | -------------------------------------- |
+| Row insertion  | `INSERT INTO ... VALUES` | Adding records to existing tables      |
+| Table creation | `CREATE TABLE AS`        | Creating new tables from query results |
+
+## Usage
+
+```typescript
+import { generateMutationSchema } from "@lakeql/file-generator/mutation-schema"
+import { generateCode } from "@lakeql/file-generator"
+
+const nodes = generateMutationSchema({
+  models,
+  mutationName: "createUser",
+  tableName: "users",
+})
+
+const sourceFile = await generateCode({
+  fileName: "mutation-schema.ts",
+  nodes,
+})
+```
+
+The mutation schema generator is invoked by the CLI only when `mutationName` is specified in the table configuration. Tables without mutations are treated as read-only.

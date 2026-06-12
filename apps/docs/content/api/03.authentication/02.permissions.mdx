@@ -1,0 +1,105 @@
+---
+title: Permissions
+description: Define table-level permission rules for technical users via the Permission interface.
+---
+
+Permissions define which catalogs, schemas, and tables a technical user can access. They act as an application-level allow list on top of Trino's built-in authorization — primarily useful for service accounts that execute queries via a shared system user.
+
+## Permission interface
+
+```typescript
+interface Permission {
+  name: string
+  useSystemUser: boolean
+  permissions: {
+    Query: {
+      catalog: string
+      schema: string
+      tables: string[]
+    }[]
+    Mutation: {
+      catalog: string
+      schema: string
+      tables: string[]
+    }[]
+  }
+}
+```
+
+| Field                  | Description                                               |
+| ---------------------- | --------------------------------------------------------- |
+| `name`                 | Username to match against `currentUser.userName`          |
+| `useSystemUser`        | Whether this user's queries run via the Trino system user |
+| `permissions.Query`    | Read access rules (catalog + schema + tables)             |
+| `permissions.Mutation` | Write access rules (catalog + schema + tables)            |
+
+## Wildcard access
+
+Use `["*"]` in the `tables` array to grant access to all tables within a catalog/schema combination:
+
+```typescript
+{
+  catalog: "hive",
+  schema: "analytics",
+  tables: ["*"] // access all tables in hive.analytics
+}
+```
+
+## createPermission helper
+
+For type-safe permission construction that validates against your generated configs, use the `createPermission` helper with `defineConfig`:
+
+```typescript
+import { defineConfig } from "@lakeql/api/config"
+import { allConfigs } from "./generated/configs"
+import type { Permission } from "@lakeql/api/types"
+
+const permissions: Permission[] = [
+  {
+    name: "data-pipeline-service",
+    useSystemUser: true,
+    permissions: {
+      Query: [
+        {
+          catalog: "hive",
+          schema: "raw_data",
+          tables: ["events", "users", "sessions"],
+        },
+      ],
+      Mutation: [
+        {
+          catalog: "hive",
+          schema: "processed",
+          tables: ["aggregated_events"],
+        },
+      ],
+    },
+  },
+  {
+    name: "reporting-service",
+    useSystemUser: true,
+    permissions: {
+      Query: [
+        {
+          catalog: "hive",
+          schema: "analytics",
+          tables: ["*"],
+        },
+      ],
+      Mutation: [],
+    },
+  },
+]
+
+export default defineConfig({
+  allConfigs,
+  permissions,
+})
+```
+
+## How permissions are evaluated
+
+- **Read (Query):** If no permission entry exists for a user, reads are allowed (Trino handles auth for human users). If rules exist, at least one must match the requested catalog/schema/table.
+- **Write (Mutation):** If no permission entry exists, writes are denied. Rules must explicitly grant access.
+
+See [Scope Authorization](/docs/api/authentication/scope-authorization) for the full evaluation logic.

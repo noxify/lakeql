@@ -1,0 +1,35 @@
+---
+title: Introduction
+description: What @lakeql/column-parser provides and how it transforms Trino column metadata into structured types.
+---
+
+`@lakeql/column-parser` wraps the `json-column-parser` library to transform Trino column metadata into structured `JSONType` objects. It takes tuples of column information (name, type, extra, description) returned by Trino's `DESCRIBE` or `information_schema` queries and outputs parsed type definitions used by `@lakeql/schema-generator` and `@lakeql/file-generator`.
+
+The package normalizes Trino's column type syntax — removing spaces after commas and replacing spaces between field names and types with colons — before passing the definition to the underlying parser. This handles the mismatch between Trino's type notation and what `json-column-parser` expects.
+
+## Input format
+
+The `parseColumns` function accepts an array of objects with the following shape:
+
+```typescript
+import { parseColumns } from "@lakeql/column-parser"
+
+const columns = [
+  { name: "id", type: "integer", extra: "", description: "Primary key" },
+  { name: "email", type: "varchar", extra: "", description: "User email" },
+  { name: "tags", type: "array(varchar)", extra: "", description: "User tags" },
+  {
+    name: "address",
+    type: "row(street varchar, city varchar, zip integer)",
+    extra: "",
+    description: "Mailing address",
+  },
+]
+
+const result = parseColumns(columns)
+// Returns a Record<string, JSONType> mapping field names to their parsed types
+```
+
+## Output
+
+The return value is a `Record<string, JSONType>` where each key is the column name and the value is a structured type definition that describes the column's data type, including nested structures for complex types like `row` and `array`.

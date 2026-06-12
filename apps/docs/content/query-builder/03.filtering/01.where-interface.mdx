@@ -1,0 +1,71 @@
+---
+title: Where Interface
+description: The recursive type structure that represents filter conditions.
+---
+
+## Overview
+
+The query builder uses a recursive type system to represent arbitrarily nested filter conditions. The root `Where` type can contain AND/OR groups, each of which may hold field conditions or further nested groups.
+
+## Where Type
+
+```typescript
+import type { WhereOperator } from "@lakeql/query-builder"
+
+type Where = Partial<Record<WhereOperator, (Where | Field)[]>>
+```
+
+A `Where` object is a partial record keyed by the `WhereOperator` enum (`"and"` or `"or"`). Each key maps to an array of either nested `Where` objects (for deeper nesting) or `Field` objects (for leaf conditions).
+
+## Field Type
+
+```typescript
+type Field = Record<string, FieldOptions>
+```
+
+A `Field` is a record where the key is the field name and the value is a `FieldOptions` object describing the comparison.
+
+## FieldOptions Interface
+
+```typescript
+interface FieldOptions {
+  eq?: string
+  neq?: string
+  in?: string
+  notIn?: string
+  lt?: string
+  lte?: string
+  gt?: string
+  gte?: string
+  like?: string
+  notLike?: string
+  is?: boolean
+  isNot?: boolean
+}
+```
+
+Each property corresponds to a filter operator. Only one operator should be set per `FieldOptions` object.
+
+## Example Structure
+
+```typescript
+import type { Where } from "@lakeql/query-builder"
+
+const filter: Where = {
+  and: [
+    { status: { eq: "active" } },
+    {
+      or: [{ region: { eq: "us-east" } }, { region: { eq: "eu-west" } }],
+    },
+    { amount: { gte: "100" } },
+  ],
+}
+```
+
+This produces SQL equivalent to:
+
+```sql
+WHERE "status" = 'active'
+  AND ("region" = 'us-east' OR "region" = 'eu-west')
+  AND "amount" >= '100'
+```

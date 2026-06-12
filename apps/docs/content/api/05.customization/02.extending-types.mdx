@@ -1,0 +1,113 @@
+---
+title: Extending Types
+description: Provide custom resolvers for authentication, permissions, and add additional scalars.
+---
+
+LakeQL's extension points let you replace built-in behavior with custom implementations. The primary customization targets are the authentication resolver, permission resolvers, and scalar types.
+
+## Custom GetUserResolver
+
+Replace the built-in mock auth with your own JWT verification:
+
+```typescript
+import type { GetUserResolver } from "@lakeql/api/types"
+import { jwtVerify } from "jose"
+
+export const customGetUser: GetUserResolver = async (req) => {
+  const token = req.headers.get("authorization")?.replace("Bearer ", "")
+  if (!token) return null
+
+  try {
+    const { payload } = await jwtVerify(token, secretKey)
+    return { ...payload, userName: payload.sub ?? "unknown" }
+  } catch {
+    return null
+  }
+}
+```
+
+## Custom ReadPermissionResolver
+
+Override how read permissions are evaluated:
+
+```typescript
+import type { ReadPermissionResolver } from "@lakeql/api/types"
+
+export const customReadPermission: ReadPermissionResolver = ({
+  context,
+  catalog,
+  schema,
+  tableName,
+}) => {
+  // Allow all reads for admin users
+  if (context.currentUser?.role === "admin") {
+    return true
+  }
+
+  // Check against external policy engine
+  return checkPolicy(context.currentUser, "read", {
+    catalog,
+    schema,
+    tableName,
+  })
+}
+```
+
+## Custom WritePermissionResolver
+
+Override how write permissions are evaluated:
+
+```typescript
+import type { WritePermissionResolver } from "@lakeql/api/types"
+
+export const customWritePermission: WritePermissionResolver = ({
+  context,
+  catalog,
+  schema,
+  tableName,
+}) => {
+  // Only service accounts can write
+  if (!context.currentUser?.isServiceAccount) {
+    return false
+  }
+
+  return checkPolicy(context.currentUser, "write", {
+    catalog,
+    schema,
+    tableName,
+  })
+}
+```
+
+## Registering custom resolvers
+
+Pass all custom resolvers via `defineConfig`:
+
+```typescript
+import { defineConfig } from "@lakeql/api/config"
+import { allConfigs } from "./generated/configs"
+import { customGetUser } from "./auth"
+import { customReadPermission, customWritePermission } from "./permissions"
+
+export default defineConfig({
+  allConfigs,
+  getUser: customGetUser,
+  hasReadPermission: customReadPermission,
+  hasWritePermission: customWritePermission,
+})
+```
+
+## Adding custom scalars
+
+Register additional scalars on the shared builder in a query-schema file:
+
+```typescript
+// src/schemas/scalars/query-schema.ts
+import { builder } from "@lakeql/api/builder"
+import { JSONResolver, BigIntResolver } from "graphql-scalars"
+
+builder.addScalarType("JSON", JSONResolver, {})
+builder.addScalarType("BigInt", BigIntResolver, {})
+```
+
+These scalars become available in all other schema files loaded after this one. Place scalar definitions in a directory that sorts alphabetically before other schemas (e.g., `00-scalars/`) to ensure they're loaded first.

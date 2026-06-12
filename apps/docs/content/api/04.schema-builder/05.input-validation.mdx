@@ -1,0 +1,115 @@
+---
+title: Input Validation
+description: Validate GraphQL input fields using Zod schemas via the Pothos ValidationPlugin.
+---
+
+LakeQL integrates Pothos's ValidationPlugin with Zod to validate input arguments before they reach your resolvers. Invalid inputs return a structured `VALIDATION_FAILED` error with detailed issues.
+
+## How it works
+
+The ValidationPlugin is registered on the shared builder and uses Zod schemas to validate input field values. When validation fails, a custom error handler formats the response with error code `200` (VALIDATION_FAILED) and the list of Zod issues.
+
+## Error response format
+
+When validation fails, the GraphQL error includes:
+
+```json
+{
+  "errors": [
+    {
+      "message": "Validation failed",
+      "extensions": {
+        "code": "VALIDATION_FAILED",
+        "http": { "status": 400 },
+        "additionalInformation": [
+          {
+            "message": "Value must be less than or equal to 2000",
+            "path": ["perPage"]
+          }
+        ]
+      }
+    }
+  ]
+}
+```
+
+## Built-in validation
+
+The `Paging` input type uses validation to enforce `perPage` limits:
+
+```typescript
+import { z } from "zod"
+import { builder, getMaxRecordsPerPage } from "@lakeql/api/builder"
+
+const Paging = builder.inputType("Paging", {
+  fields: (t) => ({
+    page: t.int({ defaultValue: 1 }),
+    perPage: t.int({
+      defaultValue: 100,
+      validate: z
+        .number()
+        .min(1)
+        .refine((value) => value <= getMaxRecordsPerPage(), {
+          message: `Value must be less than or equal to ${getMaxRecordsPerPage()}`,
+        }),
+    }),
+  }),
+})
+```
+
+## Adding validation to custom inputs
+
+Use the `validate` option on any input field to attach a Zod schema:
+
+```typescript
+import { z } from "zod"
+import { builder } from "@lakeql/api/builder"
+
+const CreateUserInput = builder.inputType("CreateUserInput", {
+  fields: (t) => ({
+    email: t.string({
+      required: true,
+      validate: z.string().email("Must be a valid email address"),
+    }),
+    name: t.string({
+      required: true,
+      validate: z.string().min(2).max(100),
+    }),
+    age: t.int({
+      validate: z.number().min(0).max(150),
+    }),
+  }),
+})
+```
+
+## Validation on query arguments
+
+You can also validate query-level arguments:
+
+```typescript
+import { z } from "zod"
+import { builder } from "@lakeql/api/builder"
+
+builder.queryField("search", (t) =>
+  t.field({
+    type: ["String"],
+    args: {
+      query: t.arg.string({
+        required: true,
+        validate: z
+          .string()
+          .min(3, "Search query must be at least 3 characters"),
+      }),
+      limit: t.arg.int({
+        defaultValue: 10,
+        validate: z.number().min(1).max(100),
+      }),
+    },
+    resolve: (_parent, args) => {
+      // args.query is guaranteed to be at least 3 chars
+      // args.limit is guaranteed to be between 1 and 100
+      return [`Result for: ${args.query}`]
+    },
+  })
+)
+```

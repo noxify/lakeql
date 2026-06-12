@@ -1,0 +1,97 @@
+---
+title: Environment Configuration
+description: Complete reference for all environment variables used by LakeQL packages.
+---
+
+## Environment Variables
+
+LakeQL uses environment variables for configuration. All variables are validated at startup using Zod schemas via `@t3-oss/env-core`.
+
+### Trino Connection
+
+| Variable        | Type   | Default  | Description                                                             |
+| --------------- | ------ | -------- | ----------------------------------------------------------------------- |
+| `HIVE_HOST`     | string | —        | Trino host URL (e.g. `http://localhost` or `https://trino.example.com`) |
+| `HIVE_PORT`     | number | —        | Trino HTTP port (e.g. `8080` or `8446`)                                 |
+| `HIVE_USERNAME` | string | —        | Username for Trino authentication                                       |
+| `HIVE_PASSWORD` | string | —        | Password for Trino authentication                                       |
+| `HIVE_CATALOG`  | string | —        | Default Trino catalog (e.g. `hive`)                                     |
+| `HIVE_SOURCE`   | string | `lakeql` | Value for the `X-Trino-Source` header                                   |
+
+### API Server
+
+| Variable                   | Type   | Default | Description                                           |
+| -------------------------- | ------ | ------- | ----------------------------------------------------- |
+| `API_PORT`                 | number | `4000`  | Port the GraphQL API server listens on                |
+| `API_LOGGER`               | enum   | `warn`  | Log level: `silent`, `debug`, `info`, `warn`, `error` |
+| `API_MAX_RECORDS_PER_PAGE` | number | `2000`  | Maximum records returned per page                     |
+
+### Authentication
+
+| Variable          | Type    | Default | Description                                 |
+| ----------------- | ------- | ------- | ------------------------------------------- |
+| `AUTH_MOCK`       | boolean | `false` | Enable mock authentication for development  |
+| `AUTH_MOCK_TOKEN` | string  | —       | Token value that grants access in mock mode |
+
+### Runtime
+
+| Variable   | Type | Default       | Description                                      |
+| ---------- | ---- | ------------- | ------------------------------------------------ |
+| `NODE_ENV` | enum | `development` | Environment: `development`, `production`, `test` |
+
+## Example .env File
+
+```bash
+# Trino Connection
+HIVE_HOST="http://localhost"
+HIVE_PORT=8080
+HIVE_CATALOG=hive
+HIVE_USERNAME="trino"
+HIVE_PASSWORD="trino-password"
+HIVE_SOURCE="lakeql"
+
+# Authentication
+AUTH_MOCK=true
+AUTH_MOCK_TOKEN="my-dev-token"
+
+# API Server
+API_PORT=4000
+API_LOGGER="info"
+API_MAX_RECORDS_PER_PAGE=500
+
+# Runtime
+NODE_ENV=development
+```
+
+## Validation Behavior
+
+Environment variables are validated on startup. If a required variable is missing or has an invalid value, the server fails fast with a descriptive error message.
+
+<Note>
+  Validation is skipped in CI environments and during `lint` or `test` npm
+  lifecycle events to avoid requiring full configuration for development
+  tooling.
+</Note>
+
+## Docker Environment
+
+When running with Docker Compose (e.g. the local lakehouse stack), use a separate `.env.docker` file:
+
+```bash
+HIVE_HOST="http://trino"
+HIVE_PORT=8080
+HIVE_CATALOG=hive
+HIVE_USERNAME="admin"
+HIVE_PASSWORD="admin"
+
+MINIO_ROOT_USER=admin
+MINIO_ROOT_PASSWORD=password
+MINIO_BUCKET=warehouse
+
+POSTGRES_DB=metastore
+POSTGRES_USER=hive
+POSTGRES_PASSWORD=hive
+
+S3_ENDPOINT=http://minio:9000
+S3_REGION=eu-central-1
+```

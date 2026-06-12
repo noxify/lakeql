@@ -1,0 +1,53 @@
+---
+title: Environment Variables
+description: Complete reference for all environment variables used across LakeQL packages.
+---
+
+## Overview
+
+LakeQL validates environment variables at startup using `@t3-oss/env-core` with Zod schemas. Missing or invalid values cause an immediate, descriptive failure so misconfiguration is caught before the server starts handling requests.
+
+## Complete Reference
+
+| Variable                   | Package  | Type      | Required | Default       | Description                                                  |
+| -------------------------- | -------- | --------- | -------- | ------------- | ------------------------------------------------------------ |
+| `HIVE_HOST`                | api, cli | `string`  | Yes      | —             | Trino host URL (e.g. `http://localhost`)                     |
+| `HIVE_PORT`                | api, cli | `number`  | Yes      | —             | Trino HTTP port (e.g. `8080`)                                |
+| `HIVE_USERNAME`            | api, cli | `string`  | Yes      | —             | Trino authentication username                                |
+| `HIVE_PASSWORD`            | api, cli | `string`  | Yes      | —             | Trino authentication password                                |
+| `HIVE_CATALOG`             | api, cli | `string`  | Yes      | —             | Default Trino catalog (e.g. `hive`)                          |
+| `HIVE_SOURCE`              | api, cli | `string`  | No       | —             | Value for `X-Trino-Source` header                            |
+| `API_PORT`                 | api      | `number`  | No       | `4000`        | GraphQL API server port                                      |
+| `API_LOGGER`               | api      | `enum`    | No       | `warn`        | Log level: `silent`, `debug`, `info`, `warn`, `error`        |
+| `API_MAX_RECORDS_PER_PAGE` | api      | `number`  | No       | `2000`        | Maximum records per paginated response                       |
+| `AUTH_MOCK`                | api      | `boolean` | No       | `false`       | Enable mock authentication                                   |
+| `AUTH_MOCK_TOKEN`          | api      | `string`  | No       | —             | Token for mock auth (checked against `Authorization` header) |
+| `NODE_ENV`                 | api      | `enum`    | No       | `development` | Environment: `development`, `production`, `test`             |
+
+## Validation Skip Conditions
+
+Environment validation is skipped when:
+
+- Running in CI (`CI` env var is set)
+- Running `npm run lint` or `npm run test` lifecycle events
+
+This allows tooling like linters and type checkers to run without requiring a full `.env` file.
+
+## Programmatic Configuration
+
+Many settings can also be overridden programmatically via `defineConfig`:
+
+```typescript
+import { defineConfig } from "@lakeql/api"
+import { allConfigs } from "./config-registry"
+
+export default defineConfig({
+  allConfigs,
+  port: 3000, // Overrides API_PORT
+  maxRecordsPerPage: 500, // Overrides API_MAX_RECORDS_PER_PAGE
+  graphqlPath: "/api/graphql", // Custom GraphQL endpoint path
+  healthCheckEndpoint: "/live", // Health check path
+})
+```
+
+Programmatic values take precedence over environment variables for runtime configuration like `port`, `maxRecordsPerPage`, `graphqlPath`, and `healthCheckEndpoint`.

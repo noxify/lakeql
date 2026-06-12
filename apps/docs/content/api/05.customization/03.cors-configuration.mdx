@@ -1,0 +1,96 @@
+---
+title: CORS Configuration
+description: Customize CORS settings and add additional Hono middleware to the API server.
+---
+
+By default, `createApiServer` applies permissive CORS settings on the GraphQL endpoint. For production deployments, you'll typically want to restrict the allowed origins and customize headers.
+
+## Default CORS configuration
+
+The built-in CORS middleware is applied to POST, GET, and OPTIONS requests on the GraphQL path:
+
+| Setting        | Default Value                       |
+| -------------- | ----------------------------------- |
+| `origin`       | `"*"` (all origins)                 |
+| `allowMethods` | `["POST", "GET", "OPTIONS"]`        |
+| `allowHeaders` | `["content-type", "authorization"]` |
+| `credentials`  | `true`                              |
+
+## Customizing CORS
+
+Since `createApiServer` returns the Hono `app` instance, you can add or override middleware:
+
+```typescript
+import { createApiServer } from "@lakeql/api/server"
+import { cors } from "hono/cors"
+
+const { app } = await createApiServer({
+  schemaPath: "./src/schemas",
+})
+
+// Add restrictive CORS for a specific path
+app.use(
+  "/graphql/*",
+  cors({
+    origin: ["https://app.example.com", "https://admin.example.com"],
+    allowMethods: ["POST", "OPTIONS"],
+    allowHeaders: ["content-type", "authorization", "x-request-id"],
+    credentials: true,
+    maxAge: 86400,
+  })
+)
+```
+
+## Adding custom middleware
+
+The Hono app supports any compatible middleware. Add rate limiting, request logging, or custom headers:
+
+```typescript
+import { createApiServer, startApiServer } from "@lakeql/api/server"
+import { serve } from "@hono/node-server"
+
+const { app, yoga } = await createApiServer({
+  schemaPath: "./src/schemas",
+})
+
+// Custom request ID header
+app.use("*", async (c, next) => {
+  const requestId = crypto.randomUUID()
+  c.header("x-request-id", requestId)
+  await next()
+})
+
+// Custom health endpoint
+app.get("/ready", (c) =>
+  c.json({ status: "ready", timestamp: new Date().toISOString() })
+)
+
+// Start manually with the customized app
+serve({
+  fetch: app.fetch,
+  port: 4000,
+})
+```
+
+## Adding authentication middleware
+
+For scenarios where you need pre-GraphQL authentication checks:
+
+```typescript
+import { createApiServer } from "@lakeql/api/server"
+
+const { app } = await createApiServer({
+  schemaPath: "./src/schemas",
+})
+
+// Block unauthenticated requests before they reach Yoga
+app.use("/graphql/*", async (c, next) => {
+  const auth = c.req.header("authorization")
+  if (!auth && c.req.method !== "OPTIONS") {
+    return c.json({ error: "Authorization required" }, 401)
+  }
+  await next()
+})
+```
+
+Note that this is separate from the GraphQL-level `authScopes` — it blocks requests at the HTTP layer before they reach the GraphQL resolver.

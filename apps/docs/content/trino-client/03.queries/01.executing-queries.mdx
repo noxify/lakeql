@@ -1,0 +1,77 @@
+---
+title: Executing Queries
+description: Run SQL statements against Trino and collect all result pages into a single array.
+---
+
+## query Method
+
+The `query` method executes a SQL statement and automatically follows Trino's `nextUri` pagination links until all result pages have been collected.
+
+```typescript
+async query<T>({ sql, impersonateAs?, gotOpts? }): Promise<T[]>
+```
+
+| Parameter       | Type      | Description                                                         |
+| --------------- | --------- | ------------------------------------------------------------------- |
+| `sql`           | `string`  | The SQL statement to execute                                        |
+| `impersonateAs` | `string?` | Optional Trino user to impersonate via `X-Trino-User`               |
+| `gotOpts`       | `object?` | Optional [got](https://github.com/sindresorhus/got) request options |
+
+Returns a promise that resolves to a flat array of all rows from every result page.
+
+## Basic Usage
+
+```typescript
+import { TrinoClient } from "@lakeql/trino-client"
+
+const client = new TrinoClient({
+  host: "https://trino.example.com",
+  port: 8443,
+  auth: { type: "basic", username: "analyst", password: "secret" },
+  catalog: "hive",
+  schema: "sales",
+})
+
+const rows = await client.query<[string, string, number]>({
+  sql: "SELECT id, region, amount FROM orders WHERE status = 'shipped'",
+})
+
+for (const [id, region, amount] of rows) {
+  console.log(`Order ${id}: ${region} - $${amount}`)
+}
+```
+
+## User Impersonation
+
+Pass `impersonateAs` to execute the query as a different Trino user. This sets the `X-Trino-User` header for that request only:
+
+```typescript
+const rows = await client.query<[string]>({
+  sql: "SELECT current_user",
+  impersonateAs: "data-team-service",
+})
+// rows: [["data-team-service"]]
+```
+
+## How Pagination Works
+
+1. A `POST` is sent to `/v1/statement` with the SQL body
+2. Trino returns an initial response with (optionally) data and a `nextUri`
+3. The client follows `nextUri` with `GET` requests, collecting `data` arrays
+4. When no `nextUri` is returned, all pages have been fetched
+5. The concatenated result array is returned
+
+This is entirely transparent — you call `query()` and get the complete result regardless of how many pages Trino needed internally.
+
+## Error Handling
+
+If any request returns a non-2xx status code, the method throws an error with the status code and message:
+
+```typescript
+try {
+  const rows = await client.query({ sql: "SELECT * FROM nonexistent_table" })
+} catch (error) {
+  console.error(error.message)
+  // "404 - Not Found" or Trino error details
+}
+```

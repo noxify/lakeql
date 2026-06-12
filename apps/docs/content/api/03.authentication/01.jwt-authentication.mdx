@@ -1,0 +1,89 @@
+---
+title: JWT Authentication
+description: Configure user authentication via JWT tokens or mock authentication for development.
+---
+
+LakeQL uses JWT-based authentication to identify the current user on each request. The `getUser` resolver extracts user information from the `Authorization` header and makes it available in the GraphQL context.
+
+## GetUserResolver type
+
+```typescript
+type GetUserResolver = (
+  req: Request
+) => Promise<JWTPayload | null | undefined> | JWTPayload | null | undefined
+```
+
+Returning `null` or `undefined` means the request is unauthenticated. The `JWTPayload` type extends jose's `JWTPayload` with an additional `userName` field:
+
+```typescript
+// Extends jose JWTPayload
+interface JWTPayload {
+  userName: string
+  // ...standard JWT claims (iss, sub, aud, exp, etc.)
+}
+```
+
+## Default behavior
+
+The built-in `getUser` resolver supports mock authentication for local development. It does not perform real JWT verification — you must provide a custom resolver for production.
+
+## Mock authentication
+
+Set the following environment variables to enable mock auth:
+
+```bash
+AUTH_MOCK=true
+AUTH_MOCK_TOKEN=my-dev-token
+```
+
+Then pass the token as the `Authorization` header and the username via `x-username`:
+
+```bash
+curl -X POST http://localhost:4000/graphql \
+  -H "Authorization: my-dev-token" \
+  -H "x-username: developer" \
+  -H "Content-Type: application/json" \
+  -d '{"query": "{ __typename }"}'
+```
+
+## Custom JWT verification
+
+For production, provide a custom `getUser` resolver that verifies tokens using your identity provider:
+
+```typescript
+import { defineConfig } from "@lakeql/api/config"
+import { jwtVerify, createRemoteJWKSet } from "jose"
+import { allConfigs } from "./generated/configs"
+
+const jwks = createRemoteJWKSet(
+  new URL("https://auth.example.com/.well-known/jwks.json")
+)
+
+export default defineConfig({
+  allConfigs,
+  getUser: async (req) => {
+    const authHeader = req.headers.get("authorization")
+    if (!authHeader?.startsWith("Bearer ")) {
+      return null
+    }
+
+    const token = authHeader.slice(7)
+
+    try {
+      const { payload } = await jwtVerify(token, jwks, {
+        issuer: "https://auth.example.com",
+        audience: "lakeql-api",
+      })
+
+      return {
+        ...payload,
+        userName: payload.sub ?? "unknown",
+      }
+    } catch {
+      return null
+    }
+  },
+})
+```
+
+The resolved user is available in every GraphQL resolver via `context.currentUser`.

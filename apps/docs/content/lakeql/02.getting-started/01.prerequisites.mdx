@@ -1,0 +1,63 @@
+---
+title: Prerequisites
+description: System requirements and dependencies needed to run LakeQL.
+---
+
+## System Requirements
+
+Before getting started with LakeQL, make sure your environment meets these requirements:
+
+| Requirement    | Version                          | Notes                                       |
+| -------------- | -------------------------------- | ------------------------------------------- |
+| Node.js        | >= 22                            | Required for ESM and modern APIs            |
+| pnpm           | Latest                           | Recommended package manager (npm works too) |
+| Trino          | Any recent version               | Accessible via HTTP                         |
+| Hive Metastore | Compatible with your Trino setup | At least one schema with tables             |
+
+## Trino Instance
+
+You need a running Trino instance that LakeQL can connect to. Options:
+
+- **Docker** — Run Trino locally with `docker run -p 8080:8080 trinodb/trino`
+- **minitrino** — Use [minitrino](https://github.com/jefflester/minitrino) for a full local lakehouse stack (Trino + Hive Metastore + MinIO)
+- **Existing cluster** — Connect to your team's Trino deployment
+
+<Note>
+  LakeQL uses the Trino REST API for both introspection (CLI) and query
+  execution (API). Make sure your Trino instance is reachable over HTTP/HTTPS
+  from your development machine.
+</Note>
+
+## Hive Catalog
+
+LakeQL generates schemas from tables registered in a Hive catalog. You need at minimum:
+
+- A Hive catalog configured in Trino (typically named `hive`)
+- At least one schema within that catalog
+- At least one table with columns in that schema
+
+If you're using a local Docker setup, you can create test tables using Trino's SQL interface:
+
+```sql
+CREATE SCHEMA IF NOT EXISTS hive.myschema
+WITH (location = 's3a://warehouse/myschema');
+
+CREATE TABLE IF NOT EXISTS hive.myschema.users (
+  id BIGINT,
+  name VARCHAR,
+  email VARCHAR,
+  created_at TIMESTAMP
+)
+WITH (format = 'PARQUET');
+```
+
+## Verify Your Setup
+
+Confirm that Trino is accessible:
+
+```bash
+# Check Trino is responding
+curl http://localhost:8080/v1/info
+```
+
+You should see a JSON response with cluster information. Once this works, you're ready to scaffold a LakeQL project.

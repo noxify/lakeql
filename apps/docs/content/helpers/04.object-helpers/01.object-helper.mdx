@@ -1,0 +1,51 @@
+---
+title: Object Helper
+description: swap() for reversing key/value pairs and object type utilities used by the response transformer.
+---
+
+The object helper module exports utilities for working with key/value objects. The main function `swap` reverses an object's keys and values, which is essential for the response transformer's field name mapping.
+
+## swap
+
+Reverses the keys and values of an object. The return type preserves the mapping through TypeScript's mapped types.
+
+```typescript
+import { swap } from "@lakeql/helpers/object-helper"
+
+const graphqlToDb = {
+  userName: "user_name",
+  createdAt: "created_at",
+  isActive: "is_active",
+}
+
+const dbToGraphql = swap(graphqlToDb)
+// { user_name: "userName", created_at: "createdAt", is_active: "isActive" }
+```
+
+This is used by `@lakeql/response-transformer` to convert between GraphQL field names and database column names. The generated schemas store the mapping as `GraphQL → DB`, and `swap()` reverses it for the response transformation step.
+
+## isObject
+
+A type guard that checks if a value is a plain object (not an array, null, or other type).
+
+```typescript
+import { isObject } from "@lakeql/helpers/object-helper"
+
+isObject({}) // true
+isObject({ a: 1 }) // true
+isObject([]) // false
+isObject(null) // false
+isObject("string") // false
+```
+
+## dot-path-value
+
+The package also re-exports `dot-path-value` for deep property access using dot-notation paths. This is useful when accessing nested fields in transformed response objects.
+
+```typescript
+import { getByPath } from "dot-path-value"
+
+const obj = { user: { address: { city: "Berlin" } } }
+const city = getByPath(obj, "user.address.city")
+// "Berlin"
+```

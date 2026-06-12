@@ -1,0 +1,107 @@
+---
+title: Transform Function
+description: Detailed reference for convertTrinoResponse and transform — the two main functions for response mapping.
+---
+
+## convertTrinoResponse
+
+Converts a Trino response element (an array of positional values) into a keyed object. The number of keys must match the number of values.
+
+```typescript
+import { convertTrinoResponse } from "@lakeql/response-transformer"
+
+const keys = ["id", "name", "email"]
+const values = [42, "Alice", "alice@example.com"]
+
+const row = convertTrinoResponse({ keys, values })
+// { id: 42, name: "Alice", email: "alice@example.com" }
+```
+
+This function is generic — you can provide a type parameter for the return value:
+
+```typescript
+interface User {
+  id: number
+  name: string
+  email: string
+}
+
+const row = convertTrinoResponse<User>({ keys, values })
+// Typed as User
+```
+
+## transform
+
+Applies schema-based transformation to a converted row, handling date conversion, nested object/array traversal, and field renaming.
+
+```typescript
+import { transform } from "@lakeql/response-transformer"
+
+const result = transform({
+  data: { user_name: "alice", created_at: 1700000000, is_active: true },
+  definition: jsonSchema, // JSON Schema describing the response structure
+  dateFields: ["created_at"],
+  utcDates: [],
+  transformFields: { user_name: "userName", is_active: "isActive" },
+})
+// { userName: "alice", created_at: 1700000000000, isActive: true }
+```
+
+### Parameters
+
+| Parameter         | Type                      | Description                                        |
+| ----------------- | ------------------------- | -------------------------------------------------- |
+| `data`            | `Record<string, unknown>` | The keyed object from `convertTrinoResponse`       |
+| `definition`      | `JSONSchema7`             | JSON Schema describing the expected response shape |
+| `dateFields`      | `string[]`                | Fields to treat as Unix timestamps (seconds → ms)  |
+| `utcDates`        | `string[]`                | Date fields to format as UTC ISO strings           |
+| `transformFields` | `Record<string, string>`  | Maps DB column names to GraphQL field names        |
+
+### Field renaming with transformFields
+
+The `transformFields` option maps database column names to GraphQL-friendly names. This uses the `swap()` helper from `@lakeql/helpers/object-helper` to reverse the mapping direction.
+
+```typescript
+import { swap } from "@lakeql/helpers/object-helper"
+
+// In the generated schema, the mapping is GraphQL → DB
+const graphqlToDb = { userName: "user_name", createdAt: "created_at" }
+
+// swap() reverses it for the transformer: DB → GraphQL
+const dbToGraphql = swap(graphqlToDb)
+// { user_name: "userName", created_at: "createdAt" }
+```
+
+## Full pipeline example
+
+```typescript
+import { convertTrinoResponse, transform } from "@lakeql/response-transformer"
+
+// Raw Trino response row
+const keys = ["user_name", "created_at", "preferences"]
+const values = ["alice", 1700000000, ["dark", true]]
+
+// Step 1: Convert positional array to object
+const row = convertTrinoResponse({ keys, values })
+
+// Step 2: Transform with schema, dates, and field mapping
+const result = transform({
+  data: row,
+  definition: {
+    type: "object",
+    properties: {
+      user_name: { type: "string" },
+      created_at: { type: "number" },
+      preferences: {
+        type: "object",
+        properties: {
+          theme: { type: "string" },
+          notifications: { type: "boolean" },
+        },
+      },
+    },
+  },
+  dateFields: ["created_at"],
+  transformFields: { user_name: "userName" },
+})
+```

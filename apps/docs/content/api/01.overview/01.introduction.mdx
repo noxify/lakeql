@@ -1,0 +1,60 @@
+---
+title: Introduction
+description: What @lakeql/api provides and how it fits into the LakeQL ecosystem.
+---
+
+`@lakeql/api` is the runtime GraphQL server package in the LakeQL ecosystem. It exposes a fully typed GraphQL API that queries data from Trino — a distributed SQL query engine — and returns structured, paginated results to clients.
+
+The package combines three core libraries into a cohesive server stack:
+
+- **Hono** — A lightweight, high-performance HTTP framework that handles routing, CORS, and middleware.
+- **GraphQL Yoga** — A spec-compliant GraphQL server with built-in support for subscriptions, file uploads, and health checks.
+- **Pothos** — A code-first, type-safe GraphQL schema builder that generates the schema from TypeScript definitions.
+
+## How it connects
+
+`@lakeql/api` sits at the center of the LakeQL architecture. It depends on several sibling packages:
+
+| Package                        | Role                                                          |
+| ------------------------------ | ------------------------------------------------------------- |
+| `@lakeql/trino-client`         | Executes SQL queries against Trino                            |
+| `@lakeql/query-builder`        | Constructs SQL from GraphQL arguments (filters, pagination)   |
+| `@lakeql/response-transformer` | Transforms raw Trino responses into GraphQL-compatible shapes |
+| `@lakeql/helpers`              | Shared utility functions                                      |
+| `@lakeql/logger`               | Structured logging                                            |
+
+## Schema loading
+
+Query schemas are loaded automatically at startup using glob patterns. The server scans for files matching `schemas/**/query-schema.{ts,js,mjs}` in the configured schema directory. Each query schema file registers its types and resolvers on the shared Pothos builder — no manual wiring required.
+
+```typescript
+import { defineConfig } from "@lakeql/api/config"
+import { allConfigs } from "./generated/configs"
+
+export default defineConfig({
+  allConfigs,
+  schemaPath: "./src/schemas",
+  port: 4000,
+})
+```
+
+## Quick start
+
+Install the package and its peer dependency:
+
+```bash
+npm install @lakeql/api graphql
+```
+
+Create a server entry point:
+
+```typescript
+import { startApiServer } from "@lakeql/api/server"
+
+await startApiServer({
+  schemaPath: "./src/schemas",
+  port: 4000,
+})
+```
+
+The server starts on `http://localhost:4000` with GraphiQL available at `/graphql` in development mode.

@@ -1,0 +1,107 @@
+---
+title: Inspecting Catalogs
+description: List schemas, tables, views, and columns from any Trino catalog.
+---
+
+## Overview
+
+The Trino client provides convenience methods for inspecting catalog metadata. Each method executes a SQL query internally and returns a simplified result — typically an array of strings or tuples.
+
+## schemas
+
+Lists all schemas in a catalog.
+
+```typescript
+import { TrinoClient } from "@lakeql/trino-client"
+
+const client = new TrinoClient({
+  host: "https://trino.example.com",
+  port: 8443,
+  auth: { type: "basic", username: "analyst", password: "secret" },
+  catalog: "hive",
+})
+
+const schemas = await client.schemas({ catalog: "hive" })
+// ["default", "sales", "analytics", "information_schema"]
+```
+
+Internally runs: `SHOW SCHEMAS FROM hive`
+
+Returns: `string[]` — flat array of schema names.
+
+## tables
+
+Lists all base tables in a catalog and schema.
+
+```typescript
+const tables = await client.tables({ catalog: "hive", schema: "sales" })
+// ["orders", "customers", "products", "invoices"]
+```
+
+Internally queries `information_schema.tables` filtering by `table_type = 'BASE TABLE'`.
+
+Returns: `string[]` — flat array of table names.
+
+## views
+
+Lists all views in a catalog and schema.
+
+```typescript
+const views = await client.views({ catalog: "hive", schema: "sales" })
+// ["monthly_revenue", "top_customers"]
+```
+
+Internally queries `information_schema.tables` filtering by `table_type = 'VIEW'`.
+
+Returns: `string[]` — flat array of view names.
+
+## columns
+
+Lists all columns for a specific table, including their types and metadata.
+
+```typescript
+const columns = await client.columns({
+  catalog: "hive",
+  schema: "sales",
+  table: "orders",
+})
+// [
+//   ["id", "varchar", "", "Order identifier"],
+//   ["amount", "double", "", "Total order amount"],
+//   ["created_at", "timestamp(3)", "", "When the order was placed"],
+// ]
+```
+
+Internally runs: `SHOW COLUMNS FROM hive.sales.orders`
+
+Returns: `[name: string, type: string, extra: string, description: string][]` — array of tuples with column name, Trino type, extra info, and description.
+
+## Full Discovery Example
+
+```typescript
+import { TrinoClient } from "@lakeql/trino-client"
+
+const client = new TrinoClient({
+  host: "https://trino.example.com",
+  port: 8443,
+  auth: { type: "bearer", token: process.env.TRINO_TOKEN },
+  catalog: "iceberg",
+})
+
+// Discover all tables across all schemas
+const schemas = await client.schemas({ catalog: "iceberg" })
+
+for (const schema of schemas) {
+  if (schema === "information_schema") continue
+
+  const tables = await client.tables({ catalog: "iceberg", schema })
+  console.log(`${schema}: ${tables.join(", ")}`)
+
+  for (const table of tables) {
+    const columns = await client.columns({ catalog: "iceberg", schema, table })
+    console.log(
+      `  ${table}: ${columns.map(([name, type]) => `${name} (${type})`).join(", ")}`
+    )
+  }
+}
+```

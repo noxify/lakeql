@@ -1,0 +1,48 @@
+---
+title: Introduction
+description: An HTTP client for executing queries and inspecting metadata on Trino clusters.
+---
+
+## What is the Trino Client?
+
+The `@lakeql/trino-client` package provides a typed HTTP client for communicating with a Trino cluster via its [REST API](https://trino.io/docs/current/develop/client-protocol.html). It handles authentication, paginated result fetching, and catalog metadata inspection.
+
+Built on top of [got](https://github.com/sindresorhus/got), the client supports both basic and bearer token authentication, automatic pagination through `nextUri` links, and an async-generator streaming mode for memory-efficient processing of large result sets.
+
+## Core Capabilities
+
+- **Query execution** — Send SQL statements and collect all result pages into a single array
+- **Streaming** — Yield rows one at a time via an async generator for large datasets
+- **Metadata inspection** — List schemas, tables, views, and columns for any catalog
+- **Authentication** — Basic auth (username/password) and bearer token auth
+- **User impersonation** — Execute queries on behalf of another user via the `X-Trino-User` header
+
+## Quick Example
+
+```typescript
+import { TrinoClient } from "@lakeql/trino-client"
+
+const client = new TrinoClient({
+  host: "https://trino.example.com",
+  port: 8443,
+  auth: { type: "basic", username: "analyst", password: "secret" },
+  catalog: "hive",
+  schema: "sales",
+})
+
+const rows = await client.query<[string, number]>({
+  sql: "SELECT region, SUM(amount) FROM orders GROUP BY region",
+})
+
+console.log(rows)
+// [["us-east", 42000], ["eu-west", 31500], ...]
+```
+
+## How It Works
+
+1. The client sends a `POST` request to `/v1/statement` with the SQL body
+2. Trino responds with an initial result (possibly empty) and a `nextUri`
+3. The client follows `nextUri` links with `GET` requests until no more pages remain
+4. All `data` arrays from each page are concatenated into the final result
+
+This pagination is handled transparently — you call `query()` and get back the full result set.

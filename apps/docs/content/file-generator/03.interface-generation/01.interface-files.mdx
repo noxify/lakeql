@@ -1,0 +1,57 @@
+---
+title: Interface Files
+description: Reference for generateInterface — creates TypeScript interfaces from model definitions.
+---
+
+The `generateInterface` function produces TypeScript interface declarations from model definitions. These interfaces represent the shape of data returned by GraphQL resolvers and are used for type-safe access throughout the API.
+
+## Usage
+
+```typescript
+import { generateInterface } from "@lakeql/file-generator/interface"
+import { generateCode } from "@lakeql/file-generator"
+
+const nodes = generateInterface(models)
+
+const sourceFile = await generateCode({
+  fileName: "types.ts",
+  nodes,
+})
+```
+
+## Generated output
+
+For a table with simple and nested columns, the generator produces:
+
+```typescript
+export interface User {
+  id: number
+  name: string
+  email: string
+  isActive: boolean
+  address: UserAddress
+  tags: string[]
+}
+
+export interface UserAddress {
+  street: string
+  city: string
+  zip: number
+}
+```
+
+## Handling of types
+
+The interface generator maps parsed column types to TypeScript types:
+
+| Parsed Type | TypeScript Output   |
+| ----------- | ------------------- |
+| string      | `string`            |
+| number      | `number`            |
+| boolean     | `boolean`           |
+| Date        | `string`            |
+| DateTime    | `string`            |
+| object      | Nested interface    |
+| array       | `T[]` (typed array) |
+
+Nested `row` types produce separate interface declarations. Optional fields (columns marked as nullable) use the `?` modifier.

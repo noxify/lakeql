@@ -1,0 +1,99 @@
+---
+title: Package Map
+description: All packages in the LakeQL monorepo and how they relate to each other.
+---
+
+## Packages
+
+LakeQL is organized as a monorepo with focused, single-responsibility packages.
+
+### @lakeql/api
+
+GraphQL API server built on Hono, GraphQL Yoga, and Pothos. Handles HTTP serving, schema loading, authentication, and permission checks.
+
+### @lakeql/cli
+
+Command-line tool for schema introspection and code generation. Connects to Trino, discovers tables, and writes TypeScript source files.
+
+### @lakeql/query-builder
+
+Kysely-based SQL query generation. Translates GraphQL resolve info (selected fields, filters, sorting, pagination) into Trino-compatible SQL with CTEs.
+
+### @lakeql/trino-client
+
+HTTP client for the Trino REST API. Handles statement submission, polling for results, and authentication (Basic and Bearer).
+
+### @lakeql/schema-generator
+
+Generates GraphQL model definitions, Hive table DDL, and JSON schemas from parsed column metadata.
+
+### @lakeql/column-parser
+
+Parses Trino column type strings (e.g. `varchar`, `array(row(id bigint, name varchar))`) into structured type objects.
+
+### @lakeql/response-transformer
+
+Transforms Trino's array-based responses into typed JavaScript objects using JSON Schema definitions.
+
+### @lakeql/file-generator
+
+Generates TypeScript source files — config, interfaces, and query schemas — from schema-generator output.
+
+### @lakeql/helpers
+
+Shared utilities for pagination calculation, code formatting, and object manipulation.
+
+### @lakeql/logger
+
+Structured logging with loglayer and winston. Includes sensitive field redaction.
+
+### @lakeql/create-app
+
+Project scaffolding tool (`create-lakeql-app`). Downloads a starter template via giget and configures dependencies.
+
+## Dependency Flow
+
+The packages connect through two main flows:
+
+### CLI Flow (Introspection + Generation)
+
+```
+┌──────────────┐     ┌──────────────────┐     ┌────────────────────┐
+│  @lakeql/cli │────▶│ @lakeql/trino-   │────▶│ @lakeql/column-    │
+│              │     │ client           │     │ parser             │
+└──────────────┘     └──────────────────┘     └────────────────────┘
+                                                        │
+                                                        ▼
+                                              ┌────────────────────┐
+                                              │ @lakeql/schema-    │
+                                              │ generator          │
+                                              └────────────────────┘
+                                                        │
+                                                        ▼
+                                              ┌────────────────────┐
+                                              │ @lakeql/file-      │
+                                              │ generator          │
+                                              └────────────────────┘
+```
+
+### API Flow (Serving + Querying)
+
+```
+┌──────────────┐     ┌──────────────────┐     ┌────────────────────┐
+│  @lakeql/api │────▶│ @lakeql/query-   │────▶│ @lakeql/trino-     │
+│              │     │ builder          │     │ client             │
+└──────────────┘     └──────────────────┘     └────────────────────┘
+       │                                                │
+       │                                                ▼
+       │                                      ┌────────────────────┐
+       └─────────────────────────────────────▶│ @lakeql/response-  │
+                                              │ transformer        │
+                                              └────────────────────┘
+```
+
+### Shared Packages
+
+Both flows use these shared packages:
+
+- `@lakeql/helpers` — Pagination math, formatting utilities
+- `@lakeql/logger` — Structured logging with redaction

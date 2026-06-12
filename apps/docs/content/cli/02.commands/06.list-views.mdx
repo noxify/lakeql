@@ -1,0 +1,36 @@
+---
+title: "lakeql-cli list-views"
+navTitle: "list-views"
+description: Lists available views for the configured catalog and schema.
+---
+
+Queries Trino and prints all views in the specified catalog and schema. If `--schema` is not provided, the CLI prompts you to select one interactively.
+
+## Syntax
+
+```bash
+lakeql-cli list-views [options]
+```
+
+## Options
+
+| Flag                  | Type   | Required | Default                | Description                                 |
+| --------------------- | ------ | -------- | ---------------------- | ------------------------------------------- |
+| `--catalog <catalog>` | string | No       | `HIVE_CATALOG` env var | Catalog to use                              |
+| `--schema <schema>`   | string | No       | —                      | Schema to use (interactive if not provided) |
+
+## Usage
+
+```bash
+lakeql-cli list-views --catalog hive --schema analytics
+```
+
+```
+┌──────────────────────┐
+│ View Name            │
+├──────────────────────┤
+│ active_users         │
+│ daily_revenue        │
+│ session_aggregates   │
+└──────────────────────┘
+```

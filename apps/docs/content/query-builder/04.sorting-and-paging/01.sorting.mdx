@@ -1,0 +1,68 @@
+---
+title: Sorting
+description: Multi-field sorting with configurable direction for query results.
+---
+
+## SortInput Interface
+
+```typescript
+import type { SelectExpression } from "kysely"
+
+interface SortInput<TableDefinition> {
+  field: SelectExpression<
+    KyselyDatabase<TableDefinition>,
+    keyof KyselyDatabase<TableDefinition>
+  >
+  direction: "asc" | "desc"
+}
+```
+
+Each `SortInput` specifies a column to order by and the sort direction. The `field` property uses Kysely's `SelectExpression` type for type safety, but in practice it's a string matching a column name.
+
+## Multiple Sort Fields
+
+The `sorting` parameter accepts an array. Fields are applied in order — the first entry is the primary sort key, subsequent entries are secondary, tertiary, etc.
+
+```typescript
+import { generateQuery } from "@lakeql/query-builder"
+
+const compiled = generateQuery<OrderTable>({
+  catalog: "hive",
+  schema: "sales",
+  table: "orders",
+  selectFields: ["id", "status", "created_at"],
+  userQuery: {},
+  sorting: [
+    { field: "status", direction: "asc" },
+    { field: "created_at", direction: "desc" },
+  ],
+})
+```
+
+Produces:
+
+```sql
+ORDER BY "status" ASC, "created_at" DESC
+```
+
+## transformFields Integration
+
+If a sorted field has a mapping in `transformFields`, the query builder uses the database column name in the ORDER BY clause:
+
+```typescript
+const compiled = generateQuery<OrderTable>({
+  // ...
+  sorting: [{ field: "customerName", direction: "asc" }],
+  transformFields: { customerName: "customer_name" },
+})
+```
+
+Produces:
+
+```sql
+ORDER BY "customer_name" ASC
+```
+
+## Why Sorting Matters for Paging
+
+Without at least one sort field, Trino does not guarantee row ordering between pages. This means a client paginating through results might see duplicate rows or miss rows entirely. Always provide at least one deterministic sort key (such as a primary key or timestamp) when using pagination.

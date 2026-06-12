@@ -1,0 +1,105 @@
+---
+title: Trino Connection
+description: Configure the Trino connection including authentication, host settings, and catalog defaults.
+---
+
+## Connection Configuration
+
+LakeQL connects to Trino via its REST API. Both the CLI (for introspection) and the API server (for query execution) use the same connection settings.
+
+## Basic Auth
+
+The default authentication method uses username and password, sent as HTTP Basic Auth:
+
+```bash
+HIVE_HOST="https://trino.example.com"
+HIVE_PORT=8446
+HIVE_USERNAME="my-user"
+HIVE_PASSWORD="my-password"
+```
+
+These credentials are included in every request to Trino as Basic Authentication headers.
+
+## Bearer Auth
+
+For environments that use token-based authentication (e.g. OAuth2 access tokens), configure the Trino client to send a Bearer token instead. This is handled at the system user level for write operations where the API impersonates a service account.
+
+## Host and Port
+
+| Variable    | Description                                  | Example                                           |
+| ----------- | -------------------------------------------- | ------------------------------------------------- |
+| `HIVE_HOST` | Protocol + hostname of the Trino coordinator | `http://localhost`, `https://trino.prod.internal` |
+| `HIVE_PORT` | HTTP port Trino listens on                   | `8080` (default HTTP), `8446` (typical HTTPS)     |
+
+The full Trino endpoint is constructed as `${HIVE_HOST}:${HIVE_PORT}/v1/statement`.
+
+<Note>
+  Use `https://` for production Trino instances. The Trino client respects the
+  protocol from `HIVE_HOST` for TLS connections.
+</Note>
+
+## Default Catalog and Schema
+
+```bash
+HIVE_CATALOG=hive
+```
+
+The `HIVE_CATALOG` variable sets the default catalog context. This is used:
+
+- By the CLI when no `--catalog` flag is provided
+- By the API server as the default catalog for generated queries
+- In the `X-Trino-Catalog` session header
+
+## Source Header
+
+```bash
+HIVE_SOURCE="lakeql"
+```
+
+The optional `HIVE_SOURCE` variable sets the `X-Trino-Source` header, which identifies the application in Trino's query logs. Useful for monitoring and debugging which system submitted a given query.
+
+## Connection in Code
+
+The Trino client is configured internally using these environment variables:
+
+```typescript
+import Bourne from "@hapi/bourne"
+import got from "got"
+
+// The client sends requests to Trino's statement endpoint
+const endpoint = `${env.HIVE_HOST}:${env.HIVE_PORT}/v1/statement`
+
+// Requests include authentication and session headers
+const headers = {
+  "X-Trino-User": env.HIVE_USERNAME,
+  "X-Trino-Source": env.HIVE_SOURCE ?? "lakeql",
+  "X-Trino-Catalog": env.HIVE_CATALOG,
+  Authorization: `Basic ${btoa(`${env.HIVE_USERNAME}:${env.HIVE_PASSWORD}`)}`,
+}
+```
+
+## Query Execution Flow
+
+When the API server submits a query to Trino:
+
+1. **POST** the SQL statement to `/v1/statement`
+2. Trino returns a response with a `nextUri` if results aren't ready yet
+3. The client **polls** the `nextUri` until the query completes
+4. Final response contains column metadata and row data as arrays
+
+<Warning>
+  Large result sets are streamed by Trino across multiple pages. The LakeQL
+  trino-client handles pagination internally, but long-running queries may time
+  out depending on your Trino cluster configuration. Use `paging.limit` in your
+  GraphQL queries to keep result sizes manageable.
+</Warning>
+
+## Troubleshooting
+
+| Symptom                  | Likely Cause                                                 |
+| ------------------------ | ------------------------------------------------------------ |
+| `ECONNREFUSED`           | Trino is not running or `HIVE_HOST`/`HIVE_PORT` is wrong     |
+| `401 Unauthorized`       | Invalid `HIVE_USERNAME` or `HIVE_PASSWORD`                   |
+| `Catalog does not exist` | `HIVE_CATALOG` doesn't match a configured Trino catalog      |
+| `Schema does not exist`  | The target schema hasn't been created in Trino yet           |
+| Query timeout            | Trino cluster is overloaded or the query scans too much data |

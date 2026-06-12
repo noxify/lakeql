@@ -1,0 +1,86 @@
+---
+title: getSelectFields
+description: Extracts requested field names from a GraphQL resolve info object.
+---
+
+## Overview
+
+`getSelectFields` inspects the `GraphQLResolveInfo` object provided to every GraphQL resolver and extracts the field names the client requested. This determines which columns to include in the generated SQL query.
+
+## Signature
+
+```typescript
+import type { GraphQLResolveInfo } from "graphql"
+
+function getSelectFields<T>(
+  graphqlInfo: GraphQLResolveInfo,
+  withNodes?: boolean
+): SelectExpression[]
+```
+
+| Parameter     | Type                 | Default | Description                                |
+| ------------- | -------------------- | ------- | ------------------------------------------ |
+| `graphqlInfo` | `GraphQLResolveInfo` | —       | The resolve info object from the resolver  |
+| `withNodes`   | `boolean`            | `false` | Whether to look inside a `nodes` selection |
+
+## Basic Usage
+
+For simple queries where the fields are directly in the selection set:
+
+```typescript
+import { getSelectFields } from "@lakeql/query-builder"
+
+// Inside a GraphQL resolver
+const resolve = (parent, args, context, info) => {
+  const fields = getSelectFields(info)
+  // fields: ["id", "name", "email"]
+}
+```
+
+## Connection Types (withNodes = true)
+
+For Relay-style connection types, the actual data fields are nested inside a `nodes` selection. Set `withNodes` to `true` to extract fields from within `nodes`:
+
+```typescript
+import { getSelectFields } from "@lakeql/query-builder"
+
+// GraphQL query:
+// query {
+//   users {
+//     nodes { id, name, email }
+//     pageInfo { hasNextPage }
+//   }
+// }
+
+const resolve = (parent, args, context, info) => {
+  const fields = getSelectFields(info, true)
+  // fields: ["id", "name", "email"]
+  // (pageInfo is ignored — only nodes children are extracted)
+}
+```
+
+If `withNodes` is `true` but the query has no `nodes` selection, the function throws a `GraphQLError` instructing the client to specify at least one field inside `nodes`.
+
+## Integration with generateQuery
+
+The extracted fields are passed directly as `selectFields` to `generateQuery`:
+
+```typescript
+import { getSelectFields, generateQuery } from "@lakeql/query-builder"
+
+const resolve = (parent, args, context, info) => {
+  const selectFields = getSelectFields<OrderTable>(info, true)
+
+  const compiled = generateQuery<OrderTable>({
+    catalog: "hive",
+    schema: "sales",
+    table: "orders",
+    selectFields,
+    userQuery: args.where ?? {},
+    sorting: args.sort ?? [{ field: "id", direction: "asc" }],
+    paging: args.paging,
+  })
+
+  return context.trino.query({ sql: compiled.sql })
+}
+```

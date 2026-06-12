@@ -1,0 +1,95 @@
+---
+title: Client Setup
+description: Configuration options and authentication for the Trino client.
+---
+
+## TrinoClientProps Interface
+
+```typescript
+interface TrinoClientProps {
+  host: string
+  port: number
+  auth: Auth
+  catalog: string
+  schema?: string
+  source?: string
+}
+
+type Auth = BasicAuth | BearerAuth
+
+interface BasicAuth {
+  type: "basic"
+  username: string
+  password: string
+}
+
+interface BearerAuth {
+  type: "bearer"
+  token: string
+}
+```
+
+| Property  | Required | Description                                                                        |
+| --------- | -------- | ---------------------------------------------------------------------------------- |
+| `host`    | Yes      | Trino coordinator hostname including protocol (e.g. `"https://trino.example.com"`) |
+| `port`    | Yes      | Port the coordinator listens on (commonly `8080` or `8443`)                        |
+| `auth`    | Yes      | Authentication credentials — basic or bearer                                       |
+| `catalog` | Yes      | Default catalog for all queries                                                    |
+| `schema`  | No       | Default schema for all queries                                                     |
+| `source`  | No       | Identifies the client in Trino logs (defaults to `"nodejs"`)                       |
+
+## Basic Authentication
+
+```typescript
+import { TrinoClient } from "@lakeql/trino-client"
+
+const client = new TrinoClient({
+  host: "https://trino.example.com",
+  port: 8443,
+  auth: {
+    type: "basic",
+    username: "analyst",
+    password: "s3cr3t",
+  },
+  catalog: "hive",
+  schema: "sales",
+})
+```
+
+The username and password are Base64-encoded and sent as an `Authorization: Basic ...` header on every request.
+
+## Bearer Token Authentication
+
+```typescript
+import { TrinoClient } from "@lakeql/trino-client"
+
+const client = new TrinoClient({
+  host: "https://trino.example.com",
+  port: 8443,
+  auth: {
+    type: "bearer",
+    token: "eyJhbGciOiJSUzI1NiIs...",
+  },
+  catalog: "iceberg",
+  source: "my-etl-service",
+})
+```
+
+The token is sent as an `Authorization: Bearer ...` header.
+
+## Default Headers
+
+On construction, the client sets the following Trino headers automatically:
+
+| Header            | Value                                         |
+| ----------------- | --------------------------------------------- |
+| `X-Trino-Source`  | The `source` option, or `"nodejs"` if omitted |
+| `X-Trino-Catalog` | The `catalog` option                          |
+| `X-Trino-Schema`  | The `schema` option (only if provided)        |
+
+You can modify headers after construction using `setHeader()` or `setRawHeader()`:
+
+```typescript
+client.setHeader("X-Trino-Schema", "production")
+client.setRawHeader("X-Custom-Header", "value")
+```

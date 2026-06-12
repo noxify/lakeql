@@ -77,7 +77,16 @@ export default function RootLayout({
           },
         ],
       }}
-      languages={["ts", "tsx", "mdx", "bash"]}
+      languages={[
+        "ts",
+        "tsx",
+        "mdx",
+        "bash",
+        "sql",
+        "graphql",
+        "json",
+        "dockerfile",
+      ]}
       siteUrl={SITE_URL}
     >
       <html lang="en" suppressHydrationWarning className={cn("antialiased")}>

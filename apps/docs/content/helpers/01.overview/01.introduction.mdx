@@ -1,0 +1,26 @@
+---
+title: Introduction
+description: What @lakeql/helpers provides — shared utility functions used across the LakeQL ecosystem.
+---
+
+`@lakeql/helpers` is a collection of shared utility functions used by other packages in the LakeQL ecosystem. It has no main entry point — instead, it exposes four sub-modules via subpath exports:
+
+| Export                                | Purpose                                         |
+| ------------------------------------- | ----------------------------------------------- |
+| `@lakeql/helpers/calculate-page-info` | Pagination calculations for GraphQL connections |
+| `@lakeql/helpers/format-code`         | Prettier-based TypeScript formatting            |
+| `@lakeql/helpers/object-helper`       | Object key/value utilities                      |
+| `@lakeql/helpers/special-characters`  | Special character replacement for column names  |
+
+## Usage
+
+Import from the specific sub-module you need:
+
+```typescript
+import { calculatePageInfo } from "@lakeql/helpers/calculate-page-info"
+import formatCode from "@lakeql/helpers/format-code"
+import { swap } from "@lakeql/helpers/object-helper"
+import replaceSpecialCharacters from "@lakeql/helpers/special-characters"
+```
+
+Each module is independently tree-shakeable and has its own type definitions. This design keeps import sizes minimal — consuming packages only pull in what they use.
