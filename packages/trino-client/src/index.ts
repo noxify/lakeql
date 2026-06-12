@@ -189,20 +189,20 @@ export interface Cause {
 }
 
 /**
- * Base options shared by all Trino client methods.
+ * Internal type for got request options. Not part of the public API.
  */
-export interface BaseProps {
-  /** Optional [got](https://github.com/sindresorhus/got) request options passed through to every request. */
-  gotOpts?: Omit<
-    OptionsOfTextResponseBody,
-    "responseType" | "body" | "method" | "resolveBodyOnly" | "headers"
-  >
-}
+type GotRequestOptions = Omit<
+  OptionsOfTextResponseBody,
+  "responseType" | "body" | "method" | "resolveBodyOnly" | "headers"
+>
+
+/** Internal props that add gotOpts to public interfaces. */
+type WithGotOpts<T> = T & { gotOpts?: GotRequestOptions }
 
 /**
  * Parameters for executing a SQL query or stream.
  */
-export interface QueryProps extends BaseProps {
+export interface QueryProps {
   /** The SQL statement to execute. */
   sql: string
   /** Optional Trino user to impersonate via `X-Trino-User`. */
@@ -212,7 +212,7 @@ export interface QueryProps extends BaseProps {
 /**
  * Parameters for listing schemas in a catalog.
  */
-export interface GetSchemasProps extends BaseProps {
+export interface GetSchemasProps {
   /** The catalog to inspect. */
   catalog: string
 }
@@ -382,7 +382,11 @@ export class TrinoClient {
     return false
   }
 
-  private async runStatement<T>({ sql, impersonateAs, gotOpts }: QueryProps) {
+  private async runStatement<T>({
+    sql,
+    impersonateAs,
+    gotOpts,
+  }: WithGotOpts<QueryProps>) {
     const statementRequest = await got<QueryResult<T>>(
       `${this.host}:${this.port}/v1/statement`,
       {
@@ -417,12 +421,10 @@ export class TrinoClient {
    * @param params - Query parameters.
    * @param params.sql - The SQL statement to execute.
    * @param params.impersonateAs - Optional Trino user to impersonate via `X-Trino-User`.
-   * @param params.gotOpts - Optional `got` request options passed through to every request.
    * @returns A promise that resolves to the flat array of all result rows.
    */
-  async query<T>({ sql, impersonateAs, gotOpts }: QueryProps): Promise<T[]> {
+  async query<T>({ sql, impersonateAs }: QueryProps): Promise<T[]> {
     const statementResult = await this.runStatement<T>({
-      gotOpts,
       impersonateAs,
       sql,
     })
@@ -439,7 +441,6 @@ export class TrinoClient {
         rejectUnauthorized: false,
       },
       throwHttpErrors: false,
-      ...gotOpts,
       pagination: {
         paginate: ({ response }: { response: Response<unknown> }) => {
           if (!response.ok) {
@@ -470,16 +471,13 @@ export class TrinoClient {
    * @param params - Query parameters.
    * @param params.sql - The SQL statement to execute.
    * @param params.impersonateAs - Optional Trino user to impersonate via `X-Trino-User`.
-   * @param params.gotOpts - Optional `got` request options passed through to every request.
    * @returns An async generator that yields individual result rows.
    */
   async stream<T>({
     sql,
     impersonateAs,
-    gotOpts,
   }: QueryProps): Promise<AsyncGenerator<T>> {
     const statementResult = await this.runStatement<T>({
-      gotOpts,
       impersonateAs,
       sql,
     })
@@ -507,7 +505,6 @@ export class TrinoClient {
           rejectUnauthorized: false,
         },
         throwHttpErrors: false,
-        ...gotOpts,
         pagination: {
           paginate: ({ response }: { response: Response<unknown> }) => {
             if (!response.ok) {
@@ -539,13 +536,12 @@ export class TrinoClient {
    * Lists all schemas in the given catalog.
    *
    * @param params.catalog - The catalog to inspect.
-   * @param params.gotOpts - Optional `got` request options.
    * @returns A promise that resolves to an array of schema name strings.
    */
-  async schemas({ catalog, gotOpts }: GetSchemasProps) {
+  async schemas({ catalog }: GetSchemasProps) {
     const query = `SHOW SCHEMAS from ${catalog}`
 
-    const schemas = await this.query<string[]>({ gotOpts, sql: query })
+    const schemas = await this.query<string[]>({ sql: query })
     return schemas.flat()
   }
 
@@ -554,14 +550,12 @@ export class TrinoClient {
    *
    * @param params.catalog - The catalog to inspect.
    * @param params.schema - The schema to inspect.
-   * @param params.gotOpts - Optional `got` request options.
    * @returns A promise that resolves to an array of table name strings.
    */
-  async tables({ catalog, schema, gotOpts }: GetTablesProps) {
+  async tables({ catalog, schema }: GetTablesProps) {
     const query = `SELECT table_name from ${catalog}.information_schema.tables WHERE table_type = 'BASE TABLE' and table_schema='${schema}'`
 
     const schemas = await this.query<string[]>({
-      gotOpts,
       sql: query,
     })
 
@@ -573,14 +567,12 @@ export class TrinoClient {
    *
    * @param params.catalog - The catalog to inspect.
    * @param params.schema - The schema to inspect.
-   * @param params.gotOpts - Optional `got` request options.
    * @returns A promise that resolves to an array of view name strings.
    */
-  async views({ catalog, schema, gotOpts }: GetViewsProps) {
+  async views({ catalog, schema }: GetViewsProps) {
     const query = `SELECT table_name from ${catalog}.information_schema.tables WHERE table_type = 'VIEW' and table_schema='${schema}'`
 
     const schemas = await this.query<string[]>({
-      gotOpts,
       sql: query,
     })
     return schemas.flat()
@@ -592,15 +584,14 @@ export class TrinoClient {
    * @param params.catalog - The catalog containing the table.
    * @param params.schema - The schema containing the table.
    * @param params.table - The table to describe.
-   * @param params.gotOpts - Optional `got` request options.
    * @returns A promise that resolves to an array of tuples `[name, type, extra, description]`.
    */
-  async columns({ catalog, schema, table, gotOpts }: GetColumnsProps) {
+  async columns({ catalog, schema, table }: GetColumnsProps) {
     const query = `SHOW COLUMNS from ${catalog}.${schema}.${table}`
 
     const columns = await this.query<
       [name: string, type: string, extra: string, description: string]
-    >({ gotOpts, sql: query })
+    >({ sql: query })
 
     return columns
   }
