@@ -48,7 +48,6 @@ const nextConfig: NextConfig = {
   images: {
     unoptimized: true,
   },
-  staticPageGenerationTimeout: 180,
   output: "export",
   pageExtensions: ["js", "jsx", "ts", "tsx", "md", "mdx"],
   poweredByHeader: false,
