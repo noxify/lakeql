@@ -1,6 +1,16 @@
 {
   "name": "@lakeql/api",
   "version": "0.1.1",
+  "description": "GraphQL API server using Hono, GraphQL Yoga, and Pothos over Trino",
+  "keywords": [
+    "api",
+    "graphql",
+    "hono",
+    "lakeql",
+    "pothos",
+    "trino",
+    "yoga"
+  ],
   "homepage": "https://lakeql.dev",
   "bugs": "https://github.com/noxify/lakeql/issues",
   "license": "Apache-2.0",

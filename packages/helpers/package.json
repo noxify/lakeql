@@ -1,6 +1,14 @@
 {
   "name": "@lakeql/helpers",
   "version": "0.1.1",
+  "description": "Shared utility functions for pagination, formatting, and object manipulation",
+  "keywords": [
+    "formatting",
+    "helpers",
+    "lakeql",
+    "pagination",
+    "utilities"
+  ],
   "homepage": "https://lakeql.dev",
   "license": "Apache-2.0",
   "author": {

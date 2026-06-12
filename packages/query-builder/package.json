@@ -1,6 +1,15 @@
 {
   "name": "@lakeql/query-builder",
   "version": "0.1.1",
+  "description": "Kysely-based SQL query builder that translates GraphQL queries into Trino SQL",
+  "keywords": [
+    "graphql",
+    "kysely",
+    "lakeql",
+    "query-builder",
+    "sql",
+    "trino"
+  ],
   "homepage": "https://lakeql.dev",
   "license": "Apache-2.0",
   "author": {

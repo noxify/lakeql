@@ -1,6 +1,14 @@
 {
   "name": "@lakeql/create-app",
   "version": "0.1.1",
+  "description": "Project scaffolding tool for creating new LakeQL applications",
+  "keywords": [
+    "create-app",
+    "lakeql",
+    "scaffolding",
+    "starter",
+    "template"
+  ],
   "homepage": "https://lakeql.dev",
   "license": "Apache-2.0",
   "author": {

@@ -1,6 +1,14 @@
 {
   "name": "@lakeql/response-transformer",
   "version": "0.1.1",
+  "description": "Transforms Trino array responses into typed JavaScript objects",
+  "keywords": [
+    "lakeql",
+    "mapping",
+    "response",
+    "transform",
+    "trino"
+  ],
   "homepage": "https://lakeql.dev",
   "license": "Apache-2.0",
   "author": {
