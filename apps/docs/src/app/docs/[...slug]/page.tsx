@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import { Space_Grotesk } from "next/font/google"
 import { notFound } from "next/navigation"
 import { isDirectory, isFile, MDX } from "renoun"
+import type { ModuleExport } from "renoun"
 
 import {
   getFileContent,
@@ -14,7 +15,9 @@ import {
   getEntryFrontmatter,
 } from "@/collection-helpers"
 import type { EntryType } from "@/collection-helpers"
+import { PackagesDirectory } from "@/collections"
 import { DocsPageActions } from "@/components/docs-page-actions"
+import { References } from "@/components/mdx/reference"
 import SectionGrid from "@/components/section-grid"
 import Siblings from "@/components/siblings"
 import { cn } from "@/lib/utils"
@@ -212,6 +215,29 @@ export default async function DocsPage({
     entry.getSourceUrl(),
   ])
 
+  // Load API reference exports if configured in frontmatter
+  let apiReferenceExports: ModuleExport<unknown>[] | null = null
+  if (
+    frontmatter?.apiReference &&
+    Array.isArray(frontmatter.apiReference) &&
+    frontmatter.apiReference.length > 0
+  ) {
+    const allExports = await Promise.all(
+      frontmatter.apiReference.map(
+        async (ref: { name: string; file: string }) => {
+          try {
+            const sourceFile = await PackagesDirectory.getFile(ref.file, "ts")
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            return (sourceFile as any).getExports()
+          } catch {
+            return []
+          }
+        }
+      )
+    )
+    apiReferenceExports = allExports.flat()
+  }
+
   const rawHref = toRawHref(slug)
   const articleJsonLd = {
     "@context": "https://schema.org",
@@ -299,6 +325,12 @@ export default async function DocsPage({
           )}
         >
           {Content ? <Content /> : <div>No content</div>}
+
+          {apiReferenceExports && apiReferenceExports.length > 0 && (
+            <div className="mt-12">
+              <References fileExports={apiReferenceExports} />
+            </div>
+          )}
 
           <SectionGrid sections={sections} />
         </div>
