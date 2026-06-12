@@ -19,7 +19,7 @@
     "directory": "packages/create-app"
   },
   "bin": {
-    "create-lakeql-app": "dist/index.js"
+    "create-lakeql-app": "dist/index.mjs"
   },
   "files": [
     "dist"
