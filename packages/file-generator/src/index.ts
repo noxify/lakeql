@@ -1,13 +1,20 @@
 import formatCode from "@lakeql/helpers/format-code"
 import ts from "typescript"
 
-export async function generateCode({
-  fileName,
-  nodes,
-}: {
+/**
+ * Parameters for generateCode.
+ */
+export interface GenerateCodeProps {
+  /** The output file name for the generated source. */
   fileName: string
+  /** The TypeScript AST nodes to print and format. */
   nodes: ts.Node[]
-}) {
+}
+
+/**
+ * Generates formatted TypeScript source from AST nodes.
+ */
+export async function generateCode({ fileName, nodes }: GenerateCodeProps) {
   const printer = ts.createPrinter({
     newLine: ts.NewLineKind.LineFeed,
     omitTrailingSemicolon: true,

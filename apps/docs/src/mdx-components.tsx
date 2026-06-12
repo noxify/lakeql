@@ -4,11 +4,16 @@ import { CodeBlock, Toolbar } from "renoun/components"
 import type { MDXComponents } from "renoun/mdx"
 import { createSlug } from "renoun/mdx"
 
+import { CommandWrapper as Command } from "@/components/mdx/command"
 import { Heading } from "@/components/mdx/heading"
 import {
   ImageHandler,
   MarkdownImageHandler,
 } from "@/components/mdx/image-handler"
+import { LinkHandler } from "@/components/mdx/link-handler"
+import { MermaidDiagram } from "@/components/mdx/mermaid"
+import { RailroadDiagram } from "@/components/mdx/railroad"
+import { References } from "@/components/mdx/reference"
 import {
   StepperComponent,
   StepperItemComponent,
@@ -29,11 +34,6 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-
-import { CommandWrapper as Command } from "./components/mdx/command"
-import { LinkHandler } from "./components/mdx/link-handler"
-import { MermaidDiagram } from "./components/mdx/mermaid"
-import { RailroadDiagram } from "./components/mdx/railroad"
 
 type AnchorProps = ComponentPropsWithoutRef<"a">
 
@@ -275,6 +275,7 @@ export function useMDXComponents() {
           shouldFormat={false}
           showErrors={false}
           components={{
+            // oxlint-disable-next-line react/no-unstable-nested-components
             Toolbar: (toolbarProps) => (
               <Toolbar {...toolbarProps} className="border-b" />
             ),
@@ -285,5 +286,6 @@ export function useMDXComponents() {
     },
 
     Command,
+    References,
   } satisfies MDXComponents
 }

@@ -3,23 +3,9 @@ title: Executing Queries
 description: Run SQL statements against Trino and collect all result pages into a single array.
 ---
 
-## query Method
+## Basic Usage
 
 The `query` method executes a SQL statement and automatically follows Trino's `nextUri` pagination links until all result pages have been collected.
-
-```typescript
-async query<T>({ sql, impersonateAs?, gotOpts? }): Promise<T[]>
-```
-
-| Parameter       | Type      | Description                                                         |
-| --------------- | --------- | ------------------------------------------------------------------- |
-| `sql`           | `string`  | The SQL statement to execute                                        |
-| `impersonateAs` | `string?` | Optional Trino user to impersonate via `X-Trino-User`               |
-| `gotOpts`       | `object?` | Optional [got](https://github.com/sindresorhus/got) request options |
-
-Returns a promise that resolves to a flat array of all rows from every result page.
-
-## Basic Usage
 
 ```typescript
 import { TrinoClient } from "@lakeql/trino-client"

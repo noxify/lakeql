@@ -1,12 +1,23 @@
+/**
+ * Parameters for calculatePageInfo.
+ */
+export interface CalculatePageInfoProps {
+  /** The total number of records. */
+  totalCount: number
+  /** The number of records per page. */
+  perPage: number
+  /** The current page number (defaults to 1). */
+  page?: number
+}
+
+/**
+ * Calculates pagination metadata from total count and page params.
+ */
 export const calculatePageInfo = ({
   totalCount,
   perPage,
   page,
-}: {
-  totalCount: number
-  perPage: number
-  page?: number
-}) => {
+}: CalculatePageInfoProps) => {
   const maxPages = Math.ceil(totalCount / perPage)
   const currentPage = page ?? 1
 

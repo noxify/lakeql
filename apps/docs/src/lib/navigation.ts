@@ -18,6 +18,7 @@ export type NavBadge =
 export interface TreeItem {
   navBadge?: NavBadge
   navIcon?: string
+  separator?: boolean
   title: string
   url: string
   external: boolean
@@ -114,6 +115,7 @@ async function mapTreeNode(
   return {
     navBadge: frontmatter?.navBadge,
     navIcon: frontmatter?.navIcon,
+    separator: frontmatter?.separator ?? false,
     title,
     url,
     external,
@@ -208,24 +210,20 @@ export const getCollectionNavigation = cache(
         return []
       }
 
-      // Trenne Blätter (ohne Children) und Gruppen (mit Children)
-      const leaves: TreeItem[] = []
+      // Respect numeric ordering for all children — treat leaf directories
+      // (those with only an index.mdx) and files the same as groups.
       const groups: NavigationGroup[] = []
 
       for (const child of rootNode.children) {
         if (child.children.length === 0) {
-          leaves.push(child)
+          // Leaf item — render as a standalone group without a label
+          groups.push({ label: "", items: [child] })
         } else {
           groups.push({ label: child.title, items: child.children })
         }
       }
 
-      const result: NavigationGroup[] = []
-      if (leaves.length > 0) {
-        result.push({ label: "", items: leaves })
-      }
-      result.push(...groups)
-      return result
+      return groups
     })
 )
 

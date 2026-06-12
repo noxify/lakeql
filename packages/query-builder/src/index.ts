@@ -21,12 +21,21 @@ import { format } from "sql-formatter"
 
 import { initDb } from "./db"
 
-// interfaces
+/**
+ * Logical operators for combining filter conditions.
+ */
 export enum WhereOperator {
   AND = "and",
   OR = "or",
 }
 
+/**
+ * Comparison operators available for filtering a single field.
+ * Only one operator should be set per FieldOptions object.
+ *
+ * String operators compare the field value against the provided string.
+ * Boolean operators (`is`/`isNot`) check for equality with `true`/`false`.
+ */
 export interface FieldOptions {
   eq?: string
   neq?: string
@@ -42,6 +51,11 @@ export interface FieldOptions {
   isNot?: boolean
 }
 
+/**
+ * Defines the sort order for a query result.
+ *
+ * @template TableDefinition - The table type used to constrain the `field` to valid column names.
+ */
 export interface SortInput<TableDefinition> {
   field: SelectExpression<
     KyselyDatabase<TableDefinition>,
@@ -50,13 +64,25 @@ export interface SortInput<TableDefinition> {
   direction: string
 }
 
+/**
+ * Controls offset-based pagination.
+ * When `limit` is not specified, defaults to 100 rows.
+ */
 export interface PagingInput {
   limit?: number
   offset?: number
 }
 
+/**
+ * A single field condition — a record where the key is the field name
+ * and the value is a [FieldOptions](#field-options) object describing the comparison.
+ */
 export type Field = Record<string, FieldOptions>
 
+/**
+ * A recursive filter structure that can contain AND/OR groups,
+ * each holding field conditions or further nested groups.
+ */
 export type Where = Partial<Record<WhereOperator, (Where | Field)[]>>
 
 /**
@@ -68,23 +94,31 @@ interface KyselyDatabase<TableDefinition> {
 }
 
 /**
- * We have to pass `TableDefinition` since we use some
- * kysely types e.g. to get the select fields
- * i don't think this is required, but it seems to be the right solution,
- * because we don't have to use `@ts-ignore` or `@ts-expect-error`
+ * Parameters for generating a Trino-compatible SQL query from GraphQL resolve info.
+ *
+ * @template TableDefinition - The table type definition used by Kysely for type-safe column references.
  */
-interface GenerateQueryProps<TableDefinition> {
+export interface GenerateQueryProps<TableDefinition> {
+  /** The Trino catalog name (e.g. "hive"). */
   catalog: string
+  /** The Trino schema name (e.g. "sales"). */
   schema: string
+  /** The table name to query. */
   table: string
+  /** The columns to select, derived from GraphQL field selections. */
   selectFields: SelectExpression<
     KyselyDatabase<TableDefinition>,
     keyof KyselyDatabase<TableDefinition>
   >[]
+  /** The user-provided filter query (WHERE clause). */
   userQuery: Where
+  /** Pagination parameters (limit and offset). */
   paging?: PagingInput
+  /** Sort order definitions. */
   sorting: SortInput<TableDefinition>[]
+  /** Maps GraphQL field names to database column names. */
   transformFields?: Record<string, string>
+  /** Fields that should be wrapped in `to_unixtime()` for date conversion. */
   dateFields?: string[]
 }
 
@@ -101,18 +135,36 @@ const operatorMap: Record<string, BinaryOperator> = {
   notin: "not in",
 }
 
+/**
+ * Parameters for building a single field comparison expression.
+ */
+export interface GetFieldQueryProps<TableDefinition> {
+  /** The Kysely expression builder for constructing SQL expressions. */
+  eb: ExpressionBuilder<KyselyDatabase<TableDefinition>, "tablename">
+  /** The column name to filter on. */
+  fieldName: string
+  /** The comparison operator (eq, neq, lt, like, etc.). */
+  operator: string
+  /** The value to compare against. */
+  value: unknown
+}
+
+/**
+ * Builds a single field comparison expression for use in WHERE clauses.
+ *
+ * @param props - The field query parameters.
+ * @returns A Kysely expression wrapper representing the comparison.
+ */
 export function getFieldQuery<TableDefinition>({
   eb,
   fieldName,
   operator,
   value,
-}: {
-  eb: ExpressionBuilder<KyselyDatabase<TableDefinition>, "tablename">
-
-  fieldName: string
-  operator: string
-  value: unknown
-}): ExpressionWrapper<KyselyDatabase<TableDefinition>, "tablename", SqlBool> {
+}: GetFieldQueryProps<TableDefinition>): ExpressionWrapper<
+  KyselyDatabase<TableDefinition>,
+  "tablename",
+  SqlBool
+> {
   const transformedFieldName = fieldName
 
   const op = operator.toLowerCase()
@@ -262,7 +314,13 @@ function conditionBuilder<TableDefinition>({
 }
 
 /**
- * Normalizes filter objects by ensuring each field is in its own object within and/or arrays
+ * Normalizes filter objects by ensuring each field is in its own object within and/or arrays.
+ *
+ * Splits multi-field filter objects into separate entries so the query builder
+ * can process each field condition independently.
+ *
+ * @param filter - The filter object to normalize.
+ * @returns A normalized filter with individual field entries.
  */
 export function normalizeFilter(filter: Where): Where {
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
@@ -369,6 +427,15 @@ export function normalizeFilter(filter: Where): Where {
   return result
 }
 
+/**
+ * Wraps bare field-level filters into an AND-rooted structure.
+ *
+ * If the query already has a single `and` or `or` key at the root, it is returned as-is.
+ * Otherwise, all entries are combined under an `and` key.
+ *
+ * @param userQuery - The user-provided filter query.
+ * @returns A normalized query with a logical operator at the root.
+ */
 export function normalizeUserQuery(userQuery: Where): Where {
   const keys = Object.keys(userQuery)
 
@@ -516,7 +583,23 @@ export function generateQuery<TableDefinition>({
   return withStatement.compile()
 }
 
-export function formatQuery<T>({ query }: { query: CompiledQuery<T> }) {
+/**
+ * Parameters for formatting a compiled SQL query.
+ */
+export interface FormatQueryProps<T> {
+  /** The compiled Kysely query to format. */
+  query: CompiledQuery<T>
+}
+
+/**
+ * Formats a compiled SQL query for readability.
+ *
+ * Applies uppercase keywords, PostgreSQL dialect, and interpolates parameters.
+ *
+ * @param props - The format query parameters.
+ * @returns The formatted SQL string with interpolated parameters.
+ */
+export function formatQuery<T>({ query }: FormatQueryProps<T>) {
   const paramsObject: Record<number, string> = {}
 
   // we get the query parameters as `["param1", "param2"]`
@@ -537,6 +620,13 @@ export function formatQuery<T>({ query }: { query: CompiledQuery<T> }) {
   })
 }
 
+/**
+ * Extracts selected field names from a GraphQL resolve info object.
+ *
+ * @param graphqlInfo - The GraphQL resolve info from the resolver.
+ * @param withNodes - When true, looks inside the `nodes` selection (for Connection types).
+ * @returns An array of field names to use as SELECT columns.
+ */
 export function getSelectFields<T>(
   graphqlInfo: GraphQLResolveInfo,
   withNodes = false

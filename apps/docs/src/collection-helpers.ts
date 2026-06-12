@@ -1,12 +1,13 @@
 import path from "node:path"
 
 import { cache } from "react"
+import type { ModuleExport } from "renoun/file-system"
 import { isDirectory, isFile } from "renoun/file-system"
 import type { z } from "zod"
 
 import { cachePromise } from "@/lib/cache-promise"
 
-import { AllDocumentation } from "./collections"
+import { AllDocumentation, PackagesDirectory } from "./collections"
 import type { frontmatterSchema } from "./validations"
 
 export interface LlmsTreeItem {
@@ -624,3 +625,78 @@ export async function getCollectionLlmsTree(
     return [mappedRoot]
   })
 }
+
+/**
+ * Build-scope cache for API reference export resolution.
+ *
+ * Each unique file path is resolved once and reused across all pages
+ * that reference it in their `apiReference` frontmatter.
+ */
+const _apiReferenceCache = new Map<string, Promise<ApiReferenceResult | null>>()
+
+export interface ApiReferenceResult {
+  name: string
+  exports: {
+    slug: string
+    name: string
+    title: string
+    kind: string | null
+    methods?: { slug: string; name: string; title: string }[]
+  }[]
+}
+
+// copied from https://github.com/souporserious/renoun/blob/main/packages/renoun/src/components/Reference/Reference.tsx#L3629
+export function kindToLabel(kind: string): string {
+  return kind.replaceAll(
+    /(?<lower>[a-z])(?<upper>[A-Z])/gu,
+    "$<lower> $<upper>"
+  )
+}
+
+export const getApiReferenceExports = cache(
+  async (
+    references: { name: string; file: string }[]
+  ): Promise<ApiReferenceResult[]> => {
+    const results = await Promise.all(
+      references.map((ref) =>
+        cachePromise(_apiReferenceCache, ref.file, async () => {
+          try {
+            const sourceFile = await PackagesDirectory.getFile(ref.file, "ts")
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const fileExports = await (sourceFile as any).getExports()
+            const exports = await Promise.all(
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              (fileExports as ModuleExport<any>[]).map(async (e) => {
+                const typeInfo = await e.getType()
+                const methods =
+                  typeInfo?.kind === "Class" && typeInfo.methods
+                    ? typeInfo.methods
+                        .filter(
+                          (m: { name?: string; scope?: string }) =>
+                            m.name && m.scope !== "static"
+                        )
+                        .map((m: { name?: string }) => ({
+                          slug: `${(e.slug ?? e.name).toLowerCase().replaceAll(/[^a-z0-9]+/gu, "-")}-${(m.name ?? "unknown").toLowerCase().replaceAll(/[^a-z0-9]+/gu, "-")}`,
+                          name: m.name ?? "unknown",
+                          title: m.name ?? "unknown",
+                        }))
+                    : undefined
+                return {
+                  slug: e.slug ?? e.name,
+                  name: e.name,
+                  title: e.title ?? e.name,
+                  kind: typeInfo?.kind ? kindToLabel(typeInfo.kind) : null,
+                  methods,
+                }
+              })
+            )
+            return { name: ref.name, exports }
+          } catch {
+            return null
+          }
+        })
+      )
+    )
+    return results.filter((r): r is ApiReferenceResult => r !== null)
+  }
+)

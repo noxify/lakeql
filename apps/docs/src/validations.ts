@@ -11,6 +11,10 @@ export const frontmatterSchema = z.object({
     .optional(),
   navIcon: z.string().optional(),
   navTitle: z.string().optional(),
+  apiReference: z
+    .array(z.object({ name: z.string(), file: z.string() }))
+    .default([]),
+  separator: z.boolean().optional().default(false),
   tags: z.array(z.string()).optional(),
   title: z.string().optional(),
   toc: z.boolean().optional().default(true),

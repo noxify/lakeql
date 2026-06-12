@@ -8,19 +8,32 @@ import {
   stringLiteral,
 } from "./ast-builders"
 
+/**
+ * Parameters for generateConfig.
+ */
+export interface GenerateConfigProps {
+  /** The Hive catalog name. */
+  catalog: string
+  /** The Hive schema name. */
+  schema: string
+  /** The Hive table name. */
+  tableName: string
+  /** The GraphQL query name for this table. */
+  queryName: string
+  /** Optional mutation names for this table endpoint. */
+  mutationName?: string[]
+}
+
+/**
+ * Generates config.ts AST nodes for a table endpoint.
+ */
 export function generateConfig({
   catalog,
   schema,
   tableName,
   queryName,
   mutationName,
-}: {
-  catalog: string
-  schema: string
-  tableName: string
-  queryName: string
-  mutationName?: string[]
-}) {
+}: GenerateConfigProps) {
   /**
    * Definition generated via https://ts-ast-viewer.com/
    */

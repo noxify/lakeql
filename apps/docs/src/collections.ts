@@ -25,6 +25,8 @@ const repository = Repository.remote({
 
 const fileSystem = new NodeFileSystem()
 
+export { repository, fileSystem }
+
 export function createDirectories() {
   return availableCollections.map(
     (collection) =>
@@ -49,4 +51,10 @@ export function createDirectories() {
 
 export const AllDocumentation = new Collection({
   entries: createDirectories(),
+})
+
+export const PackagesDirectory = new Directory({
+  fileSystem,
+  filter: "**/*.ts",
+  path: "../../packages",
 })

@@ -118,12 +118,20 @@ function processObjectField(
   })
 }
 
-// Main schema generation function
+/**
+ * Parameters for generateSqlSchema.
+ */
+export interface GenerateSqlSchemaProps {
+  /** The JSON Schema property definitions to generate SQL columns from. */
+  definition: Record<string, SchemaDefinition>
+}
+
+/**
+ * Generates SQL column definitions from parsed columns.
+ */
 export function generateSqlSchema({
   definition,
-}: {
-  definition: Record<string, SchemaDefinition>
-}): SqlFieldDefinition[] {
+}: GenerateSqlSchemaProps): SqlFieldDefinition[] {
   return Object.entries(definition).map(([fieldName, fieldValue]) => {
     try {
       switch (fieldValue.type) {
@@ -184,11 +192,20 @@ function createParquetArrayField(
   return [fieldName, { "list[]": { element } }]
 }
 
+/**
+ * Parameters for parquetTransformer.
+ */
+export interface ParquetTransformerProps {
+  /** The JSON Schema property definitions to transform for Parquet format. */
+  definition: Record<string, JSONSchema7>
+}
+
+/**
+ * Transforms column definitions for Parquet format.
+ */
 export function parquetTransformer({
   definition,
-}: {
-  definition: Record<string, JSONSchema7>
-}): ParquetField {
+}: ParquetTransformerProps): ParquetField {
   const result: ParquetField = {}
 
   for (const [fieldName, fieldDefinition] of Object.entries(definition)) {
@@ -235,19 +252,32 @@ function quoteIdentifier(name: string): string {
   return `"${name.replaceAll('"', '""')}"`
 }
 
+/**
+ * Parameters for generateCreateTableStatement.
+ */
+export interface GenerateCreateTableStatementProps {
+  /** The Hive schema name. */
+  schema: string
+  /** The table name. */
+  tableName: string
+  /** The S3 bucket name for external storage. */
+  bucketName: string
+  /** The path within the S3 bucket. */
+  bucketPath: string
+  /** The JSON Schema property definitions for table columns. */
+  definition: Record<string, SchemaDefinition>
+}
+
+/**
+ * Generates a full CREATE TABLE DDL statement.
+ */
 export function generateCreateTableStatement({
   schema,
   tableName,
   bucketName,
   bucketPath,
   definition,
-}: {
-  schema: string
-  tableName: string
-  bucketName: string
-  bucketPath: string
-  definition: Record<string, SchemaDefinition>
-}) {
+}: GenerateCreateTableStatementProps) {
   const fields = generateSqlSchema({ definition })
   const columnDefs = fields
     .map(([name, type]) => `  ${quoteIdentifier(name)} ${type}`)

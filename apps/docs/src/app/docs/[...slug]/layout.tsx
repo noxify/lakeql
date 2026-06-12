@@ -1,12 +1,16 @@
 import type { ContentSection } from "renoun/file-system"
 import { isFile } from "renoun/file-system"
+import type z from "zod"
 
 import {
   getFileContent,
   getDocumentationEntryBySlug,
+  getApiReferenceExports,
   rootCollections,
   getBreadcrumbItems,
+  getMetadata,
 } from "@/collection-helpers"
+import type { ApiReferenceResult } from "@/collection-helpers"
 import { SiteBreadcrumb } from "@/components/breadcrumb"
 import { CollectionChooser } from "@/components/collection-chooser"
 import { DocsLeftRailBackground } from "@/components/docs-left-rail-background"
@@ -25,6 +29,7 @@ import {
   getFavoriteNavigationItems,
 } from "@/lib/navigation"
 import { cn } from "@/lib/utils"
+import type { frontmatterSchema } from "@/validations"
 
 function createDocsLayoutConfig(input: {
   layoutWidth: string
@@ -79,6 +84,79 @@ const DOCS_LAYOUT = createDocsLayoutConfig({
   tocContentWidth: "250px",
 })
 
+async function fetchApiReferenceSources(
+  references: z.infer<typeof frontmatterSchema>["apiReference"]
+) {
+  return getApiReferenceExports(references)
+}
+
+function groupExportsByKind(
+  exports: ApiReferenceResult["exports"],
+  baseDepth: number
+) {
+  const grouped = new Map<string, ApiReferenceResult["exports"]>()
+
+  for (const exp of exports) {
+    const label = exp.kind ?? "Other"
+    if (!grouped.has(label)) {
+      grouped.set(label, [])
+    }
+    // oxlint-disable-next-line typescript/no-non-null-assertion
+    grouped.get(label)!.push(exp)
+  }
+
+  // If only one group, flatten without group headers
+  if (grouped.size === 1) {
+    return exports.map((exp) => ({
+      id: exp.slug,
+      title: exp.title,
+      depth: baseDepth,
+      ...(exp.methods?.length
+        ? {
+            children: exp.methods.map((m) => ({
+              id: m.slug,
+              title: m.title,
+              depth: baseDepth + 1,
+            })),
+          }
+        : {}),
+    }))
+  }
+
+  const kindLabels: Record<string, string> = {
+    "Type Alias": "Types",
+    Interface: "Interfaces",
+    Function: "Functions",
+    Enum: "Enums",
+    Class: "Classes",
+    Variable: "Variables",
+  }
+
+  // Multiple groups: each kind becomes a heading with children
+  return [...grouped.entries()].map(([label, items]) => ({
+    id: `${items[0]?.slug ?? label.toLowerCase().replaceAll(" ", "-")}`,
+    title: kindLabels[label] ?? `${label}s`,
+    depth: baseDepth,
+    children: items.flatMap((exp) => {
+      const item = {
+        id: exp.slug,
+        title: exp.title,
+        depth: baseDepth + 1,
+        ...(exp.methods?.length
+          ? {
+              children: exp.methods.map((m) => ({
+                id: m.slug,
+                title: m.title,
+                depth: baseDepth + 2,
+              })),
+            }
+          : {}),
+      }
+      return [item]
+    }),
+  }))
+}
+
 export default async function DocsSlugLayout({
   children,
   params,
@@ -119,7 +197,39 @@ export default async function DocsSlugLayout({
 
   if (isFile(entry)) {
     const fileContent = await getFileContent(entry)
+    const frontmatter = await getMetadata(fileContent)
     headings = (await fileContent?.getSections()) ?? []
+
+    if (frontmatter?.apiReference && frontmatter.apiReference.length > 0) {
+      const results = await fetchApiReferenceSources(frontmatter.apiReference)
+      const hasMultipleSources = results.length > 1
+      const referenceSections = hasMultipleSources
+        ? results.map((result) => ({
+            id: result.name.replaceAll(/[^a-z0-9-]/gu, "-"),
+            title: result.name,
+            depth: 3,
+            children: groupExportsByKind(result.exports, 4),
+          }))
+        : groupExportsByKind(
+            results.flatMap((r) => r.exports),
+            3
+          )
+
+      headings = [
+        ...headings,
+
+        ...(referenceSections.length
+          ? [
+              {
+                id: "api-reference",
+                title: "API Reference",
+                depth: 2,
+                children: referenceSections,
+              },
+            ]
+          : []),
+      ]
+    }
   }
 
   return (

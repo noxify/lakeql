@@ -1,10 +1,19 @@
 import ts from "typescript"
 
+/**
+ * Parameters for generateConfigReqistry.
+ */
+export interface GenerateConfigReqistryProps {
+  /** Relative paths to individual table config modules. */
+  configPaths: string[]
+}
+
+/**
+ * Generates the config registry aggregating all table configs.
+ */
 export function generateConfigReqistry({
   configPaths,
-}: {
-  configPaths: string[]
-}) {
+}: GenerateConfigReqistryProps) {
   const { factory } = ts
   return [
     ...configPaths.map((path, index) =>

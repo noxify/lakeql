@@ -86,6 +86,9 @@ export enum TrinoHeader {
   "X-Trino-Extra-Credential",
 }
 
+/** A well-known Trino request header name from the [TrinoHeader](#trino-header) enum. */
+export type TrinoHeaderName = keyof typeof TrinoHeader
+
 export interface QueryResult<T = unknown> {
   id: string
   infoUri: string
@@ -185,54 +188,98 @@ export interface Cause {
   stack: string[]
 }
 
-interface BaseProps {
+/**
+ * Base options shared by all Trino client methods.
+ */
+export interface BaseProps {
+  /** Optional [got](https://github.com/sindresorhus/got) request options passed through to every request. */
   gotOpts?: Omit<
     OptionsOfTextResponseBody,
     "responseType" | "body" | "method" | "resolveBodyOnly" | "headers"
   >
 }
 
-interface QueryProps extends BaseProps {
+/**
+ * Parameters for executing a SQL query or stream.
+ */
+export interface QueryProps extends BaseProps {
+  /** The SQL statement to execute. */
   sql: string
+  /** Optional Trino user to impersonate via `X-Trino-User`. */
   impersonateAs?: string
 }
 
-interface GetSchemasProps extends BaseProps {
+/**
+ * Parameters for listing schemas in a catalog.
+ */
+export interface GetSchemasProps extends BaseProps {
+  /** The catalog to inspect. */
   catalog: string
 }
 
-interface GetTablesProps extends GetSchemasProps {
+/**
+ * Parameters for listing tables in a catalog and schema.
+ */
+export interface GetTablesProps extends GetSchemasProps {
+  /** The schema to inspect. */
   schema: string
 }
 
-interface GetViewsProps extends GetSchemasProps {
+/**
+ * Parameters for listing views in a catalog and schema.
+ */
+export interface GetViewsProps extends GetSchemasProps {
+  /** The schema to inspect. */
   schema: string
 }
 
-interface GetColumnsProps extends GetTablesProps {
+/**
+ * Parameters for listing columns of a table.
+ */
+export interface GetColumnsProps extends GetTablesProps {
+  /** The table to describe. */
   table: string
 }
 
+/**
+ * Configuration options for creating a TrinoClient instance.
+ */
 export interface TrinoClientProps {
+  /** Trino coordinator hostname including protocol (e.g. `"https://trino.example.com"`). */
   host: string
+  /** Port the Trino coordinator listens on. */
   port: number
+  /** Authentication credentials — either basic (username/password) or bearer (token). */
   auth: Auth
+  /** Default catalog used for all queries. */
   catalog: string
+  /** Optional default schema used for all queries. */
   schema?: string
+  /** Optional source identifier sent as `X-Trino-Source` header. Defaults to `"nodejs"`. */
   source?: string
 }
 
+/**
+ * Basic authentication using username and password.
+ */
 export interface BasicAuth {
   type: "basic"
+  /** The authentication username. */
   username: string
+  /** The authentication password. */
   password: string
 }
 
+/**
+ * Bearer token authentication (e.g. OAuth2 or JWT).
+ */
 export interface BearerAuth {
   type: "bearer"
+  /** The bearer token value. */
   token: string
 }
 
+/** Authentication credentials — either [BasicAuth](#basic-auth) or [BearerAuth](#bearer-auth). */
 export type Auth = BasicAuth | BearerAuth
 
 /**
@@ -302,7 +349,7 @@ export class TrinoClient {
    * @param key - A key from the {@link TrinoHeader} enum (e.g. `"X-Trino-Catalog"`).
    * @param value - The value to set.
    */
-  setHeader(key: keyof typeof TrinoHeader, value: string) {
+  setHeader(key: TrinoHeaderName, value: string) {
     this.headers.set(key, value)
   }
 

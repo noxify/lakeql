@@ -5,6 +5,8 @@
 
 @custom-variant dark (&:is(.dark *));
 
+@source "../components/**/*.{ts,tsx}";
+
 @theme inline {
   --color-brand-50: var(--brand-50);
   --color-brand-100: var(--brand-100);

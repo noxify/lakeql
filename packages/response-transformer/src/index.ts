@@ -184,6 +184,16 @@ export const transformObject = ({
 }
 
 /**
+ * Parameters for convertTrinoResponse.
+ */
+export interface ConvertTrinoResponseProps {
+  /** The field names to use as object keys. */
+  keys: string[]
+  /** The positional values from the Trino response row. */
+  values: unknown[]
+}
+
+/**
  * Converts the trino response element ( array of unknown ) to an object
  * based on the given keys. This function expects that
  * amount of keys matches the amount of value elements
@@ -201,10 +211,7 @@ export const transformObject = ({
 export function convertTrinoResponse<T = Record<string, unknown>>({
   keys,
   values,
-}: {
-  keys: string[]
-  values: unknown[]
-}): T {
+}: ConvertTrinoResponseProps): T {
   const combined: [key: string, value: unknown][] = []
 
   for (const [valueIdx, value] of values.entries()) {

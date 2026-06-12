@@ -49,19 +49,32 @@ export type FieldDefinitionResponse =
       filter: boolean
     }
 
+/**
+ * Parameters for generateModel.
+ */
+export interface GenerateModelProps {
+  /** The JSON Schema source definition to generate a model from. */
+  source: JSONSchema7
+  /** The name of the model being generated. */
+  name: string
+  /** The parent model name for nested models. */
+  parent?: string
+  /** Accumulated model definitions. */
+  models: Record<string, ModelResponse>
+  /** Whether this is the root model definition. */
+  isRoot: boolean
+}
+
+/**
+ * Generates a GraphQL model definition from JSON Schema.
+ */
 export const generateModel = ({
   source,
   name,
   parent,
   models = {},
   isRoot = true,
-}: {
-  source: JSONSchema7
-  name: string
-  parent?: string
-  models: Record<string, ModelResponse>
-  isRoot: boolean
-}) => {
+}: GenerateModelProps) => {
   const currentElement = omit(source, ["additionalProperties"])
   const nestedModels: Record<string, ModelResponse> = { ...models }
 
@@ -132,17 +145,29 @@ export const generateModel = ({
   return nestedModels
 }
 
+/**
+ * Parameters for generateFieldDefinition.
+ */
+export interface GenerateFieldDefinitionProps {
+  /** The sanitized field name. */
+  fieldName: string
+  /** The original raw field name from the schema. */
+  rawFieldName: string
+  /** The JSON Schema definition for this field. */
+  fieldDefinition: JSONSchema7
+  /** The parent model name for generating nested type references. */
+  parent?: string
+}
+
+/**
+ * Generates field definitions for a single model property.
+ */
 export const generateFieldDefinition = ({
   fieldName,
   rawFieldName,
   fieldDefinition,
   parent,
-}: {
-  fieldName: string
-  rawFieldName: string
-  fieldDefinition: JSONSchema7
-  parent?: string
-}): FieldDefinitionResponse => {
+}: GenerateFieldDefinitionProps): FieldDefinitionResponse => {
   const capitalizedName = capitalize(fieldName)
   switch (fieldDefinition.type) {
     case "string": {

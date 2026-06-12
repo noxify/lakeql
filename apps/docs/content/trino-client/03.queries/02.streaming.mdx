@@ -3,23 +3,9 @@ title: Streaming
 description: Stream query results row-by-row using an async generator for memory-efficient processing.
 ---
 
-## stream Method
-
-The `stream` method executes a SQL statement and returns an async generator that yields rows one at a time as pages are fetched from Trino. This is ideal for large result sets where holding all data in memory would be impractical.
-
-```typescript
-async stream<T>({ sql, impersonateAs?, gotOpts? }): Promise<AsyncGenerator<T>>
-```
-
-| Parameter       | Type      | Description                        |
-| --------------- | --------- | ---------------------------------- |
-| `sql`           | `string`  | The SQL statement to execute       |
-| `impersonateAs` | `string?` | Optional Trino user to impersonate |
-| `gotOpts`       | `object?` | Optional got request options       |
-
-Returns a promise that resolves to an `AsyncGenerator<T>` yielding individual rows.
-
 ## Basic Usage
+
+The `stream` method executes a SQL statement and returns an async generator that yields rows one at a time as pages are fetched. Ideal for large result sets where holding all data in memory would be impractical.
 
 ```typescript
 import { TrinoClient } from "@lakeql/trino-client"
@@ -71,7 +57,3 @@ for await (const [userId, count] of stream) {
 
 console.log(`Processed ${processed} rows`)
 ```
-
-## Pagination Under the Hood
-
-The stream uses the same `nextUri` pagination as `query`, but instead of stacking all items, it yields rows from each page as they arrive. The `requestLimit` is set to 10 concurrent page requests to balance throughput and resource usage.

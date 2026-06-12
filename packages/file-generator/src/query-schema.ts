@@ -31,6 +31,27 @@ import {
   typeRef,
 } from "./ast-builders"
 
+/**
+ * Parameters for generateQuerySchema.
+ */
+export interface GenerateQuerySchemaProps {
+  /** The model definitions keyed by model name. */
+  models: Record<string, ModelResponse>
+  /** The GraphQL query name for this table. */
+  queryName: string
+  /** Field name mappings for transformed fields (original to renamed). */
+  transformFields: string[][]
+  /** Filter field definitions for the query input. */
+  filterFields: FilterFieldInput[]
+  /** The GraphQL scalar types used in filters. */
+  filterTypes: string[]
+  /** Field names that contain date-time values. */
+  dateTimeFields: string[]
+}
+
+/**
+ * Generates the Pothos query schema AST for a table.
+ */
 export function generateQuerySchema({
   models,
   queryName,
@@ -38,14 +59,7 @@ export function generateQuerySchema({
   filterFields,
   filterTypes,
   dateTimeFields,
-}: {
-  models: Record<string, ModelResponse>
-  queryName: string
-  transformFields: string[][]
-  filterFields: FilterFieldInput[]
-  filterTypes: string[]
-  dateTimeFields: string[]
-}): ts.Node[] {
+}: GenerateQuerySchemaProps): ts.Node[] {
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const rootModel = Object.values(models).find((model) => model.root)!
 
