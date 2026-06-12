@@ -52,6 +52,7 @@ const nextConfig: NextConfig = {
   pageExtensions: ["js", "jsx", "ts", "tsx", "md", "mdx"],
   poweredByHeader: false,
   reactStrictMode: true,
+  // staticPageGenerationTimeout: 180,
 
   trailingSlash: true,
   /** Enables hot reloading for local packages without a build step */

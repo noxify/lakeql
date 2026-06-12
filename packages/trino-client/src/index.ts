@@ -1,6 +1,14 @@
 import Bourne from "@hapi/bourne"
-import type { OptionsOfTextResponseBody, Response } from "got"
+import type { OptionsOfTextResponseBody } from "got"
 import got from "got"
+
+/** Minimal response type used internally for pagination callbacks. */
+interface GotResponse {
+  ok: boolean
+  statusCode: number
+  statusMessage?: string
+  body: unknown
+}
 
 import type { State } from "./const"
 
@@ -442,7 +450,7 @@ export class TrinoClient {
       },
       throwHttpErrors: false,
       pagination: {
-        paginate: ({ response }: { response: Response<unknown> }) => {
+        paginate: ({ response }: { response: GotResponse }) => {
           if (!response.ok) {
             throw new Error(
               `${response.statusCode} - ${response.statusMessage}`
@@ -506,7 +514,7 @@ export class TrinoClient {
         },
         throwHttpErrors: false,
         pagination: {
-          paginate: ({ response }: { response: Response<unknown> }) => {
+          paginate: ({ response }: { response: GotResponse }) => {
             if (!response.ok) {
               throw new Error(
                 `${response.statusCode} - ${response.statusMessage}`
