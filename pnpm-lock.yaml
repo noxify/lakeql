@@ -121,6 +121,9 @@ importers:
       next:
         specifier: 16.2.9
         version: 16.2.9(@babel/core@7.29.7)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      onedollarstats:
+        specifier: 0.0.23
+        version: 0.0.23(react@19.2.7)
       ora:
         specifier: 9.4.0
         version: 9.4.0
@@ -4758,6 +4761,20 @@ packages:
 
   one-time@1.0.0:
     resolution: {integrity: sha512-5DXOiRKwuSEcQ/l0kGCF6Q3jcADFv5tSmRaJck/OqkVFcOzutB134KRSfF0xDrL39MNnqxbHBbUUcjZIhTgb2g==}
+
+  onedollarstats@0.0.23:
+    resolution: {integrity: sha512-wn8hy4wDJjeC9+1lVcKyLQ69iWmyIKx55t4IehaaJhDW/P1lbAXV25CDsICgAGbtljyszNpAf9hzr09af8Waxw==}
+    peerDependencies:
+      expo-router: '>=3.0.0'
+      react: '>=18.0.0'
+      react-native: '>=0.73.0'
+    peerDependenciesMeta:
+      expo-router:
+        optional: true
+      react:
+        optional: true
+      react-native:
+        optional: true
 
   onetime@5.1.2:
     resolution: {integrity: sha512-kbpaSSGJTWdAY5KPVeMOKXSrPtr8C8C7wodJbcsd51jRnmD+GZu8Y0VoU6Dm5Z4vWr0Ig/1NKuWRKf7j5aaYSg==}
@@ -10083,6 +10100,10 @@ snapshots:
   one-time@1.0.0:
     dependencies:
       fn.name: 1.1.0
+
+  onedollarstats@0.0.23(react@19.2.7):
+    optionalDependencies:
+      react: 19.2.7
 
   onetime@5.1.2:
     dependencies:

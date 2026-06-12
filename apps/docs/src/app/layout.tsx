@@ -2,6 +2,7 @@ import "./globals.css"
 import type { Metadata } from "next"
 import { RootProvider } from "renoun"
 
+import Analytics from "@/components/analytics"
 import { SearchCommandProvider } from "@/components/search-command"
 import { TailwindIndicator } from "@/components/tailwind-indicator"
 import { ThemeProvider } from "@/components/theme-provider"
@@ -85,6 +86,7 @@ export default function RootLayout({
             type="application/ld+json"
             dangerouslySetInnerHTML={{ __html: toJsonLd(websiteJsonLd) }}
           />
+          <Analytics />
           <ThemeProvider
             attribute={["class", "data-theme"]}
             defaultTheme="system"
