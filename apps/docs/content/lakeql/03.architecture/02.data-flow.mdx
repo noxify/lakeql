@@ -7,37 +7,12 @@ description: How LakeQL's CLI pipeline transforms Trino metadata into generated 
 
 When you run `lakeql-cli pull`, a multi-stage pipeline transforms Trino metadata into ready-to-use TypeScript source files.
 
-```
-Trino Instance
-     │
-     │ SHOW COLUMNS FROM catalog.schema.table
-     ▼
-┌─────────────────────┐
-│ Raw Column Data     │  ["id", "bigint", "", ""]
-│ (string arrays)     │  ["name", "varchar(255)", "", ""]
-└─────────────────────┘  ["tags", "array(varchar)", "", ""]
-     │
-     │ @lakeql/column-parser
-     ▼
-┌─────────────────────┐
-│ Structured Columns  │  { name: "id", type: { kind: "scalar", base: "bigint" } }
-│ (typed objects)     │  { name: "tags", type: { kind: "array", element: {...} } }
-└─────────────────────┘
-     │
-     │ @lakeql/schema-generator
-     ▼
-┌─────────────────────┐
-│ Schema Artifacts    │  - JSON Schema definition
-│ (models & schemas)  │  - GraphQL model structure
-└─────────────────────┘  - Hive DDL (optional)
-     │
-     │ @lakeql/file-generator
-     ▼
-┌─────────────────────┐
-│ TypeScript Files    │  - config.ts
-│ (on disk)           │  - interface.ts
-└─────────────────────┘  - query-schema.ts
-                         - json-schema.json
+```mermaid preview
+flowchart LR
+    trino["Trino Instance"] -->|SHOW COLUMNS| cp["@lakeql/column-parser"]
+    cp -->|Structured columns| sg["@lakeql/schema-generator"]
+    sg -->|Models + JSON Schema| fg["@lakeql/file-generator"]
+    fg -->|Writes to disk| files["Generated Files<br/>config.ts · interface.ts<br/>query-schema.ts · json-schema.json"]
 ```
 
 ## Stage 1: Trino Introspection
@@ -106,8 +81,7 @@ This stage maps Trino types to TypeScript and GraphQL types:
 
 After generation, the CLI also updates the **config registry** — an aggregated index file that imports all generated configs:
 
-```typescript
-// src/config-registry.ts (auto-generated)
+```typescript path="src/config-registry.ts"
 import { ordersConfig } from "./schemas/generated/hive/sales/orders/config"
 import { customersConfig } from "./schemas/generated/hive/sales/customers/config"
 

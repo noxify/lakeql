@@ -38,9 +38,7 @@ API_LOGGER="info"
 
 Generate TypeScript files from your Trino tables:
 
-```bash
-pnpm cli pull --catalog hive --schema myschema
-```
+<Command variant="run">cli pull --catalog hive --schema myschema</Command>
 
 This creates:
 
@@ -52,18 +50,17 @@ This creates:
 
 To pull multiple tables at once, pass `--table` multiple times:
 
-```bash
-pnpm cli pull --catalog hive --schema sales --table orders --table customers --table products
-```
+<Command variant="run">
+  cli pull --catalog hive --schema sales --table orders --table customers
+  --table products
+</Command>
 
 </StepperItem>
 <StepperItem title="Start the development server">
 
 Launch the development server:
 
-```bash
-pnpm dev
-```
+<Command variant="run">dev</Command>
 
 You should see:
 
@@ -110,9 +107,7 @@ This returns all available query fields — one for each table you pulled.
 
 As you add tables to your lakehouse, pull them into the project:
 
-```bash
-pnpm cli pull --catalog hive --schema new_schema
-```
+<Command variant="run">cli pull --catalog hive --schema new_schema</Command>
 
 ### Configure permissions
 

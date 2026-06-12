@@ -101,8 +101,7 @@ export default defineConfig({
 
 Register additional scalars on the shared builder in a query-schema file:
 
-```typescript
-// src/schemas/scalars/query-schema.ts
+```typescript path="src/schemas/scalars/query-schema.ts"
 import { builder } from "@lakeql/api/builder"
 import { JSONResolver, BigIntResolver } from "graphql-scalars"
 

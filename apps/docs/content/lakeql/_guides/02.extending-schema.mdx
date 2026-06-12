@@ -11,8 +11,7 @@ Generated query schemas provide standard fields, filtering, and pagination. You 
 
 Create a companion file that adds fields to an existing generated type:
 
-```typescript
-// src/schemas/custom/orders-extensions.ts
+```typescript path="src/schemas/custom/orders-extensions.ts"
 import { builder } from "@lakeql/api"
 
 // Reference the generated type by name
@@ -48,8 +47,7 @@ builder.objectField(OrdersType, "customerName", (t) =>
 
 Generated schemas include standard comparison operators (`eq`, `neq`, `gt`, `lt`, `like`, etc.). You can define custom input types for more specific filtering:
 
-```typescript
-// src/schemas/custom/date-range-input.ts
+```typescript path="src/schemas/custom/date-range-input.ts"
 import { builder } from "@lakeql/api"
 
 export const DateRangeInput = builder.inputType("DateRangeInput", {
@@ -92,8 +90,7 @@ builder.queryField("ordersByRange", (t) =>
 
 Add fields that derive values from existing data at the GraphQL layer:
 
-```typescript
-// src/schemas/custom/computed-fields.ts
+```typescript path="src/schemas/custom/computed-fields.ts"
 import { builder } from "@lakeql/api"
 
 const OrdersType = builder.objectRef<{
@@ -141,8 +138,7 @@ builder.objectField(OrdersType, "ageInDays", (t) =>
 
 Define enum types for fields that have a fixed set of values:
 
-```typescript
-// src/schemas/custom/enums.ts
+```typescript path="src/schemas/custom/enums.ts"
 import { builder } from "@lakeql/api"
 
 export const OrderStatus = builder.enumType("OrderStatus", {

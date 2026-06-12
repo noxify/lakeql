@@ -3,23 +3,15 @@ title: Quickstart
 description: Scaffold a new LakeQL project and run your first GraphQL query in under 5 minutes.
 ---
 
-## Create Your First LakeQL API
+## Create a new project
 
-Get a GraphQL API running over your Trino lakehouse in five steps.
+Use `create-lakeql-app` to bootstrap a project with all dependencies pre-configured:
 
-<Stepper>
-<StepperItem title="Scaffold a new project">
-
-Use `create-lakeql-app` to bootstrap a new project with all dependencies pre-configured:
-
-```bash
-npx create-lakeql-app my-api
-```
+<Command variant="create">@lakeql/app my-api</Command>
 
 Follow the interactive prompts to select your package manager and install dependencies.
 
-</StepperItem>
-<StepperItem title="Configure environment variables">
+## Configure environment variables
 
 Navigate into your project and create a `.env` file from the template:
 
@@ -38,31 +30,25 @@ HIVE_USERNAME="trino"
 HIVE_PASSWORD="your-password"
 
 AUTH_MOCK=true
-AUTH_MOCK_TOKEN="dev-token"
+AUTH_MOCK_TOKEN="1234"
 
 API_PORT=4000
 API_LOGGER="info"
 ```
 
-</StepperItem>
-<StepperItem title="Pull schema from Trino">
+## Pull schemas from Trino
 
-Generate TypeScript schemas from your Trino tables:
+Generate TypeScript schemas from your Trino tables using the built-in CLI alias:
 
-```bash
-npx lakeql-cli pull --catalog hive --schema myschema --target ./src
-```
+<Command variant="run">cli pull --catalog hive --schema myschema</Command>
 
-This introspects all tables in `hive.myschema` and generates typed config, interface, and query-schema files.
+This introspects the selected tables in `hive.myschema` and generates typed config, interface, and query-schema files under `src/schemas/generated/`.
 
-</StepperItem>
-<StepperItem title="Start the API server">
+## Start the API server
 
 Launch the GraphQL server:
 
-```bash
-npx tsx src/server.ts
-```
+<Command variant="run">dev</Command>
 
 You should see output like:
 
@@ -71,16 +57,23 @@ You should see output like:
 * GraphQL Endpoint: http://localhost:4000/graphql
 ```
 
-</StepperItem>
-<StepperItem title="Run your first query">
+## Run your first query
 
 Open [http://localhost:4000/graphql](http://localhost:4000/graphql) in your browser to access GraphiQL.
+
+Set the authorization header in the headers panel:
+
+```json
+{
+  "Authorization": "1234"
+}
+```
 
 Run a query against one of your generated schemas:
 
 ```graphql
 query {
-  users(paging: { limit: 5 }) {
+  users(paging: { page: 1, perPage: 5 }) {
     totalCount
     pageInfo {
       hasNext
@@ -96,18 +89,7 @@ query {
 }
 ```
 
-Include the authorization header:
-
-```json
-{
-  "Authorization": "dev-token"
-}
-```
-
-</StepperItem>
-</Stepper>
-
-## What's Next
+## What's next
 
 - Learn about [environment configuration](/docs/lakeql/getting-started/environment-configuration) for all available options
 - Understand the [generated files](/docs/lakeql/getting-started/first-run) in detail

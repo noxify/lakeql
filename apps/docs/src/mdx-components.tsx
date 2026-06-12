@@ -1,6 +1,6 @@
 import { Children, isValidElement } from "react"
 import type { ComponentPropsWithoutRef, ReactNode } from "react"
-import { CodeBlock, Command } from "renoun/components"
+import { CodeBlock, Toolbar } from "renoun/components"
 import type { MDXComponents } from "renoun/mdx"
 import { createSlug } from "renoun/mdx"
 
@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
+import { CommandWrapper as Command } from "./components/mdx/command"
 import { LinkHandler } from "./components/mdx/link-handler"
 import { MermaidDiagram } from "./components/mdx/mermaid"
 import { RailroadDiagram } from "./components/mdx/railroad"
@@ -251,6 +252,7 @@ export function useMDXComponents() {
         <BaseAccordionContent>{children}</BaseAccordionContent>
       </BaseAccordionItem>
     ),
+
     CodeBlock: (props) => {
       if (props.language === "mermaid") {
         const { preview = false } = props
@@ -266,7 +268,20 @@ export function useMDXComponents() {
         )
       }
 
-      return <CodeBlock {...props} />
+      return (
+        <CodeBlock
+          {...props}
+          shouldAnalyze={false}
+          shouldFormat={false}
+          showErrors={false}
+          components={{
+            Toolbar: (toolbarProps) => (
+              <Toolbar {...toolbarProps} className="border-b" />
+            ),
+          }}
+          showLineNumbers
+        />
+      )
     },
 
     Command,

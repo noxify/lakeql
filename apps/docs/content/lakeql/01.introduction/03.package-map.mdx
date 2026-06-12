@@ -57,38 +57,23 @@ The packages connect through two main flows:
 
 ### CLI Flow (Introspection + Generation)
 
-```
-┌──────────────┐     ┌──────────────────┐     ┌────────────────────┐
-│  @lakeql/cli │────▶│ @lakeql/trino-   │────▶│ @lakeql/column-    │
-│              │     │ client           │     │ parser             │
-└──────────────┘     └──────────────────┘     └────────────────────┘
-                                                        │
-                                                        ▼
-                                              ┌────────────────────┐
-                                              │ @lakeql/schema-    │
-                                              │ generator          │
-                                              └────────────────────┘
-                                                        │
-                                                        ▼
-                                              ┌────────────────────┐
-                                              │ @lakeql/file-      │
-                                              │ generator          │
-                                              └────────────────────┘
+```mermaid preview
+flowchart LR
+    cli["@lakeql/cli"] --> tc["@lakeql/trino-client"]
+    tc --> cp["@lakeql/column-parser"]
+    cp --> sg["@lakeql/schema-generator"]
+    sg --> fg["@lakeql/file-generator"]
+    cli --> fg
 ```
 
 ### API Flow (Serving + Querying)
 
-```
-┌──────────────┐     ┌──────────────────┐     ┌────────────────────┐
-│  @lakeql/api │────▶│ @lakeql/query-   │────▶│ @lakeql/trino-     │
-│              │     │ builder          │     │ client             │
-└──────────────┘     └──────────────────┘     └────────────────────┘
-       │                                                │
-       │                                                ▼
-       │                                      ┌────────────────────┐
-       └─────────────────────────────────────▶│ @lakeql/response-  │
-                                              │ transformer        │
-                                              └────────────────────┘
+```mermaid preview
+flowchart LR
+    api["@lakeql/api"] --> qb["@lakeql/query-builder"]
+    qb --> tc["@lakeql/trino-client"]
+    tc --> rt["@lakeql/response-transformer"]
+    api --> rt
 ```
 
 ### Shared Packages

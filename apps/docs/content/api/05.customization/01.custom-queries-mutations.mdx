@@ -20,8 +20,7 @@ Any file named `query-schema.ts` (or `.js`/`.mjs`) that imports and uses the sha
 
 Create a file in your schema directory:
 
-```typescript
-// src/schemas/custom/query-schema.ts
+```typescript path="src/schemas/custom/query-schema.ts"
 import { builder } from "@lakeql/api/builder"
 
 builder.queryField("serverInfo", (t) =>
@@ -37,8 +36,7 @@ builder.queryField("serverInfo", (t) =>
 
 To add mutations, first ensure the mutation type is registered, then add your field:
 
-```typescript
-// src/schemas/custom-mutations/query-schema.ts
+```typescript path="src/schemas/custom-mutations/query-schema.ts"
 import { builder } from "@lakeql/api/builder"
 
 // Register mutation type if not already done
@@ -65,8 +63,7 @@ builder.mutationField("refreshCache", (t) =>
 
 ## Custom types with arguments
 
-```typescript
-// src/schemas/analytics/query-schema.ts
+```typescript path="src/schemas/analytics/query-schema.ts"
 import { builder } from "@lakeql/api/builder"
 
 const MetricResult = builder

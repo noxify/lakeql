@@ -13,12 +13,6 @@ export const availableCollections = [
   "api",
   "query-builder",
   "trino-client",
-  "schema-generator",
-  "column-parser",
-  "response-transformer",
-  "file-generator",
-  "helpers",
-  "logger",
 ] as const
 export type AvailableCollection = (typeof availableCollections)[number]
 

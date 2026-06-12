@@ -35,12 +35,22 @@ Without any overrides, the server applies these defaults:
 
 ## Usage
 
-```typescript
+```typescript path="src/config.ts"
 import { defineConfig } from "@lakeql/api/config"
-import { allConfigs } from "./generated/configs"
 
-export default defineConfig({
+import { getUser } from "./auth"
+import { allConfigs } from "./config-registry"
+import { permissions } from "./permissions"
+
+const baseDir = import.meta.dirname
+
+export const config = defineConfig({
   allConfigs,
+  baseDir,
+  getUser,
+  permissions,
+  port: 4000,
+  schemaPath: "./schemas",
   yogaConfig: {
     graphiql: {
       title: "LakeQL Explorer",

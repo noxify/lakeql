@@ -27,34 +27,50 @@ The package combines three core libraries into a cohesive server stack:
 
 Query schemas are loaded automatically at startup using glob patterns. The server scans for files matching `schemas/**/query-schema.{ts,js,mjs}` in the configured schema directory. Each query schema file registers its types and resolvers on the shared Pothos builder — no manual wiring required.
 
-```typescript
-import { defineConfig } from "@lakeql/api/config"
-import { allConfigs } from "./generated/configs"
-
-export default defineConfig({
-  allConfigs,
-  schemaPath: "./src/schemas",
-  port: 4000,
-})
-```
-
 ## Quick start
 
-Install the package and its peer dependency:
+Install the required packages:
 
-```bash
-npm install @lakeql/api graphql
+<Command variant="install">
+  @lakeql/api @lakeql/query-builder @lakeql/trino-client @t3-oss/env-core zod
+</Command>
+
+Set up the configuration (`src/config.ts`):
+
+```typescript path="src/config.ts"
+import { defineConfig } from "@lakeql/api/config"
+
+import { getUser } from "./auth"
+import { allConfigs } from "./config-registry"
+import { permissions } from "./permissions"
+
+const baseDir = import.meta.dirname
+
+export const config = defineConfig({
+  allConfigs,
+  baseDir,
+  getUser,
+  graphqlPath: "/graphql",
+  healthCheckEndpoint: "/live",
+  permissions,
+  port: 4000,
+  schemaPath: "./schemas",
+})
 ```
 
-Create a server entry point:
+Create the entry point (`src/index.ts`):
 
-```typescript
-import { startApiServer } from "@lakeql/api/server"
+```typescript path="src/index.ts"
+import { config } from "./config"
 
-await startApiServer({
-  schemaPath: "./src/schemas",
-  port: 4000,
-})
+await config.startServer()
 ```
 
 The server starts on `http://localhost:4000` with GraphiQL available at `/graphql` in development mode.
+
+<Note title="Use create-lakeql-app for a ready-to-go setup">
+  Instead of wiring everything manually, use
+  [`create-lakeql-app`](/docs/lakeql/create-app/usage) to scaffold a fully
+  functional project with auth, permissions, environment validation, and CLI
+  integration pre-configured.
+</Note>

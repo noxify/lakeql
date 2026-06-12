@@ -29,7 +29,7 @@ export function Heading({
     <PolymorphicComponent
       as={`h${level}` as IntrinsicElement}
       id={id}
-      className="group"
+      className="group no-underline hover:no-underline [&_a]:no-underline"
       style={{ fontFamily: spaceGrotesk.style.fontFamily }}
     >
       {children}{" "}

@@ -49,52 +49,34 @@ Use `["*"]` in the `tables` array to grant access to all tables within a catalog
 
 For type-safe permission construction that validates against your generated configs, use the `createPermission` helper with `defineConfig`:
 
-```typescript
-import { defineConfig } from "@lakeql/api/config"
-import { allConfigs } from "./generated/configs"
+```typescript path="src/permissions.ts"
+import { createPermission as createPermissionFromApi } from "@lakeql/api/helpers"
 import type { Permission } from "@lakeql/api/types"
 
-const permissions: Permission[] = [
+import { allConfigs } from "./config-registry"
+
+const createPermission = createPermissionFromApi(allConfigs)
+
+export const permissions: Permission[] = [
   {
     name: "data-pipeline-service",
     useSystemUser: true,
     permissions: {
       Query: [
-        {
-          catalog: "hive",
-          schema: "raw_data",
-          tables: ["events", "users", "sessions"],
-        },
+        createPermission("hive", "raw_data", ["events", "users", "sessions"]),
       ],
-      Mutation: [
-        {
-          catalog: "hive",
-          schema: "processed",
-          tables: ["aggregated_events"],
-        },
-      ],
+      Mutation: [createPermission("hive", "processed", ["aggregated_events"])],
     },
   },
   {
     name: "reporting-service",
     useSystemUser: true,
     permissions: {
-      Query: [
-        {
-          catalog: "hive",
-          schema: "analytics",
-          tables: ["*"],
-        },
-      ],
+      Query: [createPermission("hive", "analytics", ["*"])],
       Mutation: [],
     },
   },
 ]
-
-export default defineConfig({
-  allConfigs,
-  permissions,
-})
 ```
 
 ## How permissions are evaluated

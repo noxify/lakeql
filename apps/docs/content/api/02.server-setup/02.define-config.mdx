@@ -49,39 +49,40 @@ interface DefinedApiConfig<TConfig> {
 
 ### Minimal — pass only configs
 
-```typescript
+```typescript path="src/config.ts"
 import { defineConfig } from "@lakeql/api/config"
-import { allConfigs } from "./generated/configs"
+import { allConfigs } from "./config-registry"
 
-export default defineConfig(allConfigs)
+export const config = defineConfig(allConfigs)
 ```
 
-### Full configuration
+### Full configuration (matching the template)
 
-```typescript
+```typescript path="src/config.ts"
 import { defineConfig } from "@lakeql/api/config"
-import { allConfigs } from "./generated/configs"
-import { permissions } from "./permissions"
-import { customGetUser } from "./auth"
 
-export default defineConfig({
+import { getUser } from "./auth"
+import { allConfigs } from "./config-registry"
+import { permissions } from "./permissions"
+
+const baseDir = import.meta.dirname
+
+export const config = defineConfig({
   allConfigs,
-  schemaPath: "./src/schemas",
-  port: 4000,
+  baseDir,
+  getUser,
   graphqlPath: "/graphql",
-  maxRecordsPerPage: 500,
-  getUser: customGetUser,
+  healthCheckEndpoint: "/live",
   permissions,
-  yogaConfig: {
-    graphiql: true,
-  },
+  port: 4000,
+  schemaPath: "./schemas",
 })
 ```
 
 ### Using startServer
 
-```typescript
-import config from "./lakeql.config"
+```typescript path="src/index.ts"
+import { config } from "./config"
 
 await config.startServer()
 ```

@@ -39,11 +39,12 @@ Writes always require explicit permission because they execute via a system user
 
 Override the default logic by providing custom resolvers in `defineConfig`:
 
-```typescript
+```typescript path="src/config.ts"
 import { defineConfig } from "@lakeql/api/config"
-import { allConfigs } from "./generated/configs"
 
-export default defineConfig({
+import { allConfigs } from "./config-registry"
+
+export const config = defineConfig({
   allConfigs,
   hasReadPermission: ({ context, catalog, schema, tableName }) => {
     // Custom logic: check external authorization service

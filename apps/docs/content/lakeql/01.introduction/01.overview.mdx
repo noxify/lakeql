@@ -22,10 +22,9 @@ LakeQL flips the workflow. Instead of writing resolvers manually, you introspect
 
 The generated code is fully typed end-to-end, from GraphQL input to SQL output.
 
-```bash
-# Pull a schema from Trino and generate all artifacts
-npx lakeql-cli pull --catalog hive --schema sales
-```
+Pull a schema from Trino and generate all artifacts:
+
+<Command variant="exec">lakeql-cli pull --catalog hive --schema sales</Command>
 
 ## Key Benefits
 
@@ -40,23 +39,12 @@ npx lakeql-cli pull --catalog hive --schema sales
 
 ## How It Works
 
-```
-┌─────────────┐     ┌──────────────┐     ┌───────────────┐
-│  Trino      │────▶│  LakeQL CLI  │────▶│  Generated    │
-│  Catalog    │     │  (pull)      │     │  TypeScript   │
-└─────────────┘     └──────────────┘     └───────────────┘
-                                                 │
-                                                 ▼
-                                         ┌───────────────┐
-                                         │  LakeQL API   │
-                                         │  (serve)      │
-                                         └───────────────┘
-                                                 │
-                                                 ▼
-                                         ┌───────────────┐
-                                         │  GraphQL      │
-                                         │  Endpoint     │
-                                         └───────────────┘
+```mermaid preview
+flowchart LR
+    trino["Trino Catalog"] -->|introspect| cli["LakeQL CLI<br/>(pull)"]
+    cli -->|generate| ts["Generated TypeScript"]
+    ts -->|load| api["LakeQL API<br/>(serve)"]
+    api --> gql["GraphQL Endpoint"]
 ```
 
 1. **Introspect** — The CLI connects to Trino and discovers table structures

@@ -11,8 +11,7 @@ By default, LakeQL generates read-only query schemas. To enable write operations
 
 The Pothos builder supports mutation types. Generate mutation schemas or create them manually:
 
-```typescript
-// src/schemas/custom/orders-mutation-schema.ts
+```typescript path="src/schemas/custom/orders-mutation-schema.ts"
 import { builder } from "@lakeql/api"
 
 const CreateOrderInput = builder.inputType("CreateOrderInput", {

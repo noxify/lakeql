@@ -7,62 +7,30 @@ description: How a GraphQL request flows through LakeQL's API runtime, from HTTP
 
 Every GraphQL query follows a predictable path through LakeQL's API runtime. Understanding this flow helps with debugging and extending the system.
 
-```
-Client Request
-     │
-     ▼
-┌──────────────────┐
-│ 1. Hono Server   │  HTTP routing, CORS, logging
-└──────────────────┘
-     │
-     ▼
-┌──────────────────┐
-│ 2. GraphQL Yoga  │  Query parsing, validation, execution
-└──────────────────┘
-     │
-     ▼
-┌──────────────────┐
-│ 3. Auth (getUser)│  Resolve current user from request
-└──────────────────┘
-     │
-     ▼
-┌──────────────────┐
-│ 4. Permission    │  Check read/write access for table
-│    Check         │
-└──────────────────┘
-     │
-     ▼
-┌──────────────────┐
-│ 5. Resolve Info  │  Extract selected fields from query
-│    Extraction    │
-└──────────────────┘
-     │
-     ▼
-┌──────────────────┐
-│ 6. Query Builder │  Generate Trino SQL with CTEs
-└──────────────────┘
-     │
-     ▼
-┌──────────────────┐
-│ 7. Trino Client  │  Execute SQL, poll for results
-└──────────────────┘
-     │
-     ▼
-┌──────────────────┐
-│ 8. Response      │  Array → typed objects
-│    Transformer   │
-└──────────────────┘
-     │
-     ▼
-┌──────────────────┐
-│ 9. Pagination    │  Calculate pageInfo metadata
-└──────────────────┘
-     │
-     ▼
-┌──────────────────┐
-│ 10. GraphQL      │  Connection type response
-│     Response     │
-└──────────────────┘
+```mermaid
+graph TD
+    client["Client Request"]
+    hono["1. Hono Server<br/><small>HTTP routing, CORS, logging</small>"]
+    yoga["2. GraphQL Yoga<br/><small>Query parsing, validation, execution</small>"]
+    auth["3. Auth (getUser)<br/><small>Resolve current user from request</small>"]
+    perm["4. Permission Check<br/><small>Check read/write access for table</small>"]
+    resolve["5. Resolve Info Extraction<br/><small>Extract selected fields from query</small>"]
+    qb["6. Query Builder<br/><small>Generate Trino SQL with CTEs</small>"]
+    trino["7. Trino Client<br/><small>Execute SQL, poll for results</small>"]
+    rt["8. Response Transformer<br/><small>Array → typed objects</small>"]
+    page["9. Pagination<br/><small>Calculate pageInfo metadata</small>"]
+    response["10. GraphQL Response<br/><small>Connection type response</small>"]
+
+    client --> hono
+    hono --> yoga
+    yoga --> auth
+    auth --> perm
+    perm --> resolve
+    resolve --> qb
+    qb --> trino
+    trino --> rt
+    rt --> page
+    page --> response
 ```
 
 ## Step-by-Step Breakdown

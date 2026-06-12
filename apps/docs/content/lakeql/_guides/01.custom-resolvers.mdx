@@ -11,8 +11,7 @@ Generated schemas cover standard CRUD patterns, but you'll often need custom que
 
 Create a new file in your schema path directory:
 
-```typescript
-// src/schemas/custom/analytics-query-schema.ts
+```typescript path="src/schemas/custom/analytics-query-schema.ts"
 import { builder } from "@lakeql/api"
 
 const AnalyticsResult = builder.objectRef<{
@@ -82,8 +81,7 @@ export default defineConfig({
 
 Define custom GraphQL types that aren't tied to a Trino table:
 
-```typescript
-// src/schemas/custom/health-query-schema.ts
+```typescript path="src/schemas/custom/health-query-schema.ts"
 import { builder } from "@lakeql/api"
 
 const HealthStatus = builder.objectRef<{

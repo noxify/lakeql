@@ -9,52 +9,43 @@ LakeQL's packages are organized around two distinct operational flows: the **CLI
 
 ## Package Dependency Diagram
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        CLI Flow                                  │
-│                                                                  │
-│  ┌────────────┐    ┌──────────────┐    ┌────────────────────┐   │
-│  │ @lakeql/   │───▶│ @lakeql/     │───▶│ @lakeql/           │   │
-│  │ cli        │    │ trino-client │    │ column-parser      │   │
-│  └────────────┘    └──────────────┘    └────────────────────┘   │
-│        │                                        │                │
-│        │                                        ▼                │
-│        │                               ┌────────────────────┐   │
-│        │                               │ @lakeql/           │   │
-│        │                               │ schema-generator   │   │
-│        │                               └────────────────────┘   │
-│        │                                        │                │
-│        │                                        ▼                │
-│        │                               ┌────────────────────┐   │
-│        └──────────────────────────────▶│ @lakeql/           │   │
-│                                        │ file-generator     │   │
-│                                        └────────────────────┘   │
-└─────────────────────────────────────────────────────────────────┘
+```mermaid preview
+graph LR
+    subgraph CLI Flow
+        cli["@lakeql/cli"]
+        tc1["@lakeql/trino-client"]
+        cp["@lakeql/column-parser"]
+        sg["@lakeql/schema-generator"]
+        fg["@lakeql/file-generator"]
 
-┌─────────────────────────────────────────────────────────────────┐
-│                        API Flow                                   │
-│                                                                   │
-│  ┌────────────┐    ┌──────────────┐    ┌────────────────────┐   │
-│  │ @lakeql/   │───▶│ @lakeql/     │───▶│ @lakeql/           │   │
-│  │ api        │    │ query-builder│    │ trino-client       │   │
-│  └────────────┘    └──────────────┘    └────────────────────┘   │
-│        │                                        │                │
-│        │                                        ▼                │
-│        │                               ┌────────────────────┐   │
-│        └──────────────────────────────▶│ @lakeql/           │   │
-│                                        │ response-          │   │
-│                                        │ transformer        │   │
-│                                        └────────────────────┘   │
-└─────────────────────────────────────────────────────────────────┘
+        cli --> tc1
+        tc1 --> cp
+        cp --> sg
+        sg --> fg
+        cli --> fg
+    end
 
-┌─────────────────────────────────────────────────────────────────┐
-│                     Shared Packages                               │
-│                                                                   │
-│  ┌────────────────────┐        ┌────────────────────┐           │
-│  │ @lakeql/helpers    │        │ @lakeql/logger     │           │
-│  │ (pagination, fmt)  │        │ (winston, redact)  │           │
-│  └────────────────────┘        └────────────────────┘           │
-└─────────────────────────────────────────────────────────────────┘
+    subgraph API Flow
+        api["@lakeql/api"]
+        qb["@lakeql/query-builder"]
+        tc2["@lakeql/trino-client"]
+        rt["@lakeql/response-transformer"]
+
+        api --> qb
+        qb --> tc2
+        tc2 --> rt
+        api --> rt
+    end
+
+    subgraph Shared
+        helpers["@lakeql/helpers"]
+        logger["@lakeql/logger"]
+    end
+
+    cli --> helpers
+    cli --> logger
+    api --> helpers
+    api --> logger
 ```
 
 ## CLI Flow — Introspection and Generation

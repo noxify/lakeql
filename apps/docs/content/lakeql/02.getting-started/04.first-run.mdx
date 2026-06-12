@@ -7,9 +7,7 @@ description: Walk through pulling your first schema, understanding the generated
 
 After configuring your environment variables, pull a schema from Trino:
 
-```bash
-npx lakeql-cli pull --catalog hive --schema sales --target ./src
-```
+<Command variant="run">cli pull --catalog hive --schema sales</Command>
 
 This command introspects every table in `hive.sales` and generates four files per table.
 
@@ -79,9 +77,7 @@ import { ordersConfig } from "./config"
 
 With schemas generated, start the server:
 
-```bash
-npx tsx src/server.ts
-```
+<Command variant="run">dev</Command>
 
 The server loads all query schemas from the configured `schemaPath` directory and registers them with the Pothos builder. On startup you'll see:
 
