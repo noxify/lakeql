@@ -31,7 +31,6 @@
   ],
   "type": "module",
   "sideEffects": false,
-  "types": "./types/trino-client.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.mts",
@@ -45,11 +44,6 @@
     "clean:dist": "git clean -xdf dist",
     "dev": "tsdown --watch",
     "typecheck": "tsc --noEmit"
-  },
-  "dependencies": {
-    "@hapi/bourne": "3.0.0",
-    "@t3-oss/env-core": "0.13.11",
-    "got": "15.0.5"
   },
   "devDependencies": {
     "@lakeql/tsconfig": "workspace:*",

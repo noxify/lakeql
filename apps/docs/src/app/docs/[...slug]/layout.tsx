@@ -90,70 +90,36 @@ async function fetchApiReferenceSources(
   return getApiReferenceExports(references)
 }
 
-function groupExportsByKind(
+function flatExportsToTocItems(
   exports: ApiReferenceResult["exports"],
   baseDepth: number
 ) {
-  const grouped = new Map<string, ApiReferenceResult["exports"]>()
-
-  for (const exp of exports) {
-    const label = exp.kind ?? "Other"
-    if (!grouped.has(label)) {
-      grouped.set(label, [])
-    }
-    // oxlint-disable-next-line typescript/no-non-null-assertion
-    grouped.get(label)!.push(exp)
-  }
-
-  // If only one group, flatten without group headers
-  if (grouped.size === 1) {
-    return exports.map((exp) => ({
-      id: exp.slug,
-      title: exp.title,
-      depth: baseDepth,
-      ...(exp.methods?.length
-        ? {
-            children: exp.methods.map((m) => ({
-              id: m.slug,
-              title: m.title,
-              depth: baseDepth + 1,
-            })),
-          }
-        : {}),
-    }))
-  }
-
-  const kindLabels: Record<string, string> = {
-    "Type Alias": "Types",
-    Interface: "Interfaces",
-    Function: "Functions",
-    Enum: "Enums",
-    Class: "Classes",
-    Variable: "Variables",
-  }
-
-  // Multiple groups: each kind becomes a heading with children
-  return [...grouped.entries()].map(([label, items]) => ({
-    id: `${items[0]?.slug ?? label.toLowerCase().replaceAll(" ", "-")}`,
-    title: kindLabels[label] ?? `${label}s`,
+  return exports.map((exp) => ({
+    id: exp.slug,
+    title: exp.title,
     depth: baseDepth,
-    children: items.flatMap((exp) => {
-      const item = {
-        id: exp.slug,
-        title: exp.title,
-        depth: baseDepth + 1,
-        ...(exp.methods?.length
-          ? {
-              children: exp.methods.map((m) => ({
-                id: m.slug,
-                title: m.title,
-                depth: baseDepth + 2,
-              })),
-            }
-          : {}),
-      }
-      return [item]
-    }),
+    ...(exp.kind
+      ? {
+          jsx: (
+            <span className="inline-flex items-center gap-1.5">
+              <span className="bg-muted text-muted-foreground rounded px-1 py-0.5 text-[10px] leading-none font-medium">
+                {exp.kind.charAt(0)}
+              </span>
+              <span>{exp.title}</span>
+            </span>
+          ),
+        }
+      : {}),
+    ...(exp.methods?.length
+      ? {
+          children: exp.methods.map((m) => ({
+            id: m.slug,
+            title: m.title,
+            depth: baseDepth,
+            jsx: <span className="ml-4">{m.title}</span>,
+          })),
+        }
+      : {}),
   }))
 }
 
@@ -208,9 +174,9 @@ export default async function DocsSlugLayout({
             id: result.name.replaceAll(/[^a-z0-9-]/gu, "-"),
             title: result.name,
             depth: 3,
-            children: groupExportsByKind(result.exports, 4),
+            children: flatExportsToTocItems(result.exports, 4),
           }))
-        : groupExportsByKind(
+        : flatExportsToTocItems(
             results.flatMap((r) => r.exports),
             3
           )

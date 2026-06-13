@@ -56,7 +56,12 @@ const nextConfig: NextConfig = {
 
   trailingSlash: true,
   /** Enables hot reloading for local packages without a build step */
-  transpilePackages: ["@lakeql/core", "@lakeql/cli", "@lakeql/create-app"],
+  transpilePackages: [
+    "@lakeql/core",
+    "@lakeql/cli",
+    "@lakeql/create-app",
+    "@lakeql/trino-client",
+  ],
   typescript: {
     ignoreBuildErrors: true,
   },

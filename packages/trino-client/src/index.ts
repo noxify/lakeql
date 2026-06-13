@@ -1,300 +1,58 @@
-import Bourne from "@hapi/bourne"
-import type { OptionsOfTextResponseBody } from "got"
-import got from "got"
+import {
+  TrinoClientError,
+  TrinoCancellationError,
+  TrinoQueryError,
+} from "./errors"
+import { withRetry } from "./retry"
+import type { RetryConfig } from "./retry"
+import type {
+  GetColumnsProps,
+  GetSchemasProps,
+  GetTablesProps,
+  GetViewsProps,
+  QueryProps,
+  QueryResult,
+  TrinoClientProps,
+  TrinoHeaderName,
+} from "./types"
 
-/** Minimal response type used internally for pagination callbacks. */
-interface GotResponse {
-  ok: boolean
-  statusCode: number
-  statusMessage?: string
-  body: unknown
-}
-
-import type { State } from "./const"
-
-export enum TrinoHeader {
-  /**
-   * Specifies the session user. If not supplied, the session user is automatically determined via User mapping.
-   */
-  "X-Trino-User",
-
-  /**
-   * Specifies the session’s original user.
-   */
-  "X-Trino-Original-User",
-
-  /**
-   * For reporting purposes, this supplies the name of the software that submitted the query.
-   */
-  "X-Trino-Source",
-
-  /**
-   * The catalog context for query processing. Set by response header X-Trino-Set-Catalog.
-   */
-  "X-Trino-Catalog",
-
-  /**
-   * The schema context for query processing. Set by response header X-Trino-Set-Schema.
-   */
-  "X-Trino-Schema",
-
-  /**
-   * The timezone for query processing. Defaults to the timezone of the Trino cluster, and not the timezone of the client.
-   */
-  "X-Trino-Time-Zone",
-
-  /**
-   * The language to use when processing the query and formatting results, formatted as a Java Locale string, e.g., en-US for US English.
-   * The language of the session can be set on a per-query basis using the X-Trino-Language HTTP header.
-   */
-  "X-Trino-Language",
-
-  /**
-   * Supplies a trace token to the Trino engine to help identify log lines that originate with this query request.
-   */
-  "X-Trino-Trace-Token",
-
-  /**
-   * Supplies a comma-separated list of name=value pairs as session properties.
-   * When the Trino client run a SET SESSION name=value query, the name=value pair is returned in the X-Set-Trino-Session response header,
-   * and added to the client’s list of session properties. If the response header X-Trino-Clear-Session is returned,
-   * its value is the name of a session property that is removed from the client’s accumulated list.
-   */
-  "X-Trino-Session",
-
-  /**
-   * Sets the “role” for query processing. A “role” represents a collection of permissions. Set by response header X-Trino-Set-Role. See CREATE ROLE to understand roles.
-   */
-  "X-Trino-Role",
-  /**
-   * A comma-separated list of the name=value pairs, where the names are names of previously prepared SQL statements, and the values are keys that identify the executable form of the named prepared statements.
-   */
-  "X-Trino-Prepared-Statement",
-  /**
-   * The transaction ID to use for query processing. Set by response header X-Trino-Started-Transaction-Id and cleared by X-Trino-Clear-Transaction-Id.
-   */
-  "X-Trino-Transaction-Id",
-
-  /**
-   * Contains arbitrary information about the client program submitting the query.
-   */
-  "X-Trino-Client-Info",
-  /**
-   * A comma-separated list of “tag” strings, used to identify Trino resource groups.
-   */
-  "X-Trino-Client-Tags",
-  /**
-   * A comma-separated list of resource=value type assignments. The possible choices of resource are EXECUTION_TIME, CPU_TIME, PEAK_MEMORY and PEAK_TASK_MEMORY. EXECUTION_TIME and CPU_TIME have values specified as airlift Duration strings The format is a double precision number followed by a TimeUnit string, e.g., of s for seconds, m for minutes, h for hours, etc. “PEAK_MEMORY” and “PEAK_TASK_MEMORY” are specified as airlift DataSize strings, whose format is an integer followed by B for bytes; kB for kilobytes; mB for megabytes, gB for gigabytes, etc.
-   */
-  "X-Trino-Resource-Estimate",
-
-  /**
-   * Provides extra credentials to the connector. The header is a name=value string that is saved in the session Identity object. The name and value are only meaningful to the connector.
-   */
-  "X-Trino-Extra-Credential",
-}
-
-/** A well-known Trino request header name from the [TrinoHeader](#trino-header) enum. */
-export type TrinoHeaderName = keyof typeof TrinoHeader
-
-export interface QueryResult<T = unknown> {
-  id: string
-  infoUri: string
-  partialCancelUri?: string
-  nextUri?: string
-  columns?: Column[]
-  data?: T[]
-  stats: Stats
-  warnings: unknown[]
-  error?: Error
-}
-
-export interface Column {
-  name: string
-  type: string
-  typeSignature: TypeSignature
-}
-
-export interface TypeSignature {
-  rawType: string
-  arguments: Argument[]
-}
-
-export interface Argument {
-  kind: string
-  value: number
-}
-
-export interface Stats {
-  state: State
-  queued: boolean
-  scheduled: boolean
-  progressPercentage: number
-  runningPercentage: number
-  nodes: number
-  totalSplits: number
-  queuedSplits: number
-  runningSplits: number
-  completedSplits: number
-  cpuTimeMillis: number
-  wallTimeMillis: number
-  queuedTimeMillis: number
-  elapsedTimeMillis: number
-  processedRows: number
-  processedBytes: number
-  physicalInputBytes: number
-  peakMemoryBytes: number
-  spilledBytes: number
-  rootStage?: Stage
-}
-
-export interface Stage {
-  stageId: string
-  state: State
-  done: boolean
-  nodes: number
-  totalSplits: number
-  queuedSplits: number
-  runningSplits: number
-  completedSplits: number
-  cpuTimeMillis: number
-  wallTimeMillis: number
-  processedRows: number
-  processedBytes: number
-  physicalInputBytes: number
-  failedTasks: number
-  coordinatorOnly: boolean
-  subStages: Stage[]
-}
-
-export interface Error {
-  message: string
-  errorCode: number
-  errorName: string
-  errorType: string
-  errorLocation: ErrorLocation
-  failureInfo: FailureInfo
-}
-
-export interface ErrorLocation {
-  lineNumber: number
-  columnNumber: number
-}
-
-export interface FailureInfo {
-  type: string
-  message: string
-  cause: Cause
-  suppressed: unknown[]
-  stack: string[]
-  errorLocation: ErrorLocation
-}
-
-export interface Cause {
-  type: string
-  suppressed: unknown[]
-  stack: string[]
-}
-
-/**
- * Internal type for got request options. Not part of the public API.
- */
-type GotRequestOptions = Omit<
-  OptionsOfTextResponseBody,
-  "responseType" | "body" | "method" | "resolveBodyOnly" | "headers"
->
-
-/** Internal props that add gotOpts to public interfaces. */
-type WithGotOpts<T> = T & { gotOpts?: GotRequestOptions }
-
-/**
- * Parameters for executing a SQL query or stream.
- */
-export interface QueryProps {
-  /** The SQL statement to execute. */
-  sql: string
-  /** Optional Trino user to impersonate via `X-Trino-User`. */
-  impersonateAs?: string
-}
-
-/**
- * Parameters for listing schemas in a catalog.
- */
-export interface GetSchemasProps {
-  /** The catalog to inspect. */
-  catalog: string
-}
-
-/**
- * Parameters for listing tables in a catalog and schema.
- */
-export interface GetTablesProps extends GetSchemasProps {
-  /** The schema to inspect. */
-  schema: string
-}
-
-/**
- * Parameters for listing views in a catalog and schema.
- */
-export interface GetViewsProps extends GetSchemasProps {
-  /** The schema to inspect. */
-  schema: string
-}
-
-/**
- * Parameters for listing columns of a table.
- */
-export interface GetColumnsProps extends GetTablesProps {
-  /** The table to describe. */
-  table: string
-}
-
-/**
- * Configuration options for creating a TrinoClient instance.
- */
-export interface TrinoClientProps {
-  /** Trino coordinator hostname including protocol (e.g. `"https://trino.example.com"`). */
-  host: string
-  /** Port the Trino coordinator listens on. */
-  port: number
-  /** Authentication credentials — either basic (username/password) or bearer (token). */
-  auth: Auth
-  /** Default catalog used for all queries. */
-  catalog: string
-  /** Optional default schema used for all queries. */
-  schema?: string
-  /** Optional source identifier sent as `X-Trino-Source` header. Defaults to `"nodejs"`. */
-  source?: string
-}
-
-/**
- * Basic authentication using username and password.
- */
-export interface BasicAuth {
-  type: "basic"
-  /** The authentication username. */
-  username: string
-  /** The authentication password. */
-  password: string
-}
-
-/**
- * Bearer token authentication (e.g. OAuth2 or JWT).
- */
-export interface BearerAuth {
-  type: "bearer"
-  /** The bearer token value. */
-  token: string
-}
-
-/** Authentication credentials — either [BasicAuth](#basic-auth) or [BearerAuth](#bearer-auth). */
-export type Auth = BasicAuth | BearerAuth
+export {
+  TrinoClientError,
+  TrinoCancellationError,
+  TrinoQueryError,
+  TrinoTimeoutError,
+} from "./errors"
+export type { RetryConfig } from "./retry"
+export { State, TrinoHeader } from "./types"
+export type {
+  Auth,
+  BasicAuth,
+  BearerAuth,
+  ClientTypeSignature,
+  ClientTypeSignatureParameter,
+  Column,
+  ErrorLocation,
+  FailureInfo,
+  GetColumnsProps,
+  GetSchemasProps,
+  GetTablesProps,
+  GetViewsProps,
+  QueryError,
+  QueryProps,
+  QueryResult,
+  StageStats,
+  Stats,
+  TrinoClientProps,
+  TrinoHeaderName,
+  Warning,
+} from "./types"
 
 /**
  * A client for interacting with a Trino cluster via its REST API.
  *
- * Supports executing queries (paginated or streamed), and inspecting
- * catalog metadata such as schemas, tables, views, and columns.
+ * Uses native `fetch` — no external HTTP dependencies. Supports automatic
+ * pagination, streaming via async generators, query cancellation, and
+ * configurable retry with exponential backoff.
  *
  * @example
  * ```ts
@@ -311,23 +69,27 @@ export class TrinoClient {
   host: string
   port: number
   headers: Headers
+  private readonly retryConfig: RetryConfig
+  private readonly defaultTimeout: number | undefined
+  private readonly activeQueries = new Set<string>()
 
   /**
-   * Creates a new {@link TrinoClient} instance and configures the default
-   * request headers based on the provided options.
-   *
-   * @param params - Client configuration.
-   * @param params.host - The Trino coordinator hostname including protocol (e.g. `"http://localhost"`).
-   * @param params.port - The port the Trino coordinator listens on.
-   * @param params.auth - Authentication credentials — either {@link BasicAuth} or {@link BearerAuth}.
-   * @param params.catalog - The default catalog used for all queries.
-   * @param params.schema - Optional default schema used for all queries.
-   * @param params.source - Optional source identifier sent as `X-Trino-Source`. Defaults to `"nodejs"`.
+   * Creates a new TrinoClient instance.
    */
-  constructor({ host, port, auth, catalog, schema, source }: TrinoClientProps) {
+  constructor({
+    host,
+    port,
+    auth,
+    catalog,
+    schema,
+    source,
+    retry,
+    timeout,
+  }: TrinoClientProps) {
     this.host = host
     this.port = port
-
+    this.retryConfig = retry ?? {}
+    this.defaultTimeout = timeout
     this.headers = new Headers()
 
     if (auth.type === "bearer") {
@@ -335,272 +97,315 @@ export class TrinoClient {
     } else {
       this.setRawHeader(
         "Authorization",
-        `Basic ${Buffer.from(`${auth.username}:${auth.password}`).toString("base64")}`
+        `Basic ${btoa(`${auth.username}:${auth.password}`)}`
       )
     }
 
-    // set source for the http request
     this.setHeader("X-Trino-Source", source ?? "nodejs")
-
-    // set the catalog
     this.setHeader("X-Trino-Catalog", catalog)
 
-    // set the schema
     if (schema) {
       this.setHeader("X-Trino-Schema", schema)
     }
   }
 
-  /**
-   * Sets a well-known Trino request header.
-   *
-   * @param key - A key from the {@link TrinoHeader} enum (e.g. `"X-Trino-Catalog"`).
-   * @param value - The value to set.
-   */
+  /** Sets a well-known Trino request header. */
   setHeader(key: TrinoHeaderName, value: string) {
     this.headers.set(key, value)
   }
 
-  /**
-   * Sets an arbitrary request header without key validation.
-   *
-   * @param key - The raw HTTP header name.
-   * @param value - The value to set.
-   */
+  /** Sets an arbitrary request header without key validation. */
   setRawHeader(key: string, value: string) {
     this.headers.set(key, value)
   }
 
-  /**
-   * Returns all currently configured request headers as a plain object.
-   *
-   * @returns A record of header name/value pairs.
-   */
-  getHeaders() {
+  /** Returns all currently configured request headers as a plain object. */
+  getHeaders(): Record<string, string> {
     return Object.fromEntries(this.headers.entries())
-  }
-
-  private static nextPagingUrl(response: QueryResult) {
-    if (response.nextUri) {
-      return {
-        url: new URL(response.nextUri),
-      }
-    }
-
-    return false
-  }
-
-  private async runStatement<T>({
-    sql,
-    impersonateAs,
-    gotOpts,
-  }: WithGotOpts<QueryProps>) {
-    const statementRequest = await got<QueryResult<T>>(
-      `${this.host}:${this.port}/v1/statement`,
-      {
-        body: sql,
-        headers: {
-          ...this.getHeaders(),
-          ...(impersonateAs ? { "X-Trino-User": impersonateAs } : {}),
-        },
-        https: {
-          rejectUnauthorized: false,
-        },
-        method: "POST",
-        responseType: "json",
-        throwHttpErrors: false,
-        ...gotOpts,
-      }
-    )
-
-    if (!statementRequest.ok) {
-      throw new Error(
-        `${statementRequest.statusCode} - ${statementRequest.statusMessage}`
-      )
-    }
-
-    return statementRequest.body
   }
 
   /**
    * Executes a SQL statement and collects all result pages into a single array.
    * Automatically follows `nextUri` pagination until the result set is complete.
-   *
-   * @param params - Query parameters.
-   * @param params.sql - The SQL statement to execute.
-   * @param params.impersonateAs - Optional Trino user to impersonate via `X-Trino-User`.
-   * @returns A promise that resolves to the flat array of all result rows.
    */
-  async query<T>({ sql, impersonateAs }: QueryProps): Promise<T[]> {
-    const statementResult = await this.runStatement<T>({
-      impersonateAs,
-      sql,
-    })
+  async query<T>({
+    sql,
+    impersonateAs,
+    signal,
+    transform,
+  }: QueryProps<T>): Promise<T[]> {
+    const result = await this.runStatement<T>(sql, impersonateAs, signal)
+    this.activeQueries.add(result.id)
 
-    const initialData: T[] = statementResult.data ?? []
-    if (!statementResult.nextUri) {
-      return initialData
-    }
+    try {
+      const columns = result.columns ?? []
+      const allData: T[] = transform
+        ? (result.data ?? []).map((row) => transform(row as unknown[], columns))
+        : (result.data ?? [])
 
-    const pagedData = await got.paginate.all<T>(statementResult.nextUri, {
-      headers: this.getHeaders(),
-      method: "GET",
-      https: {
-        rejectUnauthorized: false,
-      },
-      throwHttpErrors: false,
-      pagination: {
-        paginate: ({ response }: { response: GotResponse }) => {
-          if (!response.ok) {
-            throw new Error(
-              `${response.statusCode} - ${response.statusMessage}`
+      let { nextUri } = result
+      while (nextUri) {
+        TrinoClient.checkAborted(signal, result.id)
+        // eslint-disable-next-line no-await-in-loop
+        const next = await this.fetchNext<T>(nextUri, signal)
+        if (next.data) {
+          if (transform) {
+            allData.push(
+              ...next.data.map((row) =>
+                transform(row as unknown[], next.columns ?? columns)
+              )
             )
+          } else {
+            allData.push(...next.data)
           }
+        }
+        ;({ nextUri } = next)
+      }
 
-          const parsed = Bourne.parse(response.body as string) as QueryResult<T>
-          return TrinoClient.nextPagingUrl(parsed)
-        },
-        stackAllItems: true,
-        transform: (response) => {
-          const parsed = Bourne.parse(response.body as string) as QueryResult<T>
-          return parsed.data ?? []
-        },
-      },
-    })
-
-    return [...initialData, ...pagedData]
+      return allData
+    } finally {
+      this.activeQueries.delete(result.id)
+    }
   }
 
   /**
    * Executes a SQL statement and returns an async generator that yields rows
-   * one at a time as pages are fetched. Prefer this over {@link query} for large
-   * result sets to avoid holding all data in memory.
-   *
-   * @param params - Query parameters.
-   * @param params.sql - The SQL statement to execute.
-   * @param params.impersonateAs - Optional Trino user to impersonate via `X-Trino-User`.
-   * @returns An async generator that yields individual result rows.
+   * one at a time as pages are fetched.
    */
   async stream<T>({
     sql,
     impersonateAs,
-  }: QueryProps): Promise<AsyncGenerator<T>> {
-    const statementResult = await this.runStatement<T>({
-      impersonateAs,
-      sql,
-    })
+    signal,
+    transform,
+  }: QueryProps<T>): Promise<AsyncGenerator<T>> {
+    const result = await this.runStatement<T>(sql, impersonateAs, signal)
+    const columns = result.columns ?? []
+    const initialData: T[] = transform
+      ? (result.data ?? []).map((row) => transform(row as unknown[], columns))
+      : (result.data ?? [])
+    let { nextUri } = result
 
-    const initialData: T[] = statementResult.data ?? []
-    const { nextUri } = statementResult
+    const fetchNext = this.fetchNext.bind(this)
+    const queryId = result.id
 
-    const headers = this.getHeaders()
-    const nextPagingUrl = (response: QueryResult<T>) =>
-      TrinoClient.nextPagingUrl(response)
-
-    return (async function* generator() {
+    async function* streamRows() {
       for (const row of initialData) {
         yield row
       }
 
-      if (!nextUri) {
-        return
+      while (nextUri) {
+        TrinoClient.checkAborted(signal, queryId)
+        // eslint-disable-next-line no-await-in-loop
+        const next = await fetchNext<T>(nextUri, signal)
+        const nextColumns = next.columns ?? columns
+        if (next.data) {
+          for (const row of next.data) {
+            yield transform ? transform(row as unknown[], nextColumns) : row
+          }
+        }
+        ;({ nextUri } = next)
       }
+    }
 
-      for await (const row of got.paginate(nextUri, {
-        headers,
-        method: "GET",
-        https: {
-          rejectUnauthorized: false,
-        },
-        throwHttpErrors: false,
-        pagination: {
-          paginate: ({ response }: { response: GotResponse }) => {
-            if (!response.ok) {
-              throw new Error(
-                `${response.statusCode} - ${response.statusMessage}`
-              )
-            }
+    return streamRows()
+  }
 
-            const parsed = Bourne.parse(
-              response.body as string
-            ) as QueryResult<T>
-            return nextPagingUrl(parsed)
-          },
-          requestLimit: 10,
-          transform: (response) => {
-            const parsed = Bourne.parse(
-              response.body as string
-            ) as QueryResult<T>
-            return parsed.data ?? []
-          },
-        },
-      })) {
-        yield row
+  /**
+   * Cancels a running query via its query ID.
+   */
+  async cancelQuery(queryId: string): Promise<void> {
+    const response = await fetch(
+      `${this.host}:${this.port}/v1/query/${queryId}`,
+      {
+        method: "DELETE",
+        headers: this.getHeaders(),
       }
-    })()
+    )
+
+    if (!response.ok && response.status !== 404) {
+      throw new TrinoClientError(
+        `Failed to cancel query ${queryId}: ${response.status} ${response.statusText}`,
+        response.status
+      )
+    }
+
+    this.activeQueries.delete(queryId)
   }
 
   /**
-   * Lists all schemas in the given catalog.
-   *
-   * @param params.catalog - The catalog to inspect.
-   * @returns A promise that resolves to an array of schema name strings.
+   * Cancels all currently active queries tracked by this client.
    */
-  async schemas({ catalog }: GetSchemasProps) {
-    const query = `SHOW SCHEMAS from ${catalog}`
-
-    const schemas = await this.query<string[]>({ sql: query })
-    return schemas.flat()
+  async cancelAllQueries(): Promise<void> {
+    const ids = [...this.activeQueries]
+    await Promise.allSettled(ids.map((id) => this.cancelQuery(id)))
   }
 
   /**
-   * Lists all base tables in the given catalog and schema.
-   *
-   * @param params.catalog - The catalog to inspect.
-   * @param params.schema - The schema to inspect.
-   * @returns A promise that resolves to an array of table name strings.
+   * Returns the IDs of all currently active (in-flight) queries.
    */
-  async tables({ catalog, schema }: GetTablesProps) {
-    const query = `SELECT table_name from ${catalog}.information_schema.tables WHERE table_type = 'BASE TABLE' and table_schema='${schema}'`
+  getActiveQueries(): string[] {
+    return [...this.activeQueries]
+  }
 
-    const schemas = await this.query<string[]>({
-      sql: query,
+  /** Lists all schemas in the given catalog. */
+  async schemas({ catalog }: GetSchemasProps): Promise<string[]> {
+    const rows = await this.query<string[]>({
+      sql: `SHOW SCHEMAS from ${catalog}`,
     })
-
-    return schemas.flat()
+    return rows.flat()
   }
 
-  /**
-   * Lists all views in the given catalog and schema.
-   *
-   * @param params.catalog - The catalog to inspect.
-   * @param params.schema - The schema to inspect.
-   * @returns A promise that resolves to an array of view name strings.
-   */
-  async views({ catalog, schema }: GetViewsProps) {
-    const query = `SELECT table_name from ${catalog}.information_schema.tables WHERE table_type = 'VIEW' and table_schema='${schema}'`
-
-    const schemas = await this.query<string[]>({
-      sql: query,
+  /** Lists all base tables in the given catalog and schema. */
+  async tables({ catalog, schema }: GetTablesProps): Promise<string[]> {
+    const rows = await this.query<string[]>({
+      sql: `SELECT table_name from ${catalog}.information_schema.tables WHERE table_type = 'BASE TABLE' and table_schema='${schema}'`,
     })
-    return schemas.flat()
+    return rows.flat()
   }
 
-  /**
-   * Lists all columns for the given table.
-   *
-   * @param params.catalog - The catalog containing the table.
-   * @param params.schema - The schema containing the table.
-   * @param params.table - The table to describe.
-   * @returns A promise that resolves to an array of tuples `[name, type, extra, description]`.
-   */
-  async columns({ catalog, schema, table }: GetColumnsProps) {
-    const query = `SHOW COLUMNS from ${catalog}.${schema}.${table}`
+  /** Lists all views in the given catalog and schema. */
+  async views({ catalog, schema }: GetViewsProps): Promise<string[]> {
+    const rows = await this.query<string[]>({
+      sql: `SELECT table_name from ${catalog}.information_schema.tables WHERE table_type = 'VIEW' and table_schema='${schema}'`,
+    })
+    return rows.flat()
+  }
 
-    const columns = await this.query<
+  /** Lists all columns for the given table. */
+  async columns({
+    catalog,
+    schema,
+    table,
+  }: GetColumnsProps): Promise<
+    [name: string, type: string, extra: string, description: string][]
+  > {
+    return this.query<
       [name: string, type: string, extra: string, description: string]
-    >({ sql: query })
+    >({
+      sql: `SHOW COLUMNS from ${catalog}.${schema}.${table}`,
+    })
+  }
 
-    return columns
+  // ─── Private ─────────────────────────────────────────────────────────────
+
+  private async runStatement<T>(
+    sql: string,
+    impersonateAs?: string,
+    signal?: AbortSignal
+  ): Promise<QueryResult<T>> {
+    TrinoClient.checkAborted(signal)
+
+    return withRetry(async () => {
+      let response: Response
+      try {
+        response = await fetch(`${this.host}:${this.port}/v1/statement`, {
+          method: "POST",
+          body: sql,
+          headers: {
+            ...this.getHeaders(),
+            ...(impersonateAs ? { "X-Trino-User": impersonateAs } : {}),
+          },
+          signal: this.createSignal(signal),
+        })
+      } catch (error) {
+        // Convert abort errors to TrinoCancellationError
+        if (signal?.aborted) {
+          throw new TrinoCancellationError(signal.reason ?? "Query was aborted")
+        }
+        throw error
+      }
+
+      if (!response.ok) {
+        throw new TrinoClientError(
+          `${response.status} - ${response.statusText}`,
+          response.status
+        )
+      }
+
+      const data = (await response.json()) as QueryResult<T>
+
+      if (data.error) {
+        throw new TrinoQueryError(
+          data.error.message,
+          data.id,
+          data.error.errorCode,
+          data.error.errorName,
+          data.error.errorType
+        )
+      }
+
+      return data
+    }, this.retryConfig)
+  }
+
+  private async fetchNext<T>(
+    nextUri: string,
+    signal?: AbortSignal
+  ): Promise<QueryResult<T>> {
+    return withRetry(async () => {
+      let response: Response
+      try {
+        response = await fetch(nextUri, {
+          method: "GET",
+          headers: this.getHeaders(),
+          signal: this.createSignal(signal),
+        })
+      } catch (error) {
+        // Convert abort errors to TrinoCancellationError
+        if (signal?.aborted) {
+          throw new TrinoCancellationError(signal.reason ?? "Query was aborted")
+        }
+        throw error
+      }
+
+      if (!response.ok) {
+        throw new TrinoClientError(
+          `${response.status} - ${response.statusText}`,
+          response.status
+        )
+      }
+
+      const data = (await response.json()) as QueryResult<T>
+
+      if (data.error) {
+        throw new TrinoQueryError(
+          data.error.message,
+          data.id,
+          data.error.errorCode,
+          data.error.errorName,
+          data.error.errorType
+        )
+      }
+
+      return data
+    }, this.retryConfig)
+  }
+
+  private static checkAborted(signal?: AbortSignal, queryId?: string): void {
+    if (signal?.aborted) {
+      throw new TrinoCancellationError(
+        signal.reason ?? "Query was aborted",
+        queryId
+      )
+    }
+  }
+
+  private createSignal(externalSignal?: AbortSignal): AbortSignal | undefined {
+    if (!this.defaultTimeout && !externalSignal) {
+      return undefined
+    }
+
+    if (this.defaultTimeout && externalSignal) {
+      return AbortSignal.any([
+        AbortSignal.timeout(this.defaultTimeout),
+        externalSignal,
+      ])
+    }
+
+    if (this.defaultTimeout) {
+      return AbortSignal.timeout(this.defaultTimeout)
+    }
+
+    return externalSignal
   }
 }
