@@ -7,12 +7,10 @@
 - 9c7ff16: Rewrite `@lakeql/trino-client` from `got` to native `fetch`.
 
   **Breaking changes:**
-
   - Removed `gotOpts` property from `QueryProps` — use `signal` for abort control instead
   - Removed `got`, `@hapi/bourne`, and `@t3-oss/env-core` as dependencies (zero runtime deps now)
 
   **New features:**
-
   - `stream()` — async generator that yields rows one at a time as pages are fetched
   - `cancelQuery(queryId)` — cancels a running query via DELETE
   - `cancelAllQueries()` — cancels all in-flight queries tracked by this client
