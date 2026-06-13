@@ -55,13 +55,13 @@ const client = new TrinoClient({
   retry: {
     maxRetries: 5,
     initialDelay: 500,
-    maxDelay: 30_000,
+    maxDelay: 30000,
     backoffMultiplier: 2,
   },
 })
 ```
 
-See the [API Reference](/docs/trino-client/api-reference) for all available `RetryConfig` options.
+<InlineReference file="trino-client/src/retry" include={["RetryConfig"]} />
 
 ## Timeout
 
@@ -95,8 +95,3 @@ You can modify headers after construction using `setHeader()` or `setRawHeader()
 client.setHeader("X-Trino-Schema", "production")
 client.setRawHeader("X-Custom-Header", "value")
 ```
-
-<Note>
-  See the [API Reference](/docs/trino-client/api-reference) for the full
-  `TrinoClientProps` interface and `Auth` type definitions.
-</Note>
