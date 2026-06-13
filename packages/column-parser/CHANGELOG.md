@@ -1,5 +1,11 @@
 # @lakeql/column-parser
 
+## 0.1.2
+
+### Patch Changes
+
+- 450ba80: Add package description and keywords to package.json for npm discoverability
+
 ## 0.1.1
 
 ### Patch Changes
