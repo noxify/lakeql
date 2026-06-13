@@ -1,6 +1,6 @@
 {
   "name": "@lakeql/logger",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Structured logging with loglayer and winston including sensitive data redaction",
   "keywords": [
     "lakeql",

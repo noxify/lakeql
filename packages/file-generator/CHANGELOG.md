@@ -1,5 +1,16 @@
 # @lakeql/file-generator
 
+## 0.1.2
+
+### Patch Changes
+
+- 450ba80: Add package description and keywords to package.json for npm discoverability
+- 2432512: Extract inline parameter types into named exported interfaces with JSDoc for improved API reference documentation
+- Updated dependencies [450ba80]
+- Updated dependencies [2432512]
+  - @lakeql/schema-generator@0.1.2
+  - @lakeql/helpers@0.1.2
+
 ## 0.1.1
 
 ### Patch Changes
