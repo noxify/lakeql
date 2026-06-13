@@ -29,6 +29,55 @@ for await (const [timestamp, level, duration] of stream) {
 }
 ```
 
+## Streaming with Transforms
+
+Combine streaming with `transform` to get typed objects:
+
+```typescript
+interface LogEntry {
+  timestamp: string
+  level: string
+  duration: number
+}
+
+const stream = await client.stream<LogEntry>({
+  sql: "SELECT timestamp, level, duration FROM request_logs",
+  transform: (row) => ({
+    timestamp: row[0] as string,
+    level: row[1] as string,
+    duration: row[2] as number,
+  }),
+})
+
+for await (const entry of stream) {
+  if (entry.level === "ERROR") {
+    await alertSlack(entry)
+  }
+}
+```
+
+## Cancelling a Stream
+
+Pass an `AbortSignal` to cancel a stream mid-flight:
+
+```typescript
+const controller = new AbortController()
+
+const stream = await client.stream({
+  sql: "SELECT * FROM events",
+  signal: controller.signal,
+})
+
+let count = 0
+for await (const row of stream) {
+  count += 1
+  if (count >= 1000) {
+    controller.abort()
+    break
+  }
+}
+```
+
 ## When to Use stream vs query
 
 | Scenario                          | Method   |
@@ -52,7 +101,7 @@ const stream = await client.stream<[string, number]>({
 let processed = 0
 for await (const [userId, count] of stream) {
   await writeToFile(userId, count)
-  processed++
+  processed += 1
 }
 
 console.log(`Processed ${processed} rows`)

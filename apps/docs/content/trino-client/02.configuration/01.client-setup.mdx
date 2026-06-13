@@ -42,6 +42,43 @@ const client = new TrinoClient({
 
 The token is sent as an `Authorization: Bearer ...` header.
 
+## Retry Configuration
+
+The client automatically retries on transient failures (HTTP 429, 500, 502, 503, 504 and network errors). Configure retry behavior via the `retry` option:
+
+```typescript
+const client = new TrinoClient({
+  host: "https://trino.example.com",
+  port: 8443,
+  auth: { type: "basic", username: "analyst", password: "secret" },
+  catalog: "hive",
+  retry: {
+    maxRetries: 5,
+    initialDelay: 500,
+    maxDelay: 30_000,
+    backoffMultiplier: 2,
+  },
+})
+```
+
+See the [API Reference](/docs/trino-client/api-reference) for all available `RetryConfig` options.
+
+## Timeout
+
+Set a default timeout (in milliseconds) for all requests. If a request exceeds this duration, it will be aborted:
+
+```typescript
+const client = new TrinoClient({
+  host: "https://trino.example.com",
+  port: 8443,
+  auth: { type: "basic", username: "analyst", password: "secret" },
+  catalog: "hive",
+  timeout: 30_000, // 30 seconds
+})
+```
+
+You can also pass a per-query `signal` for more fine-grained control — see [Executing Queries](/docs/trino-client/queries/executing-queries).
+
 ## Default Headers
 
 On construction, the client sets the following Trino headers automatically:

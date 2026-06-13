@@ -27,6 +27,32 @@ for (const [id, region, amount] of rows) {
 }
 ```
 
+## Row Transforms
+
+Use the `transform` option to map raw row arrays into typed objects:
+
+```typescript
+interface Order {
+  id: string
+  region: string
+  amount: number
+}
+
+const orders = await client.query<Order>({
+  sql: "SELECT id, region, amount FROM orders",
+  transform: (row) => ({
+    id: row[0] as string,
+    region: row[1] as string,
+    amount: row[2] as number,
+  }),
+})
+
+// orders: Order[]
+console.log(orders[0].region)
+```
+
+The `transform` function receives the raw row array and the column metadata, and returns the desired shape.
+
 ## User Impersonation
 
 Pass `impersonateAs` to execute the query as a different Trino user. This sets the `X-Trino-User` header for that request only:
@@ -39,6 +65,71 @@ const rows = await client.query<[string]>({
 // rows: [["data-team-service"]]
 ```
 
+## Query Cancellation
+
+Cancel a running query using an `AbortSignal`:
+
+```typescript
+const controller = new AbortController()
+
+// Cancel after 10 seconds
+setTimeout(() => controller.abort(), 10_000)
+
+try {
+  const rows = await client.query({
+    sql: "SELECT * FROM very_large_table",
+    signal: controller.signal,
+  })
+} catch (error) {
+  if (error instanceof TrinoCancellationError) {
+    console.log("Query was cancelled")
+  }
+}
+```
+
+You can also cancel queries by ID:
+
+```typescript
+// Cancel a specific query
+await client.cancelQuery("20240101_123456_00001_abcde")
+
+// Cancel all active queries
+await client.cancelAllQueries()
+
+// Check what's currently running
+const active = client.getActiveQueries()
+```
+
+## Error Handling
+
+The client throws typed errors depending on the failure:
+
+```typescript
+import {
+  TrinoClientError,
+  TrinoQueryError,
+  TrinoCancellationError,
+} from "@lakeql/trino-client"
+
+try {
+  const rows = await client.query({ sql: "SELECT * FROM nonexistent_table" })
+} catch (error) {
+  if (error instanceof TrinoQueryError) {
+    // Trino returned an error in the response body
+    console.error(error.errorName) // e.g. "TABLE_NOT_FOUND"
+    console.error(error.errorType) // e.g. "USER_ERROR"
+    console.error(error.queryId)
+  } else if (error instanceof TrinoClientError) {
+    // HTTP-level error (non-2xx status)
+    console.error(error.statusCode) // e.g. 503
+    console.error(error.message)
+  } else if (error instanceof TrinoCancellationError) {
+    // Query was cancelled via AbortSignal
+    console.log("Cancelled:", error.queryId)
+  }
+}
+```
+
 ## How Pagination Works
 
 1. A `POST` is sent to `/v1/statement` with the SQL body
@@ -48,16 +139,3 @@ const rows = await client.query<[string]>({
 5. The concatenated result array is returned
 
 This is entirely transparent — you call `query()` and get the complete result regardless of how many pages Trino needed internally.
-
-## Error Handling
-
-If any request returns a non-2xx status code, the method throws an error with the status code and message:
-
-```typescript
-try {
-  const rows = await client.query({ sql: "SELECT * FROM nonexistent_table" })
-} catch (error) {
-  console.error(error.message)
-  // "404 - Not Found" or Trino error details
-}
-```

@@ -5,14 +5,17 @@ description: An HTTP client for executing queries and inspecting metadata on Tri
 
 ## What is the Trino Client?
 
-The `@lakeql/trino-client` package provides a typed HTTP client for communicating with a Trino cluster via its [REST API](https://trino.io/docs/current/develop/client-protocol.html). It handles authentication, paginated result fetching, and catalog metadata inspection.
+The `@lakeql/trino-client` package provides a typed HTTP client for communicating with a Trino cluster via its [REST API](https://trino.io/docs/current/develop/client-protocol.html). It handles authentication, paginated result fetching, query cancellation, and catalog metadata inspection.
 
-Built on top of [got](https://github.com/sindresorhus/got), the client supports both basic and bearer token authentication, automatic pagination through `nextUri` links, and an async-generator streaming mode for memory-efficient processing of large result sets.
+Built on native `fetch` with zero runtime dependencies. Supports basic and bearer token authentication, automatic pagination through `nextUri` links, configurable retry with exponential backoff, and an async-generator streaming mode for memory-efficient processing of large result sets.
 
 ## Core Capabilities
 
 - **Query execution** — Send SQL statements and collect all result pages into a single array
 - **Streaming** — Yield rows one at a time via an async generator for large datasets
+- **Row transforms** — Map raw row arrays to typed objects with a `transform` function
+- **Query cancellation** — Cancel in-flight queries via `AbortSignal` or `cancelQuery()`
+- **Retry with backoff** — Automatic retry on transient failures (429, 5xx, network errors)
 - **Metadata inspection** — List schemas, tables, views, and columns for any catalog
 - **Authentication** — Basic auth (username/password) and bearer token auth
 - **User impersonation** — Execute queries on behalf of another user via the `X-Trino-User` header
