@@ -1,5 +1,13 @@
 # @lakeql/file-generator
 
+## 0.1.4
+
+### Patch Changes
+
+- 136670e: Hardened the generators by adding an explicit root-model guard, making mutation config handling treat empty mutation lists as disabled, and switching JSON schema generation to fail fast instead of silently swallowing invalid field definitions.
+- Updated dependencies [136670e]
+  - @lakeql/schema-generator@0.2.1
+
 ## 0.1.3
 
 ### Patch Changes
