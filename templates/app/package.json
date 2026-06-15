@@ -20,6 +20,7 @@
     "cli": "pnpm with-env lakeql-cli"
   },
   "dependencies": {
+    "@lakeql/adapters": "workspace:*",
     "@lakeql/api": "workspace:*",
     "@lakeql/query-builder": "workspace:*",
     "@lakeql/trino-client": "workspace:*",

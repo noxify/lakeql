@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
-import { existsSync, mkdirSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import path from "node:path"
 
 import { installPackage } from "@antfu/install-pkg"
@@ -16,7 +16,6 @@ import {
 } from "@clack/prompts"
 import { downloadTemplate as download } from "giget"
 import pc from "picocolors"
-import { readPackage } from "read-pkg"
 import terminalLink from "terminal-link"
 
 interface Template {
@@ -87,7 +86,13 @@ async function updatePackageJson(
       return
     }
 
-    const packageJson = await readPackage({ cwd: targetDir })
+    const packageJsonPath = path.resolve(targetDir, "package.json")
+    const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf-8")) as {
+      dependencies?: Record<string, string>
+      devDependencies?: Record<string, string>
+      private?: boolean
+      [key: string]: unknown
+    }
 
     // Update project name
     const updatedPackageJson = {

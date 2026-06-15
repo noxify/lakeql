@@ -19,7 +19,7 @@ When run without arguments, the CLI prompts you for:
 2. **Install dependencies** — yes/no
 3. **Package manager** — npm, pnpm, or yarn
 
-<Command variant="create">@lakeql/create-app</Command>
+<Command variant="create">@lakeql/create-app@latest</Command>
 
 ```
 ◆  create-lakeql-app
@@ -53,13 +53,13 @@ When run without arguments, the CLI prompts you for:
 
 ```bash
 # Non-interactive with pnpm
-npx @lakeql/create-app my-api --package-manager=pnpm
+npx @lakeql/create-app@latest my-api --package-manager=pnpm
 
 # Skip install for CI
-npx @lakeql/create-app my-api --no-install --quiet
+npx @lakeql/create-app@latest my-api --no-install --quiet
 
 # Short form
-npx @lakeql/create-app my-api -pm=yarn
+npx @lakeql/create-app@latest my-api -pm=yarn
 ```
 
 ## What Happens
