@@ -1,6 +1,6 @@
 {
   "name": "@lakeql/parquet",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "JSON Schema to Parquet conversion and writing for LakeQL",
   "keywords": [
     "columnar",
