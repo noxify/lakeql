@@ -40,10 +40,11 @@ function extractFieldRequired(
   fieldName: string
 ): boolean | undefined {
   // Match patterns like: fieldName: t.something({ required: true/false })
-  // or fieldName: t.field({ type: ..., required: true/false })
+  // Use word boundary to prevent matching substrings of other field names
+  const escapedName = fieldName.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")
   const fieldRegex = new RegExp(
-    `${fieldName}:\\s*t\\.\\w+\\(\\{[^}]*required:\\s*(true|false)`,
-    "su"
+    `(?:^|[\\s,{])${escapedName}:\\s*t\\.\\w+\\(\\{[^}]*required:\\s*(true|false)`,
+    "mu"
   )
   const match = fieldRegex.exec(output)
   if (match) {
