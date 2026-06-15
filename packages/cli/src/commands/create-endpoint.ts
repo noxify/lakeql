@@ -22,12 +22,7 @@ export default function createEndpointCommand() {
         "Path to a JSON definition file conforming to the Endpoint_Definition_Format"
       ).makeOptionMandatory(true)
     )
-    .addOption(
-      new Option(
-        "--no-interactive",
-        "Skip all prompts and generate directly (always non-interactive)"
-      )
-    )
+
     .addOption(sourcePathOption)
     .addOption(skipRegistry)
     .action(async (opts) => {
@@ -45,7 +40,7 @@ export default function createEndpointCommand() {
         process.exit(1)
       }
 
-      // 2. Read file content
+      // Read file content
       let fileContent: string
       try {
         fileContent = await readFile(filePath, "utf-8")
@@ -56,7 +51,7 @@ export default function createEndpointCommand() {
         process.exit(1)
       }
 
-      // 3. Parse JSON
+      // Parse JSON
       let parsed: unknown
       try {
         parsed = JSON.parse(fileContent)
@@ -67,7 +62,7 @@ export default function createEndpointCommand() {
         process.exit(1)
       }
 
-      // 4. Validate against endpointDefinitionSchema
+      // Validate against endpointDefinitionSchema
       const result = endpointDefinitionSchema.safeParse(parsed)
       if (!result.success) {
         const issues = result.error.issues
@@ -84,7 +79,7 @@ export default function createEndpointCommand() {
 
       const definition = result.data
 
-      // 5. Check for duplicate field names at same nesting level
+      // Check for duplicate field names at same nesting level
       const duplicates = findDuplicateFieldNames(definition.fields)
       if (duplicates.length > 0) {
         const details = duplicates
@@ -98,7 +93,7 @@ export default function createEndpointCommand() {
         process.exit(1)
       }
 
-      // 6. Show summary
+      // Show summary
       // oxlint-disable-next-line no-console
       console.log("\nLoaded definition summary:")
       // oxlint-disable-next-line no-console
@@ -122,7 +117,7 @@ export default function createEndpointCommand() {
       // oxlint-disable-next-line no-console
       console.log("")
 
-      // 7. Generate directly (always non-interactive)
+      // Generate files
       const resolvedSourcePath = resolveSourcePath(
         sourcePath === process.cwd() ? undefined : sourcePath
       )

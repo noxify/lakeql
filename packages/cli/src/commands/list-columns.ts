@@ -3,35 +3,39 @@ import { TrinoClient } from "@lakeql/trino-client"
 import { select } from "@topcli/prompts"
 import { ClimtTable } from "climt"
 
-import { env } from "@/env"
+import { getEnv } from "@/env"
 import { catalogOption, schemaOption, tableOption } from "@/options"
 
 export default function listColumnsCommand() {
   const program = new Command("list-columns")
   program
     .description("Lists the columns for the specified table")
-    .addOption(catalogOption(env.HIVE_CATALOG))
+    .addOption(catalogOption)
     .addOption(schemaOption.makeOptionMandatory())
     .addOption(tableOption.makeOptionMandatory())
 
     .action(async ({ catalog, schema, table }) => {
+      const env = getEnv()
+      const resolvedCatalog = catalog ?? env.HIVE_CATALOG
       const trinoClient = new TrinoClient({
         auth: {
           password: env.HIVE_PASSWORD,
           type: "basic",
           username: env.HIVE_USERNAME,
         },
-        catalog,
+        catalog: resolvedCatalog,
         host: env.HIVE_HOST,
         port: env.HIVE_PORT,
       })
 
       let resolvedSchema = schema
       if (resolvedSchema === undefined) {
-        const remoteSchemas = await trinoClient.schemas({ catalog })
+        const remoteSchemas = await trinoClient.schemas({
+          catalog: resolvedCatalog,
+        })
 
         resolvedSchema = await select(
-          `Choose a schema from the ${catalog} catalog`,
+          `Choose a schema from the ${resolvedCatalog} catalog`,
           {
             autocomplete: true,
             choices: remoteSchemas,
@@ -42,12 +46,12 @@ export default function listColumnsCommand() {
       let resolvedTable = table
       if (resolvedTable === undefined) {
         const remoteTables = await trinoClient.tables({
-          catalog,
+          catalog: resolvedCatalog,
           schema: resolvedSchema,
         })
 
         resolvedTable = await select(
-          `Choose a table from "${catalog}.${resolvedSchema}"`,
+          `Choose a table from "${resolvedCatalog}.${resolvedSchema}"`,
           {
             autocomplete: true,
             choices: remoteTables,
@@ -56,7 +60,7 @@ export default function listColumnsCommand() {
       }
 
       const columns = await trinoClient.columns({
-        catalog,
+        catalog: resolvedCatalog,
         schema: resolvedSchema,
         table: resolvedTable,
       })

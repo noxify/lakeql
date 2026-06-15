@@ -9,7 +9,7 @@ import { TrinoClient } from "@lakeql/trino-client"
 import { multiselect, select, validators } from "@topcli/prompts"
 
 import { resolveSourcePath } from "@/config"
-import { env } from "@/env"
+import { getEnv } from "@/env"
 import {
   catalogOption,
   schemaOption,
@@ -27,7 +27,7 @@ export default function PullCommand() {
     .description(
       "Interactive query endpoint generation based on a remote table"
     )
-    .addOption(catalogOption(env.HIVE_CATALOG))
+    .addOption(catalogOption)
     .addOption(tableOrSchemaOption)
     .addOption(schemaOption.makeOptionMandatory(false))
     .addOption(
@@ -40,7 +40,9 @@ export default function PullCommand() {
     .addOption(sourcePathOption)
 
   pullCommand.action(async (props) => {
-    const { catalog, skipRegistry, sourcePath } = props
+    const env = getEnv()
+    const { skipRegistry, sourcePath } = props
+    const catalog = props.catalog ?? env.HIVE_CATALOG
     let { schema, table: tables, type } = props
 
     // CLI --source-path overrides config; if it's the default (invocation cwd), use config
