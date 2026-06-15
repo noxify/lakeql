@@ -1,5 +1,11 @@
 # @lakeql/parquet
 
+## 0.2.1
+
+### Patch Changes
+
+- d904088: Add package README with description, installation instructions, and documentation link.
+
 ## 0.2.0
 
 ### Minor Changes

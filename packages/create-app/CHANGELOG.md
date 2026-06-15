@@ -1,5 +1,11 @@
 # @lakeql/create-app
 
+## 0.2.1
+
+### Patch Changes
+
+- d904088: Fix `workspace:*` dependencies not being resolved to registry versions in scaffolded projects. Replaced `read-pkg` (which stripped non-semver ranges via normalization) with direct JSON file reading. Also added `@lakeql/adapters` to the template for mutation support.
+
 ## 0.2.0
 
 ### Minor Changes

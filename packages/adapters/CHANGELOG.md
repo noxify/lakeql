@@ -1,5 +1,13 @@
 # @lakeql/adapters
 
+## 0.2.1
+
+### Patch Changes
+
+- d904088: Add package README with description, installation instructions, and documentation link.
+- Updated dependencies [d904088]
+  - @lakeql/parquet@0.2.1
+
 ## 0.2.0
 
 ### Minor Changes
