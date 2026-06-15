@@ -17,6 +17,21 @@ export type PrimitiveType =
   | "DateTime"
 export type ArrayItemType = PrimitiveType | "Object"
 
+export type FieldValidation =
+  | { type: "email" }
+  | { type: "url" }
+  | { type: "uuid" }
+  | { type: "min"; value: number }
+  | { type: "max"; value: number }
+  | { type: "regex"; pattern: string }
+
+export type FieldValidationType = FieldValidation["type"]
+
+export interface FieldOptions {
+  required?: boolean
+  validations?: FieldValidation[]
+}
+
 export interface FieldDefinition {
   id: string
   name: string
@@ -26,6 +41,15 @@ export interface FieldDefinition {
   // For Array type
   arrayItemType?: ArrayItemType
   arrayItemFields?: FieldDefinition[] // when arrayItemType is "Object"
+  // Field-level options (mutation validation)
+  options?: FieldOptions
+}
+
+export type LoadStrategy = "full_load" | "full_load_append" | "append"
+
+export interface MutationConfig {
+  loadStrategy: LoadStrategy
+  basePath: string
 }
 
 export interface EndpointDefinition {
@@ -34,6 +58,7 @@ export interface EndpointDefinition {
   catalog: string
   schema: string
   fields: FieldDefinition[]
+  mutation?: false | MutationConfig
 }
 
 // Output JSON types (no id, no arrayItemType tracking)
@@ -42,6 +67,7 @@ export interface OutputField {
   type: FieldType
   fields?: OutputField[]
   items?: { type: ArrayItemType; fields?: OutputField[] }
+  options?: FieldOptions
 }
 
 export interface OutputDefinition {
@@ -50,7 +76,14 @@ export interface OutputDefinition {
   catalog: string
   schema: string
   fields: OutputField[]
+  mutation?: false | MutationConfig
 }
+
+export const LOAD_STRATEGIES: LoadStrategy[] = [
+  "full_load",
+  "full_load_append",
+  "append",
+]
 
 export const FIELD_TYPE_COLORS: Record<FieldType, string> = {
   String: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
@@ -91,3 +124,34 @@ export const ARRAY_ITEM_TYPES: ArrayItemType[] = [
 ]
 
 export const MAX_DEPTH = 5
+
+export const VALIDATION_TYPES: {
+  type: FieldValidationType
+  label: string
+  hasValue?: "number" | "text"
+}[] = [
+  { type: "email", label: "Email" },
+  { type: "url", label: "URL" },
+  { type: "uuid", label: "UUID" },
+  { type: "min", label: "Min", hasValue: "number" },
+  { type: "max", label: "Max", hasValue: "number" },
+  { type: "regex", label: "Regex", hasValue: "text" },
+]
+
+/**
+ * Maps field types to their applicable validation types.
+ * Only these validations will be shown in the field options popover.
+ */
+export const VALIDATIONS_BY_FIELD_TYPE: Record<
+  FieldType,
+  FieldValidationType[]
+> = {
+  String: ["email", "url", "uuid", "min", "max", "regex"],
+  Integer: ["min", "max"],
+  Float: ["min", "max"],
+  Boolean: [],
+  Date: [],
+  DateTime: [],
+  Object: [],
+  Array: [],
+}

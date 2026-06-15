@@ -35,7 +35,7 @@ describe("Re-edit flow", () => {
   })
 
   describe("Detection of existing definition", () => {
-    test("detects a valid custom-endpoint.json and returns the parsed definition", async () => {
+    test("detects a valid endpoint.json and returns the parsed definition", async () => {
       const definition: EndpointDefinitionFormat = {
         version: "1.0",
         tableName: "user_events",
@@ -48,7 +48,7 @@ describe("Re-edit flow", () => {
       }
 
       await writeFile(
-        path.join(testDir, "custom-endpoint.json"),
+        path.join(testDir, "endpoint.json"),
         serializeDeterministic(definition)
       )
 
@@ -58,7 +58,7 @@ describe("Re-edit flow", () => {
       expect(result.error).toBeUndefined()
     })
 
-    test("returns found: false when no custom-endpoint.json exists", async () => {
+    test("returns found: false when no endpoint.json exists", async () => {
       const result = await detectExistingDefinition(testDir)
       expect(result.found).toBeFalsy()
       expect(result.definition).toBeUndefined()
@@ -93,7 +93,7 @@ describe("Re-edit flow", () => {
       }
 
       await writeFile(
-        path.join(testDir, "custom-endpoint.json"),
+        path.join(testDir, "endpoint.json"),
         serializeDeterministic(definition)
       )
 
@@ -126,7 +126,7 @@ describe("Re-edit flow", () => {
       }
 
       await writeFile(
-        path.join(testDir, "custom-endpoint.json"),
+        path.join(testDir, "endpoint.json"),
         serializeDeterministic(definition)
       )
 
@@ -247,7 +247,7 @@ describe("Re-edit flow", () => {
   describe("Corrupted file handling", () => {
     test("returns error for malformed JSON", async () => {
       await writeFile(
-        path.join(testDir, "custom-endpoint.json"),
+        path.join(testDir, "endpoint.json"),
         "{ this is not valid json !!!"
       )
 
@@ -259,7 +259,7 @@ describe("Re-edit flow", () => {
     })
 
     test("returns error for empty file", async () => {
-      await writeFile(path.join(testDir, "custom-endpoint.json"), "")
+      await writeFile(path.join(testDir, "endpoint.json"), "")
 
       const result = await detectExistingDefinition(testDir)
       expect(result.found).toBeTruthy()
@@ -276,7 +276,7 @@ describe("Re-edit flow", () => {
       }
 
       await writeFile(
-        path.join(testDir, "custom-endpoint.json"),
+        path.join(testDir, "endpoint.json"),
         JSON.stringify(invalid, null, 2)
       )
 
@@ -297,7 +297,7 @@ describe("Re-edit flow", () => {
       }
 
       await writeFile(
-        path.join(testDir, "custom-endpoint.json"),
+        path.join(testDir, "endpoint.json"),
         JSON.stringify(invalid, null, 2)
       )
 
@@ -317,7 +317,7 @@ describe("Re-edit flow", () => {
       }
 
       await writeFile(
-        path.join(testDir, "custom-endpoint.json"),
+        path.join(testDir, "endpoint.json"),
         JSON.stringify(invalid, null, 2)
       )
 
@@ -337,7 +337,7 @@ describe("Re-edit flow", () => {
       }
 
       await writeFile(
-        path.join(testDir, "custom-endpoint.json"),
+        path.join(testDir, "endpoint.json"),
         JSON.stringify(invalid, null, 2)
       )
 
@@ -357,7 +357,7 @@ describe("Re-edit flow", () => {
       }
 
       await writeFile(
-        path.join(testDir, "custom-endpoint.json"),
+        path.join(testDir, "endpoint.json"),
         JSON.stringify(invalid, null, 2)
       )
 
@@ -380,7 +380,7 @@ describe("Re-edit flow", () => {
       }
 
       await writeFile(
-        path.join(testDir, "custom-endpoint.json"),
+        path.join(testDir, "endpoint.json"),
         JSON.stringify(invalid, null, 2)
       )
 
@@ -409,7 +409,7 @@ describe("Re-edit flow", () => {
       }
 
       await writeFile(
-        path.join(testDir, "custom-endpoint.json"),
+        path.join(testDir, "endpoint.json"),
         JSON.stringify(invalid, null, 2)
       )
 
@@ -427,7 +427,7 @@ describe("Re-edit flow", () => {
       await mkdir(outputDir, { recursive: true })
       await writeFile(path.join(outputDir, "old-file.txt"), "should be removed")
       await writeFile(
-        path.join(outputDir, "custom-endpoint.json"),
+        path.join(outputDir, "endpoint.json"),
         JSON.stringify({
           version: "1.0",
           tableName: "old_table",
@@ -439,9 +439,7 @@ describe("Re-edit flow", () => {
 
       // Verify the old files exist
       expect(existsSync(path.join(outputDir, "old-file.txt"))).toBeTruthy()
-      expect(
-        existsSync(path.join(outputDir, "custom-endpoint.json"))
-      ).toBeTruthy()
+      expect(existsSync(path.join(outputDir, "endpoint.json"))).toBeTruthy()
 
       // Simulate what generateEndpoint does: remove and recreate
       await rm(outputDir, { force: true, recursive: true })
@@ -456,15 +454,13 @@ describe("Re-edit flow", () => {
         fields: [{ name: "new_field", type: "Integer" }],
       }
       await writeFile(
-        path.join(outputDir, "custom-endpoint.json"),
+        path.join(outputDir, "endpoint.json"),
         serializeDeterministic(newDefinition)
       )
 
       // Verify old file is gone and new content is written
       expect(existsSync(path.join(outputDir, "old-file.txt"))).toBeFalsy()
-      expect(
-        existsSync(path.join(outputDir, "custom-endpoint.json"))
-      ).toBeTruthy()
+      expect(existsSync(path.join(outputDir, "endpoint.json"))).toBeTruthy()
 
       // Verify the new definition is the one on disk
       const result = await detectExistingDefinition(outputDir)
@@ -491,7 +487,7 @@ describe("Re-edit flow", () => {
       }
 
       await writeFile(
-        path.join(testDir, "custom-endpoint.json"),
+        path.join(testDir, "endpoint.json"),
         serializeDeterministic(oldDefinition)
       )
 
@@ -511,7 +507,7 @@ describe("Re-edit flow", () => {
       }
 
       await writeFile(
-        path.join(testDir, "custom-endpoint.json"),
+        path.join(testDir, "endpoint.json"),
         serializeDeterministic(newDefinition)
       )
 
@@ -537,7 +533,7 @@ describe("Re-edit flow", () => {
 
       // Write using the deterministic serializer (same as pipeline)
       await writeFile(
-        path.join(testDir, "custom-endpoint.json"),
+        path.join(testDir, "endpoint.json"),
         serializeDeterministic(definition)
       )
 

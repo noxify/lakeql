@@ -128,7 +128,7 @@ You can monkey-patch the serializer at startup to handle these edge cases.
 
 ### Setup
 
-Create a `query-schema.ts` file in a directory that sorts alphabetically before your other schemas (e.g., `00-scalars/`). LakeQL loads all `query-schema.{ts,js,mjs}` files in alphabetical directory order, so the override will be active before any resolvers execute.
+Create a `query-schema.ts` file in a directory that sorts alphabetically before your other schemas (e.g., `00-scalars/`). LakeQL loads all `query-schema.{ts,js,mjs}` and `mutation-schema.{ts,js,mjs}` files in alphabetical directory order, so the override will be active before any resolvers execute.
 
 ```text
 src/

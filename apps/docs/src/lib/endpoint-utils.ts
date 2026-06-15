@@ -7,45 +7,80 @@ import type {
   OutputField,
   FieldType,
   ArrayItemType,
+  MutationConfig,
+  FieldOptions,
+  FieldValidation,
 } from "./endpoint-types"
 
 export function generateId(): string {
   return uuidv4()
 }
 
-export function buildOutputField(field: FieldDefinition): OutputField {
+export function buildOutputField(field: FieldDefinition): OutputField | null {
   const out: OutputField = { name: field.name, type: field.type }
 
   if (field.type === "Object") {
-    out.fields = (field.fields ?? [])
+    const children = (field.fields ?? [])
       .filter((f) => f.name.trim() !== "")
       .map(buildOutputField)
+      .filter((f): f is OutputField => f !== null)
+    if (children.length === 0) {
+      return null
+    }
+    out.fields = children
   } else if (field.type === "Array") {
     const itemType = field.arrayItemType ?? "String"
-    out.items =
-      itemType === "Object"
-        ? {
-            type: "Object",
-            fields: (field.arrayItemFields ?? [])
-              .filter((f) => f.name.trim() !== "")
-              .map(buildOutputField),
-          }
-        : { type: itemType }
+    if (itemType === "Object") {
+      const children = (field.arrayItemFields ?? [])
+        .filter((f) => f.name.trim() !== "")
+        .map(buildOutputField)
+        .filter((f): f is OutputField => f !== null)
+      if (children.length === 0) {
+        return null
+      }
+      out.items = { type: "Object", fields: children }
+    } else {
+      out.items = { type: itemType }
+    }
+  }
+
+  // Include options only when they have meaningful content
+  if (field.options) {
+    const opts: FieldOptions = {}
+    if (field.options.required) {
+      opts.required = true
+    }
+    if (field.options.validations && field.options.validations.length > 0) {
+      opts.validations = field.options.validations
+    }
+    if (opts.required || opts.validations) {
+      out.options = opts
+    }
   }
 
   return out
 }
 
 export function buildOutputJSON(def: EndpointDefinition): OutputDefinition {
-  return {
+  const output: OutputDefinition = {
     version: "1.0",
     tableName: def.tableName,
     catalog: def.catalog,
     schema: def.schema,
     fields: def.fields
       .filter((f) => f.name.trim() !== "")
-      .map(buildOutputField),
+      .map(buildOutputField)
+      .filter((f): f is OutputField => f !== null),
   }
+
+  if (def.mutation && typeof def.mutation === "object") {
+    output.mutation = {
+      loadStrategy: def.mutation.loadStrategy,
+      basePath: def.mutation.basePath,
+    }
+  }
+
+  return output
 }
 
 function parseOutputField(field: OutputField): FieldDefinition {
@@ -65,6 +100,16 @@ function parseOutputField(field: OutputField): FieldDefinition {
     }
   }
 
+  if (field.options) {
+    base.options = {}
+    if (field.options.required) {
+      base.options.required = true
+    }
+    if (field.options.validations && field.options.validations.length > 0) {
+      base.options.validations = field.options.validations as FieldValidation[]
+    }
+  }
+
   return base
 }
 
@@ -78,13 +123,27 @@ export function parseImportedJSON(json: unknown): EndpointDefinition | null {
       return null
     }
 
-    return {
+    const def: EndpointDefinition = {
       version: "1.0",
       tableName: (obj.tableName as string) ?? "",
       catalog: (obj.catalog as string) ?? "",
       schema: (obj.schema as string) ?? "",
       fields: ((obj.fields as OutputField[]) ?? []).map(parseOutputField),
     }
+
+    if (obj.mutation && typeof obj.mutation === "object") {
+      const mutation = obj.mutation as Record<string, unknown>
+      def.mutation = {
+        loadStrategy:
+          (mutation.loadStrategy as MutationConfig["loadStrategy"]) ??
+          "full_load",
+        basePath: (mutation.basePath as string) ?? "",
+      }
+    } else if (obj.mutation === false) {
+      def.mutation = false
+    }
+
+    return def
   } catch {
     return null
   }

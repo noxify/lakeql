@@ -64,7 +64,7 @@ describe("pull backward compatibility (integration)", () => {
   })
 
   describe("pipeline produces all expected output files", () => {
-    it("should generate config.ts, interface.ts, query-schema.ts, json-schema.json, custom-endpoint.json, and mutation-schema.ts", async () => {
+    it("should generate config.ts, interface.ts, query-schema.ts, json-schema.json, and endpoint.json", async () => {
       const definition = trinoColumnsToDefinition({
         tableName: "orders",
         catalog: "commerce",
@@ -83,8 +83,7 @@ describe("pull backward compatibility (integration)", () => {
         "interface.ts",
         "query-schema.ts",
         "json-schema.json",
-        "custom-endpoint.json",
-        "mutation-schema.ts",
+        "endpoint.json",
       ]
 
       for (const fileName of expectedFiles) {
@@ -93,11 +92,17 @@ describe("pull backward compatibility (integration)", () => {
           `Expected ${fileName} to exist in output directory`
         ).toBeTruthy()
       }
+
+      // mutation-schema.ts should NOT be generated when mutation is false (pulled endpoints)
+      expect(
+        existsSync(path.join(outputDir, "mutation-schema.ts")),
+        "mutation-schema.ts should NOT be generated when mutation is false"
+      ).toBeFalsy()
     })
   })
 
-  describe("custom-endpoint.json validates against endpointDefinitionSchema", () => {
-    it("should produce a valid custom-endpoint.json for a simple table", async () => {
+  describe("endpoint.json validates against endpointDefinitionSchema", () => {
+    it("should produce a valid endpoint.json for a simple table", async () => {
       const simpleParsedColumns: Record<string, JSONType> = {
         id: "varchar",
         name: "varchar",
@@ -118,7 +123,7 @@ describe("pull backward compatibility (integration)", () => {
       })
 
       const content = await readFile(
-        path.join(outputDir, "custom-endpoint.json"),
+        path.join(outputDir, "endpoint.json"),
         "utf-8"
       )
       const parsed = JSON.parse(content)
@@ -134,7 +139,7 @@ describe("pull backward compatibility (integration)", () => {
       expect(parsed.fields).toHaveLength(3)
     })
 
-    it("should produce a valid custom-endpoint.json for a complex table with nested types", async () => {
+    it("should produce a valid endpoint.json for a complex table with nested types", async () => {
       const definition = trinoColumnsToDefinition({
         tableName: "orders",
         catalog: "commerce",
@@ -149,7 +154,7 @@ describe("pull backward compatibility (integration)", () => {
       })
 
       const content = await readFile(
-        path.join(outputDir, "custom-endpoint.json"),
+        path.join(outputDir, "endpoint.json"),
         "utf-8"
       )
       const parsed = JSON.parse(content)
@@ -287,8 +292,40 @@ describe("pull backward compatibility (integration)", () => {
     })
   })
 
-  describe("mutation-schema.ts contains expected patterns", () => {
-    it("should contain builder.mutationFields", async () => {
+  describe("mutation-schema.ts is generated when mutation config is present", () => {
+    it("should contain builder.mutationFields when mutation config is provided", async () => {
+      const definition = trinoColumnsToDefinition({
+        tableName: "orders",
+        catalog: "commerce",
+        schema: "sales",
+        parsedColumns: typicalParsedColumns,
+      })
+
+      // Override mutation to be a valid config object
+      const definitionWithMutation = {
+        ...definition,
+        mutation: {
+          loadStrategy: "full_load" as const,
+          basePath: "warehouse/sales/orders",
+        },
+      }
+
+      await generateEndpoint({
+        definition: definitionWithMutation,
+        outputDir,
+        skipRegistry: true,
+      })
+
+      const mutationSchemaContent = await readFile(
+        path.join(outputDir, "mutation-schema.ts"),
+        "utf-8"
+      )
+
+      expect(mutationSchemaContent).toContain("builder.mutationFields")
+      expect(mutationSchemaContent).toContain("executeWritePipeline")
+    })
+
+    it("should NOT generate mutation-schema.ts when mutation is false (pulled endpoints)", async () => {
       const definition = trinoColumnsToDefinition({
         tableName: "orders",
         catalog: "commerce",
@@ -302,16 +339,11 @@ describe("pull backward compatibility (integration)", () => {
         skipRegistry: true,
       })
 
-      const mutationSchemaContent = await readFile(
-        path.join(outputDir, "mutation-schema.ts"),
-        "utf-8"
-      )
-
-      expect(mutationSchemaContent).toContain("builder.mutationFields")
+      expect(existsSync(path.join(outputDir, "mutation-schema.ts"))).toBeFalsy()
     })
   })
 
-  describe("custom-endpoint.json is usable as --from-file input", () => {
+  describe("endpoint.json is usable as --from-file input", () => {
     it("should produce output that can be re-parsed and fed back to generateEndpoint", async () => {
       const definition = trinoColumnsToDefinition({
         tableName: "orders",
@@ -327,8 +359,8 @@ describe("pull backward compatibility (integration)", () => {
         skipRegistry: true,
       })
 
-      // Read the generated custom-endpoint.json
-      const customEndpointPath = path.join(outputDir, "custom-endpoint.json")
+      // Read the generated endpoint.json
+      const customEndpointPath = path.join(outputDir, "endpoint.json")
       const content = await readFile(customEndpointPath, "utf-8")
       const loadedDefinition = JSON.parse(content)
 
@@ -352,7 +384,7 @@ describe("pull backward compatibility (integration)", () => {
           "interface.ts",
           "query-schema.ts",
           "json-schema.json",
-          "custom-endpoint.json",
+          "endpoint.json",
         ]
 
         for (const fileName of expectedFiles) {
@@ -362,9 +394,9 @@ describe("pull backward compatibility (integration)", () => {
           ).toBeTruthy()
         }
 
-        // Verify custom-endpoint.json from second run is byte-identical to first
+        // Verify endpoint.json from second run is byte-identical to first
         const secondContent = await readFile(
-          path.join(secondOutputDir, "custom-endpoint.json"),
+          path.join(secondOutputDir, "endpoint.json"),
           "utf-8"
         )
         expect(secondContent).toBe(content)
@@ -375,7 +407,7 @@ describe("pull backward compatibility (integration)", () => {
       }
     })
 
-    it("should produce identical config.ts when re-generated from custom-endpoint.json", async () => {
+    it("should produce identical config.ts when re-generated from endpoint.json", async () => {
       const definition = trinoColumnsToDefinition({
         tableName: "orders",
         catalog: "commerce",
@@ -397,7 +429,7 @@ describe("pull backward compatibility (integration)", () => {
 
       // Load and re-generate
       const customEndpointContent = await readFile(
-        path.join(outputDir, "custom-endpoint.json"),
+        path.join(outputDir, "endpoint.json"),
         "utf-8"
       )
       const reloadedDef = endpointDefinitionSchema.parse(

@@ -12,6 +12,40 @@ export const fieldNamePattern = /^[a-zA-Z_][a-zA-Z0-9_]{0,63}$/u
 export const metadataFieldPattern = /^[a-zA-Z_][a-zA-Z0-9_]{0,127}$/u
 
 /**
+ * Supported load strategies for the mutation write pipeline.
+ */
+export const loadStrategies = [
+  "full_load",
+  "full_load_append",
+  "append",
+] as const
+
+export type LoadStrategy = (typeof loadStrategies)[number]
+
+/**
+ * Mutation pipeline configuration for an endpoint.
+ */
+export interface MutationConfig {
+  /** Load strategy for the write pipeline. */
+  loadStrategy: LoadStrategy
+  /** S3 base path for endpoint data. */
+  basePath: string
+}
+
+/**
+ * Zod schema for the mutation configuration object.
+ */
+export const mutationConfigSchema = z.object({
+  loadStrategy: z.enum(loadStrategies),
+  basePath: z.string().min(1),
+})
+
+/**
+ * Zod schema for the mutation field: either `false` (disabled) or a config object (enabled).
+ */
+export const mutationSchema = z.union([z.literal(false), mutationConfigSchema])
+
+/**
  * Supported primitive types for field definitions.
  */
 export const primitiveTypes = [
@@ -25,6 +59,47 @@ export const primitiveTypes = [
 
 export type PrimitiveType = (typeof primitiveTypes)[number]
 
+/**
+ * Field-level validation refinement types.
+ */
+export type FieldValidation =
+  | { type: "email" }
+  | { type: "url" }
+  | { type: "uuid" }
+  | { type: "min"; value: number }
+  | { type: "max"; value: number }
+  | { type: "regex"; pattern: string }
+
+/**
+ * Field-level options for mutation input validation.
+ */
+export interface FieldOptions {
+  /** Whether the field is required in mutation input. Default: false. */
+  required?: boolean
+  /** Validation refinements to apply via Zod. */
+  validations?: FieldValidation[]
+}
+
+/**
+ * Zod schema for field validation refinements.
+ */
+export const fieldValidationSchema: z.ZodType<FieldValidation> = z.union([
+  z.object({ type: z.literal("email") }),
+  z.object({ type: z.literal("url") }),
+  z.object({ type: z.literal("uuid") }),
+  z.object({ type: z.literal("min"), value: z.number() }),
+  z.object({ type: z.literal("max"), value: z.number() }),
+  z.object({ type: z.literal("regex"), pattern: z.string() }),
+])
+
+/**
+ * Zod schema for field-level options.
+ */
+export const fieldOptionsSchema: z.ZodType<FieldOptions> = z.object({
+  required: z.boolean().optional(),
+  validations: z.array(fieldValidationSchema).optional(),
+})
+
 export interface ArrayItemDefinition {
   type: PrimitiveType | "Object"
   fields?: FieldDefinition[]
@@ -35,6 +110,7 @@ export interface FieldDefinition {
   type: PrimitiveType | "Object" | "Array"
   fields?: FieldDefinition[]
   items?: ArrayItemDefinition
+  options?: FieldOptions
 }
 
 /**
@@ -46,31 +122,38 @@ export const fieldDefinitionSchema: z.ZodType<FieldDefinition> = z.lazy(() =>
     z.object({
       name: z.string().regex(fieldNamePattern),
       type: z.literal("String"),
+      options: fieldOptionsSchema.optional(),
     }),
     z.object({
       name: z.string().regex(fieldNamePattern),
       type: z.literal("Integer"),
+      options: fieldOptionsSchema.optional(),
     }),
     z.object({
       name: z.string().regex(fieldNamePattern),
       type: z.literal("Float"),
+      options: fieldOptionsSchema.optional(),
     }),
     z.object({
       name: z.string().regex(fieldNamePattern),
       type: z.literal("Boolean"),
+      options: fieldOptionsSchema.optional(),
     }),
     z.object({
       name: z.string().regex(fieldNamePattern),
       type: z.literal("Date"),
+      options: fieldOptionsSchema.optional(),
     }),
     z.object({
       name: z.string().regex(fieldNamePattern),
       type: z.literal("DateTime"),
+      options: fieldOptionsSchema.optional(),
     }),
     z.object({
       name: z.string().regex(fieldNamePattern),
       type: z.literal("Object"),
       fields: z.array(fieldDefinitionSchema).min(1),
+      options: fieldOptionsSchema.optional(),
     }),
     z.object({
       name: z.string().regex(fieldNamePattern),
@@ -82,6 +165,7 @@ export const fieldDefinitionSchema: z.ZodType<FieldDefinition> = z.lazy(() =>
           fields: z.array(fieldDefinitionSchema).min(1),
         }),
       ]),
+      options: fieldOptionsSchema.optional(),
     }),
   ])
 )
@@ -95,6 +179,7 @@ export const endpointDefinitionSchema = z.object({
   catalog: z.string().regex(metadataFieldPattern),
   schema: z.string().regex(metadataFieldPattern),
   fields: z.array(fieldDefinitionSchema),
+  mutation: mutationSchema.optional(),
 })
 
 export type EndpointDefinitionFormat = z.infer<typeof endpointDefinitionSchema>

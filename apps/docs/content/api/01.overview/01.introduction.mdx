@@ -25,7 +25,7 @@ The package combines three core libraries into a cohesive server stack:
 
 ## Schema loading
 
-Query schemas are loaded automatically at startup using glob patterns. The server scans for files matching `schemas/**/query-schema.{ts,js,mjs}` in the configured schema directory. Each query schema file registers its types and resolvers on the shared Pothos builder — no manual wiring required.
+Query and mutation schemas are loaded automatically at startup using glob patterns. The server scans for files matching `schemas/**/{query,mutation}-schema.{ts,js,mjs}` in the configured schema directory. Each schema file registers its types and resolvers on the shared Pothos builder — no manual wiring required.
 
 ## Quick start
 

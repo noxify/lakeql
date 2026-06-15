@@ -147,4 +147,10 @@ describe(trinoColumnsToDefinition, () => {
     const result = trinoColumnsToDefinition({ ...baseOptions, parsedColumns })
     expect(result.fields).toStrictEqual([{ name: "ratio", type: "Float" }])
   })
+
+  it("should set mutation to false for pulled endpoints", () => {
+    const parsedColumns: Record<string, JSONType> = { id: "varchar" }
+    const result = trinoColumnsToDefinition({ ...baseOptions, parsedColumns })
+    expect(result.mutation).toBeFalsy()
+  })
 })

@@ -164,5 +164,6 @@ export function trinoColumnsToDefinition(options: {
     catalog,
     schema,
     fields,
+    mutation: false,
   }
 }

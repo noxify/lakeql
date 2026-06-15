@@ -9,7 +9,7 @@ import type { EndpointDefinitionFormat } from "./schema"
  * Result of detecting an existing endpoint definition in the output directory.
  */
 export interface DetectExistingResult {
-  /** Whether the custom-endpoint.json file exists in the directory */
+  /** Whether the endpoint.json file exists in the directory */
   found: boolean
   /** The parsed and validated definition, if valid */
   definition?: EndpointDefinitionFormat
@@ -18,9 +18,9 @@ export interface DetectExistingResult {
 }
 
 /**
- * Detects and loads an existing `custom-endpoint.json` in the given output directory.
+ * Detects and loads an existing `endpoint.json` in the given output directory.
  *
- * 1. Checks if `custom-endpoint.json` exists in the directory
+ * 1. Checks if `endpoint.json` exists in the directory
  * 2. If it exists: reads, parses JSON, validates against `endpointDefinitionSchema`
  * 3. Also checks for duplicate field names at the same nesting level
  *
@@ -30,7 +30,7 @@ export interface DetectExistingResult {
 export async function detectExistingDefinition(
   outputDir: string
 ): Promise<DetectExistingResult> {
-  const filePath = path.join(outputDir, "custom-endpoint.json")
+  const filePath = path.join(outputDir, "endpoint.json")
 
   if (!existsSync(filePath)) {
     return { found: false }

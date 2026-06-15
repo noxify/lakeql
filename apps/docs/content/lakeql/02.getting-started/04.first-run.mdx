@@ -17,10 +17,12 @@ For a table called `orders`, the CLI creates:
 
 ```
 src/schemas/generated/hive/sales/orders/
-├── config.ts           # Table metadata and column mappings
-├── interface.ts        # TypeScript interface for the table
-├── query-schema.ts     # Pothos query schema with resolvers
-└── json-schema.json    # JSON Schema for response transformation
+├── config.ts            # Table metadata and column mappings
+├── interface.ts         # TypeScript interface for the table
+├── query-schema.ts      # Pothos query schema with resolvers
+├── mutation-schema.ts   # Pothos mutation schema with input types
+├── json-schema.json     # JSON Schema for response transformation
+└── endpoint.json # Endpoint definition (for re-generation)
 ```
 
 **config.ts** — Contains the table's catalog, schema, table name, select fields, and field transform mappings:

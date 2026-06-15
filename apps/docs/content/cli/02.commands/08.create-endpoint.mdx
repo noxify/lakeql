@@ -1,0 +1,175 @@
+---
+title: create-endpoint
+description: Generate a custom endpoint from a JSON definition file.
+---
+
+# create-endpoint
+
+Generate a custom endpoint (query + mutation) from a JSON definition file. The definition file can be created using the [Endpoint Builder](/endpoint-builder) UI or written by hand.
+
+## Generated files
+
+Files are written to `schemas/custom/<catalog>/<schema>/<tableName>/`:
+
+- `config.ts` — Endpoint configuration
+- `interface.ts` — TypeScript interface for the endpoint fields
+- `query-schema.ts` — GraphQL query schema definition
+- `mutation-schema.ts` — GraphQL mutation schema with write pipeline resolver (only when mutation is configured)
+- `validations.ts` — Zod validation schema (only when fields have validations configured)
+- `json-schema.json` — JSON Schema representation
+- `endpoint.json` — The endpoint definition (for re-generation)
+
+<Note>
+  The `mutation-schema.ts` and `validations.ts` files are only generated when
+  the endpoint definition includes mutation configuration. Query-only endpoints
+  skip these files entirely.
+</Note>
+
+## Usage
+
+```bash
+lakeql-cli create-endpoint --from-file ./my-endpoint.json
+```
+
+### With mutation enabled
+
+```
+✔ Loaded definition: user_events (catalog: hive, schema: analytics)
+  → schemas/custom/hive/analytics/user_events/config.ts
+  → schemas/custom/hive/analytics/user_events/interface.ts
+  → schemas/custom/hive/analytics/user_events/query-schema.ts
+  → schemas/custom/hive/analytics/user_events/mutation-schema.ts
+  → schemas/custom/hive/analytics/user_events/validations.ts
+  → schemas/custom/hive/analytics/user_events/json-schema.json
+  → schemas/custom/hive/analytics/user_events/endpoint.json
+  Load strategy: full_load
+✔ Config registry updated
+```
+
+### Without mutation (query-only)
+
+```
+✔ Loaded definition: my_table (catalog: analytics, schema: tracking)
+  → schemas/custom/analytics/tracking/my_table/config.ts
+  → schemas/custom/analytics/tracking/my_table/interface.ts
+  → schemas/custom/analytics/tracking/my_table/query-schema.ts
+  → schemas/custom/analytics/tracking/my_table/json-schema.json
+  → schemas/custom/analytics/tracking/my_table/endpoint.json
+  mutation: disabled
+✔ Config registry updated
+```
+
+## Options
+
+| Option                 | Description                                   |
+| ---------------------- | --------------------------------------------- |
+| `--from-file <path>`   | **(required)** Path to a JSON definition file |
+| `--source-path <path>` | Base path for generated code (default: CWD)   |
+| `--skip-registry`      | Skip config registry generation               |
+
+## Definition file format
+
+The JSON definition file must conform to the `EndpointDefinitionFormat` schema:
+
+```json
+{
+  "version": "1.0",
+  "tableName": "user_events",
+  "catalog": "hive",
+  "schema": "analytics",
+  "fields": [
+    {
+      "name": "email",
+      "type": "String",
+      "options": {
+        "required": true,
+        "validations": [{ "type": "email" }]
+      }
+    },
+    {
+      "name": "age",
+      "type": "Integer",
+      "options": {
+        "required": false,
+        "validations": [
+          { "type": "min", "value": 0 },
+          { "type": "max", "value": 150 }
+        ]
+      }
+    },
+    { "name": "event_id", "type": "String" },
+    { "name": "timestamp", "type": "DateTime" },
+    {
+      "name": "metadata",
+      "type": "Object",
+      "fields": [{ "name": "source", "type": "String" }]
+    },
+    {
+      "name": "tags",
+      "type": "Array",
+      "items": { "type": "String" }
+    }
+  ],
+  "mutation": {
+    "loadStrategy": "full_load",
+    "basePath": "warehouse/analytics/user_events"
+  }
+}
+```
+
+### Supported field types
+
+- **Primitives:** String, Integer, Float, Boolean, Date, DateTime
+- **Object:** Nested object with child fields (max 5 levels)
+- **Array:** Array of primitives or objects
+
+### Mutation configuration
+
+The optional `mutation` field controls whether a write pipeline is generated for this endpoint. Set it to `false` (or omit it) for query-only endpoints. Set it to a configuration object to enable the mutation pipeline.
+
+| Field          | Type   | Description                                                                   |
+| -------------- | ------ | ----------------------------------------------------------------------------- |
+| `loadStrategy` | string | How data is written. One of `full_load`, `full_load_append`, or `append`.     |
+| `basePath`     | string | S3 prefix where Parquet files are stored (e.g. `warehouse/analytics/events`). |
+
+See the [Load Strategies](/lakeql/guides/load-strategies) guide for details on when to use each strategy.
+
+<Note>
+  Endpoints generated via the `pull` command always set `mutation: false` since
+  pulled tables are query-only by default.
+</Note>
+
+### Field options
+
+Each field can include an optional `options` object to control mutation input validation:
+
+| Field         | Type    | Default | Description                                        |
+| ------------- | ------- | ------- | -------------------------------------------------- |
+| `required`    | boolean | `false` | Whether the field is required in mutation input.   |
+| `validations` | array   | `[]`    | Validation refinements applied via Zod at runtime. |
+
+#### Available validations
+
+| Validation | Applies to     | Description                     | Example                                    |
+| ---------- | -------------- | ------------------------------- | ------------------------------------------ |
+| `email`    | String         | Must be a valid email address   | `{ "type": "email" }`                      |
+| `url`      | String         | Must be a valid URL             | `{ "type": "url" }`                        |
+| `uuid`     | String         | Must be a valid UUID            | `{ "type": "uuid" }`                       |
+| `min`      | Integer, Float | Minimum numeric value           | `{ "type": "min", "value": 0 }`            |
+| `max`      | Integer, Float | Maximum numeric value           | `{ "type": "max", "value": 150 }`          |
+| `regex`    | String         | Must match a regular expression | `{ "type": "regex", "pattern": "^[A-Z]" }` |
+
+### Validation rules
+
+- `tableName`, `catalog`, `schema`: alphanumeric + underscore, no leading digit, max 128 chars
+- Field names: alphanumeric + underscore, no leading digit, max 64 chars
+- No duplicate field names at the same nesting level
+- Object fields must have at least 1 child field
+
+## Workflow
+
+1. Use the [Endpoint Builder](/endpoint-builder) to define your schema visually
+2. Configure mutation support and load strategy if write operations are needed
+3. Download the JSON definition file
+4. Run `lakeql-cli create-endpoint --from-file ./your-endpoint.json`
+5. The generated mutation resolver is fully wired to the write pipeline — no manual stub implementation needed

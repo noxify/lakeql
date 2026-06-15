@@ -246,6 +246,37 @@ importers:
         specifier: 6.0.3
         version: 6.0.3
 
+  packages/adapters:
+    dependencies:
+      '@lakeql/parquet':
+        specifier: workspace:*
+        version: link:../parquet
+      '@lakeql/trino-client':
+        specifier: workspace:*
+        version: link:../trino-client
+      files-sdk:
+        specifier: 1.8.0
+        version: 1.8.0(@aws-sdk/client-s3@3.1068.0)(@aws-sdk/s3-presigned-post@3.1068.0)(@aws-sdk/s3-request-presigner@3.1068.0)(zod@4.4.3)
+    devDependencies:
+      '@lakeql/tsconfig':
+        specifier: workspace:*
+        version: link:../../tooling/typescript
+      '@types/node':
+        specifier: 24.13.2
+        version: 24.13.2
+      fast-check:
+        specifier: ^4.8.0
+        version: 4.8.0
+      tsdown:
+        specifier: 0.22.2
+        version: 0.22.2(tsx@4.22.4)(typescript@6.0.3)
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: 4.1.8
+        version: 4.1.8(@types/node@24.13.2)(@vitest/coverage-v8@4.1.8)(@vitest/ui@4.1.8)(msw@2.14.6(@types/node@24.13.2)(typescript@6.0.3))(vite@7.3.2(@types/node@24.13.2)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.4)(yaml@2.9.0))
+
   packages/api:
     dependencies:
       '@hono/node-server':
@@ -589,6 +620,34 @@ importers:
         specifier: 6.0.3
         version: 6.0.3
 
+  packages/parquet:
+    dependencies:
+      hyparquet-writer:
+        specifier: 0.15.6
+        version: 0.15.6
+    devDependencies:
+      '@lakeql/tsconfig':
+        specifier: workspace:*
+        version: link:../../tooling/typescript
+      '@types/node':
+        specifier: 24.13.2
+        version: 24.13.2
+      fast-check:
+        specifier: ^4.8.0
+        version: 4.8.0
+      hyparquet:
+        specifier: 1.26.0
+        version: 1.26.0
+      tsdown:
+        specifier: 0.22.2
+        version: 0.22.2(tsx@4.22.4)(typescript@6.0.3)
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: 4.1.8
+        version: 4.1.8(@types/node@24.13.2)(@vitest/coverage-v8@4.1.8)(@vitest/ui@4.1.8)(msw@2.14.6(@types/node@24.13.2)(typescript@6.0.3))(vite@7.3.2(@types/node@24.13.2)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.4)(yaml@2.9.0))
+
   packages/query-builder:
     dependencies:
       date-fns:
@@ -687,6 +746,9 @@ importers:
       '@types/node':
         specifier: 24.13.2
         version: 24.13.2
+      fast-check:
+        specifier: ^4.8.0
+        version: 4.8.0
       json-column-parser:
         specifier: 2.0.0
         version: 2.0.0
@@ -760,6 +822,8 @@ importers:
       typescript:
         specifier: 6.0.3
         version: 6.0.3
+
+  templates/stackblitz: {}
 
   tooling/test-data:
     devDependencies:
@@ -5462,11 +5526,6 @@ packages:
     engines: {node: '>=10'}
     hasBin: true
 
-  semver@7.8.2:
-    resolution: {integrity: sha512-c8jsqUZm3omBOI66G90z1Dyw5z622G8oLG+omfsHBJf3CWQTlOcwOjvOG6wtiNfW6anKm/eA39LMwMtMez2TiQ==}
-    engines: {node: '>=10'}
-    hasBin: true
-
   semver@7.8.4:
     resolution: {integrity: sha512-rUCObTnP32Q08R2uuIrt7r9PlEonuTmtuXYcW6s5kjdlj3xbnwe+21yXptAUYcMAABLkYYTtnmzb3w3EDZfueA==}
     engines: {node: '>=10'}
@@ -6526,7 +6585,7 @@ snapshots:
 
   '@babel/code-frame@7.29.0':
     dependencies:
-      '@babel/helper-validator-identifier': 7.28.5
+      '@babel/helper-validator-identifier': 7.29.7
       js-tokens: 4.0.0
       picocolors: 1.1.1
 
@@ -6735,7 +6794,7 @@ snapshots:
   '@babel/template@7.28.6':
     dependencies:
       '@babel/code-frame': 7.29.7
-      '@babel/parser': 7.29.3
+      '@babel/parser': 7.29.7
       '@babel/types': 7.29.7
 
   '@babel/template@7.29.7':
@@ -8488,7 +8547,7 @@ snapshots:
       obug: 2.1.2
       std-env: 4.1.0
       tinyrainbow: 3.1.0
-      vitest: 4.1.8(@types/node@25.9.2)(@vitest/coverage-v8@4.1.8)(@vitest/ui@4.1.8)(msw@2.14.6(@types/node@25.9.2)(typescript@6.0.3))(vite@7.3.2(@types/node@25.9.2)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.4)(yaml@2.9.0))
+      vitest: 4.1.8(@types/node@24.13.2)(@vitest/coverage-v8@4.1.8)(@vitest/ui@4.1.8)(msw@2.14.6(@types/node@24.13.2)(typescript@6.0.3))(vite@7.3.2(@types/node@24.13.2)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.4)(yaml@2.9.0))
 
   '@vitest/expect@4.1.8':
     dependencies:
@@ -8544,7 +8603,7 @@ snapshots:
       sirv: 3.0.2
       tinyglobby: 0.2.17
       tinyrainbow: 3.1.0
-      vitest: 4.1.8(@types/node@25.9.2)(@vitest/coverage-v8@4.1.8)(@vitest/ui@4.1.8)(msw@2.14.6(@types/node@25.9.2)(typescript@6.0.3))(vite@7.3.2(@types/node@25.9.2)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.4)(yaml@2.9.0))
+      vitest: 4.1.8(@types/node@24.13.2)(@vitest/coverage-v8@4.1.8)(@vitest/ui@4.1.8)(msw@2.14.6(@types/node@24.13.2)(typescript@6.0.3))(vite@7.3.2(@types/node@24.13.2)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.4)(yaml@2.9.0))
 
   '@vitest/utils@4.1.8':
     dependencies:
@@ -9838,7 +9897,7 @@ snapshots:
 
   make-dir@4.0.0:
     dependencies:
-      semver: 7.8.2
+      semver: 7.8.4
 
   markdown-extensions@2.0.0: {}
 
@@ -11099,8 +11158,6 @@ snapshots:
   semver@6.3.1: {}
 
   semver@7.8.0: {}
-
-  semver@7.8.2: {}
 
   semver@7.8.4: {}
 

@@ -1,13 +1,20 @@
+import type {
+  FieldDefinition,
+  MutationConfig,
+} from "@lakeql/schema-generator/endpoint-schema"
 import type { ModelResponse } from "@lakeql/schema-generator/graphql-schema"
 import ts from "typescript"
 
 import {
+  access,
   arrowFunction,
   bool,
   builderCall,
+  call,
   constStatement,
   fieldsFunction,
   id,
+  importDefault,
   importNames,
   methodCall,
   objectLiteral,
@@ -24,41 +31,123 @@ export interface GenerateMutationSchemaProps {
   models: Record<string, ModelResponse>
   /** The GraphQL mutation name for this table (e.g. "createTrackingUserEvents"). */
   mutationName: string
+  /** The mutation pipeline configuration from the endpoint definition (false or config object). */
+  mutationConfig?: false | MutationConfig
+  /** Whether validations.ts will be generated (at least one field has validations). */
+  hasValidations?: boolean
+  /** Optional field definitions with options (for required/nullable mapping). */
+  fieldDefinitions?: FieldDefinition[]
 }
 
 /**
  * Generates the Pothos mutation schema AST for a table endpoint.
  *
- * Produces:
- * - `builder.inputType` declarations for each model (root + nested)
- * - A `builder.mutationFields` call exposing the mutation
- * - A resolver stub returning Boolean with a placeholder comment
+ * When mutationConfig is present (not false/absent), produces a working resolver
+ * that validates input (if validations exist) and calls executeWritePipeline.
+ *
+ * When mutationConfig is absent or false, returns an empty array (no file generated).
+ *
+ * When mutationConfig is undefined but models exist (legacy mode), produces the
+ * input types and mutation fields with a placeholder resolver for backward compatibility.
  */
 export function generateMutationSchema({
   models,
   mutationName,
+  mutationConfig,
+  hasValidations,
+  fieldDefinitions,
 }: GenerateMutationSchemaProps): ts.Node[] {
+  // When mutation is explicitly set to false, do NOT generate mutation-schema.ts
+  if (mutationConfig === false) {
+    return []
+  }
+
   const rootModel = Object.values(models).find((model) => model.root)
   if (!rootModel) {
     return []
   }
 
+  // Build a lookup map from field name → options.required
+  const requiredMap = buildRequiredMap(fieldDefinitions)
+
   // Separate nested models from root model
   const nestedModels = Object.values(models).filter((model) => !model.root)
 
+  // If mutationConfig is a config object, generate a real resolver
+  if (mutationConfig && typeof mutationConfig === "object") {
+    return [
+      ...generateRealResolverImports(hasValidations),
+      ...nestedModels.map((model) =>
+        generateInputType(model, models, requiredMap)
+      ),
+      generateInputType(rootModel, models, requiredMap),
+      generateRealMutationFields(
+        mutationName,
+        rootModel,
+        mutationConfig,
+        hasValidations
+      ),
+    ]
+  }
+
+  // Legacy mode: no mutationConfig passed, generate placeholder resolver
   return [
     generateBuilderImport(),
-    ...nestedModels.map((model) => generateInputType(model, models)),
-    generateInputType(rootModel, models),
+    ...nestedModels.map((model) =>
+      generateInputType(model, models, requiredMap)
+    ),
+    generateInputType(rootModel, models, requiredMap),
     generateMutationFields(mutationName, rootModel),
   ]
 }
 
 /**
- * Generates the import statement: import { builder } from "../../builder"
+ * Builds a map from field name → whether the field is required based on field definitions.
+ * When fieldDefinitions are provided, uses options.required (defaulting to false when absent).
+ * When fieldDefinitions are not provided, returns an empty map (all fields default to required: true for backward compat).
+ */
+function buildRequiredMap(
+  fieldDefinitions?: FieldDefinition[]
+): Map<string, boolean> {
+  const map = new Map<string, boolean>()
+  if (!fieldDefinitions) {
+    return map
+  }
+  for (const field of fieldDefinitions) {
+    // options.required defaults to false when options is absent or required is not set
+    const isRequired = field.options?.required === true
+    map.set(field.name, isRequired)
+  }
+  return map
+}
+
+/**
+ * Generates all imports needed for the real mutation resolver.
+ */
+function generateRealResolverImports(
+  hasValidations?: boolean
+): ts.ImportDeclaration[] {
+  const imports: ts.ImportDeclaration[] = [
+    importNames("@lakeql/adapters", ["executeWritePipeline"]),
+    importNames("@lakeql/trino-client", ["TrinoClient"]),
+    importNames("@lakeql/api/builder", ["builder"]),
+    importNames("~/env", ["env"]),
+    importNames("./config", ["hiveConfig"]),
+    importDefault("./json-schema.json", "jsonSchema"),
+  ]
+
+  if (hasValidations) {
+    imports.push(importNames("./validations", ["validationSchema"]))
+  }
+
+  return imports
+}
+
+/**
+ * Generates the import statement: import { builder } from "@lakeql/api/builder"
  */
 function generateBuilderImport(): ts.Node {
-  return importNames("../../builder", ["builder"])
+  return importNames("@lakeql/api/builder", ["builder"])
 }
 
 /**
@@ -66,12 +155,13 @@ function generateBuilderImport(): ts.Node {
  */
 function generateInputType(
   model: ModelResponse,
-  allModels: Record<string, ModelResponse>
+  allModels: Record<string, ModelResponse>,
+  requiredMap: Map<string, boolean>
 ): ts.Node {
   const inputTypeName = `${model.modelName}Input`
 
   const fieldProperties = Object.values(model.fields).map((field) =>
-    generateInputField(field, allModels)
+    generateInputField(field, allModels, requiredMap)
   )
 
   return constStatement(
@@ -92,9 +182,12 @@ function generateInputField(
     graphqlType: string
     isArray: boolean
   },
-  allModels: Record<string, ModelResponse>
+  allModels: Record<string, ModelResponse>,
+  requiredMap: Map<string, boolean>
 ): ts.PropertyAssignment {
-  const requiredOption = property("required", bool(true))
+  // Determine required from field options: true only if options.required is explicitly true
+  const isRequired = requiredMap.get(field.name) ?? true
+  const requiredOption = property("required", bool(isRequired))
 
   if (field.isArray) {
     const innerType = field.graphqlType.replace(/^\[/u, "").replace(/\]$/u, "")
@@ -196,7 +289,183 @@ function getPrimitiveListMethod(innerType: string): string | undefined {
 }
 
 /**
- * Generates the `builder.mutationFields` call.
+ * Generates the `builder.mutationFields` call with a real resolver
+ * that validates input and calls executeWritePipeline.
+ */
+function generateRealMutationFields(
+  mutationName: string,
+  rootModel: ModelResponse,
+  mutationConfig: MutationConfig,
+  hasValidations?: boolean
+): ts.Node {
+  const rootInputTypeName = `${rootModel.modelName}Input`
+
+  // Build resolver body statements
+  const resolverStatements: ts.Statement[] = []
+
+  // If validations exist, add: validationSchema.parse(input)
+  if (hasValidations) {
+    resolverStatements.push(
+      ts.factory.createExpressionStatement(
+        methodCall("validationSchema", "parse", [id("input")])
+      )
+    )
+  }
+
+  // Create TrinoClient instance:
+  // const trinoClient = new TrinoClient({ host: env.HIVE_HOST, port: env.HIVE_PORT, auth: {...}, catalog: env.HIVE_CATALOG, source: env.HIVE_SOURCE })
+  resolverStatements.push(
+    ts.factory.createVariableStatement(
+      undefined,
+      ts.factory.createVariableDeclarationList(
+        [
+          ts.factory.createVariableDeclaration(
+            id("trinoClient"),
+            undefined,
+            undefined,
+            ts.factory.createNewExpression(id("TrinoClient"), undefined, [
+              objectLiteral([
+                property("host", access("env", "HIVE_HOST")),
+                property("port", access("env", "HIVE_PORT")),
+                property(
+                  "auth",
+                  objectLiteral(
+                    [
+                      property("type", stringLiteral("basic")),
+                      property("username", access("env", "HIVE_USERNAME")),
+                      property("password", access("env", "HIVE_PASSWORD")),
+                    ],
+                    false
+                  )
+                ),
+                property("catalog", access("env", "HIVE_CATALOG")),
+                property("source", access("env", "HIVE_SOURCE")),
+              ]),
+            ])
+          ),
+        ],
+        ts.NodeFlags.Const
+      )
+    )
+  )
+
+  // await executeWritePipeline({ records: input, jsonSchema, config: { ... } })
+  const pipelineCall = ts.factory.createAwaitExpression(
+    call(id("executeWritePipeline"), [
+      objectLiteral([
+        property("records", id("input")),
+        property(
+          "jsonSchema",
+          ts.factory.createAsExpression(
+            id("jsonSchema"),
+            ts.factory.createKeywordTypeNode(ts.SyntaxKind.AnyKeyword)
+          )
+        ),
+        property(
+          "config",
+          objectLiteral([
+            property(
+              "loadStrategy",
+              stringLiteral(mutationConfig.loadStrategy)
+            ),
+            property("basePath", stringLiteral(mutationConfig.basePath)),
+            property(
+              "s3",
+              objectLiteral([
+                property("bucket", access("env", "S3_BUCKET")),
+                property("region", access("env", "S3_REGION")),
+                property("endpoint", access("env", "S3_ENDPOINT")),
+                property(
+                  "credentials",
+                  objectLiteral(
+                    [
+                      property(
+                        "accessKeyId",
+                        access("env", "S3_ACCESS_KEY_ID")
+                      ),
+                      property(
+                        "secretAccessKey",
+                        access("env", "S3_SECRET_ACCESS_KEY")
+                      ),
+                    ],
+                    false
+                  )
+                ),
+              ])
+            ),
+            property(
+              "table",
+              objectLiteral(
+                [
+                  property("catalog", access("hiveConfig", "catalog")),
+                  property("schema", access("hiveConfig", "schema")),
+                  property("tableName", access("hiveConfig", "tableName")),
+                ],
+                false
+              )
+            ),
+            property("trinoClient", id("trinoClient")),
+          ])
+        ),
+      ]),
+    ])
+  )
+
+  resolverStatements.push(ts.factory.createExpressionStatement(pipelineCall))
+
+  // return true
+  resolverStatements.push(
+    ts.factory.createReturnStatement(ts.factory.createTrue())
+  )
+
+  const resolverBody = ts.factory.createBlock(resolverStatements, true)
+
+  const resolver = arrowFunction(
+    [
+      parameter("_root"),
+      ts.factory.createParameterDeclaration(
+        undefined,
+        undefined,
+        ts.factory.createObjectBindingPattern([
+          ts.factory.createBindingElement(
+            undefined,
+            undefined,
+            ts.factory.createIdentifier("input")
+          ),
+        ])
+      ),
+    ],
+    resolverBody,
+    { async: true }
+  )
+
+  const inputArg = methodCall("t", "arg", [
+    objectLiteral(
+      [
+        property("type", id(rootInputTypeName)),
+        property("required", bool(true)),
+      ],
+      false
+    ),
+  ])
+
+  const mutationField = property(
+    mutationName,
+    methodCall("t", "boolean", [
+      objectLiteral([
+        property("args", objectLiteral([property("input", inputArg)], false)),
+        property("resolve", resolver),
+      ]),
+    ])
+  )
+
+  return ts.factory.createExpressionStatement(
+    builderCall("mutationFields", [fieldsFunction([mutationField])])
+  )
+}
+
+/**
+ * Generates the `builder.mutationFields` call with a placeholder resolver (legacy mode).
  */
 function generateMutationFields(
   mutationName: string,

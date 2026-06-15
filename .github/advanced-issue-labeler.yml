@@ -1,0 +1,36 @@
+policy:
+  - template: ["bug_report.yml", "feature_request.yml"]
+    section:
+      - id: [package]
+        block-list: []
+        label:
+          - name: "pkg:adapters"
+            keys: ["adapters"]
+          - name: "pkg:api"
+            keys: ["api"]
+          - name: "pkg:cli"
+            keys: ["cli"]
+          - name: "pkg:column-parser"
+            keys: ["column-parser"]
+          - name: "pkg:create-app"
+            keys: ["create-app"]
+          - name: "pkg:file-generator"
+            keys: ["file-generator"]
+          - name: "pkg:helpers"
+            keys: ["helpers"]
+          - name: "pkg:logger"
+            keys: ["logger"]
+          - name: "pkg:parquet"
+            keys: ["parquet"]
+          - name: "pkg:query-builder"
+            keys: ["query-builder"]
+          - name: "pkg:response-transformer"
+            keys: ["response-transformer"]
+          - name: "pkg:schema-generator"
+            keys: ["schema-generator"]
+          - name: "pkg:trino-client"
+            keys: ["trino-client"]
+          - name: "documentation"
+            keys: ["documentation"]
+          - name: "general"
+            keys: ["general", "I don't know"]

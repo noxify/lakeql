@@ -53,7 +53,7 @@ export interface GeneratePipelineResult {
 /**
  * Unified generation pipeline that transforms an EndpointDefinitionFormat
  * into all output files (config.ts, interface.ts, query-schema.ts,
- * mutation-schema.ts, json-schema.json, custom-endpoint.json).
+ * mutation-schema.ts, json-schema.json, endpoint.json).
  *
  * This pipeline is shared by both the `create-endpoint` and `pull` commands.
  */
@@ -147,9 +147,17 @@ export async function generateEndpoint(
   })
 
   // 8. Generate mutation-schema.ts
+  const hasValidations = fields.some(
+    (field) =>
+      field.options?.validations && field.options.validations.length > 0
+  )
+
   const generatedMutationSchema = generateMutationSchema({
     models,
     mutationName,
+    mutationConfig: definition.mutation,
+    hasValidations,
+    fieldDefinitions: fields,
   })
 
   // Only generate the file if there are nodes (stub returns empty)
@@ -165,7 +173,7 @@ export async function generateEndpoint(
   // 9. Serialize json-schema.json
   const jsonSchemaContent = serializeDeterministic(jsonSchema)
 
-  // 10. Serialize custom-endpoint.json via deterministic serializer
+  // 10. Serialize endpoint.json via deterministic serializer
   const customEndpointContent = serializeDeterministic(definition)
 
   // Collect all generated files
@@ -174,7 +182,7 @@ export async function generateEndpoint(
     { fileName: "interface.ts", content: interfaceTemplate.text },
     { fileName: "query-schema.ts", content: querySchemaTemplate.text },
     { fileName: "json-schema.json", content: jsonSchemaContent },
-    { fileName: "custom-endpoint.json", content: customEndpointContent },
+    { fileName: "endpoint.json", content: customEndpointContent },
   ]
 
   // Only include mutation-schema.ts if it has content

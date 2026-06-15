@@ -3,6 +3,7 @@
 import { useLiveQuery } from "@tanstack/react-db"
 import {
   AlertCircle,
+  AlertTriangle,
   Code,
   Copy,
   Download,
@@ -19,12 +20,21 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 import { Separator } from "@/components/ui/separator"
 import {
   CURRENT_DRAFT_ID,
   endpointDraftsCollection,
 } from "@/lib/endpoint-store"
-import type { EndpointDefinition, FieldDefinition } from "@/lib/endpoint-types"
+import type {
+  EndpointDefinition,
+  FieldDefinition,
+  MutationConfig,
+} from "@/lib/endpoint-types"
 import {
   generateId,
   buildOutputJSON,
@@ -35,6 +45,7 @@ import { FieldList } from "./field-list"
 import { ImportZone } from "./import-zone"
 import { JSONPreview } from "./json-preview"
 import { MetadataForm } from "./metadata-form"
+import { MutationForm } from "./mutation-form"
 
 const DEFAULT_STATE: EndpointDefinition = {
   version: "1.0",
@@ -42,6 +53,51 @@ const DEFAULT_STATE: EndpointDefinition = {
   catalog: "",
   schema: "",
   fields: [],
+}
+
+function collectWarnings(
+  fields: FieldDefinition[],
+  warnings: string[],
+  path: string[]
+) {
+  for (const field of fields) {
+    const fieldPath = [...path, field.name || "(unnamed)"].join(".")
+
+    if (!field.name.trim()) {
+      warnings.push(
+        `Empty field name${path.length > 0 ? ` in ${path.join(".")}` : ""} — will be excluded from output`
+      )
+    }
+
+    if (field.type === "Object") {
+      const namedChildren = (field.fields ?? []).filter((f) => f.name.trim())
+      if (namedChildren.length === 0 && field.name.trim()) {
+        warnings.push(
+          `"${fieldPath}" has no children — will be excluded from output`
+        )
+      }
+      collectWarnings(field.fields ?? [], warnings, [
+        ...path,
+        field.name || "(unnamed)",
+      ])
+    }
+
+    if (field.type === "Array" && field.arrayItemType === "Object") {
+      const namedChildren = (field.arrayItemFields ?? []).filter((f) =>
+        f.name.trim()
+      )
+      if (namedChildren.length === 0 && field.name.trim()) {
+        warnings.push(
+          `"${fieldPath}" array items have no children — will be excluded from output`
+        )
+      }
+      collectWarnings(field.arrayItemFields ?? [], warnings, [
+        ...path,
+        field.name || "(unnamed)",
+        "items",
+      ])
+    }
+  }
 }
 
 export function EndpointBuilder() {
@@ -66,6 +122,7 @@ export function EndpointBuilder() {
         catalog: persistedDraft.catalog,
         schema: persistedDraft.schema,
         fields: persistedDraft.fields,
+        mutation: persistedDraft.mutation,
       })
       initialized.current = true
     } else if (!initialized.current && persistedDrafts !== undefined) {
@@ -85,7 +142,8 @@ export function EndpointBuilder() {
     def.tableName.trim() !== "" ||
     def.catalog.trim() !== "" ||
     def.schema.trim() !== "" ||
-    def.fields.length > 0
+    def.fields.length > 0 ||
+    (def.mutation !== undefined && def.mutation !== false)
 
   // Keep track of whether a draft exists (without causing re-renders)
   useEffect(() => {
@@ -118,6 +176,7 @@ export function EndpointBuilder() {
           draft.catalog = def.catalog
           draft.schema = def.schema
           draft.fields = def.fields
+          draft.mutation = def.mutation
         })
       } else {
         endpointDraftsCollection.insert(draftData)
@@ -141,11 +200,21 @@ export function EndpointBuilder() {
   const rootDupes = useMemo(() => getDuplicateNames(def.fields), [def.fields])
   const jsonString = useMemo(() => JSON.stringify(output, null, 2), [output])
 
+  const warnings = useMemo(() => {
+    const items: string[] = []
+    collectWarnings(def.fields, items, [])
+    return items
+  }, [def.fields])
+
   function handleMetaChange(
     key: "tableName" | "catalog" | "schema",
     value: string
   ) {
     setDef((prev) => ({ ...prev, [key]: value }))
+  }
+
+  function handleMutationChange(mutation: false | MutationConfig | undefined) {
+    setDef((prev) => ({ ...prev, mutation }))
   }
 
   function addField() {
@@ -227,6 +296,32 @@ export function EndpointBuilder() {
           )}
         </div>
         <div className="flex items-center gap-1">
+          {warnings.length > 0 && (
+            <Popover>
+              <PopoverTrigger
+                render={
+                  <button className="mr-2 flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-1 text-xs text-amber-600 transition-colors hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/30" />
+                }
+              >
+                <AlertTriangle className="size-3.5" />
+                {warnings.length}{" "}
+                {warnings.length === 1 ? "warning" : "warnings"}
+              </PopoverTrigger>
+              <PopoverContent side="bottom" sideOffset={4} className="w-80">
+                <ul className="flex flex-col gap-1.5">
+                  {warnings.map((warning, i) => (
+                    <li
+                      key={i}
+                      className="text-muted-foreground flex items-start gap-2 text-xs"
+                    >
+                      <AlertTriangle className="mt-0.5 size-3 shrink-0 text-amber-500" />
+                      <span>{warning}</span>
+                    </li>
+                  ))}
+                </ul>
+              </PopoverContent>
+            </Popover>
+          )}
           <Button
             variant="ghost"
             size="sm"
@@ -298,6 +393,19 @@ export function EndpointBuilder() {
                 catalog={def.catalog}
                 schema={def.schema}
                 onChange={handleMetaChange}
+              />
+            </section>
+
+            <Separator />
+
+            {/* Mutation */}
+            <section>
+              <h2 className="text-foreground mb-3 text-sm font-semibold">
+                Mutation Pipeline
+              </h2>
+              <MutationForm
+                mutation={def.mutation}
+                onChange={handleMutationChange}
               />
             </section>
 

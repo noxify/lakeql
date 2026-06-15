@@ -107,6 +107,14 @@ export default function createEndpointCommand() {
       console.log(`  catalog:   ${definition.catalog}`)
       // oxlint-disable-next-line no-console
       console.log(`  schema:    ${definition.schema}`)
+
+      // Display mutation configuration status
+      const mutationDisplay = definition.mutation
+        ? definition.mutation.loadStrategy
+        : "disabled"
+      // oxlint-disable-next-line no-console
+      console.log(`  mutation:  ${mutationDisplay}`)
+
       // oxlint-disable-next-line no-console
       console.log("\n  Fields:")
       // oxlint-disable-next-line no-console
@@ -120,7 +128,7 @@ export default function createEndpointCommand() {
       )
       const outputDir = path.join(
         resolvedSourcePath,
-        "schemas/generated",
+        "schemas/custom",
         definition.catalog,
         definition.schema,
         definition.tableName

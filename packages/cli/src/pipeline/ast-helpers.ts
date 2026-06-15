@@ -153,3 +153,20 @@ export function importNames(
     stringLiteral(moduleName)
   )
 }
+
+export function importDefault(
+  moduleName: string,
+  defaultName: string,
+  options?: { typeOnly?: boolean }
+): ts.ImportDeclaration {
+  return factory.createImportDeclaration(
+    undefined,
+    factory.createImportClause(
+      options?.typeOnly ?? false,
+      toIdentifier(defaultName),
+      // oxlint-disable-next-line unicorn/no-useless-undefined -- required positional arg for TS factory
+      undefined
+    ),
+    stringLiteral(moduleName)
+  )
+}

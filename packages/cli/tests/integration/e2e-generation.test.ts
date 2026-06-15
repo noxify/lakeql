@@ -99,7 +99,7 @@ describe("end-to-end generation (integration)", () => {
         "query-schema.ts",
         "mutation-schema.ts",
         "json-schema.json",
-        "custom-endpoint.json",
+        "endpoint.json",
       ]
 
       for (const fileName of expectedFiles) {
@@ -301,7 +301,7 @@ describe("end-to-end generation (integration)", () => {
     })
   })
 
-  describe("custom-endpoint.json matches the input definition", () => {
+  describe("endpoint.json matches the input definition", () => {
     it("should be valid JSON matching the input definition", async () => {
       await generateEndpoint({
         definition: complexDefinition,
@@ -310,7 +310,7 @@ describe("end-to-end generation (integration)", () => {
       })
 
       const customEndpointContent = await readFile(
-        path.join(outputDir, "custom-endpoint.json"),
+        path.join(outputDir, "endpoint.json"),
         "utf-8"
       )
 
@@ -323,7 +323,7 @@ describe("end-to-end generation (integration)", () => {
       expect(parsed.fields).toHaveLength(complexDefinition.fields.length)
     })
 
-    it("should preserve nested object structure in custom-endpoint.json", async () => {
+    it("should preserve nested object structure in endpoint.json", async () => {
       await generateEndpoint({
         definition: complexDefinition,
         outputDir,
@@ -331,7 +331,7 @@ describe("end-to-end generation (integration)", () => {
       })
 
       const customEndpointContent = await readFile(
-        path.join(outputDir, "custom-endpoint.json"),
+        path.join(outputDir, "endpoint.json"),
         "utf-8"
       )
 
@@ -391,7 +391,7 @@ describe("end-to-end generation (integration)", () => {
       expect(fileNames).toContain("query-schema.ts")
       expect(fileNames).toContain("mutation-schema.ts")
       expect(fileNames).toContain("json-schema.json")
-      expect(fileNames).toContain("custom-endpoint.json")
+      expect(fileNames).toContain("endpoint.json")
     })
 
     it("should generate non-empty content for all files", async () => {

@@ -1,0 +1,17 @@
+{
+  "name": "lakeql-reproduction-helpers",
+  "version": "1.0.0",
+  "private": true,
+  "description": "LakeQL Bug Reproduction - @lakeql/helpers",
+  "type": "module",
+  "scripts": {
+    "start": "tsx index.ts"
+  },
+  "dependencies": {
+    "@lakeql/helpers": "latest"
+  },
+  "devDependencies": {
+    "tsx": "^4.22.0",
+    "typescript": "^5.8.0"
+  }
+}

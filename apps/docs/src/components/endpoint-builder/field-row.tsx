@@ -13,6 +13,7 @@ import {
 } from "lucide-react"
 import { useState } from "react"
 
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -29,6 +30,7 @@ import {
   FIELD_NAME_PATTERN,
   FIELD_TYPE_COLORS,
   MAX_DEPTH,
+  VALIDATION_TYPES,
 } from "@/lib/endpoint-types"
 import type {
   FieldDefinition,
@@ -39,6 +41,7 @@ import { generateId, getDuplicateNames } from "@/lib/endpoint-utils"
 import { cn } from "@/lib/utils"
 
 import { FieldList } from "./field-list"
+import { FieldOptionsPopover } from "./field-options-popover"
 
 interface FieldRowProps {
   field: FieldDefinition
@@ -91,6 +94,10 @@ export function FieldRow({
       delete updated.fields
       delete updated.arrayItemType
       delete updated.arrayItemFields
+    }
+    // Reset validations on type change — they may no longer be applicable
+    if (updated.options?.validations?.length) {
+      updated.options = { ...updated.options, validations: [] }
     }
     onUpdate(updated)
   }
@@ -248,6 +255,9 @@ export function FieldRow({
           {field.type}
         </Badge> */}
 
+        {/* Field options popover */}
+        <FieldOptionsPopover field={field} onUpdate={onUpdate} />
+
         {/* Delete */}
         <Button
           variant="ghost"
@@ -259,6 +269,37 @@ export function FieldRow({
           <Trash2 className="size-4" />
         </Button>
       </div>
+
+      {/* Field options summary badges */}
+      {(field.options?.required ||
+        (field.options?.validations?.length ?? 0) > 0) && (
+        <div className="border-border flex flex-wrap items-center gap-1.5 border-t px-3 py-1.5">
+          {field.options?.required && (
+            <Badge variant="outline" className="text-xs font-normal">
+              required
+            </Badge>
+          )}
+          {field.options?.validations?.map((v) => {
+            const meta = VALIDATION_TYPES.find((vt) => vt.type === v.type)
+            const label = meta?.label ?? v.type
+            const detail =
+              v.type === "min" || v.type === "max"
+                ? `${label}: ${(v as { value: number }).value}`
+                : v.type === "regex"
+                  ? `${label}: ${(v as { pattern: string }).pattern}`
+                  : label
+            return (
+              <Badge
+                key={v.type}
+                variant="secondary"
+                className="text-xs font-normal"
+              >
+                {detail}
+              </Badge>
+            )
+          })}
+        </div>
+      )}
 
       {/* Array item type selector */}
       {field.type === "Array" && (

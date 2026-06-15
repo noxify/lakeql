@@ -1,0 +1,173 @@
+---
+title: Load Strategies
+description: Understand the three load strategies (full_load, full_load_append, append) and when to use each for your mutation pipeline.
+---
+
+## Load Strategies
+
+The mutation pipeline supports three load strategies that control how data is stored on S3 and how Hive external tables are managed. Choose a strategy based on your data lifecycle needs.
+
+## full_load
+
+Replaces all existing data on every write. The pipeline deletes the previous file, uploads a fresh snapshot, and recreates the Hive table.
+
+### File layout
+
+```
+<basePath>/
+  latest.parquet        ← single file, overwritten on each write
+```
+
+### Hive tables
+
+| Table name    | Points to                   |
+| ------------- | --------------------------- |
+| `<tableName>` | `<basePath>/latest.parquet` |
+
+### When to use
+
+- **Dimension tables** — small lookup data that changes infrequently (countries, categories, status codes)
+- **Reference data** — configuration or mapping tables where you always want the full current state
+- **Small datasets** — tables where the complete dataset fits comfortably in a single Parquet file
+
+### Pipeline steps
+
+1. Delete existing data at `<basePath>/latest.parquet`
+2. Upload new Parquet file to `<basePath>/latest.parquet`
+3. DROP TABLE IF EXISTS + CREATE TABLE pointing to latest
+
+### Example
+
+```json
+{
+  "mutation": {
+    "loadStrategy": "full_load",
+    "basePath": "warehouse/config/status_codes"
+  }
+}
+```
+
+---
+
+## full_load_append
+
+Maintains both a latest snapshot and a historical log. Each write updates the current state and appends a timestamped copy to the history partition.
+
+### File layout
+
+```
+<basePath>/
+  latest.parquet                              ← current snapshot (overwritten)
+  all.parquet/
+    year=2024/month=06/day=15/<uuid>.parquet   ← historical partition
+    year=2024/month=06/day=16/<uuid>.parquet
+    year=2024/month=07/day=01/<uuid>.parquet
+```
+
+### Hive tables
+
+| Table name           | Points to                   |
+| -------------------- | --------------------------- |
+| `<tableName>_latest` | `<basePath>/latest.parquet` |
+| `<tableName>_all`    | `<basePath>/all.parquet/`   |
+
+### When to use
+
+- **Datasets needing both current state and history** — product catalogs, pricing tables, inventory snapshots
+- **Slowly changing dimensions** — where you want to query "what was the state on date X?"
+- **Compliance scenarios** — where you need to prove what data looked like at a given point in time
+
+### Pipeline steps
+
+1. Delete existing data at `<basePath>/latest.parquet`
+2. Upload new Parquet file to `<basePath>/latest.parquet`
+3. Upload same Parquet file to `<basePath>/all.parquet/year=YYYY/month=MM/day=DD/<uuid>.parquet`
+4. DROP + CREATE both `_latest` and `_all` tables (with rollback on partial failure)
+
+### Example
+
+```json
+{
+  "mutation": {
+    "loadStrategy": "full_load_append",
+    "basePath": "warehouse/products/catalog"
+  }
+}
+```
+
+<Note>
+  The `_all` table is partitioned by date, so you can query historical snapshots
+  efficiently using `WHERE year = '2024' AND month = '06'`.
+</Note>
+
+---
+
+## append
+
+Only adds data. Never deletes or overwrites existing files. Each write creates a new partition file.
+
+### File layout
+
+```
+<basePath>/
+  all.parquet/
+    year=2024/month=06/day=15/<uuid-1>.parquet
+    year=2024/month=06/day=15/<uuid-2>.parquet   ← multiple writes per day
+    year=2024/month=06/day=16/<uuid-3>.parquet
+```
+
+### Hive tables
+
+| Table name    | Points to                 |
+| ------------- | ------------------------- |
+| `<tableName>` | `<basePath>/all.parquet/` |
+
+### When to use
+
+- **Event streams** — clickstream data, page views, user interactions
+- **Time-series data** — sensor readings, metrics, measurements
+- **Audit logs** — system events, change logs, access records
+- **Any write-once data** — where historical records should never be modified
+
+### Pipeline steps
+
+1. Upload Parquet file to `<basePath>/all.parquet/year=YYYY/month=MM/day=DD/<uuid>.parquet`
+2. Recreate single Hive table pointing to `<basePath>/all.parquet/`
+
+### Example
+
+```json
+{
+  "mutation": {
+    "loadStrategy": "append",
+    "basePath": "warehouse/raw/click_events"
+  }
+}
+```
+
+---
+
+## Choosing a Strategy
+
+| Question                                      | Recommendation     |
+| --------------------------------------------- | ------------------ |
+| Do I need historical versions of the data?    | `full_load_append` |
+| Is the data write-once (events, logs)?        | `append`           |
+| Is this a small lookup/config table?          | `full_load`        |
+| Do I need both "current state" and "history"? | `full_load_append` |
+| Is the dataset large and ever-growing?        | `append`           |
+| Will I always send the full dataset?          | `full_load`        |
+
+## Default Behavior
+
+When no `loadStrategy` is specified in the mutation configuration, the pipeline defaults to `full_load`. This is the safest default for most use cases — it ensures the table always reflects the latest complete dataset.
+
+## Partition Path Format
+
+For strategies that use partitioned storage (`full_load_append` and `append`), the partition path is generated from the current date:
+
+```
+year=YYYY/month=MM/day=DD/<uuid>.parquet
+```
+
+The UUID filename prevents collisions when multiple writes occur on the same day. The date-based partitioning enables efficient pruning when querying historical data.
