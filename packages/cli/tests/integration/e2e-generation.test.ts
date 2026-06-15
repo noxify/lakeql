@@ -27,6 +27,10 @@ const complexDefinition: EndpointDefinitionFormat = {
   tableName: "user_events",
   catalog: "analytics",
   schema: "tracking",
+  mutation: {
+    loadStrategy: "full_load",
+    basePath: "warehouse/analytics/tracking/user_events",
+  },
   fields: [
     { name: "event_id", type: "String" },
     { name: "timestamp", type: "DateTime" },

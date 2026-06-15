@@ -176,6 +176,10 @@ describe("Property 10: Field Required/Nullable GraphQL Mapping", () => {
         const result = generateMutationSchema({
           models,
           mutationName: "createTestModel",
+          mutationConfig: {
+            loadStrategy: "full_load",
+            basePath: "test/path",
+          },
           fieldDefinitions,
         })
 

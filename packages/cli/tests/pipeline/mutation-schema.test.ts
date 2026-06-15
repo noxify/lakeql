@@ -26,7 +26,7 @@ function printNodes(nodes: ts.Node[]): string {
 }
 
 describe(generateMutationSchema, () => {
-  it("generates import, input type, and mutationFields for a simple flat model (legacy mode)", () => {
+  it("returns empty array when mutationConfig is undefined (no legacy mode)", () => {
     const models: Record<string, ModelResponse> = {
       Tracking_UserEvents: {
         root: true,
@@ -66,18 +66,7 @@ describe(generateMutationSchema, () => {
       mutationName: "createTrackingUserEvents",
     })
 
-    const output = printNodes(result)
-
-    expect(output).toContain('import { builder } from "@lakeql/api/builder"')
-    expect(output).toContain("Tracking_UserEventsInput")
-    expect(output).toContain('builder.inputType("Tracking_UserEventsInput"')
-    expect(output).toContain("t.string(")
-    expect(output).toContain("t.int(")
-    expect(output).toContain("builder.mutationFields")
-    expect(output).toContain("createTrackingUserEvents")
-    expect(output).toContain("async")
-    expect(output).toContain("return true")
-    expect(output).toContain("TODO: Implement write logic here")
+    expect(result).toStrictEqual([])
   })
 
   it("generates separate input types for nested Object fields", () => {
@@ -150,6 +139,7 @@ describe(generateMutationSchema, () => {
     const result = generateMutationSchema({
       models,
       mutationName: "createTrackingUserEvents",
+      mutationConfig: { loadStrategy: "full_load", basePath: "test/path" },
     })
 
     const output = printNodes(result)
@@ -195,6 +185,7 @@ describe(generateMutationSchema, () => {
     const result = generateMutationSchema({
       models,
       mutationName: "createTrackingUserEvents",
+      mutationConfig: { loadStrategy: "full_load", basePath: "test/path" },
     })
 
     const output = printNodes(result)
@@ -261,6 +252,7 @@ describe(generateMutationSchema, () => {
     const result = generateMutationSchema({
       models,
       mutationName: "createTrackingUserEvents",
+      mutationConfig: { loadStrategy: "full_load", basePath: "test/path" },
     })
 
     const output = printNodes(result)
@@ -278,6 +270,7 @@ describe(generateMutationSchema, () => {
     const result = generateMutationSchema({
       models,
       mutationName: "createSomething",
+      mutationConfig: { loadStrategy: "full_load", basePath: "test/path" },
     })
 
     expect(result).toStrictEqual([])
@@ -310,6 +303,7 @@ describe(generateMutationSchema, () => {
     const result = generateMutationSchema({
       models,
       mutationName: "createTestModel",
+      mutationConfig: { loadStrategy: "full_load", basePath: "test/path" },
     })
 
     const output = printNodes(result)

@@ -57,8 +57,8 @@ export function generateMutationSchema({
   hasValidations,
   fieldDefinitions,
 }: GenerateMutationSchemaProps): ts.Node[] {
-  // When mutation is explicitly set to false, do NOT generate mutation-schema.ts
-  if (mutationConfig === false) {
+  // When mutation is absent or explicitly set to false, do NOT generate mutation-schema.ts
+  if (!mutationConfig) {
     return []
   }
 
@@ -73,31 +73,19 @@ export function generateMutationSchema({
   // Separate nested models from root model
   const nestedModels = Object.values(models).filter((model) => !model.root)
 
-  // If mutationConfig is a config object, generate a real resolver
-  if (mutationConfig && typeof mutationConfig === "object") {
-    return [
-      ...generateRealResolverImports(hasValidations),
-      ...nestedModels.map((model) =>
-        generateInputType(model, models, requiredMap)
-      ),
-      generateInputType(rootModel, models, requiredMap),
-      generateRealMutationFields(
-        mutationName,
-        rootModel,
-        mutationConfig,
-        hasValidations
-      ),
-    ]
-  }
-
-  // Legacy mode: no mutationConfig passed, generate placeholder resolver
+  // mutationConfig is a config object — generate a real resolver
   return [
-    generateBuilderImport(),
+    ...generateRealResolverImports(hasValidations),
     ...nestedModels.map((model) =>
       generateInputType(model, models, requiredMap)
     ),
     generateInputType(rootModel, models, requiredMap),
-    generateMutationFields(mutationName, rootModel),
+    generateRealMutationFields(
+      mutationName,
+      rootModel,
+      mutationConfig,
+      hasValidations
+    ),
   ]
 }
 
@@ -141,13 +129,6 @@ function generateRealResolverImports(
   }
 
   return imports
-}
-
-/**
- * Generates the import statement: import { builder } from "@lakeql/api/builder"
- */
-function generateBuilderImport(): ts.Node {
-  return importNames("@lakeql/api/builder", ["builder"])
 }
 
 /**
@@ -419,71 +400,6 @@ function generateRealMutationFields(
   )
 
   const resolverBody = ts.factory.createBlock(resolverStatements, true)
-
-  const resolver = arrowFunction(
-    [
-      parameter("_root"),
-      ts.factory.createParameterDeclaration(
-        undefined,
-        undefined,
-        ts.factory.createObjectBindingPattern([
-          ts.factory.createBindingElement(
-            undefined,
-            undefined,
-            ts.factory.createIdentifier("input")
-          ),
-        ])
-      ),
-    ],
-    resolverBody,
-    { async: true }
-  )
-
-  const inputArg = methodCall("t", "arg", [
-    objectLiteral(
-      [
-        property("type", id(rootInputTypeName)),
-        property("required", bool(true)),
-      ],
-      false
-    ),
-  ])
-
-  const mutationField = property(
-    mutationName,
-    methodCall("t", "boolean", [
-      objectLiteral([
-        property("args", objectLiteral([property("input", inputArg)], false)),
-        property("resolve", resolver),
-      ]),
-    ])
-  )
-
-  return ts.factory.createExpressionStatement(
-    builderCall("mutationFields", [fieldsFunction([mutationField])])
-  )
-}
-
-/**
- * Generates the `builder.mutationFields` call with a placeholder resolver (legacy mode).
- */
-function generateMutationFields(
-  mutationName: string,
-  rootModel: ModelResponse
-): ts.Node {
-  const rootInputTypeName = `${rootModel.modelName}Input`
-
-  const resolverBody = ts.factory.createBlock(
-    [
-      ts.addSyntheticLeadingComment(
-        ts.factory.createReturnStatement(ts.factory.createTrue()),
-        ts.SyntaxKind.SingleLineCommentTrivia,
-        " TODO: Implement write logic here",
-        true
-      ),
-    ],
-    true
-  )
 
   const resolver = arrowFunction(
     [

@@ -43,7 +43,7 @@ The command bootstraps a project from the preconfigured template in [templates/a
 Run the interactive CLI to generate your schemas.
 
 ```bash
-pnpm cli pull --target ./src
+pnpm cli pull --source-path ./src
 ```
 
 ### Local development

@@ -15,7 +15,7 @@ A GraphQL API backed by Trino/Hive with auto-generated schemas and type-safe que
 2. **Pull schemas from Trino**
 
    ```bash
-   pnpm cli pull --target ./src
+   pnpm cli pull --source-path ./src
    ```
 
    This introspects your Trino catalog and generates endpoint files.
@@ -43,7 +43,7 @@ A GraphQL API backed by Trino/Hive with auto-generated schemas and type-safe que
 
 ```bash
 # Pull schemas from Trino
-pnpm cli pull --target ./src
+pnpm cli pull --source-path ./src
 
 # Create a custom endpoint from a definition file
 pnpm cli create-endpoint --from-file ./my-endpoint.json
