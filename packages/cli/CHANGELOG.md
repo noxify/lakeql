@@ -1,5 +1,19 @@
 # @lakeql/cli
 
+## 0.3.0
+
+### Minor Changes
+
+- abadd24: Add configurable storage adapter type (`s3` | `minio`) to the mutation pipeline. Credentials are read from standard environment variables per adapter (AWS*\* for S3, MINIO*\* for MinIO). The `bucket` field is now part of the per-endpoint mutation configuration alongside `basePath`. Generated `config.ts` exports a typed `storageConfig` object.
+
+### Patch Changes
+
+- abadd24: Fix env validation still triggering for non-Trino commands after bundling. Replace eager `createEnv()` with lazy `getEnv()` that only validates when called. Use Commander's `.env()` for catalog option fallback. Remove unused `--no-interactive` flag from `create-endpoint`. Add `--force` flag to skip overwrite confirmation.
+- abadd24: Stop generating `mutation-schema.ts` when no `mutation` config is present in the endpoint definition. Previously, omitting the `mutation` field would still produce a placeholder resolver.
+- Updated dependencies [abadd24]
+  - @lakeql/schema-generator@0.3.0
+  - @lakeql/file-generator@0.1.5
+
 ## 0.2.4
 
 ### Patch Changes
