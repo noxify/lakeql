@@ -1,5 +1,11 @@
 # @lakeql/cli
 
+## 0.2.3
+
+### Patch Changes
+
+- e1650f8: Stop generating `mutation-schema.ts` when no `mutation` config is present in the endpoint definition. Previously, omitting the `mutation` field would still produce a placeholder resolver — now it correctly skips the file.
+
 ## 0.2.2
 
 ### Patch Changes
