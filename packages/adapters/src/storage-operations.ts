@@ -1,22 +1,34 @@
 import { Files } from "files-sdk"
+import { minio } from "files-sdk/minio"
 import { s3 } from "files-sdk/s3"
 
 /**
- * S3-compatible storage configuration.
+ * Supported storage adapter types.
  */
-export interface S3Config {
-  /** S3 bucket name. */
+export type StorageType = "s3" | "minio"
+
+/**
+ * Storage configuration for S3 or MinIO adapters.
+ *
+ * Credentials are read internally from environment variables:
+ * - S3: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_DEFAULT_REGION, AWS_ENDPOINT_URL
+ * - MinIO: MINIO_ACCESS_KEY_ID, MINIO_SECRET_ACCESS_KEY, requires explicit endpoint
+ */
+export interface StorageConfig {
+  /** Storage adapter type. Defaults to "s3". */
+  type: StorageType
+  /** Bucket name. */
   bucket: string
-  /** AWS region or S3-compatible endpoint region. */
-  region: string
-  /** Optional custom endpoint for S3-compatible storage. */
+  /** Region override. Falls back to AWS_DEFAULT_REGION env var for S3. */
+  region?: string
+  /** Custom endpoint. Required for MinIO, optional for S3 (falls back to AWS_ENDPOINT_URL env var). */
   endpoint?: string
-  /** Access credentials. */
-  credentials: {
-    accessKeyId: string
-    secretAccessKey: string
-  }
 }
+
+/**
+ * @deprecated Use StorageConfig instead.
+ */
+export type S3Config = StorageConfig
 
 /**
  * Storage operations interface for S3-compatible object stores.
@@ -57,16 +69,59 @@ export class StorageError extends Error {
 
 /**
  * Creates storage operations backed by files-sdk.
+ * Adapter selection is based on config.type:
+ * - "s3": reads credentials from AWS_* environment variables
+ * - "minio": reads credentials from MINIO_* environment variables
  */
-export function createStorageOperations(config: S3Config): StorageOperations {
-  const files = new Files({
-    adapter: s3({
-      bucket: config.bucket,
-      region: config.region,
-      endpoint: config.endpoint,
-      credentials: config.credentials,
-    }),
-  })
+export function createStorageOperations(
+  config: StorageConfig
+): StorageOperations {
+  const storageType = config.type ?? "s3"
+
+  let files: Files
+
+  if (storageType === "minio") {
+    /* eslint-disable no-restricted-properties -- adapters package reads MinIO env vars directly */
+    const endpoint = config.endpoint ?? process.env.MINIO_ENDPOINT
+    const accessKeyId = process.env.MINIO_ACCESS_KEY_ID
+    const secretAccessKey = process.env.MINIO_SECRET_ACCESS_KEY
+    /* eslint-enable no-restricted-properties */
+
+    if (!endpoint) {
+      throw new Error(
+        "MinIO adapter requires an endpoint. Set config.endpoint or MINIO_ENDPOINT env var."
+      )
+    }
+
+    files = new Files({
+      adapter: minio({
+        bucket: config.bucket,
+        region: config.region,
+        endpoint,
+        accessKeyId,
+        secretAccessKey,
+      }),
+    })
+  } else {
+    /* eslint-disable no-restricted-properties -- adapters package reads AWS standard env vars directly */
+    const region = config.region ?? process.env.AWS_DEFAULT_REGION
+    const endpoint = config.endpoint ?? process.env.AWS_ENDPOINT_URL
+    const accessKeyId = process.env.AWS_ACCESS_KEY_ID
+    const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY
+    /* eslint-enable no-restricted-properties */
+
+    files = new Files({
+      adapter: s3({
+        bucket: config.bucket,
+        region,
+        endpoint,
+        credentials:
+          accessKeyId && secretAccessKey
+            ? { accessKeyId, secretAccessKey }
+            : undefined,
+      }),
+    })
+  }
 
   return {
     async upload(buffer: Uint8Array, targetPath: string): Promise<void> {

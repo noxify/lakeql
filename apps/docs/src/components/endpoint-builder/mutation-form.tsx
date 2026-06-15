@@ -10,7 +10,11 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
-import type { LoadStrategy, MutationConfig } from "@/lib/endpoint-types"
+import type {
+  LoadStrategy,
+  MutationConfig,
+  StorageType,
+} from "@/lib/endpoint-types"
 import { LOAD_STRATEGIES } from "@/lib/endpoint-types"
 
 interface MutationFormProps {
@@ -24,12 +28,24 @@ const STRATEGY_LABELS: Record<LoadStrategy, string> = {
   append: "Append",
 }
 
+const STORAGE_TYPE_LABELS: Record<StorageType, string> = {
+  s3: "S3",
+  minio: "MinIO",
+}
+
+const STORAGE_TYPES: StorageType[] = ["s3", "minio"]
+
 export function MutationForm({ mutation, onChange }: MutationFormProps) {
   const enabled = mutation !== undefined && mutation !== false
 
   function handleToggle(checked: boolean) {
     if (checked) {
-      onChange({ loadStrategy: "full_load", basePath: "" })
+      onChange({
+        loadStrategy: "full_load",
+        type: "s3",
+        bucket: "",
+        basePath: "",
+      })
     } else {
       // oxlint-disable-next-line unicorn/no-useless-undefined
       onChange(undefined)
@@ -42,9 +58,27 @@ export function MutationForm({ mutation, onChange }: MutationFormProps) {
     }
   }
 
+  function handleTypeChange(value: StorageType | null) {
+    if (enabled && value) {
+      onChange({ ...mutation, type: value })
+    }
+  }
+
+  function handleBucketChange(value: string) {
+    if (enabled) {
+      onChange({ ...mutation, bucket: value })
+    }
+  }
+
   function handleBasePathChange(value: string) {
     if (enabled) {
       onChange({ ...mutation, basePath: value })
+    }
+  }
+
+  function handleEndpointChange(value: string) {
+    if (enabled) {
+      onChange({ ...mutation, endpoint: value || undefined })
     }
   }
 
@@ -63,6 +97,27 @@ export function MutationForm({ mutation, onChange }: MutationFormProps) {
 
       {enabled && (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="storage-type" className="text-sm font-medium">
+              Storage Type
+            </Label>
+            <Select
+              value={mutation.type ?? "s3"}
+              onValueChange={handleTypeChange}
+            >
+              <SelectTrigger id="storage-type" className="w-full">
+                <SelectValue placeholder="Select storage type" />
+              </SelectTrigger>
+              <SelectContent>
+                {STORAGE_TYPES.map((type) => (
+                  <SelectItem key={type} value={type}>
+                    {STORAGE_TYPE_LABELS[type]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="load-strategy" className="text-sm font-medium">
               Load Strategy
@@ -85,6 +140,19 @@ export function MutationForm({ mutation, onChange }: MutationFormProps) {
           </div>
 
           <div className="flex flex-col gap-1.5">
+            <Label htmlFor="bucket" className="text-sm font-medium">
+              Bucket
+            </Label>
+            <Input
+              id="bucket"
+              value={mutation.bucket}
+              onChange={(e) => handleBucketChange(e.target.value)}
+              placeholder="my-datalake"
+              className="font-mono text-sm"
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
             <Label htmlFor="base-path" className="text-sm font-medium">
               Base Path
             </Label>
@@ -93,6 +161,24 @@ export function MutationForm({ mutation, onChange }: MutationFormProps) {
               value={mutation.basePath}
               onChange={(e) => handleBasePathChange(e.target.value)}
               placeholder="warehouse/analytics/events"
+              className="font-mono text-sm"
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="endpoint" className="text-sm font-medium">
+              Endpoint
+              {mutation.type === "minio" ? " (required)" : " (optional)"}
+            </Label>
+            <Input
+              id="endpoint"
+              value={mutation.endpoint ?? ""}
+              onChange={(e) => handleEndpointChange(e.target.value)}
+              placeholder={
+                mutation.type === "minio"
+                  ? "http://minio:9000"
+                  : "https://s3.amazonaws.com"
+              }
               className="font-mono text-sm"
             />
           </div>

@@ -11,7 +11,12 @@
 
 export type { StorageAdapter, AdapterConfig, TableDefinition } from "./types"
 export { createStorageOperations, StorageError } from "./storage-operations"
-export type { S3Config, StorageOperations } from "./storage-operations"
+export type {
+  StorageConfig,
+  StorageType,
+  S3Config,
+  StorageOperations,
+} from "./storage-operations"
 export type {
   HiveTableManager,
   HiveTableManagerConfig,

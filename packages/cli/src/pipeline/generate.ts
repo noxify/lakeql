@@ -117,6 +117,16 @@ export async function generateEndpoint(
     schema,
     tableName,
     mutationName: [mutationName],
+    storageConfig: definition.mutation
+      ? {
+          loadStrategy: definition.mutation.loadStrategy,
+          type: definition.mutation.type,
+          bucket: definition.mutation.bucket,
+          basePath: definition.mutation.basePath,
+          region: definition.mutation.region,
+          endpoint: definition.mutation.endpoint,
+        }
+      : undefined,
   })
 
   const configTemplate = await generateCode({

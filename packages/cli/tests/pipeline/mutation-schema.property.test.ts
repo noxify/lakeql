@@ -178,6 +178,8 @@ describe("Property 10: Field Required/Nullable GraphQL Mapping", () => {
           mutationName: "createTestModel",
           mutationConfig: {
             loadStrategy: "full_load",
+            type: "s3",
+            bucket: "test-bucket",
             basePath: "test/path",
           },
           fieldDefinitions,
@@ -216,6 +218,8 @@ describe("Property 10: Field Required/Nullable GraphQL Mapping", () => {
           mutationName: "createTestModel",
           mutationConfig: {
             loadStrategy: "full_load",
+            type: "s3",
+            bucket: "test-bucket",
             basePath: "test/path",
           },
           fieldDefinitions,

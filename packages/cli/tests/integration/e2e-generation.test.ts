@@ -29,6 +29,8 @@ const complexDefinition: EndpointDefinitionFormat = {
   schema: "tracking",
   mutation: {
     loadStrategy: "full_load",
+    type: "s3",
+    bucket: "analytics-datalake",
     basePath: "warehouse/analytics/tracking/user_events",
   },
   fields: [

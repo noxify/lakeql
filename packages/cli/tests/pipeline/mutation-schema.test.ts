@@ -139,7 +139,12 @@ describe(generateMutationSchema, () => {
     const result = generateMutationSchema({
       models,
       mutationName: "createTrackingUserEvents",
-      mutationConfig: { loadStrategy: "full_load", basePath: "test/path" },
+      mutationConfig: {
+        loadStrategy: "full_load",
+        type: "s3",
+        bucket: "test-bucket",
+        basePath: "test/path",
+      },
     })
 
     const output = printNodes(result)
@@ -185,7 +190,12 @@ describe(generateMutationSchema, () => {
     const result = generateMutationSchema({
       models,
       mutationName: "createTrackingUserEvents",
-      mutationConfig: { loadStrategy: "full_load", basePath: "test/path" },
+      mutationConfig: {
+        loadStrategy: "full_load",
+        type: "s3",
+        bucket: "test-bucket",
+        basePath: "test/path",
+      },
     })
 
     const output = printNodes(result)
@@ -252,7 +262,12 @@ describe(generateMutationSchema, () => {
     const result = generateMutationSchema({
       models,
       mutationName: "createTrackingUserEvents",
-      mutationConfig: { loadStrategy: "full_load", basePath: "test/path" },
+      mutationConfig: {
+        loadStrategy: "full_load",
+        type: "s3",
+        bucket: "test-bucket",
+        basePath: "test/path",
+      },
     })
 
     const output = printNodes(result)
@@ -270,7 +285,12 @@ describe(generateMutationSchema, () => {
     const result = generateMutationSchema({
       models,
       mutationName: "createSomething",
-      mutationConfig: { loadStrategy: "full_load", basePath: "test/path" },
+      mutationConfig: {
+        loadStrategy: "full_load",
+        type: "s3",
+        bucket: "test-bucket",
+        basePath: "test/path",
+      },
     })
 
     expect(result).toStrictEqual([])
@@ -303,7 +323,12 @@ describe(generateMutationSchema, () => {
     const result = generateMutationSchema({
       models,
       mutationName: "createTestModel",
-      mutationConfig: { loadStrategy: "full_load", basePath: "test/path" },
+      mutationConfig: {
+        loadStrategy: "full_load",
+        type: "s3",
+        bucket: "test-bucket",
+        basePath: "test/path",
+      },
     })
 
     const output = printNodes(result)
@@ -375,6 +400,8 @@ describe(generateMutationSchema, () => {
       mutationName: "createTestModel",
       mutationConfig: {
         loadStrategy: "full_load",
+        type: "s3",
+        bucket: "test-bucket",
         basePath: "warehouse/test/data",
       },
     })
@@ -390,7 +417,9 @@ describe(generateMutationSchema, () => {
     )
     expect(output).toContain('import { builder } from "@lakeql/api/builder"')
     expect(output).toContain('import { env } from "~/env"')
-    expect(output).toContain('import { hiveConfig } from "./config"')
+    expect(output).toContain(
+      'import { hiveConfig, storageConfig } from "./config"'
+    )
     expect(output).toContain('import jsonSchema from "./json-schema.json"')
 
     // Should NOT import validationSchema when hasValidations is not set
@@ -398,15 +427,18 @@ describe(generateMutationSchema, () => {
 
     // Should contain the executeWritePipeline call
     expect(output).toContain("executeWritePipeline")
-    expect(output).toContain("full_load")
-    expect(output).toContain("warehouse/test/data")
 
-    // Should contain config object with env-based S3 config
-    expect(output).toContain("env.S3_BUCKET")
-    expect(output).toContain("env.S3_REGION")
-    expect(output).toContain("env.S3_ENDPOINT")
-    expect(output).toContain("env.S3_ACCESS_KEY_ID")
-    expect(output).toContain("env.S3_SECRET_ACCESS_KEY")
+    // Should contain storageConfig references instead of env.S3_* references
+    expect(output).toContain("storageConfig.loadStrategy")
+    expect(output).toContain("storageConfig.bucket")
+    expect(output).toContain("storageConfig.basePath")
+
+    // Should NOT contain env.S3_* references
+    expect(output).not.toContain("env.S3_BUCKET")
+    expect(output).not.toContain("env.S3_REGION")
+    expect(output).not.toContain("env.S3_ENDPOINT")
+    expect(output).not.toContain("env.S3_ACCESS_KEY_ID")
+    expect(output).not.toContain("env.S3_SECRET_ACCESS_KEY")
 
     // Should contain hiveConfig references
     expect(output).toContain("hiveConfig.catalog")
@@ -451,6 +483,8 @@ describe(generateMutationSchema, () => {
       mutationName: "createTestModel",
       mutationConfig: {
         loadStrategy: "append",
+        type: "s3",
+        bucket: "test-bucket",
         basePath: "warehouse/test/data",
       },
       hasValidations: true,
@@ -494,13 +528,16 @@ describe(generateMutationSchema, () => {
       mutationName: "createTestModel",
       mutationConfig: {
         loadStrategy: "full_load_append",
+        type: "s3",
+        bucket: "test-bucket",
         basePath: "my/custom/path",
       },
     })
 
     const output = printNodes(result)
 
-    expect(output).toContain("full_load_append")
-    expect(output).toContain("my/custom/path")
+    // loadStrategy and basePath now come from storageConfig at runtime, not hardcoded
+    expect(output).toContain("storageConfig.loadStrategy")
+    expect(output).toContain("storageConfig.basePath")
   })
 })

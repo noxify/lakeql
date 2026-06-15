@@ -42,6 +42,8 @@ Replaces all existing data on every write. The pipeline deletes the previous fil
 {
   "mutation": {
     "loadStrategy": "full_load",
+    "type": "s3",
+    "bucket": "my-datalake",
     "basePath": "warehouse/config/status_codes"
   }
 }
@@ -90,6 +92,8 @@ Maintains both a latest snapshot and a historical log. Each write updates the cu
 {
   "mutation": {
     "loadStrategy": "full_load_append",
+    "type": "s3",
+    "bucket": "my-datalake",
     "basePath": "warehouse/products/catalog"
   }
 }
@@ -140,6 +144,8 @@ Only adds data. Never deletes or overwrites existing files. Each write creates a
 {
   "mutation": {
     "loadStrategy": "append",
+    "type": "s3",
+    "bucket": "my-datalake",
     "basePath": "warehouse/raw/click_events"
   }
 }

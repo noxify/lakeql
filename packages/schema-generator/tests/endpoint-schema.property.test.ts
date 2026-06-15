@@ -162,16 +162,32 @@ const fieldsArb = fc.uniqueArray(
   { minLength: 1, maxLength: 6, selector: (f) => f.name as string }
 )
 
+/** Generate a valid bucket name (non-empty string) */
+const bucketArb = fc
+  .tuple(
+    fc.constantFrom("my-", "data-", "lake-", "s3-"),
+    fc.string({
+      unit: fc.constantFrom(..."abcdefghijklmnopqrstuvwxyz0123456789-"),
+      minLength: 1,
+      maxLength: 20,
+    })
+  )
+  .map(([prefix, rest]) => prefix + rest)
+
 /** Generate mutation config: false, config object, or absent (undefined) */
 const mutationArb: fc.Arbitrary<
-  false | { loadStrategy: string; basePath: string } | undefined
+  false | { loadStrategy: string; bucket: string; basePath: string } | undefined
 > = fc.oneof(
   fc.constant(
-    undefined as false | { loadStrategy: string; basePath: string } | undefined
+    undefined as
+      | false
+      | { loadStrategy: string; bucket: string; basePath: string }
+      | undefined
   ),
   fc.constant(false as const),
   fc.record({
     loadStrategy: loadStrategyArb,
+    bucket: bucketArb,
     basePath: basePathArb,
   })
 )
@@ -231,16 +247,27 @@ describe("Property 9: Extended Endpoint Definition Schema Validation", () => {
         metadataNameArb,
         fieldsArb,
         loadStrategyArb,
+        bucketArb,
         basePathArb
       )
-      .map(([tableName, catalog, schema, fields, loadStrategy, basePath]) => ({
-        version: "1.0",
-        tableName,
-        catalog,
-        schema,
-        fields,
-        mutation: { loadStrategy, basePath },
-      }))
+      .map(
+        ([
+          tableName,
+          catalog,
+          schema,
+          fields,
+          loadStrategy,
+          bucket,
+          basePath,
+        ]) => ({
+          version: "1.0",
+          tableName,
+          catalog,
+          schema,
+          fields,
+          mutation: { loadStrategy, bucket, basePath },
+        })
+      )
 
     fc.assert(
       fc.property(endpointWithMutationConfigArb, (definition) => {

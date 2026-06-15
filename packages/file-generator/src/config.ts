@@ -9,6 +9,24 @@ import {
 } from "./ast-builders"
 
 /**
+ * Storage configuration for the mutation write pipeline.
+ */
+export interface StorageConfigProps {
+  /** The load strategy for the write pipeline. */
+  loadStrategy: string
+  /** Storage adapter type (s3 or minio). */
+  type?: string
+  /** Bucket name. */
+  bucket: string
+  /** Base path for endpoint data. */
+  basePath: string
+  /** Optional region override. */
+  region?: string
+  /** Optional custom endpoint. */
+  endpoint?: string
+}
+
+/**
  * Parameters for generateConfig.
  */
 export interface GenerateConfigProps {
@@ -22,6 +40,8 @@ export interface GenerateConfigProps {
   queryName: string
   /** Optional mutation names for this table endpoint. */
   mutationName?: string[]
+  /** Optional storage configuration for mutation pipeline. */
+  storageConfig?: StorageConfigProps
 }
 
 /**
@@ -33,6 +53,7 @@ export function generateConfig({
   tableName,
   queryName,
   mutationName,
+  storageConfig,
 }: GenerateConfigProps) {
   /**
    * Definition generated via https://ts-ast-viewer.com/
@@ -72,6 +93,42 @@ export function generateConfig({
     ])
   )
 
+  const nodes: ts.Node[] = [hiveConfig, docsConfig]
+
+  // Generate storageConfig when mutation pipeline is configured
+  if (storageConfig) {
+    const storageProperties: ts.PropertyAssignment[] = [
+      property("loadStrategy", stringLiteral(storageConfig.loadStrategy)),
+      property("bucket", stringLiteral(storageConfig.bucket)),
+      property("basePath", stringLiteral(storageConfig.basePath)),
+    ]
+
+    if (storageConfig.type) {
+      storageProperties.push(
+        property("type", stringLiteral(storageConfig.type))
+      )
+    }
+
+    if (storageConfig.region) {
+      storageProperties.push(
+        property("region", stringLiteral(storageConfig.region))
+      )
+    }
+
+    if (storageConfig.endpoint) {
+      storageProperties.push(
+        property("endpoint", stringLiteral(storageConfig.endpoint))
+      )
+    }
+
+    const storageConfigNode = exportedConstStatement(
+      "storageConfig",
+      asConst(objectLiteral(storageProperties))
+    )
+
+    nodes.push(storageConfigNode)
+  }
+
   // Return the nodes directly - the generateCode function will handle formatting
-  return [hiveConfig, docsConfig]
+  return nodes
 }

@@ -76,7 +76,11 @@ export function buildOutputJSON(def: EndpointDefinition): OutputDefinition {
   if (def.mutation && typeof def.mutation === "object") {
     output.mutation = {
       loadStrategy: def.mutation.loadStrategy,
+      type: def.mutation.type,
+      bucket: def.mutation.bucket,
       basePath: def.mutation.basePath,
+      ...(def.mutation.region ? { region: def.mutation.region } : {}),
+      ...(def.mutation.endpoint ? { endpoint: def.mutation.endpoint } : {}),
     }
   }
 
@@ -137,7 +141,11 @@ export function parseImportedJSON(json: unknown): EndpointDefinition | null {
         loadStrategy:
           (mutation.loadStrategy as MutationConfig["loadStrategy"]) ??
           "full_load",
+        type: (mutation.type as MutationConfig["type"]) ?? "s3",
+        bucket: (mutation.bucket as string) ?? "",
         basePath: (mutation.basePath as string) ?? "",
+        ...(mutation.region ? { region: mutation.region as string } : {}),
+        ...(mutation.endpoint ? { endpoint: mutation.endpoint as string } : {}),
       }
     } else if (obj.mutation === false) {
       def.mutation = false

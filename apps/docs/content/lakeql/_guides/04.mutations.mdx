@@ -54,7 +54,11 @@ Add a `mutation` configuration to your endpoint definition:
   ],
   "mutation": {
     "loadStrategy": "full_load",
-    "basePath": "warehouse/analytics/user_events"
+    "type": "s3",
+    "bucket": "my-datalake",
+    "basePath": "warehouse/analytics/user_events",
+    "region": "eu-central-1",
+    "endpoint": "https://s3.eu-central-1.amazonaws.com"
   }
 }
 ```
@@ -78,6 +82,70 @@ The `loadStrategy` field controls how data is persisted. Choose based on your us
 | `append`           | Event streams, audit logs          | Only adds data, never replaces               |
 
 See the [Load Strategies](/lakeql/guides/load-strategies) guide for detailed explanations and file layout diagrams.
+
+## Mutation Configuration Reference
+
+| Field          | Type   | Required | Description                                                                                         |
+| -------------- | ------ | -------- | --------------------------------------------------------------------------------------------------- |
+| `loadStrategy` | string | Yes      | How data is written. One of `full_load`, `full_load_append`, or `append`.                           |
+| `type`         | string | Yes      | Storage adapter type. One of `s3` or `minio`. Defaults to `s3`.                                     |
+| `bucket`       | string | Yes      | S3 or MinIO bucket name where Parquet files are stored.                                             |
+| `basePath`     | string | Yes      | Path prefix within the bucket (e.g. `warehouse/analytics/events`).                                  |
+| `region`       | string | No       | AWS region override. Falls back to `AWS_DEFAULT_REGION` for S3.                                     |
+| `endpoint`     | string | No       | S3-compatible endpoint URL. Optional for S3 (falls back to `AWS_ENDPOINT_URL`), required for MinIO. |
+
+## Storage Configuration
+
+The `type` field in the mutation configuration selects the storage adapter used by the write pipeline.
+
+### S3 (default)
+
+S3 is the default storage backend. Credentials and region are read from standard AWS environment variables:
+
+| Environment Variable    | Description                   |
+| ----------------------- | ----------------------------- |
+| `AWS_ACCESS_KEY_ID`     | AWS access key                |
+| `AWS_SECRET_ACCESS_KEY` | AWS secret key                |
+| `AWS_DEFAULT_REGION`    | Default region (fallback)     |
+| `AWS_ENDPOINT_URL`      | Custom S3 endpoint (fallback) |
+
+```json
+{
+  "mutation": {
+    "loadStrategy": "full_load",
+    "type": "s3",
+    "bucket": "my-datalake",
+    "basePath": "warehouse/analytics/user_events"
+  }
+}
+```
+
+### MinIO (local development)
+
+MinIO is supported for local development and self-hosted S3-compatible storage. The `endpoint` field is required when using MinIO. Credentials are read from MinIO-specific environment variables:
+
+| Environment Variable      | Description                 |
+| ------------------------- | --------------------------- |
+| `MINIO_ACCESS_KEY_ID`     | MinIO access key            |
+| `MINIO_SECRET_ACCESS_KEY` | MinIO secret key            |
+| `MINIO_ENDPOINT`          | MinIO server URL (fallback) |
+
+```json
+{
+  "mutation": {
+    "loadStrategy": "full_load",
+    "type": "minio",
+    "bucket": "local-datalake",
+    "basePath": "warehouse/analytics/user_events",
+    "endpoint": "http://localhost:9000"
+  }
+}
+```
+
+<Note>
+  When `type` is `"minio"`, the `endpoint` field is required either in the
+  configuration or via the `MINIO_ENDPOINT` environment variable.
+</Note>
 
 ## Generated Resolver
 

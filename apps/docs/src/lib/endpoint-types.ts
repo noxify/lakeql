@@ -47,9 +47,15 @@ export interface FieldDefinition {
 
 export type LoadStrategy = "full_load" | "full_load_append" | "append"
 
+export type StorageType = "s3" | "minio"
+
 export interface MutationConfig {
   loadStrategy: LoadStrategy
+  type: StorageType
+  bucket: string
   basePath: string
+  region?: string
+  endpoint?: string
 }
 
 export interface EndpointDefinition {

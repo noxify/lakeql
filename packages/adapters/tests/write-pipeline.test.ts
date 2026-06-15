@@ -80,14 +80,7 @@ const baseJsonSchema: JsonSchema = {
 
 const baseConfig: WritePipelineInput["config"] = {
   basePath: "warehouse/analytics/users",
-  s3: {
-    bucket: "my-bucket",
-    region: "us-east-1",
-    credentials: {
-      accessKeyId: "test-key",
-      secretAccessKey: "test-secret",
-    },
-  },
+  bucket: "my-bucket",
   table: {
     catalog: "hive",
     schema: "analytics",

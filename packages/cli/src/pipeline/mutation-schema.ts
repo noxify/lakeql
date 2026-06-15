@@ -80,12 +80,7 @@ export function generateMutationSchema({
       generateInputType(model, models, requiredMap)
     ),
     generateInputType(rootModel, models, requiredMap),
-    generateRealMutationFields(
-      mutationName,
-      rootModel,
-      mutationConfig,
-      hasValidations
-    ),
+    generateRealMutationFields(mutationName, rootModel, hasValidations),
   ]
 }
 
@@ -120,7 +115,7 @@ function generateRealResolverImports(
     importNames("@lakeql/trino-client", ["TrinoClient"]),
     importNames("@lakeql/api/builder", ["builder"]),
     importNames("~/env", ["env"]),
-    importNames("./config", ["hiveConfig"]),
+    importNames("./config", ["hiveConfig", "storageConfig"]),
     importDefault("./json-schema.json", "jsonSchema"),
   ]
 
@@ -276,7 +271,6 @@ function getPrimitiveListMethod(innerType: string): string | undefined {
 function generateRealMutationFields(
   mutationName: string,
   rootModel: ModelResponse,
-  mutationConfig: MutationConfig,
   hasValidations?: boolean
 ): ts.Node {
   const rootInputTypeName = `${rootModel.modelName}Input`
@@ -345,35 +339,9 @@ function generateRealMutationFields(
         property(
           "config",
           objectLiteral([
-            property(
-              "loadStrategy",
-              stringLiteral(mutationConfig.loadStrategy)
-            ),
-            property("basePath", stringLiteral(mutationConfig.basePath)),
-            property(
-              "s3",
-              objectLiteral([
-                property("bucket", access("env", "S3_BUCKET")),
-                property("region", access("env", "S3_REGION")),
-                property("endpoint", access("env", "S3_ENDPOINT")),
-                property(
-                  "credentials",
-                  objectLiteral(
-                    [
-                      property(
-                        "accessKeyId",
-                        access("env", "S3_ACCESS_KEY_ID")
-                      ),
-                      property(
-                        "secretAccessKey",
-                        access("env", "S3_SECRET_ACCESS_KEY")
-                      ),
-                    ],
-                    false
-                  )
-                ),
-              ])
-            ),
+            property("loadStrategy", access("storageConfig", "loadStrategy")),
+            property("bucket", access("storageConfig", "bucket")),
+            property("basePath", access("storageConfig", "basePath")),
             property(
               "table",
               objectLiteral(

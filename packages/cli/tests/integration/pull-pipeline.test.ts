@@ -47,7 +47,7 @@ const typicalParsedColumns: Record<string, JSONType> = {
   ],
 }
 
-describe("pull backward compatibility (integration)", () => {
+describe("pull pipeline (integration)", () => {
   let outputDir: string
 
   beforeEach(() => {
@@ -306,6 +306,8 @@ describe("pull backward compatibility (integration)", () => {
         ...definition,
         mutation: {
           loadStrategy: "full_load" as const,
+          type: "s3" as const,
+          bucket: "commerce-datalake",
           basePath: "warehouse/sales/orders",
         },
       }

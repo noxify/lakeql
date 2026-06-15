@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises"
 import path from "node:path"
 
 import { Command, Option } from "@commander-js/extra-typings"
+import { confirm } from "@topcli/prompts"
 
 import { formatFieldTree } from "@/commands/create-endpoint/format-field-tree"
 import { resolveSourcePath } from "@/config"
@@ -25,8 +26,14 @@ export default function createEndpointCommand() {
 
     .addOption(sourcePathOption)
     .addOption(skipRegistry)
+    .addOption(
+      new Option(
+        "--force",
+        "Overwrite existing files without prompting"
+      ).default(false)
+    )
     .action(async (opts) => {
-      const { fromFile, sourcePath, skipRegistry: skipReg } = opts
+      const { fromFile, sourcePath, skipRegistry: skipReg, force } = opts
 
       // Resolve the file path relative to cwd
       const filePath = path.isAbsolute(fromFile)
@@ -128,6 +135,18 @@ export default function createEndpointCommand() {
         definition.schema,
         definition.tableName
       )
+
+      // Check if output directory already exists
+      if (existsSync(outputDir) && !force) {
+        const shouldOverwrite = await confirm(
+          `Directory "${outputDir}" already exists. Overwrite?`
+        )
+        if (!shouldOverwrite) {
+          // oxlint-disable-next-line no-console
+          console.log("Aborted.")
+          process.exit(0)
+        }
+      }
 
       await generateEndpoint({
         definition,

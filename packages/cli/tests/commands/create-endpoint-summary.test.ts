@@ -28,6 +28,8 @@ describe("create-endpoint summary mutation display", () => {
       fields: [{ name: "id", type: "String" }],
       mutation: {
         loadStrategy: "full_load",
+        type: "s3",
+        bucket: "analytics-datalake",
         basePath: "warehouse/analytics/user_events",
       },
     }
@@ -44,6 +46,8 @@ describe("create-endpoint summary mutation display", () => {
       fields: [{ name: "order_id", type: "String" }],
       mutation: {
         loadStrategy: "full_load_append",
+        type: "s3",
+        bucket: "commerce-datalake",
         basePath: "warehouse/sales/orders",
       },
     }
@@ -60,6 +64,8 @@ describe("create-endpoint summary mutation display", () => {
       fields: [{ name: "event", type: "String" }],
       mutation: {
         loadStrategy: "append",
+        type: "s3",
+        bucket: "logs-datalake",
         basePath: "warehouse/logs/events",
       },
     }

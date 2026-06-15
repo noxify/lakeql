@@ -23,13 +23,27 @@ export const loadStrategies = [
 export type LoadStrategy = (typeof loadStrategies)[number]
 
 /**
+ * Supported storage adapter types.
+ */
+export const storageTypes = ["s3", "minio"] as const
+export type StorageType = (typeof storageTypes)[number]
+
+/**
  * Mutation pipeline configuration for an endpoint.
  */
 export interface MutationConfig {
   /** Load strategy for the write pipeline. */
   loadStrategy: LoadStrategy
-  /** S3 base path for endpoint data. */
+  /** Storage adapter type. Defaults to "s3". */
+  type: StorageType
+  /** S3/MinIO bucket name for endpoint data. */
+  bucket: string
+  /** Base path for endpoint data. */
   basePath: string
+  /** Optional region override (falls back to AWS_DEFAULT_REGION env var for S3). */
+  region?: string
+  /** Optional custom endpoint. Required for MinIO, optional for S3. */
+  endpoint?: string
 }
 
 /**
@@ -37,7 +51,11 @@ export interface MutationConfig {
  */
 export const mutationConfigSchema = z.object({
   loadStrategy: z.enum(loadStrategies),
+  type: z.enum(storageTypes).default("s3"),
+  bucket: z.string().min(1),
   basePath: z.string().min(1),
+  region: z.string().optional(),
+  endpoint: z.string().optional(),
 })
 
 /**

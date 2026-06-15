@@ -7,7 +7,7 @@ import type { TrinoClient } from "@lakeql/trino-client"
 import { createHiveTableManager } from "./hive-table-manager"
 import type { HiveTableDefinition } from "./hive-table-manager"
 import { createStorageOperations } from "./storage-operations"
-import type { S3Config } from "./storage-operations"
+import type { StorageConfig, StorageType } from "./storage-operations"
 
 /**
  * Load strategy determines how data is stored and how Hive tables are managed.
@@ -20,10 +20,16 @@ export type LoadStrategy = "full_load" | "full_load_append" | "append"
 export interface WritePipelineConfig {
   /** The load strategy for this endpoint. Defaults to "full_load". */
   loadStrategy?: LoadStrategy
-  /** The S3 base path for storing Parquet files. */
+  /** Storage adapter type. Defaults to "s3". */
+  type?: StorageType
+  /** Bucket name for storing Parquet files. */
+  bucket: string
+  /** The base path for storing Parquet files. */
   basePath: string
-  /** S3 connection configuration. */
-  s3: S3Config
+  /** Optional region override. */
+  region?: string
+  /** Optional custom endpoint for S3-compatible storage. */
+  endpoint?: string
   /** Hive table definition for DDL management. */
   table: {
     catalog: string
@@ -38,8 +44,10 @@ export interface WritePipelineConfig {
  * Input for the write pipeline execution.
  */
 export interface WritePipelineInput {
-  /** The records to persist. */
-  records: Record<string, unknown>[]
+  /** The records to persist. Accepts any array of objects with string keys. */
+  // biome-ignore lint: Records from GraphQL input types have optional/nullable properties
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  records: Record<string, any>[]
   /** The JSON Schema describing the record structure. */
   jsonSchema: JsonSchema
   /** Pipeline configuration. */
@@ -149,18 +157,27 @@ export async function executeWritePipeline(
 ): Promise<void> {
   const { records, jsonSchema, config } = input
   const loadStrategy: LoadStrategy = config.loadStrategy ?? "full_load"
-  const { basePath, s3: s3Config, table, trinoClient } = config
+  const { basePath, bucket, region, endpoint, table, trinoClient } = config
+  const storageType = config.type ?? "s3"
+
+  // Build StorageConfig from flat pipeline config fields
+  const storageConfig: StorageConfig = {
+    type: storageType,
+    bucket,
+    region,
+    endpoint,
+  }
 
   // Step 1: Convert records to Parquet (fail-fast: stops before S3)
   const parquetBuffer = writeParquet({ records, jsonSchema })
 
   // Create storage operations
-  const storage = createStorageOperations(s3Config)
+  const storage = createStorageOperations(storageConfig)
 
   // Create Hive table manager
   const hiveManager = createHiveTableManager({
     client: trinoClient,
-    bucket: s3Config.bucket,
+    bucket,
   })
 
   // Derive columns from JSON schema for Hive DDL
@@ -175,7 +192,7 @@ export async function executeWritePipeline(
         basePath,
         table,
         columns,
-        s3Config,
+        bucket,
       })
       break
     }
@@ -188,7 +205,7 @@ export async function executeWritePipeline(
         basePath,
         table,
         columns,
-        s3Config,
+        bucket,
       })
       break
     }
@@ -201,7 +218,7 @@ export async function executeWritePipeline(
         basePath,
         table,
         columns,
-        s3Config,
+        bucket,
       })
       break
     }
@@ -219,7 +236,7 @@ interface StrategyContext {
   basePath: string
   table: { catalog: string; schema: string; tableName: string }
   columns: { name: string; type: string }[]
-  s3Config: S3Config
+  bucket: string
 }
 
 /**
@@ -233,7 +250,7 @@ async function executeFullLoad(ctx: StrategyContext): Promise<void> {
     basePath,
     table,
     columns,
-    s3Config,
+    bucket,
   } = ctx
   const latestPath = `${basePath}/latest.parquet`
 
@@ -248,7 +265,7 @@ async function executeFullLoad(ctx: StrategyContext): Promise<void> {
     catalog: table.catalog,
     schema: table.schema,
     tableName: table.tableName,
-    externalLocation: `s3://${s3Config.bucket}/${latestPath}`,
+    externalLocation: `s3://${bucket}/${latestPath}`,
     columns,
   }
 
@@ -267,7 +284,7 @@ async function executeFullLoadAppend(ctx: StrategyContext): Promise<void> {
     basePath,
     table,
     columns,
-    s3Config,
+    bucket,
   } = ctx
   const latestPath = `${basePath}/latest.parquet`
   const partitionPath = generatePartitionPath()
@@ -287,7 +304,7 @@ async function executeFullLoadAppend(ctx: StrategyContext): Promise<void> {
     catalog: table.catalog,
     schema: table.schema,
     tableName: `${table.tableName}_latest`,
-    externalLocation: `s3://${s3Config.bucket}/${basePath}/latest.parquet`,
+    externalLocation: `s3://${bucket}/${basePath}/latest.parquet`,
     columns,
   }
 
@@ -295,7 +312,7 @@ async function executeFullLoadAppend(ctx: StrategyContext): Promise<void> {
     catalog: table.catalog,
     schema: table.schema,
     tableName: `${table.tableName}_all`,
-    externalLocation: `s3://${s3Config.bucket}/${basePath}/all.parquet/`,
+    externalLocation: `s3://${bucket}/${basePath}/all.parquet/`,
     columns,
   }
 
@@ -313,7 +330,7 @@ async function executeAppend(ctx: StrategyContext): Promise<void> {
     basePath,
     table,
     columns,
-    s3Config,
+    bucket,
   } = ctx
   const partitionPath = generatePartitionPath()
   const allPath = `${basePath}/all.parquet/${partitionPath}`
@@ -326,7 +343,7 @@ async function executeAppend(ctx: StrategyContext): Promise<void> {
     catalog: table.catalog,
     schema: table.schema,
     tableName: table.tableName,
-    externalLocation: `s3://${s3Config.bucket}/${basePath}/all.parquet/`,
+    externalLocation: `s3://${bucket}/${basePath}/all.parquet/`,
     columns,
   }
 
