@@ -44,7 +44,7 @@
     "prune": "turbo prune --docker",
     "cs": "changeset",
     "ci:publish": "pnpm build:pkg && pnpm publish -r --access public --publish-branch main --provenance && pnpm changeset tag",
-    "ci:version": "pnpm changeset version && pnpm install --no-frozen-lockfile && git add .",
+    "ci:version": "pnpm changeset version && pnpm install --no-frozen-lockfile && pnpm format:fix && git add .",
     "with-env": "dotenv -e ./.env --",
     "mt:start": "uv run minitrino -v provision -m hive -m minio -m ldap -m oauth2",
     "mt:restart": "uv run minitrino restart",
