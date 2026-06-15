@@ -33,6 +33,10 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
+    "./endpoint-schema": {
+      "types": "./dist/endpoint-schema.d.mts",
+      "import": "./dist/endpoint-schema.mjs"
+    },
     "./graphql-schema": {
       "types": "./dist/graphql-schema.d.mts",
       "import": "./dist/graphql-schema.mjs"
@@ -52,19 +56,22 @@
     "clean:cache": "git clean -xdf .cache .turbo",
     "clean:dist": "git clean -xdf dist",
     "dev": "tsdown --watch",
+    "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@lakeql/helpers": "workspace:*",
     "kysely": "0.29.2",
     "lodash-es": "4.18.1",
-    "magic-regexp": "0.11.0"
+    "magic-regexp": "0.11.0",
+    "zod": "4.4.3"
   },
   "devDependencies": {
     "@lakeql/tsconfig": "workspace:*",
     "@types/json-schema": "7.0.15",
     "@types/lodash-es": "4.17.12",
     "@types/node": "24.13.2",
+    "fast-check": "^4.8.0",
     "json-column-parser": "2.0.0",
     "tsdown": "0.22.2",
     "typescript": "6.0.3",

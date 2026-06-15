@@ -1,58 +1,149 @@
 ---
 title: Mutations
-description: Enable write operations with mutations, configure the permission model, and use system user impersonation.
+description: Enable write operations with the mutation pipeline, configure load strategies, and use system user impersonation.
 ---
 
 ## Working with Mutations
 
-By default, LakeQL generates read-only query schemas. To enable write operations, you need to configure mutation support and define appropriate permissions.
+LakeQL provides a complete mutation pipeline that handles data persistence end-to-end. When you configure mutation support in your endpoint definition, the generated resolver automatically handles validation, Parquet conversion, S3 upload, and Hive table management — no manual stub implementation needed.
+
+## The Mutation Pipeline
+
+When a mutation is executed, the generated resolver runs through this pipeline:
+
+1. **Input arrives** via GraphQL mutation
+2. **Validation** — Input is checked against a generated Zod schema (if field validations are configured)
+3. **Parquet conversion** — Records are serialized into Parquet format via `@lakeql/parquet`
+4. **S3 upload** — The Parquet file is uploaded to the configured base path
+5. **Hive DDL** — The external table is recreated to point at the new data
+
+If any step fails, the pipeline stops immediately and propagates the error to the GraphQL error layer.
 
 ## Enabling Mutations
 
-The Pothos builder supports mutation types. Generate mutation schemas or create them manually:
+Add a `mutation` configuration to your endpoint definition:
 
-```typescript path="src/schemas/custom/orders-mutation-schema.ts"
+```json path="my-endpoint.json"
+{
+  "version": "1.0",
+  "tableName": "user_events",
+  "catalog": "hive",
+  "schema": "analytics",
+  "fields": [
+    {
+      "name": "email",
+      "type": "String",
+      "options": {
+        "required": true,
+        "validations": [{ "type": "email" }]
+      }
+    },
+    {
+      "name": "age",
+      "type": "Integer",
+      "options": {
+        "required": false,
+        "validations": [
+          { "type": "min", "value": 0 },
+          { "type": "max", "value": 150 }
+        ]
+      }
+    },
+    { "name": "event_type", "type": "String" },
+    { "name": "timestamp", "type": "DateTime" }
+  ],
+  "mutation": {
+    "loadStrategy": "full_load",
+    "basePath": "warehouse/analytics/user_events"
+  }
+}
+```
+
+Then generate the endpoint:
+
+```bash
+lakeql-cli create-endpoint --from-file ./my-endpoint.json
+```
+
+This produces a `mutation-schema.ts` with a fully wired resolver that invokes the write pipeline, and a `validations.ts` with the Zod schema for input validation.
+
+## Load Strategies
+
+The `loadStrategy` field controls how data is persisted. Choose based on your use case:
+
+| Strategy           | Best for                           | Behavior                                     |
+| ------------------ | ---------------------------------- | -------------------------------------------- |
+| `full_load`        | Dimension tables, reference data   | Replaces all data on every write             |
+| `full_load_append` | Datasets needing current + history | Maintains latest snapshot and historical log |
+| `append`           | Event streams, audit logs          | Only adds data, never replaces               |
+
+See the [Load Strategies](/lakeql/guides/load-strategies) guide for detailed explanations and file layout diagrams.
+
+## Generated Resolver
+
+The generated `mutation-schema.ts` integrates with `@lakeql/adapters` to execute the full write pipeline. Here's what the generated code looks like conceptually:
+
+```typescript path="schemas/custom/hive/analytics/user_events/mutation-schema.ts"
 import { builder } from "@lakeql/api"
+import { executeWritePipeline } from "@lakeql/adapters"
+import { validationSchema } from "./validations"
+import jsonSchema from "./json-schema.json"
 
-const CreateOrderInput = builder.inputType("CreateOrderInput", {
+// GraphQL input type generated from field definitions
+const UserEventsInput = builder.inputType("UserEventsInput", {
   fields: (t) => ({
-    customerId: t.int({ required: true }),
-    status: t.string({ required: true }),
-    total: t.float({ required: true }),
+    email: t.string({ required: true }),
+    age: t.int({ required: false }),
+    event_type: t.string({ required: false }),
+    timestamp: t.string({ required: false }),
   }),
 })
 
-builder.mutationField("createOrder", (t) =>
+builder.mutationField("writeUserEvents", (t) =>
   t.field({
     type: "Boolean",
     args: {
-      input: t.arg({ type: CreateOrderInput, required: true }),
+      input: t.arg({ type: [UserEventsInput], required: true }),
     },
     resolve: async (_root, args, context) => {
-      // Check write permission
-      if (
-        !context.hasWritePermission?.({
-          context,
-          catalog: "hive",
-          schema: "sales",
-          tableName: "orders",
-        })
-      ) {
-        throw new Error("Write access denied")
-      }
+      // 1. Validate input against Zod schema
+      const validated = validationSchema.parse(args.input)
 
-      // Execute Trino INSERT statement
-      const sql = `
-        INSERT INTO hive.sales.orders (customer_id, status, total, created_at)
-        VALUES (${args.input.customerId}, '${args.input.status}', ${args.input.total}, current_timestamp)
-      `
+      // 2. Execute the write pipeline
+      await executeWritePipeline({
+        records: validated,
+        jsonSchema,
+        config: {
+          loadStrategy: "full_load",
+          basePath: "warehouse/analytics/user_events",
+          s3: context.s3Config,
+          table: {
+            catalog: "hive",
+            schema: "analytics",
+            tableName: "user_events",
+          },
+        },
+      })
 
-      // Submit via trino-client with system user credentials
       return true
     },
   })
 )
 ```
+
+<Note>
+  You don't write this code manually — it's generated by `create-endpoint`. The
+  example above shows what the generated resolver does under the hood.
+</Note>
+
+## Input Validation
+
+When fields have `options.validations` configured, a `validations.ts` file is generated with a Zod schema. The mutation resolver validates input before invoking the pipeline:
+
+- If validation passes, the pipeline proceeds
+- If validation fails, Zod errors are returned as GraphQL field errors without any data being written
+
+See the [create-endpoint](/cli/commands/create-endpoint) reference for the full list of available validations.
 
 ## Write Permission Model
 
@@ -109,25 +200,6 @@ For write operations, the permission check follows this logic:
 3. **Rules exist but don't match catalog/schema/table** → Denied
 4. **Matching rule found** → Allowed
 
-```typescript
-// Internal logic (simplified)
-function hasWritePermission({ context, catalog, schema, tableName }) {
-  if (!context.currentUser) return false
-
-  const userPerms = permissions.find(
-    (p) => p.name === context.currentUser.userName
-  )
-  if (!userPerms || userPerms.permissions.Mutation.length === 0) return false
-
-  return userPerms.permissions.Mutation.some(
-    (rule) =>
-      rule.catalog === catalog &&
-      rule.schema === schema &&
-      (rule.tables.includes(tableName) || rule.tables[0] === "*")
-  )
-}
-```
-
 ## System User Impersonation
 
 Write statements in Trino often need to execute as a system user with broad permissions, even when the request originates from a regular user.
@@ -135,13 +207,10 @@ Write statements in Trino often need to execute as a system user with broad perm
 When `useSystemUser: true` is set for a permission entry, the Trino client uses system credentials for that user's write operations instead of their own identity. This means:
 
 - Trino sees the system user as the executor
-- The application layer (`hasWritePermission`) controls which tables a given client can write to
+- The application layer controls which tables a given client can write to
 - Audit trails should track both the requesting user and the executing identity
 
 ```typescript
-// The permission entry controls both:
-// 1. Whether the user may issue the write (application-level check)
-// 2. Which identity executes the write in Trino (useSystemUser flag)
 {
   name: "etl-pipeline",
   useSystemUser: true,  // Execute writes as system user in Trino
@@ -160,69 +229,26 @@ When `useSystemUser: true` is set for a permission entry, the Trino client uses 
   appropriate table privileges.
 </Note>
 
-## Mutation Patterns
+## Error Handling
 
-### INSERT
+The mutation pipeline uses fail-fast error propagation:
 
-```typescript
-builder.mutationField("insertEvent", (t) =>
-  t.field({
-    type: "Boolean",
-    args: {
-      /* ... */
-    },
-    resolve: async (_root, args, context) => {
-      const sql = `INSERT INTO hive.raw.events VALUES (...)`
-      // Execute with trino-client
-      return true
-    },
-  })
-)
-```
+| Failure point      | Behavior                                                        |
+| ------------------ | --------------------------------------------------------------- |
+| Zod validation     | Returns field errors to GraphQL, no data written                |
+| Parquet conversion | Error propagated, no S3 or DDL operations attempted             |
+| S3 upload          | Error propagated, no DDL operations attempted                   |
+| Hive DDL           | Error propagated (with rollback attempt for `full_load_append`) |
 
-### CREATE TABLE
-
-```typescript
-builder.mutationField("createTable", (t) =>
-  t.field({
-    type: "Boolean",
-    args: {
-      schema: t.arg.string({ required: true }),
-      tableName: t.arg.string({ required: true }),
-    },
-    resolve: async (_root, args, context) => {
-      const sql = `
-        CREATE TABLE IF NOT EXISTS hive.${args.schema}.${args.tableName} (
-          id BIGINT,
-          created_at TIMESTAMP
-        ) WITH (format = 'PARQUET')
-      `
-      return true
-    },
-  })
-)
-```
-
-### DELETE (DROP PARTITION)
-
-```typescript
-builder.mutationField("dropPartition", (t) =>
-  t.field({
-    type: "Boolean",
-    args: {
-      table: t.arg.string({ required: true }),
-      partitionValue: t.arg.string({ required: true }),
-    },
-    resolve: async (_root, args, context) => {
-      const sql = `DELETE FROM hive.raw.${args.table} WHERE partition_date = '${args.partitionValue}'`
-      return true
-    },
-  })
-)
-```
+For `full_load_append`, if one of the two Hive table creations fails, the system attempts a best-effort rollback of both tables before propagating the original error.
 
 <Warning>
-  Always validate and sanitize input arguments before interpolating them into
-  SQL strings. Consider using parameterized queries or the Kysely query builder
-  for mutation SQL construction.
+  The pipeline does not provide transactional guarantees across S3 and Hive. If
+  the DDL step fails after a successful S3 upload, the Parquet file remains in
+  S3. Re-running the mutation will overwrite it on the next successful
+  execution.
 </Warning>
+
+## Custom Mutations
+
+For use cases not covered by the pipeline (e.g., custom SQL, cross-table operations), you can still create manual mutation resolvers. See the [Custom Resolvers](/lakeql/guides/custom-resolvers) guide.

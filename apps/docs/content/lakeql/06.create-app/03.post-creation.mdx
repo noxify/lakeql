@@ -5,7 +5,7 @@ description: What to do after scaffolding a new LakeQL project.
 
 ## After Scaffolding
 
-Once `create-lakeql-app` finishes, follow these steps to get your API running.
+Once `@lakeql/create-app` finishes, follow these steps to get your API running.
 
 <Stepper>
 <StepperItem title="Configure environment">
@@ -44,8 +44,10 @@ This creates:
 
 - `src/schemas/generated/hive/myschema/<table>/config.ts` — Table metadata
 - `src/schemas/generated/hive/myschema/<table>/interface.ts` — TypeScript interface
-- `src/schemas/generated/hive/myschema/<table>/query-schema.ts` — GraphQL schema
+- `src/schemas/generated/hive/myschema/<table>/query-schema.ts` — GraphQL query schema
+- `src/schemas/generated/hive/myschema/<table>/mutation-schema.ts` — GraphQL mutation schema
 - `src/schemas/generated/hive/myschema/<table>/json-schema.json` — Response schema
+- `src/schemas/generated/hive/myschema/<table>/endpoint.json` — Endpoint definition
 - `src/config-registry.ts` — Aggregated config index
 
 To pull multiple tables at once, pass `--table` multiple times:

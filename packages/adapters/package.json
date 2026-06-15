@@ -1,0 +1,69 @@
+{
+  "name": "@lakeql/adapters",
+  "version": "0.1.0",
+  "description": "Storage adapters for LakeQL — provides high-level table management for different backends (Trino/Hive/S3, Iceberg, ClickHouse, etc.)",
+  "keywords": [
+    "adapters",
+    "clickhouse",
+    "hive",
+    "iceberg",
+    "lakeql",
+    "parquet",
+    "s3",
+    "trino"
+  ],
+  "homepage": "https://lakeql.dev",
+  "license": "Apache-2.0",
+  "author": {
+    "name": "Marcus Reinhardt",
+    "url": "https://github.com/noxify"
+  },
+  "contributors": [
+    {
+      "name": "Marcus Reinhardt",
+      "url": "https://github.com/noxify"
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/noxify/lakeql",
+    "directory": "packages/adapters"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs"
+    },
+    "./trino-hive-s3": {
+      "types": "./dist/trino-hive-s3.d.mts",
+      "import": "./dist/trino-hive-s3.mjs"
+    }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "clean": "git clean -xdf .cache .turbo dist node_modules dist",
+    "clean:cache": "git clean -xdf .cache .turbo",
+    "clean:dist": "git clean -xdf dist",
+    "dev": "tsdown --watch",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@lakeql/parquet": "workspace:*",
+    "@lakeql/trino-client": "workspace:*",
+    "files-sdk": "1.8.0"
+  },
+  "devDependencies": {
+    "@lakeql/tsconfig": "workspace:*",
+    "@types/node": "24.13.2",
+    "fast-check": "^4.8.0",
+    "tsdown": "0.22.2",
+    "typescript": "6.0.3",
+    "vitest": "4.1.8"
+  }
+}

@@ -1,11 +1,11 @@
 ---
 title: Usage
-description: How to use create-lakeql-app to scaffold a new project.
+description: How to use `@lakeql/create-app` to scaffold a new project.
 ---
 
 ## Scaffolding a New Project
 
-`create-lakeql-app` is LakeQL's project scaffolding tool. It downloads a starter template, configures dependencies, and sets up your project structure.
+`@lakeql/create-app` is LakeQL's project scaffolding tool. It downloads a starter template, configures dependencies, and sets up your project structure.
 
 ## Quick Start
 
@@ -19,7 +19,7 @@ When run without arguments, the CLI prompts you for:
 2. **Install dependencies** — yes/no
 3. **Package manager** — npm, pnpm, or yarn
 
-<Command variant="create">@lakeql/app</Command>
+<Command variant="create">@lakeql/create-app</Command>
 
 ```
 ◆  create-lakeql-app
@@ -53,13 +53,13 @@ When run without arguments, the CLI prompts you for:
 
 ```bash
 # Non-interactive with pnpm
-npx create-lakeql-app my-api --package-manager=pnpm
+npx @lakeql/create-app my-api --package-manager=pnpm
 
 # Skip install for CI
-npx create-lakeql-app my-api --no-install --quiet
+npx @lakeql/create-app my-api --no-install --quiet
 
 # Short form
-npx create-lakeql-app my-api -pm=yarn
+npx @lakeql/create-app my-api -pm=yarn
 ```
 
 ## What Happens

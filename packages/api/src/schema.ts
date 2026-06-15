@@ -30,7 +30,12 @@ function resolveSchemaDir({ baseDir, schemaPath }: SchemaLoadOptions = {}) {
 
 async function buildSchema(schemaDir: string) {
   const schemaFiles = await globby(
-    ["schemas/**/query-schema.{ts,js,mjs}", "**/query-schema.{ts,js,mjs}"],
+    [
+      "schemas/**/query-schema.{ts,js,mjs}",
+      "schemas/**/mutation-schema.{ts,js,mjs}",
+      "**/query-schema.{ts,js,mjs}",
+      "**/mutation-schema.{ts,js,mjs}",
+    ],
     {
       absolute: true,
       cwd: schemaDir,
@@ -42,7 +47,7 @@ async function buildSchema(schemaDir: string) {
 
   if (uniqueSchemaFiles.length === 0) {
     throw new Error(
-      `No query schema files found for schemaPath '${schemaDir}'. Checked patterns: schemas/**/query-schema.{ts,js,mjs} and **/query-schema.{ts,js,mjs}`
+      `No schema files found for schemaPath '${schemaDir}'. Checked patterns: schemas/**/{query,mutation}-schema.{ts,js,mjs} and **/{query,mutation}-schema.{ts,js,mjs}`
     )
   }
 

@@ -6,6 +6,8 @@ import {
 import { withRetry } from "./retry"
 import type { RetryConfig } from "./retry"
 import type {
+  CreateTableProps,
+  DropTableProps,
   GetColumnsProps,
   GetSchemasProps,
   GetTablesProps,
@@ -31,6 +33,9 @@ export type {
   ClientTypeSignature,
   ClientTypeSignatureParameter,
   Column,
+  ColumnDefinition,
+  CreateTableProps,
+  DropTableProps,
   ErrorLocation,
   FailureInfo,
   GetColumnsProps,
@@ -283,6 +288,55 @@ export class TrinoClient {
       [name: string, type: string, extra: string, description: string]
     >({
       sql: `SHOW COLUMNS from ${catalog}.${schema}.${table}`,
+    })
+  }
+
+  /**
+   * Drops a table if it exists.
+   *
+   * @param catalog - The catalog containing the table
+   * @param schema - The schema containing the table
+   * @param table - The table name to drop
+   * @returns true if the statement executed successfully
+   */
+  async dropTable({ catalog, schema, table }: DropTableProps): Promise<void> {
+    await this.query({
+      sql: `DROP TABLE IF EXISTS ${catalog}.${schema}.${table}`,
+    })
+  }
+
+  /**
+   * Creates an external table with the given column definitions and storage properties.
+   *
+   * @param catalog - The catalog to create the table in
+   * @param schema - The schema to create the table in
+   * @param table - The table name
+   * @param columns - Array of column definitions (name + type pairs)
+   * @param properties - WITH clause properties (e.g., external_location, format)
+   * @param ifNotExists - Whether to use IF NOT EXISTS (default: true)
+   */
+  async createTable({
+    catalog,
+    schema,
+    table,
+    columns,
+    properties,
+    ifNotExists = true,
+  }: CreateTableProps): Promise<void> {
+    const columnDefs = columns
+      .map(({ name, type }) => `${name} ${type}`)
+      .join(",\n  ")
+
+    const withClause = properties
+      ? `\nWITH (\n  ${Object.entries(properties)
+          .map(([key, value]) => `${key} = '${value}'`)
+          .join(",\n  ")}\n)`
+      : ""
+
+    const ifNotExistsClause = ifNotExists ? "IF NOT EXISTS " : ""
+
+    await this.query({
+      sql: `CREATE TABLE ${ifNotExistsClause}${catalog}.${schema}.${table} (\n  ${columnDefs}\n)${withClause}`,
     })
   }
 

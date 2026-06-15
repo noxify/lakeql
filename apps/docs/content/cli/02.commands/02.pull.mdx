@@ -32,7 +32,9 @@ For each selected table, the following files are created under `schemas/generate
 - `config.ts` — Endpoint configuration
 - `interface.ts` — TypeScript interface for the table columns
 - `query-schema.ts` — GraphQL query schema definition
+- `mutation-schema.ts` — GraphQL mutation schema with input types
 - `json-schema.json` — JSON Schema representation
+- `endpoint.json` — Endpoint definition for re-generation
 
 ## Usage
 
@@ -45,6 +47,8 @@ lakeql-cli pull --catalog hive --schema myschema --table users
   → schemas/generated/hive/myschema/users/config.ts
   → schemas/generated/hive/myschema/users/interface.ts
   → schemas/generated/hive/myschema/users/query-schema.ts
+  → schemas/generated/hive/myschema/users/mutation-schema.ts
   → schemas/generated/hive/myschema/users/json-schema.json
+  → schemas/generated/hive/myschema/users/endpoint.json
 ✔ Config registry updated
 ```

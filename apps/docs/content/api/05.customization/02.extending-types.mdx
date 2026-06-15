@@ -99,9 +99,9 @@ export default defineConfig({
 
 ## Adding custom scalars
 
-Register additional scalars on the shared builder in a query-schema file:
+Register additional scalars on the shared builder in a `query-schema.ts` file. Place it in a directory that sorts alphabetically before your other schemas (e.g., `00-scalars/`) to ensure the scalars are available when other schema files are loaded.
 
-```typescript path="src/schemas/scalars/query-schema.ts"
+```typescript path="src/schemas/00-scalars/query-schema.ts"
 import { builder } from "@lakeql/api/builder"
 import { JSONResolver, BigIntResolver } from "graphql-scalars"
 
@@ -109,4 +109,62 @@ builder.addScalarType("JSON", JSONResolver, {})
 builder.addScalarType("BigInt", BigIntResolver, {})
 ```
 
+<Callout type="info">
+  `graphql` and `graphql-scalars` are transitive dependencies of `@lakeql/api`.
+  To avoid issues if those internals ever change, install them explicitly in
+  your project.
+
+<Command variant="install">graphql graphql-scalars</Command>
+
+</Callout>
+
 These scalars become available in all other schema files loaded after this one. Place scalar definitions in a directory that sorts alphabetically before other schemas (e.g., `00-scalars/`) to ensure they're loaded first.
+
+## Overriding built-in scalar serialization
+
+GraphQL's built-in `Int` scalar only accepts 32-bit signed integers (max ~2.1 billion). Both Hive/Trino `INT` and `BIGINT` columns are mapped to the `Integer` field type by the `pull` command, so values beyond the 32-bit range can reach GraphQL at runtime. When that happens, the default `Int.serialize` throws a range error.
+
+You can monkey-patch the serializer at startup to handle these edge cases.
+
+### Setup
+
+Create a `query-schema.ts` file in a directory that sorts alphabetically before your other schemas (e.g., `00-scalars/`). LakeQL loads all `query-schema.{ts,js,mjs}` and `mutation-schema.{ts,js,mjs}` files in alphabetical directory order, so the override will be active before any resolvers execute.
+
+```text
+src/
+└── schemas/
+    ├── 00-scalars/
+    │   └── query-schema.ts   ← Int override goes here
+    ├── my-catalog/
+    │   └── ...
+    └── ...
+```
+
+```typescript path="src/schemas/00-scalars/query-schema.ts"
+import { GraphQLInt } from "graphql"
+
+// Preserve the original serializer as a fallback
+const originalIntSerialize = GraphQLInt.serialize.bind(GraphQLInt)
+
+GraphQLInt.serialize = (value: unknown) => {
+  // Pass through any safe integer value directly, even beyond 32-bit range
+  if (
+    typeof value === "number" &&
+    Number.isInteger(value) &&
+    Number.isFinite(value)
+  ) {
+    return value
+  }
+
+  // Handle numeric strings (e.g., from database drivers returning string IDs)
+  if (typeof value === "string" && value !== "") {
+    const num = Number(value)
+    if (Number.isInteger(num) && Number.isFinite(num)) return num
+  }
+
+  // Fall back to default behavior for anything else
+  return originalIntSerialize(value)
+}
+```
+
+Since this file is named `query-schema.ts` and lives in `00-scalars/`, LakeQL will import it automatically — no additional configuration or explicit import is needed.

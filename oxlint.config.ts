@@ -6,7 +6,10 @@ import vitest from "ultracite/oxlint/vitest"
 
 export default defineConfig({
   extends: [core, vitest, react, next],
-  ignorePatterns: ["apps/docs/src/components/beautiful-mermaid/**"],
+  ignorePatterns: [
+    "apps/docs/src/components/beautiful-mermaid/**",
+    "templates/stackblitz/**",
+  ],
 
   overrides: [
     {

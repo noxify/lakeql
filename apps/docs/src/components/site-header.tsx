@@ -15,7 +15,7 @@ import ThemeToggle from "./theme-toggle"
 
 const spaceGrotesk = Space_Grotesk({ subsets: ["latin"] })
 
-export function SiteHeader() {
+export function SiteHeader({ fullWidth = false }: { fullWidth?: boolean }) {
   const { hasScrolled: isScrolled } = useScrollVisibility({
     hideAfterScrollY: 0,
   })
@@ -29,7 +29,12 @@ export function SiteHeader() {
           : "border-transparent bg-transparent"
       )}
     >
-      <div className="mx-auto flex h-14 max-w-6xl items-center px-6">
+      <div
+        className={cn(
+          "flex h-14 items-center px-6",
+          fullWidth ? "w-full" : "mx-auto max-w-6xl"
+        )}
+      >
         {/* Left: logo + nav */}
         <div className="flex items-center gap-6">
           <Link href="/" prefetch={false} className="flex items-center gap-2.5">
@@ -55,6 +60,14 @@ export function SiteHeader() {
               className="text-muted-foreground hover:text-foreground rounded-md px-3 py-1.5 text-sm transition-colors"
             >
               Docs
+            </Link>
+
+            <Link
+              href="/endpoint-builder"
+              prefetch={false}
+              className="text-muted-foreground hover:text-foreground rounded-md px-3 py-1.5 text-sm transition-colors"
+            >
+              Endpoint Builder
             </Link>
           </nav>
         </div>

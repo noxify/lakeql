@@ -270,19 +270,29 @@ export function useMDXComponents() {
       }
 
       return (
-        <CodeBlock
-          {...props}
-          shouldAnalyze={false}
-          shouldFormat={false}
-          showErrors={false}
-          components={{
-            // oxlint-disable-next-line react/no-unstable-nested-components
-            Toolbar: (toolbarProps) => (
-              <Toolbar {...toolbarProps} className="border-b" />
-            ),
-          }}
-          showLineNumbers
-        />
+        <div className="not-prose bg-muted my-6 rounded-lg text-sm leading-6">
+          <CodeBlock
+            {...props}
+            shouldAnalyze={false}
+            shouldFormat={false}
+            showErrors={false}
+            components={{
+              // oxlint-disable-next-line react/no-unstable-nested-components
+              Toolbar: (toolbarProps) => (
+                <Toolbar {...toolbarProps} className="border-b text-base!" />
+              ),
+              // oxlint-disable-next-line react/no-unstable-nested-components
+              Container: (containerProps) => (
+                <div
+                  {...containerProps}
+                  style={containerProps.css}
+                  className="not-prose"
+                />
+              ),
+            }}
+            showLineNumbers
+          />
+        </div>
       )
     },
 

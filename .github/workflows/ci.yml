@@ -71,17 +71,17 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
-  # pkg-new-release:
-  #   needs: [lint, format, typecheck]
-  #   if: github.event_name == 'pull_request'
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v6
+  pkg-new-release:
+    needs: [lint, format, typecheck]
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
 
-  #     - name: Setup
-  #       uses: ./.github/setup
+      - name: Setup
+        uses: ./.github/setup
 
-  #     - name: Build
-  #       run: pnpm build:pkg
+      - name: Build
+        run: pnpm build:pkg
 
-  #     - run: pnpx pkg-pr-new publish ./packages/*
+      - run: pnpx pkg-pr-new publish --commentWithSha --packageManager=pnpm ./packages/*

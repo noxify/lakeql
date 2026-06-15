@@ -299,3 +299,43 @@ export interface GetColumnsProps extends GetTablesProps {
   /** The table to describe. */
   table: string
 }
+
+/**
+ * Parameters for dropping a table.
+ */
+export interface DropTableProps {
+  /** The catalog containing the table. */
+  catalog: string
+  /** The schema containing the table. */
+  schema: string
+  /** The table name to drop. */
+  table: string
+}
+
+/**
+ * A column definition for CREATE TABLE statements.
+ */
+export interface ColumnDefinition {
+  /** The column name. */
+  name: string
+  /** The Trino column type (e.g., "VARCHAR", "INTEGER", "TIMESTAMP(3)"). */
+  type: string
+}
+
+/**
+ * Parameters for creating a table.
+ */
+export interface CreateTableProps {
+  /** The catalog to create the table in. */
+  catalog: string
+  /** The schema to create the table in. */
+  schema: string
+  /** The table name to create. */
+  table: string
+  /** Column definitions (name + type pairs). */
+  columns: ColumnDefinition[]
+  /** Optional WITH clause properties (e.g., external_location, format). */
+  properties?: Record<string, string>
+  /** Whether to use IF NOT EXISTS (default: true). */
+  ifNotExists?: boolean
+}

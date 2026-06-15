@@ -1,0 +1,23 @@
+{
+  "name": "lakeql-reproduction",
+  "version": "1.0.0",
+  "private": true,
+  "description": "LakeQL Bug Reproduction",
+  "type": "module",
+  "scripts": {
+    "start": "tsx index.ts"
+  },
+  "dependencies": {
+    "@lakeql/column-parser": "latest",
+    "@lakeql/helpers": "latest",
+    "@lakeql/logger": "latest",
+    "@lakeql/parquet": "latest",
+    "@lakeql/query-builder": "latest",
+    "@lakeql/response-transformer": "latest",
+    "@lakeql/schema-generator": "latest"
+  },
+  "devDependencies": {
+    "tsx": "^4.22.0",
+    "typescript": "^5.8.0"
+  }
+}
