@@ -1,12 +1,18 @@
 import { Option } from "@commander-js/extra-typings"
 
-import { env } from "@/env"
 import { getInvocationCwd } from "@/path-utils"
 
-export const catalogOption = new Option(
-  "--catalog <catalog>",
-  "catalog to use"
-).default(env.HIVE_CATALOG, "configured catalog in the .env file")
+/**
+ * Creates the catalog option with a default value from env.
+ * Accepts the catalog value as parameter to avoid importing env at module level
+ * (which would cause env validation to fail for commands that don't need it).
+ */
+export function catalogOption(defaultCatalog: string) {
+  return new Option("--catalog <catalog>", "catalog to use").default(
+    defaultCatalog,
+    "configured catalog in the .env file"
+  )
+}
 
 export const schemaOption = new Option("--schema <schema>", "schema to use")
 

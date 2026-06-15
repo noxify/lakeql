@@ -10,7 +10,7 @@ export default function listTablesCommand() {
   const program = new Command("list-tables")
   program
     .description("Lists the available tables for the configured catalog/schema")
-    .addOption(catalogOption)
+    .addOption(catalogOption(env.HIVE_CATALOG))
     .addOption(schemaOption)
 
     .action(async ({ catalog, schema }) => {

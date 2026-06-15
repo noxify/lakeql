@@ -10,7 +10,7 @@ export default function listViewsCommand() {
   const program = new Command("list-views")
   program
     .description("Lists the available views for the configured catalog/schema")
-    .addOption(catalogOption)
+    .addOption(catalogOption(env.HIVE_CATALOG))
     .addOption(schemaOption)
     .action(async ({ catalog, schema }) => {
       const trinoClient = new TrinoClient({

@@ -27,7 +27,7 @@ export default function PullCommand() {
     .description(
       "Interactive query endpoint generation based on a remote table"
     )
-    .addOption(catalogOption)
+    .addOption(catalogOption(env.HIVE_CATALOG))
     .addOption(tableOrSchemaOption)
     .addOption(schemaOption.makeOptionMandatory(false))
     .addOption(

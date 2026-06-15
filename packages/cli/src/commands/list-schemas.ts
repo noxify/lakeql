@@ -9,7 +9,7 @@ export default function listSchemasCommand() {
   const program = new Command("list-schemas")
   program
     .description("Lists the available schemas for the configured catalog")
-    .addOption(catalogOption)
+    .addOption(catalogOption(env.HIVE_CATALOG))
     .action(async ({ catalog }) => {
       const trinoClient = new TrinoClient({
         auth: {

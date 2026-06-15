@@ -10,7 +10,7 @@ export default function listColumnsCommand() {
   const program = new Command("list-columns")
   program
     .description("Lists the columns for the specified table")
-    .addOption(catalogOption)
+    .addOption(catalogOption(env.HIVE_CATALOG))
     .addOption(schemaOption.makeOptionMandatory())
     .addOption(tableOption.makeOptionMandatory())
 
