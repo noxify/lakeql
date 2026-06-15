@@ -1,5 +1,11 @@
 # @lakeql/cli
 
+## 0.2.1
+
+### Patch Changes
+
+- 878220b: Defer env validation to commands that actually need Trino access. Commands like `create-endpoint`, `config-registry`, and `init` no longer require a valid `.env` file to run.
+
 ## 0.2.0
 
 ### Minor Changes
