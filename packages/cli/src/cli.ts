@@ -2,6 +2,7 @@
 import { Command } from "@commander-js/extra-typings"
 import { readPackage } from "read-pkg"
 
+import createEndpointCommand from "@/commands/create-endpoint"
 import listColumnsCommand from "@/commands/list-columns"
 import listSchemasCommand from "@/commands/list-schemas"
 import listTablesCommand from "@/commands/list-tables"
@@ -30,6 +31,7 @@ async function main() {
     .addCommand(listViewsCommand())
     .addCommand(listColumnsCommand())
     .addCommand(pullCommand())
+    .addCommand(createEndpointCommand())
     .addCommand(configRegistryCommand())
     .addCommand(initCommand())
 

@@ -33,6 +33,10 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
+    "./endpoint-schema": {
+      "types": "./dist/endpoint-schema.d.mts",
+      "import": "./dist/endpoint-schema.mjs"
+    },
     "./graphql-schema": {
       "types": "./dist/graphql-schema.d.mts",
       "import": "./dist/graphql-schema.mjs"
@@ -58,7 +62,8 @@
     "@lakeql/helpers": "workspace:*",
     "kysely": "0.29.2",
     "lodash-es": "4.18.1",
-    "magic-regexp": "0.11.0"
+    "magic-regexp": "0.11.0",
+    "zod": "4.4.3"
   },
   "devDependencies": {
     "@lakeql/tsconfig": "workspace:*",
