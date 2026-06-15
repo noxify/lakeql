@@ -1,6 +1,6 @@
 {
   "name": "@lakeql/adapters",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "Storage adapters for LakeQL — provides high-level table management for different backends (Trino/Hive/S3, Iceberg, ClickHouse, etc.)",
   "keywords": [
     "adapters",
