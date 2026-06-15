@@ -14,7 +14,6 @@ body:
       label: Package
       description: Which package is affected?
       options:
-        - "I don't know"
         - adapters
         - api
         - cli
@@ -29,6 +28,8 @@ body:
         - schema-generator
         - trino-client
         - documentation
+        - endpoint-builder
+        - other
     validations:
       required: true
 

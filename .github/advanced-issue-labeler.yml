@@ -30,7 +30,9 @@ policy:
             keys: ["schema-generator"]
           - name: "pkg:trino-client"
             keys: ["trino-client"]
-          - name: "documentation"
+          - name: "site:documentation"
             keys: ["documentation"]
-          - name: "general"
-            keys: ["general", "I don't know"]
+          - name: "site:endpoint-builder"
+            keys: ["endpoint-builder"]
+          - name: "other"
+            keys: ["other"]
