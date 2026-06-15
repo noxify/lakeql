@@ -117,7 +117,7 @@ describe("error cases", () => {
         fieldName: "varchar",
       })
     ).toThrow(
-      "We expect that an array has only one element ( e.g. a primitive like `varchar` or an object like `row()`." 
+      "We expect that an array has only one element ( e.g. a primitive like `varchar` or an object like `row()`."
     )
   })
 
@@ -127,7 +127,9 @@ describe("error cases", () => {
         fieldName: "varchar",
         nestedArray: [["varchar"]],
       })
-    ).toThrow("We currently do not support 'array of array'. Feel free to raise an issue.")
+    ).toThrow(
+      "We currently do not support 'array of array'. Feel free to raise an issue."
+    )
   })
 
   test("unexpected array content", () => {

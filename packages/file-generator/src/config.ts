@@ -55,7 +55,9 @@ export function generateConfig({
       property("query", ts.factory.createTrue()),
       property(
         "mutation",
-        mutationName?.length ? ts.factory.createTrue() : ts.factory.createFalse()
+        mutationName?.length
+          ? ts.factory.createTrue()
+          : ts.factory.createFalse()
       ),
       property("queryName", stringLiteral(queryName)),
       property(
