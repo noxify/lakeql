@@ -66,6 +66,13 @@ async function downloadTemplate(targetDir: string): Promise<void> {
       dir: targetDir,
       offline: false,
     })
+
+    // Create pnpm-workspace.yaml to allow esbuild build scripts
+    writeFileSync(
+      path.resolve(targetDir, "pnpm-workspace.yaml"),
+      "allowBuilds:\n  esbuild: true\n"
+    )
+
     s.stop("Template downloaded successfully!")
   } catch (error) {
     s.stop("Failed to download template")
