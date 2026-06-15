@@ -1,4 +1,4 @@
-import { describe, expect, test, vi } from "vitest"
+import { describe, expect, test } from "vitest"
 
 import { generateJsonSchema } from "../src/json-schema"
 
@@ -111,81 +111,32 @@ describe("simple", () => {
 
 describe("error cases", () => {
   test("array with multiple elements", () => {
-    // oxlint-disable-next-line no-empty-function
-    const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {})
-
-    const generatedSchema = generateJsonSchema({
-      arrayField: ["varchar", "integer"],
-      fieldName: "varchar",
-    })
-
-    const expectedSchema = {
-      $schema: "https://json-schema.org/draft-07/schema#",
-      properties: {
-        fieldName: {
-          type: "string",
-        },
-      },
-      type: "object",
-    }
-
-    expect(generatedSchema).toMatchObject(expectedSchema)
-    // oxlint-disable-next-line vitest/prefer-called-with
-    expect(consoleSpy).toHaveBeenCalled()
-
-    consoleSpy.mockRestore()
+    expect(() =>
+      generateJsonSchema({
+        arrayField: ["varchar", "integer"],
+        fieldName: "varchar",
+      })
+    ).toThrow(
+      "We expect that an array has only one element ( e.g. a primitive like `varchar` or an object like `row()`." 
+    )
   })
 
   test("array of arrays", () => {
-    // oxlint-disable-next-line no-empty-function
-    const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {})
-
-    const generatedSchema = generateJsonSchema({
-      fieldName: "varchar",
-      nestedArray: [["varchar"]],
-    })
-
-    const expectedSchema = {
-      $schema: "https://json-schema.org/draft-07/schema#",
-      properties: {
-        fieldName: {
-          type: "string",
-        },
-      },
-      type: "object",
-    }
-
-    expect(generatedSchema).toMatchObject(expectedSchema)
-    // oxlint-disable-next-line vitest/prefer-called-with
-    expect(consoleSpy).toHaveBeenCalled()
-
-    consoleSpy.mockRestore()
+    expect(() =>
+      generateJsonSchema({
+        fieldName: "varchar",
+        nestedArray: [["varchar"]],
+      })
+    ).toThrow("We currently do not support 'array of array'. Feel free to raise an issue.")
   })
 
   test("unexpected array content", () => {
-    // oxlint-disable-next-line no-empty-function
-    const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {})
-
-    const generatedSchema = generateJsonSchema({
-      badArray: [123], // Neither string nor object
-      fieldName: "varchar",
-    })
-
-    const expectedSchema = {
-      $schema: "https://json-schema.org/draft-07/schema#",
-      properties: {
-        fieldName: {
-          type: "string",
-        },
-      },
-      type: "object",
-    }
-
-    expect(generatedSchema).toMatchObject(expectedSchema)
-    // oxlint-disable-next-line vitest/prefer-called-with
-    expect(consoleSpy).toHaveBeenCalled()
-
-    consoleSpy.mockRestore()
+    expect(() =>
+      generateJsonSchema({
+        badArray: [123], // Neither string nor object
+        fieldName: "varchar",
+      })
+    ).toThrow("Unexpected case in `json-generator.handleArray`")
   })
 })
 
@@ -224,30 +175,12 @@ describe("complex", () => {
   })
 
   test("object with unknown type", () => {
-    // Mock console.log to verify it's called
-    // oxlint-disable-next-line no-empty-function
-    const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {})
-
-    const generatedSchema = generateJsonSchema({
-      fieldName: "varchar",
-      unknownField: "unknown_type",
-    })
-
-    const expectedSchema = {
-      $schema: "https://json-schema.org/draft-07/schema#",
-      properties: {
-        fieldName: {
-          type: "string",
-        },
-      },
-      type: "object",
-    }
-
-    expect(generatedSchema).toMatchObject(expectedSchema)
-    // oxlint-disable-next-line vitest/prefer-called-with
-    expect(consoleSpy).toHaveBeenCalled()
-
-    consoleSpy.mockRestore()
+    expect(() =>
+      generateJsonSchema({
+        fieldName: "varchar",
+        unknownField: "unknown_type",
+      })
+    ).toThrow("Type unknowntype is unknown.")
   })
 
   test("array of object", () => {
@@ -289,40 +222,15 @@ describe("complex", () => {
   })
 
   test("object with error in nested object", () => {
-    // oxlint-disable-next-line no-empty-function
-    const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {})
-
-    const generatedSchema = generateJsonSchema({
-      fieldName: "varchar",
-      objField: {
-        invalidField: "unknown_type",
-        validField: "varchar",
-      },
-    })
-
-    const expectedSchema = {
-      $schema: "https://json-schema.org/draft-07/schema#",
-      properties: {
-        fieldName: {
-          type: "string",
-        },
+    expect(() =>
+      generateJsonSchema({
+        fieldName: "varchar",
         objField: {
-          properties: {
-            validField: {
-              type: "string",
-            },
-          },
-          type: "object",
+          invalidField: "unknown_type",
+          validField: "varchar",
         },
-      },
-      type: "object",
-    }
-
-    expect(generatedSchema).toMatchObject(expectedSchema)
-    // oxlint-disable-next-line vitest/prefer-called-with
-    expect(consoleSpy).toHaveBeenCalled()
-
-    consoleSpy.mockRestore()
+      })
+    ).toThrow("Type unknowntype is unknown.")
   })
 
   test("nested array of object", () => {

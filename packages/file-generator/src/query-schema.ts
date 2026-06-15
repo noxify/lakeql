@@ -60,8 +60,11 @@ export function generateQuerySchema({
   filterTypes,
   dateTimeFields,
 }: GenerateQuerySchemaProps): ts.Node[] {
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  const rootModel = Object.values(models).find((model) => model.root)!
+  const rootModel = Object.values(models).find((model) => model.root)
+
+  if (!rootModel) {
+    throw new Error("generateQuerySchema requires exactly one root model")
+  }
 
   return [
     ...generateImports({ filterTypes, models }),

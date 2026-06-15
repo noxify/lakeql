@@ -125,35 +125,20 @@ function handleObject(columns: Record<string, JSONType>): JSONSchema7 {
 
   for (const [columnName, columnType] of Object.entries(columns)) {
     if (typeof columnType === "string") {
-      try {
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        schema.properties![columnName] = handlePrimitive(columnType)
-      } catch (error) {
-        // oxlint-disable-next-line no-console
-        console.log(error)
-      }
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      schema.properties![columnName] = handlePrimitive(columnType)
     }
 
     if (Array.isArray(columnType)) {
-      try {
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        schema.properties![columnName] = handleArray(columnType)
-      } catch (error) {
-        // oxlint-disable-next-line no-console
-        console.log(error)
-      }
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      schema.properties![columnName] = handleArray(columnType)
     }
 
     if (isObject(columnType)) {
-      try {
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        schema.properties![columnName] = handleObject(
-          columnType as Record<string, JSONType>
-        )
-      } catch (error) {
-        // oxlint-disable-next-line no-console
-        console.log(error)
-      }
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      schema.properties![columnName] = handleObject(
+        columnType as Record<string, JSONType>
+      )
     }
   }
 

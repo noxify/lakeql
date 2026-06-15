@@ -69,4 +69,37 @@ describe("config file generator", () => {
     expect(generatedCodeFromFactory.text).toBe(expectedCode)
     expect(generatedCodeFromFactory.fileName).toBe("vitest_config.ts")
   })
+
+  test("config file w/ empty mutation list", async () => {
+    const generatedFactoryCode = generateConfig({
+      catalog: "vitest_catalog",
+      mutationName: [],
+      queryName: "vitest_query_name",
+      schema: "vitest_schema",
+      tableName: "vitest_table",
+    })
+
+    const generatedCodeFromFactory = await generateCode({
+      fileName: "vitest_config.ts",
+      nodes: generatedFactoryCode,
+    })
+
+    const expectedCode = await formatCode(`
+      export const hiveConfig = {
+        catalog: "vitest_catalog",
+        schema: "vitest_schema",
+        tableName: "vitest_table",
+      } as const
+
+      export const docsConfig = {
+        query: true,
+        mutation: false,
+        queryName: "vitest_query_name",
+        mutationName: null,
+      }
+    `)
+
+    expect(generatedCodeFromFactory.text).toBe(expectedCode)
+    expect(generatedCodeFromFactory.fileName).toBe("vitest_config.ts")
+  })
 })
