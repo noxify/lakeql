@@ -96,17 +96,26 @@ async function updatePackageJson(
     }
 
     // Get latest versions
-    const [coreVersion, cliVersion] = await Promise.all([
-      getLatestVersion("@lakeql/api"),
-      getLatestVersion("@lakeql/cli"),
-    ])
+    const workspaceDeps = [
+      ...Object.entries(updatedPackageJson.dependencies ?? {})
+        .filter(([, v]) => v === "workspace:*")
+        .map(([name]) => ({ name, target: "dependencies" as const })),
+      ...Object.entries(updatedPackageJson.devDependencies ?? {})
+        .filter(([, v]) => v === "workspace:*")
+        .map(([name]) => ({ name, target: "devDependencies" as const })),
+    ]
 
-    // Replace workspace dependencies
-    if (updatedPackageJson.dependencies?.["@lakeql/api"]) {
-      updatedPackageJson.dependencies["@lakeql/api"] = coreVersion
-    }
-    if (updatedPackageJson.devDependencies?.["@lakeql/cli"]) {
-      updatedPackageJson.devDependencies["@lakeql/cli"] = cliVersion
+    const versions = await Promise.all(
+      workspaceDeps.map(({ name }) => getLatestVersion(name))
+    )
+
+    // Replace workspace:* with resolved versions
+    for (const [i, { name, target }] of workspaceDeps.entries()) {
+      const deps = updatedPackageJson[target]
+      const version = versions[i]
+      if (deps && version) {
+        deps[name] = version
+      }
     }
 
     // Remove workspace-specific fields
