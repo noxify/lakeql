@@ -9,7 +9,7 @@ After configuring your environment variables, pull a schema from Trino:
 
 <Command variant="run">cli pull --catalog hive --schema sales</Command>
 
-This command introspects every table in `hive.sales` and generates four files per table.
+This command introspects every table in `hive.sales` and generates five files per table.
 
 ### Generated Files
 
@@ -17,24 +17,27 @@ For a table called `orders`, the CLI creates:
 
 ```
 src/schemas/generated/hive/sales/orders/
-├── config.ts            # Table metadata and column mappings
+├── config.ts            # Table metadata and docs settings
 ├── interface.ts         # TypeScript interface for the table
 ├── query-schema.ts      # Pothos query schema with resolvers
-├── mutation-schema.ts   # Pothos mutation schema with input types
 ├── json-schema.json     # JSON Schema for response transformation
 └── endpoint.json # Endpoint definition (for re-generation)
 ```
 
-**config.ts** — Contains the table's catalog, schema, table name, select fields, and field transform mappings:
+**config.ts** — Contains the table's catalog, schema, table name, and docs settings:
 
 ```typescript
-export const ordersConfig = {
+export const hiveConfig = {
   catalog: "hive",
   schema: "sales",
-  table: "orders",
-  selectFields: ["id", "customer_id", "status", "total", "created_at"],
-  dateFields: ["created_at"],
-  transformFields: {},
+  tableName: "orders",
+} as const
+
+export const docsConfig = {
+  query: true,
+  mutation: false,
+  queryName: "orders",
+  mutationName: null,
 } as const
 ```
 
@@ -54,10 +57,10 @@ export interface Orders {
 
 ```typescript
 import { builder } from "@lakeql/api"
-import { ordersConfig } from "./config"
+import { hiveConfig } from "./config"
 
 // Defines: OrdersType, OrdersFilter, OrdersSort, OrdersConnection
-// Registers: Query.orders(filter, sort, paging) → OrdersConnection
+// Registers: Query.orders(filter, sorting, paging) → OrdersConnection
 ```
 
 **json-schema.json** — Used at runtime by `@lakeql/response-transformer` to map Trino's array responses into typed objects:
@@ -66,8 +69,8 @@ import { ordersConfig } from "./config"
 {
   "type": "object",
   "properties": {
-    "id": { "type": "number" },
-    "customer_id": { "type": "number" },
+    "id": { "type": "integer" },
+    "customer_id": { "type": "integer" },
     "status": { "type": "string" },
     "total": { "type": "number" },
     "created_at": { "type": "string" }
@@ -97,7 +100,7 @@ query {
   orders(
     filter: { and: [{ status: { eq: "shipped" } }] }
     paging: { limit: 10, offset: 0 }
-    sort: [{ field: "created_at", direction: "DESC" }]
+    sorting: [{ field: "created_at", direction: "DESC" }]
   ) {
     totalCount
     pageInfo {
