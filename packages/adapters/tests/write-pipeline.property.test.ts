@@ -19,6 +19,7 @@ describe("Property 8: Partition Path Format", () => {
         fc.date({
           min: new Date("1000-01-01T00:00:00.000Z"),
           max: new Date("9999-12-31T23:59:59.999Z"),
+          noInvalidDate: true,
         }),
         (date) => {
           const path = generatePartitionPath(date)

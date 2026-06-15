@@ -41,7 +41,7 @@ function extractFieldRequired(
 ): boolean | undefined {
   // Match patterns like: fieldName: t.something({ required: true/false })
   // Use word boundary to prevent matching substrings of other field names
-  const escapedName = fieldName.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")
+  const escapedName = fieldName.replaceAll(/[.*+?^${}()|[\]\\]/gu, "\\$&")
   const fieldRegex = new RegExp(
     `(?:^|[\\s,{])${escapedName}:\\s*t\\.\\w+\\(\\{[^}]*required:\\s*(true|false)`,
     "mu"
