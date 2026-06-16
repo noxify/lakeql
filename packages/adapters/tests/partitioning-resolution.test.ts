@@ -136,8 +136,8 @@ describe(injectLoadTimestamp, () => {
     const records = [{ id: 1 }]
     const result = injectLoadTimestamp(records, timestamp)
 
-    const isoPattern = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/
-    expect(result[0]!.load_timestamp).toMatch(isoPattern)
+    const isoPattern = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/u
+    expect(result[0]?.load_timestamp).toMatch(isoPattern)
   })
 
   test("does not mutate the original records", () => {

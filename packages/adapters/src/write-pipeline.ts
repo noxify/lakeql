@@ -1,3 +1,4 @@
+// oxlint-disable no-await-in-loop
 import crypto from "node:crypto"
 
 import { writeParquet } from "@lakeql/parquet"
@@ -80,12 +81,18 @@ export function generatePartitionPath(
   const uuid = crypto.randomUUID()
 
   switch (format) {
-    case "year":
+    case "year": {
       return `year=${year}/${uuid}.parquet`
-    case "year/month":
+    }
+    case "year/month": {
       return `year=${year}/month=${month}/${uuid}.parquet`
-    case "year/month/day":
+    }
+    case "year/month/day": {
       return `year=${year}/month=${month}/day=${day}/${uuid}.parquet`
+    }
+    default: {
+      return `year=${year}/month=${month}/day=${day}/${uuid}.parquet`
+    }
   }
 }
 
@@ -173,11 +180,16 @@ export function injectLoadTimestamp(
  * Error thrown when a record's partition field is missing, null, or invalid.
  */
 export class PartitionFieldError extends Error {
+  readonly fieldName: string
+  readonly reason: "missing" | "null" | "invalid_date"
+  readonly recordIndex: number
+  readonly value?: unknown
+
   constructor(
-    public readonly fieldName: string,
-    public readonly reason: "missing" | "null" | "invalid_date",
-    public readonly recordIndex: number,
-    public readonly value?: unknown
+    fieldName: string,
+    reason: "missing" | "null" | "invalid_date",
+    recordIndex: number,
+    value?: unknown
   ) {
     super(
       reason === "missing"
@@ -187,6 +199,10 @@ export class PartitionFieldError extends Error {
           : `Partition field "${fieldName}" has invalid date value "${value}" in record at index ${recordIndex}`
     )
     this.name = "PartitionFieldError"
+    this.fieldName = fieldName
+    this.reason = reason
+    this.recordIndex = recordIndex
+    this.value = value
   }
 }
 
@@ -201,7 +217,7 @@ export function parseISODate(value: string): Date | null {
   }
   // Validate it's a proper ISO format (not just any parseable string)
   const isoDatePattern =
-    /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})?)?$/
+    /^\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?)?$/u
   if (!isoDatePattern.test(value)) {
     return null
   }
@@ -221,8 +237,8 @@ export function groupRecordsByPartition(
 ): Map<string, Record<string, unknown>[]> {
   const groups = new Map<string, Record<string, unknown>[]>()
 
-  for (let i = 0; i < records.length; i++) {
-    const record = records[i]!
+  for (let i = 0; i < records.length; i += 1) {
+    const record = records[i] as Record<string, unknown>
 
     if (!(fieldName in record)) {
       throw new PartitionFieldError(fieldName, "missing", i)
@@ -291,18 +307,24 @@ function extractDateComponent(
   component: PartitioningComponent
 ): string {
   switch (component) {
-    case "year":
+    case "year": {
       return date.getUTCFullYear().toString().padStart(4, "0")
-    case "month":
+    }
+    case "month": {
       return (date.getUTCMonth() + 1).toString().padStart(2, "0")
-    case "day":
+    }
+    case "day": {
       return date.getUTCDate().toString().padStart(2, "0")
-    case "hour":
+    }
+    case "hour": {
       return date.getUTCHours().toString().padStart(2, "0")
-    case "minute":
+    }
+    case "minute": {
       return date.getUTCMinutes().toString().padStart(2, "0")
-    case "second":
+    }
+    case "second": {
       return date.getUTCSeconds().toString().padStart(2, "0")
+    }
     default: {
       const _exhaustive: never = component
       throw new Error(`Unknown date component: ${_exhaustive}`)
@@ -371,8 +393,8 @@ export function groupRecordsByCustomPartition(
   // First pass: compute the partition key for each record (without UUID)
   const keyToRecords = new Map<string, Record<string, unknown>[]>()
 
-  for (let i = 0; i < records.length; i++) {
-    const record = records[i]!
+  for (let i = 0; i < records.length; i += 1) {
+    const record = records[i] as Record<string, unknown>
     const keyParts: string[] = []
 
     for (const segment of segments) {
@@ -652,7 +674,7 @@ export async function executeWritePipeline(
     case "field": {
       const groups = groupRecordsByPartition(
         records,
-        partitioning.fieldName!,
+        partitioning.fieldName ?? "",
         partitioning.format
       )
       for (const [partPath, groupRecords] of groups) {
@@ -703,7 +725,7 @@ export async function executeWritePipeline(
     }
 
     case "custom": {
-      const segments = parsePartitioningFormat(partitioning.formatString!)
+      const segments = parsePartitioningFormat(partitioning.formatString ?? "")
       const groups = groupRecordsByCustomPartition(records, segments)
 
       for (const [partPath, groupRecords] of groups) {
@@ -750,6 +772,10 @@ export async function executeWritePipeline(
         }
         await hiveManager.recreateTable(tableDef)
       }
+      break
+    }
+
+    default: {
       break
     }
   }

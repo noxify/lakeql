@@ -93,10 +93,8 @@ export function validatePartitioningFormat(value: string): string | null {
       ) {
         return `Invalid date component "${component}" in partition segment "${segment}". Expected one of: ${partitioningComponents.join(", ")}.`
       }
-    } else {
-      if (!fieldNamePattern.test(segment)) {
-        return `Invalid field name "${segment}" in partition format.`
-      }
+    } else if (!fieldNamePattern.test(segment)) {
+      return `Invalid field name "${segment}" in partition format.`
     }
   }
 
@@ -130,7 +128,7 @@ export interface MutationConfig {
   /** Partitioning mode. Default: true */
   partitioning?: PartitioningValue
   /** Partition path granularity. Default: "year/month/day" */
-  partitioningFormat?: PartitioningFormat
+  partitioningFormat?: string
 }
 
 /**
@@ -144,8 +142,8 @@ export const mutationConfigSchema = z
     basePath: z.string().min(1),
     region: z.string().optional(),
     endpoint: z.string().optional(),
-    partitioning: z.union([z.boolean(), z.string().min(1)]).default(true),
-    partitioningFormat: z.string().optional().default("year/month/day"),
+    partitioning: z.union([z.boolean(), z.string().min(1)]).optional(),
+    partitioningFormat: z.string().optional(),
   })
   .superRefine((data, ctx) => {
     // Skip validation when partitioning is disabled
@@ -175,6 +173,7 @@ export const mutationConfigSchema = z
 
     // Validate partitioningFormat for true or legacy single-field mode
     if (
+      data.partitioningFormat !== undefined &&
       !partitioningFormats.includes(
         data.partitioningFormat as PartitioningFormat
       )

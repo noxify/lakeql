@@ -1,5 +1,7 @@
 import { describe, expect, test, vi } from "vitest"
 
+// oxlint-disable vitest/prefer-import-in-mock -- vi.mock factories use inline definitions per project convention
+
 // Mock crypto.randomUUID for deterministic partition paths
 vi.mock("node:crypto", async () => ({
   default: {
@@ -7,6 +9,7 @@ vi.mock("node:crypto", async () => ({
   },
 }))
 
+// oxlint-disable-next-line import/first -- vi.mock must precede imports per vitest design
 import {
   parsePartitioningFormat,
   generateCustomPartitionPath,
@@ -15,15 +18,21 @@ import {
   PartitionFieldError,
 } from "../src/write-pipeline"
 
-describe("parsePartitioningFormat", () => {
+describe(parsePartitioningFormat, () => {
   test("parses composite format: customer_id/event_date:year/event_date:month", () => {
     const segments = parsePartitioningFormat(
       "customer_id/event_date:year/event_date:month"
     )
     expect(segments).toHaveLength(3)
-    expect(segments[0]).toEqual({ fieldName: "customer_id" })
-    expect(segments[1]).toEqual({ fieldName: "event_date", component: "year" })
-    expect(segments[2]).toEqual({ fieldName: "event_date", component: "month" })
+    expect(segments[0]).toStrictEqual({ fieldName: "customer_id" })
+    expect(segments[1]).toStrictEqual({
+      fieldName: "event_date",
+      component: "year",
+    })
+    expect(segments[2]).toStrictEqual({
+      fieldName: "event_date",
+      component: "month",
+    })
   })
 
   test("parses date-only format: event_date:year/event_date:month/event_date:day", () => {
@@ -31,15 +40,24 @@ describe("parsePartitioningFormat", () => {
       "event_date:year/event_date:month/event_date:day"
     )
     expect(segments).toHaveLength(3)
-    expect(segments[0]).toEqual({ fieldName: "event_date", component: "year" })
-    expect(segments[1]).toEqual({ fieldName: "event_date", component: "month" })
-    expect(segments[2]).toEqual({ fieldName: "event_date", component: "day" })
+    expect(segments[0]).toStrictEqual({
+      fieldName: "event_date",
+      component: "year",
+    })
+    expect(segments[1]).toStrictEqual({
+      fieldName: "event_date",
+      component: "month",
+    })
+    expect(segments[2]).toStrictEqual({
+      fieldName: "event_date",
+      component: "day",
+    })
   })
 
   test("parses single plain field: region", () => {
     const segments = parsePartitioningFormat("region")
     expect(segments).toHaveLength(1)
-    expect(segments[0]).toEqual({ fieldName: "region" })
+    expect(segments[0]).toStrictEqual({ fieldName: "region" })
   })
 
   test("parses format with hour/minute/second components", () => {
@@ -47,20 +65,23 @@ describe("parsePartitioningFormat", () => {
       "ts:year/ts:month/ts:day/ts:hour/ts:minute/ts:second"
     )
     expect(segments).toHaveLength(6)
-    expect(segments[3]).toEqual({ fieldName: "ts", component: "hour" })
-    expect(segments[4]).toEqual({ fieldName: "ts", component: "minute" })
-    expect(segments[5]).toEqual({ fieldName: "ts", component: "second" })
+    expect(segments[3]).toStrictEqual({ fieldName: "ts", component: "hour" })
+    expect(segments[4]).toStrictEqual({ fieldName: "ts", component: "minute" })
+    expect(segments[5]).toStrictEqual({ fieldName: "ts", component: "second" })
   })
 
   test("parses mixed plain and date segments", () => {
     const segments = parsePartitioningFormat("region/event_date:year")
     expect(segments).toHaveLength(2)
-    expect(segments[0]).toEqual({ fieldName: "region" })
-    expect(segments[1]).toEqual({ fieldName: "event_date", component: "year" })
+    expect(segments[0]).toStrictEqual({ fieldName: "region" })
+    expect(segments[1]).toStrictEqual({
+      fieldName: "event_date",
+      component: "year",
+    })
   })
 })
 
-describe("generateCustomPartitionPath", () => {
+describe(generateCustomPartitionPath, () => {
   test("extracts string field value correctly", () => {
     const segments = parsePartitioningFormat("customer_id")
     const path = generateCustomPartitionPath(
@@ -133,15 +154,22 @@ describe("generateCustomPartitionPath", () => {
     expect(() =>
       generateCustomPartitionPath({ name: "Alice" }, segments, 3)
     ).toThrow(PartitionFieldError)
+  })
 
+  test("includes correct metadata for missing field error", () => {
+    const segments = parsePartitioningFormat("customer_id")
+
+    let caught: PartitionFieldError | undefined
     try {
       generateCustomPartitionPath({ name: "Alice" }, segments, 3)
     } catch (error) {
-      const e = error as PartitionFieldError
-      expect(e.fieldName).toBe("customer_id")
-      expect(e.reason).toBe("missing")
-      expect(e.recordIndex).toBe(3)
+      caught = error as PartitionFieldError
     }
+
+    expect(caught).toBeInstanceOf(PartitionFieldError)
+    expect(caught?.fieldName).toBe("customer_id")
+    expect(caught?.reason).toBe("missing")
+    expect(caught?.recordIndex).toBe(3)
   })
 
   test("throws PartitionFieldError when field is null", () => {
@@ -149,14 +177,21 @@ describe("generateCustomPartitionPath", () => {
     expect(() =>
       generateCustomPartitionPath({ customer_id: null }, segments, 0)
     ).toThrow(PartitionFieldError)
+  })
 
+  test("includes correct metadata for null field error", () => {
+    const segments = parsePartitioningFormat("customer_id")
+
+    let caught: PartitionFieldError | undefined
     try {
       generateCustomPartitionPath({ customer_id: null }, segments, 0)
     } catch (error) {
-      const e = error as PartitionFieldError
-      expect(e.fieldName).toBe("customer_id")
-      expect(e.reason).toBe("null")
+      caught = error as PartitionFieldError
     }
+
+    expect(caught).toBeInstanceOf(PartitionFieldError)
+    expect(caught?.fieldName).toBe("customer_id")
+    expect(caught?.reason).toBe("null")
   })
 
   test("throws PartitionFieldError with invalid_date for date segment with bad value", () => {
@@ -164,20 +199,27 @@ describe("generateCustomPartitionPath", () => {
     expect(() =>
       generateCustomPartitionPath({ event_date: "not-a-date" }, segments, 1)
     ).toThrow(PartitionFieldError)
+  })
 
+  test("includes correct metadata for invalid_date error", () => {
+    const segments = parsePartitioningFormat("event_date:year")
+
+    let caught: PartitionFieldError | undefined
     try {
       generateCustomPartitionPath({ event_date: "not-a-date" }, segments, 1)
     } catch (error) {
-      const e = error as PartitionFieldError
-      expect(e.fieldName).toBe("event_date")
-      expect(e.reason).toBe("invalid_date")
-      expect(e.value).toBe("not-a-date")
-      expect(e.recordIndex).toBe(1)
+      caught = error as PartitionFieldError
     }
+
+    expect(caught).toBeInstanceOf(PartitionFieldError)
+    expect(caught?.fieldName).toBe("event_date")
+    expect(caught?.reason).toBe("invalid_date")
+    expect(caught?.value).toBe("not-a-date")
+    expect(caught?.recordIndex).toBe(1)
   })
 })
 
-describe("groupRecordsByCustomPartition", () => {
+describe(groupRecordsByCustomPartition, () => {
   test("groups records correctly by composite key", () => {
     const segments = parsePartitioningFormat(
       "customer_id/event_date:year/event_date:month"
@@ -197,11 +239,11 @@ describe("groupRecordsByCustomPartition", () => {
     const key42 = "customer_id=42/year=2024/month=06/test-uuid-1234.parquet"
     const key99 = "customer_id=99/year=2024/month=06/test-uuid-1234.parquet"
 
-    expect(groups.get(key42)).toEqual([
+    expect(groups.get(key42)).toStrictEqual([
       { customer_id: 42, event_date: "2024-06-15", value: 100 },
       { customer_id: 42, event_date: "2024-06-20", value: 200 },
     ])
-    expect(groups.get(key99)).toEqual([
+    expect(groups.get(key99)).toStrictEqual([
       { customer_id: 99, event_date: "2024-06-15", value: 300 },
     ])
   })
@@ -230,15 +272,26 @@ describe("groupRecordsByCustomPartition", () => {
     expect(() => groupRecordsByCustomPartition(records, segments)).toThrow(
       PartitionFieldError
     )
+  })
 
+  test("includes correct metadata for missing field in grouped records", () => {
+    const segments = parsePartitioningFormat("customer_id")
+    const records = [
+      { customer_id: 1 },
+      { name: "no customer_id" }, // missing
+    ]
+
+    let caught: PartitionFieldError | undefined
     try {
       groupRecordsByCustomPartition(records, segments)
     } catch (error) {
-      const e = error as PartitionFieldError
-      expect(e.fieldName).toBe("customer_id")
-      expect(e.reason).toBe("missing")
-      expect(e.recordIndex).toBe(1)
+      caught = error as PartitionFieldError
     }
+
+    expect(caught).toBeInstanceOf(PartitionFieldError)
+    expect(caught?.fieldName).toBe("customer_id")
+    expect(caught?.reason).toBe("missing")
+    expect(caught?.recordIndex).toBe(1)
   })
 })
 

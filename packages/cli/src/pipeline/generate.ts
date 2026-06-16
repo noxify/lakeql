@@ -125,10 +125,14 @@ export async function generateEndpoint(
           basePath: definition.mutation.basePath,
           region: definition.mutation.region,
           endpoint: definition.mutation.endpoint,
-          ...(definition.mutation.loadStrategy !== "full_load" && {
-            partitioning: definition.mutation.partitioning,
-            partitioningFormat: definition.mutation.partitioningFormat,
-          }),
+          partitioning:
+            definition.mutation.loadStrategy === "full_load"
+              ? undefined
+              : definition.mutation.partitioning,
+          partitioningFormat:
+            definition.mutation.loadStrategy === "full_load"
+              ? undefined
+              : definition.mutation.partitioningFormat,
         }
       : undefined,
   })

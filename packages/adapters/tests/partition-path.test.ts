@@ -1,6 +1,4 @@
-import crypto from "node:crypto"
-
-import { describe, expect, test, vi, beforeEach, afterEach } from "vitest"
+import { describe, expect, test } from "vitest"
 
 import { generatePartitionPath, generateFlatPath } from "../src/write-pipeline"
 
@@ -8,7 +6,7 @@ import { generatePartitionPath, generateFlatPath } from "../src/write-pipeline"
 const uuidV4Pattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u
 
-describe("generatePartitionPath", () => {
+describe(generatePartitionPath, () => {
   test('format "year/month/day" produces year=YYYY/month=MM/day=DD/<uuid>.parquet', () => {
     const date = new Date("2024-03-15T10:30:00Z")
     const result = generatePartitionPath(date, "year/month/day")
@@ -81,7 +79,7 @@ describe("generatePartitionPath", () => {
   })
 })
 
-describe("generateFlatPath", () => {
+describe(generateFlatPath, () => {
   test("returns <uuid>.parquet", () => {
     const result = generateFlatPath()
 

@@ -23,8 +23,15 @@ vi.mock("../src/storage-operations", async () => ({
 }))
 
 // Mock ./hive-table-manager
-const mockRecreateTable = vi.fn<() => Promise<void>>()
-const mockRecreateTablePair = vi.fn<() => Promise<void>>()
+const mockRecreateTable =
+  vi.fn<(definition: Record<string, unknown>) => Promise<void>>()
+const mockRecreateTablePair =
+  vi.fn<
+    (
+      latestDef: Record<string, unknown>,
+      allDef: Record<string, unknown>
+    ) => Promise<void>
+  >()
 
 vi.mock("../src/hive-table-manager", async () => ({
   createHiveTableManager: vi.fn<
@@ -142,7 +149,7 @@ describe("executeWritePipeline — partitioning modes", () => {
         createInput({ loadStrategy: "append", partitioning: false })
       )
 
-      const call = mockRecreateTable.mock.calls[0]![0] as {
+      const call = mockRecreateTable.mock.calls[0]?.[0] as {
         columns: { name: string; type: string }[]
       }
       const columnNames = call.columns.map((c) => c.name)
@@ -424,8 +431,7 @@ describe("executeWritePipeline — partitioning modes", () => {
         })
       )
 
-      expect(mockRecreateTable).toHaveBeenCalledOnce()
-      expect(mockRecreateTable).toHaveBeenCalledWith(
+      expect(mockRecreateTable).toHaveBeenCalledExactlyOnceWith(
         expect.objectContaining({
           tableName: "users",
           externalLocation:
@@ -587,8 +593,7 @@ describe("executeWritePipeline — partitioning modes", () => {
         })
       )
 
-      expect(mockRecreateTable).toHaveBeenCalledOnce()
-      expect(mockRecreateTable).toHaveBeenCalledWith(
+      expect(mockRecreateTable).toHaveBeenCalledExactlyOnceWith(
         expect.objectContaining({
           tableName: "users",
           externalLocation:
@@ -628,8 +633,7 @@ describe("executeWritePipeline — partitioning modes", () => {
       )
 
       // Both records have same date → one group
-      expect(mockUpload).toHaveBeenCalledOnce()
-      expect(mockUpload).toHaveBeenCalledWith(
+      expect(mockUpload).toHaveBeenCalledExactlyOnceWith(
         expect.any(Uint8Array),
         expect.stringContaining(
           "year=2024/month=06/day=15/test-uuid-1234.parquet"

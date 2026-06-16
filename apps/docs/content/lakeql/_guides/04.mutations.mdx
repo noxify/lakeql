@@ -85,16 +85,16 @@ See the [Load Strategies](/lakeql/guides/load-strategies) guide for detailed exp
 
 ## Mutation Configuration Reference
 
-| Field                | Type             | Required | Description                                                                                                                                                                                          |
-| -------------------- | ---------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `loadStrategy`       | string           | Yes      | How data is written. One of `full_load`, `full_load_append`, or `append`.                                                                                                                            |
-| `type`               | string           | Yes      | Storage adapter type. One of `s3` or `minio`. Defaults to `s3`.                                                                                                                                      |
-| `bucket`             | string           | Yes      | S3 or MinIO bucket name where Parquet files are stored.                                                                                                                                              |
-| `basePath`           | string           | Yes      | Path prefix within the bucket (e.g. `warehouse/analytics/events`).                                                                                                                                   |
-| `region`             | string           | No       | AWS region override. Falls back to `AWS_DEFAULT_REGION` for S3.                                                                                                                                      |
-| `endpoint`           | string           | No       | S3-compatible endpoint URL. Optional for S3 (falls back to `AWS_ENDPOINT_URL`), required for MinIO.                                                                                                  |
-| `partitioning`       | boolean / string | No       | Controls file partitioning. `true` (default) partitions by write timestamp, `false` disables partitioning (flat layout), or a field name string to partition by that field. Ignored for `full_load`. |
-| `partitioningFormat` | string           | No       | Partition granularity. One of `"year"`, `"year/month"`, or `"year/month/day"` (default). Only applies when `partitioning` is not `false`.                                                            |
+| Field                | Type             | Required | Description                                                                                                                                                                                                                                                                                      |
+| -------------------- | ---------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `loadStrategy`       | string           | Yes      | How data is written. One of `full_load`, `full_load_append`, or `append`.                                                                                                                                                                                                                        |
+| `type`               | string           | Yes      | Storage adapter type. One of `s3` or `minio`. Defaults to `s3`.                                                                                                                                                                                                                                  |
+| `bucket`             | string           | Yes      | S3 or MinIO bucket name where Parquet files are stored.                                                                                                                                                                                                                                          |
+| `basePath`           | string           | Yes      | Path prefix within the bucket (e.g. `warehouse/analytics/events`).                                                                                                                                                                                                                               |
+| `region`             | string           | No       | AWS region override. Falls back to `AWS_DEFAULT_REGION` for S3.                                                                                                                                                                                                                                  |
+| `endpoint`           | string           | No       | S3-compatible endpoint URL. Optional for S3 (falls back to `AWS_ENDPOINT_URL`), required for MinIO.                                                                                                                                                                                              |
+| `partitioning`       | boolean / string | No       | Controls file partitioning. `true` (default) partitions by write timestamp, `false` disables partitioning (flat layout), a field name string to partition by that field, or a custom format string (e.g. `"customer_id/event_date:year"`) for multi-field partitioning. Ignored for `full_load`. |
+| `partitioningFormat` | string           | No       | Partition granularity. One of `"year"`, `"year/month"`, or `"year/month/day"` (default). Only applies when `partitioning` is `true` or a simple field name. Ignored for custom format strings.                                                                                                   |
 
 ## Partitioning
 
@@ -160,6 +160,57 @@ When `partitioning` is set to a field name string, records are grouped by the va
 ```
 
 The field must exist in every record and contain a valid ISO 8601 date or datetime value. Field names must start with a letter or underscore, contain only alphanumeric characters and underscores, and be 1–64 characters long.
+
+### Custom partition format
+
+For advanced use cases you can define a custom partition format string that combines multiple fields and date components. The format uses `/` to separate path segments and `:` to extract date components from a field.
+
+```json
+{
+  "mutation": {
+    "loadStrategy": "append",
+    "type": "s3",
+    "bucket": "my-datalake",
+    "basePath": "warehouse/raw/events",
+    "partitioning": "customer_id/event_date:year/event_date:month"
+  }
+}
+```
+
+This produces paths like:
+
+```
+all.parquet/
+  customer_id=42/year=2024/month=06/<uuid>.parquet
+  customer_id=99/year=2024/month=06/<uuid>.parquet
+```
+
+#### Format syntax
+
+Each segment is either a plain field name or a field with a date component:
+
+| Segment            | Behavior                                                  |
+| ------------------ | --------------------------------------------------------- |
+| `customer_id`      | Extracts the raw field value → `customer_id=<value>`      |
+| `event_date:year`  | Parses the field as ISO date, extracts year → `year=2024` |
+| `event_date:month` | Extracts month (zero-padded) → `month=06`                 |
+| `event_date:day`   | Extracts day (zero-padded) → `day=15`                     |
+| `ts:hour`          | Extracts hour (zero-padded) → `hour=08`                   |
+| `ts:minute`        | Extracts minute (zero-padded) → `minute=30`               |
+| `ts:second`        | Extracts second (zero-padded) → `second=07`               |
+
+Supported date components: `year`, `month`, `day`, `hour`, `minute`, `second`.
+
+Records are grouped by their resolved partition key — records with the same key are written to the same Parquet file.
+
+When using a custom format, the `partitioningFormat` field is ignored (the format is fully determined by the custom string). No `load_timestamp` column is injected.
+
+<Note>
+  Fields referenced in the custom format must exist in every record. Date
+  component segments require valid ISO 8601 date or datetime values. A
+  `PartitionFieldError` is thrown if any record has a missing, null, or
+  unparseable field value.
+</Note>
 
 <Note>
   The `partitioning` and `partitioningFormat` fields are not included in the
