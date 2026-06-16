@@ -29,6 +29,87 @@ export const storageTypes = ["s3", "minio"] as const
 export type StorageType = (typeof storageTypes)[number]
 
 /**
+ * Supported partitioning format granularities.
+ */
+export const partitioningFormats = [
+  "year",
+  "year/month",
+  "year/month/day",
+] as const
+export type PartitioningFormat = (typeof partitioningFormats)[number]
+
+/**
+ * Supported date components for custom partition format segments.
+ */
+export const partitioningComponents = [
+  "year",
+  "month",
+  "day",
+  "hour",
+  "minute",
+  "second",
+] as const
+export type PartitioningComponent = (typeof partitioningComponents)[number]
+
+/**
+ * Validates a custom partitioning format string.
+ * - If the value contains no `/` and no `:`, it must match fieldNamePattern (legacy single-field mode).
+ * - If it contains `/` or `:`, each segment is validated:
+ *   - Plain segments must match fieldNamePattern.
+ *   - Colon segments must be `fieldname:component` where fieldname matches pattern
+ *     and component is one of the supported partitioning components.
+ *
+ * Returns null if valid, or an error message string if invalid.
+ */
+export function validatePartitioningFormat(value: string): string | null {
+  const isCustomFormat = value.includes("/") || value.includes(":")
+
+  if (!isCustomFormat) {
+    // Legacy single-field mode: must be a valid field name
+    if (!fieldNamePattern.test(value)) {
+      return `Invalid partition field name "${value}". Must match pattern: letters/underscores, no leading digit, max 64 chars.`
+    }
+    return null
+  }
+
+  // Custom format: parse and validate each segment
+  const segments = value.split("/")
+  for (const segment of segments) {
+    if (segment === "") {
+      return `Invalid partition format: empty segment found in "${value}".`
+    }
+
+    if (segment.includes(":")) {
+      const parts = segment.split(":")
+      if (parts.length !== 2) {
+        return `Invalid partition segment "${segment}": expected format "fieldname:component".`
+      }
+      const [fieldName, component] = parts as [string, string]
+      if (!fieldNamePattern.test(fieldName)) {
+        return `Invalid field name "${fieldName}" in partition segment "${segment}".`
+      }
+      if (
+        !partitioningComponents.includes(component as PartitioningComponent)
+      ) {
+        return `Invalid date component "${component}" in partition segment "${segment}". Expected one of: ${partitioningComponents.join(", ")}.`
+      }
+    } else if (!fieldNamePattern.test(segment)) {
+      return `Invalid field name "${segment}" in partition format.`
+    }
+  }
+
+  return null
+}
+
+/**
+ * Partitioning configuration value:
+ * - true: partition by write timestamp (default)
+ * - false: no partitioning (flat layout)
+ * - string: partition by named field
+ */
+export type PartitioningValue = boolean | string
+
+/**
  * Mutation pipeline configuration for an endpoint.
  */
 export interface MutationConfig {
@@ -44,19 +125,67 @@ export interface MutationConfig {
   region?: string
   /** Optional custom endpoint. Required for MinIO, optional for S3. */
   endpoint?: string
+  /** Partitioning mode. Default: true */
+  partitioning?: PartitioningValue
+  /** Partition path granularity. Default: "year/month/day" */
+  partitioningFormat?: string
 }
 
 /**
  * Zod schema for the mutation configuration object.
  */
-export const mutationConfigSchema = z.object({
-  loadStrategy: z.enum(loadStrategies),
-  type: z.enum(storageTypes).default("s3"),
-  bucket: z.string().min(1),
-  basePath: z.string().min(1),
-  region: z.string().optional(),
-  endpoint: z.string().optional(),
-})
+export const mutationConfigSchema = z
+  .object({
+    loadStrategy: z.enum(loadStrategies),
+    type: z.enum(storageTypes).default("s3"),
+    bucket: z.string().min(1),
+    basePath: z.string().min(1),
+    region: z.string().optional(),
+    endpoint: z.string().optional(),
+    partitioning: z.union([z.boolean(), z.string().min(1)]).optional(),
+    partitioningFormat: z.string().optional(),
+  })
+  .superRefine((data, ctx) => {
+    // Skip validation when partitioning is disabled
+    if (data.partitioning === false) {
+      return
+    }
+
+    // Validate string partitioning values
+    if (typeof data.partitioning === "string") {
+      const error = validatePartitioningFormat(data.partitioning)
+      if (error) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["partitioning"],
+          message: error,
+        })
+        return
+      }
+
+      // If it's a custom format (contains / or :), skip partitioningFormat validation
+      const isCustomFormat =
+        data.partitioning.includes("/") || data.partitioning.includes(":")
+      if (isCustomFormat) {
+        return
+      }
+    }
+
+    // Validate partitioningFormat for true or legacy single-field mode
+    if (
+      data.partitioningFormat !== undefined &&
+      !partitioningFormats.includes(
+        data.partitioningFormat as PartitioningFormat
+      )
+    ) {
+      ctx.addIssue({
+        code: "invalid_value",
+        values: [...partitioningFormats],
+        path: ["partitioningFormat"],
+        message: `Invalid partitioning format. Expected one of: ${partitioningFormats.join(", ")}`,
+      })
+    }
+  })
 
 /**
  * Zod schema for the mutation field: either `false` (disabled) or a config object (enabled).

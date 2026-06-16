@@ -24,6 +24,10 @@ export interface StorageConfigProps {
   region?: string
   /** Optional custom endpoint. */
   endpoint?: string
+  /** Partitioning mode (true, false, or field name string). */
+  partitioning?: boolean | string
+  /** Partition format granularity. */
+  partitioningFormat?: string
 }
 
 /**
@@ -118,6 +122,32 @@ export function generateConfig({
     if (storageConfig.endpoint) {
       storageProperties.push(
         property("endpoint", stringLiteral(storageConfig.endpoint))
+      )
+    }
+
+    if (storageConfig.partitioning !== undefined) {
+      if (typeof storageConfig.partitioning === "boolean") {
+        storageProperties.push(
+          property(
+            "partitioning",
+            storageConfig.partitioning
+              ? ts.factory.createTrue()
+              : ts.factory.createFalse()
+          )
+        )
+      } else {
+        storageProperties.push(
+          property("partitioning", stringLiteral(storageConfig.partitioning))
+        )
+      }
+    }
+
+    if (storageConfig.partitioningFormat) {
+      storageProperties.push(
+        property(
+          "partitioningFormat",
+          stringLiteral(storageConfig.partitioningFormat)
+        )
       )
     }
 

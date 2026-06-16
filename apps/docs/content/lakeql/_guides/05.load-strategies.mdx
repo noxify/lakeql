@@ -66,6 +66,8 @@ Maintains both a latest snapshot and a historical log. Each write updates the cu
     year=2024/month=07/day=01/<uuid>.parquet
 ```
 
+The partition structure above reflects the default `partitioningFormat` of `"year/month/day"`. When partitioning is disabled (`partitioning: false`), historical files are written flat under `all.parquet/<uuid>.parquet`. When using field-based partitioning, files are grouped by the specified field's date value instead of write timestamp.
+
 ### Hive tables
 
 | Table name           | Points to                   |
@@ -120,6 +122,8 @@ Only adds data. Never deletes or overwrites existing files. Each write creates a
     year=2024/month=06/day=16/<uuid-3>.parquet
 ```
 
+The partition structure depends on the `partitioningFormat` setting. When partitioning is disabled (`partitioning: false`), files are written flat under `all.parquet/<uuid>.parquet`. When using field-based partitioning, files are grouped by the specified field's date value.
+
 ### Hive tables
 
 | Table name    | Points to                 |
@@ -170,10 +174,27 @@ When no `loadStrategy` is specified in the mutation configuration, the pipeline 
 
 ## Partition Path Format
 
-For strategies that use partitioned storage (`full_load_append` and `append`), the partition path is generated from the current date:
+For strategies that use partitioned storage (`full_load_append` and `append`), the partition path format is configurable via the `partitioningFormat` field:
 
-```
-year=YYYY/month=MM/day=DD/<uuid>.parquet
-```
+| `partitioningFormat` | Path structure                             |
+| -------------------- | ------------------------------------------ |
+| `"year/month/day"`   | `year=2024/month=06/day=15/<uuid>.parquet` |
+| `"year/month"`       | `year=2024/month=06/<uuid>.parquet`        |
+| `"year"`             | `year=2024/<uuid>.parquet`                 |
 
-The UUID filename prevents collisions when multiple writes occur on the same day. The date-based partitioning enables efficient pruning when querying historical data.
+The default is `"year/month/day"`. The UUID filename prevents collisions when multiple writes occur within the same partition. The date-based partitioning enables efficient pruning when querying historical data.
+
+### Partitioning modes
+
+The `partitioning` field controls which date value is used for partition paths:
+
+- **`true`** (default) — Partitions by the write timestamp. A `load_timestamp` column is injected into the Parquet output.
+- **`false`** — Disables partitioning entirely. Files are written flat under `all.parquet/<uuid>.parquet` with no date directories.
+- **`"field_name"`** — Partitions by the value of the named date/datetime field in the record data. No `load_timestamp` is injected.
+- **Custom format string** (e.g. `"customer_id/event_date:year/event_date:month"`) — Partitions by a combination of fields and date components. See the [Mutations guide](/lakeql/guides/mutations#custom-partition-format) for syntax details.
+
+<Note>
+  The `full_load` strategy ignores partitioning entirely — it always writes a
+  single `latest.parquet` file regardless of the `partitioning` or
+  `partitioningFormat` settings.
+</Note>

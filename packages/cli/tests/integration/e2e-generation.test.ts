@@ -32,6 +32,8 @@ const complexDefinition: EndpointDefinitionFormat = {
     type: "s3",
     bucket: "analytics-datalake",
     basePath: "warehouse/analytics/tracking/user_events",
+    partitioning: true,
+    partitioningFormat: "year/month/day",
   },
   fields: [
     { name: "event_id", type: "String" },
@@ -72,6 +74,72 @@ const complexDefinition: EndpointDefinitionFormat = {
         ],
       },
     },
+  ],
+}
+
+/**
+ * Endpoint definition with partitioning config (non-full_load strategy).
+ */
+const partitionedDefinition: EndpointDefinitionFormat = {
+  version: "1.0",
+  tableName: "partitioned_events",
+  catalog: "analytics",
+  schema: "tracking",
+  mutation: {
+    loadStrategy: "append",
+    type: "s3",
+    bucket: "analytics-datalake",
+    basePath: "warehouse/analytics/tracking/partitioned_events",
+    partitioning: "event_date",
+    partitioningFormat: "year/month",
+  },
+  fields: [
+    { name: "event_id", type: "String" },
+    { name: "event_date", type: "Date" },
+  ],
+}
+
+/**
+ * Endpoint definition with full_load strategy (partitioning should be omitted).
+ */
+const fullLoadDefinition: EndpointDefinitionFormat = {
+  version: "1.0",
+  tableName: "full_load_events",
+  catalog: "analytics",
+  schema: "tracking",
+  mutation: {
+    loadStrategy: "full_load",
+    type: "s3",
+    bucket: "analytics-datalake",
+    basePath: "warehouse/analytics/tracking/full_load_events",
+    partitioning: "event_date",
+    partitioningFormat: "year/month",
+  },
+  fields: [
+    { name: "event_id", type: "String" },
+    { name: "event_date", type: "Date" },
+  ],
+}
+
+/**
+ * Endpoint definition with partitioning: true (timestamp mode).
+ */
+const timestampPartitionedDefinition: EndpointDefinitionFormat = {
+  version: "1.0",
+  tableName: "timestamp_events",
+  catalog: "analytics",
+  schema: "tracking",
+  mutation: {
+    loadStrategy: "full_load_append",
+    type: "s3",
+    bucket: "analytics-datalake",
+    basePath: "warehouse/analytics/tracking/timestamp_events",
+    partitioning: true,
+    partitioningFormat: "year/month/day",
+  },
+  fields: [
+    { name: "event_id", type: "String" },
+    { name: "timestamp", type: "DateTime" },
   ],
 }
 
@@ -413,6 +481,60 @@ describe("end-to-end generation (integration)", () => {
           `Expected ${file.fileName} to have non-empty content`
         ).toBeGreaterThan(0)
       }
+    })
+  })
+
+  describe("config.ts includes partitioning fields for non-full_load strategies", () => {
+    it("should include partitioning and partitioningFormat in config.ts when loadStrategy is append", async () => {
+      await generateEndpoint({
+        definition: partitionedDefinition,
+        outputDir,
+        skipRegistry: true,
+      })
+
+      const configContent = await readFile(
+        path.join(outputDir, "config.ts"),
+        "utf-8"
+      )
+
+      expect(configContent).toContain("partitioning")
+      expect(configContent).toContain('"event_date"')
+      expect(configContent).toContain("partitioningFormat")
+      expect(configContent).toContain('"year/month"')
+    })
+
+    it("should include partitioning: true in config.ts when timestamp partitioning is used", async () => {
+      await generateEndpoint({
+        definition: timestampPartitionedDefinition,
+        outputDir,
+        skipRegistry: true,
+      })
+
+      const configContent = await readFile(
+        path.join(outputDir, "config.ts"),
+        "utf-8"
+      )
+
+      expect(configContent).toContain("partitioning")
+      expect(configContent).toContain("true")
+      expect(configContent).toContain("partitioningFormat")
+      expect(configContent).toContain('"year/month/day"')
+    })
+
+    it("should NOT include partitioning or partitioningFormat in config.ts when loadStrategy is full_load", async () => {
+      await generateEndpoint({
+        definition: fullLoadDefinition,
+        outputDir,
+        skipRegistry: true,
+      })
+
+      const configContent = await readFile(
+        path.join(outputDir, "config.ts"),
+        "utf-8"
+      )
+
+      expect(configContent).not.toContain("partitioning")
+      expect(configContent).not.toContain("partitioningFormat")
     })
   })
 })
