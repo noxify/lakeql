@@ -1,5 +1,11 @@
 # @lakeql/create-app
 
+## 0.2.3
+
+### Patch Changes
+
+- 5c3c967: update dependencies
+
 ## 0.2.2
 
 ### Patch Changes

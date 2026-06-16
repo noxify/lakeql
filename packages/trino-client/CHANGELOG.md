@@ -1,5 +1,11 @@
 # @lakeql/trino-client
 
+## 0.3.1
+
+### Patch Changes
+
+- 5c3c967: update dependencies
+
 ## 0.3.0
 
 ### Minor Changes

@@ -1,5 +1,24 @@
 # @lakeql/file-generator
 
+## 0.1.6
+
+### Patch Changes
+
+- 3d4e6c9: Add configurable partitioning support for write pipelines
+  - Introduce `partitioning` and `partitioningFormat` options to mutation config
+  - Support timestamp-based (default), field-based, custom format, and disabled partitioning modes
+  - Add validation for custom partition format strings with date component extraction
+  - Enrich schema and records with `load_timestamp` for timestamp-based partitioning
+  - Generate flat paths when partitioning is disabled
+  - Group records by partition field or custom format segments
+  - Wire partitioning config through CLI generation and file-generator output
+
+- 5c3c967: update dependencies
+- Updated dependencies [3d4e6c9]
+- Updated dependencies [5c3c967]
+  - @lakeql/schema-generator@0.4.0
+  - @lakeql/helpers@0.1.3
+
 ## 0.1.5
 
 ### Patch Changes
