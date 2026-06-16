@@ -14,16 +14,22 @@ lakeql-cli pull [options]
 
 ## Options
 
-| Flag                   | Type    | Required | Default                | Description                     |
-| ---------------------- | ------- | -------- | ---------------------- | ------------------------------- |
-| `--catalog <catalog>`  | string  | No       | `HIVE_CATALOG` env var | Catalog to use                  |
-| `--type <type>`        | string  | No       | —                      | Show tables or views            |
-| `--schema <schema>`    | string  | No       | —                      | Schema to use                   |
-| `--table <table>`      | string  | No       | —                      | Table to use (can be repeated)  |
-| `--skip-registry`      | boolean | No       | `false`                | Skip config registry generation |
-| `--source-path <path>` | string  | No       | Invocation directory   | Base path for generated code    |
+| Flag                   | Type    | Required | Default                | Description                          |
+| ---------------------- | ------- | -------- | ---------------------- | ------------------------------------ |
+| `--catalog <catalog>`  | string  | No       | `HIVE_CATALOG` env var | Catalog to use                       |
+| `--type <type>`        | string  | No       | —                      | Show tables or views                 |
+| `--schema <schema>`    | string  | No       | —                      | Schema to use                        |
+| `--table <table>`      | string  | No       | —                      | Table to use (can be repeated)       |
+| `--skip-registry`      | boolean | No       | `false`                | Skip config registry generation      |
+| `--source-path <path>` | string  | No       | Invocation directory   | Base path for generated code         |
+| `--bulk`               | boolean | No       | `false`                | Run in bulk mode using a config file |
+| `--bulk-config <path>` | string  | No       | `import.config.mjs`    | Path to the bulk import config file  |
 
 The `--table` flag can be passed multiple times to generate endpoints for several tables in one run.
+
+## Bulk mode
+
+When `--bulk` is specified, the command reads a config file and processes multiple schemas and tables in parallel. See [Bulk Pull](/cli/02.commands/09.bulk-pull) for details.
 
 ## Generated files
 

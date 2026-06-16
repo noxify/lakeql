@@ -1,10 +1,6 @@
 // oxlint-disable no-await-in-loop
-import path from "node:path"
-
-import { Command } from "@commander-js/extra-typings"
-import { parseColumns } from "@lakeql/column-parser"
+import { Command, Option } from "@commander-js/extra-typings"
 import { error } from "@lakeql/logger/console"
-import { convertTrinoResponse } from "@lakeql/response-transformer"
 import { TrinoClient } from "@lakeql/trino-client"
 import { multiselect, select, validators } from "@topcli/prompts"
 
@@ -18,8 +14,19 @@ import {
   tableOption,
   tableOrSchemaOption,
 } from "@/options"
-import { generateEndpoint } from "@/pipeline/generate"
-import { trinoColumnsToDefinition } from "@/pipeline/trino-to-definition"
+
+import { executeBulkPull } from "./bulk-pull"
+import { executePull } from "./pull-action"
+
+const bulkOption = new Option(
+  "--bulk",
+  "Run in bulk mode using a config file"
+).default(false)
+
+const bulkConfigOption = new Option(
+  "--bulk-config <path>",
+  "Path to the bulk import config file (default: import.config.mjs)"
+).default("import.config.mjs")
 
 export default function PullCommand() {
   const program = new Command("pull")
@@ -38,12 +45,11 @@ export default function PullCommand() {
     )
     .addOption(skipRegistryOption)
     .addOption(sourcePathOption)
+    .addOption(bulkOption)
+    .addOption(bulkConfigOption)
 
   pullCommand.action(async (props) => {
-    const env = getEnv()
-    const { skipRegistry, sourcePath } = props
-    const catalog = props.catalog ?? env.HIVE_CATALOG
-    let { schema, table: tables, type } = props
+    const { skipRegistry, sourcePath, bulk, bulkConfig } = props
 
     // CLI --source-path overrides config; if it's the default (invocation cwd), use config
     const cliOverride =
@@ -51,6 +57,23 @@ export default function PullCommand() {
       sourcePath === (process.env.INIT_CWD ?? process.cwd())
         ? undefined
         : sourcePath
+
+    // Bulk mode: load config and process all entries in parallel
+    if (bulk) {
+      await executeBulkPull({
+        configPath: bulkConfig,
+        catalog: props.catalog,
+        sourcePathOverride: cliOverride,
+        skipRegistry,
+      })
+      return
+    }
+
+    // Interactive / single-schema mode
+    const env = getEnv()
+    const catalog = props.catalog ?? env.HIVE_CATALOG
+    let { schema, table: tables, type } = props
+
     const resolvedTargetPath = resolveSourcePath(cliOverride)
 
     const trinoClient = new TrinoClient({
@@ -86,6 +109,7 @@ export default function PullCommand() {
     }
 
     if (tables.length === 0) {
+      type ??= "tables"
       let remoteTables: string[] = []
       remoteTables =
         type === "views"
@@ -94,66 +118,29 @@ export default function PullCommand() {
 
       if (remoteTables.length === 0) {
         program.error(
-          error(`There are no tables in schema '${catalog}.${schema}'.`),
+          error(`There are no ${type} in schema '${catalog}.${schema}'.`),
           {
             exitCode: 0,
           }
         )
       }
 
-      tables = await multiselect("Choose the tables to pull", {
+      tables = await multiselect(`Choose the ${type} to pull`, {
         autocomplete: true,
         choices: remoteTables,
         validators: [validators.required()],
       })
     }
 
-    for (const table of tables) {
-      const columns = await trinoClient.columns({
-        catalog,
-        schema,
-        table,
-      })
-
-      const transformedResponse = columns.map((values) =>
-        convertTrinoResponse<{
-          name: string
-          type: string
-          extra: string
-          description: string
-        }>({
-          keys: ["name", "type", "extra", "description"],
-          values,
-        })
-      )
-
-      const parsedColumns = parseColumns(transformedResponse)
-
-      // Convert Trino columns to EndpointDefinitionFormat
-      const definition = trinoColumnsToDefinition({
-        tableName: table,
-        catalog,
-        schema,
-        parsedColumns,
-      })
-
-      // Compute output directory
-      const targetPath = path.join(
-        resolvedTargetPath,
-        "schemas/generated",
-        catalog,
-        schema,
-        table
-      )
-
-      // Generate using the unified pipeline
-      await generateEndpoint({
-        definition,
-        outputDir: targetPath,
-        skipRegistry,
-        sourcePathOverride: cliOverride,
-      })
-    }
+    await executePull({
+      trinoClient,
+      catalog,
+      schema,
+      tables: [...tables],
+      resolvedTargetPath,
+      skipRegistry,
+      sourcePathOverride: cliOverride,
+    })
   })
 
   return pullCommand

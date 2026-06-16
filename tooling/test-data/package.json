@@ -19,7 +19,7 @@
     "@lakeql/tsconfig": "workspace:*",
     "@types/node": "24.13.2",
     "cleye": "2.6.0",
-    "files-sdk": "1.8.0",
+    "files-sdk": "1.9.0",
     "hyparquet-writer": "0.15.6",
     "ora": "9.4.0",
     "p-map": "7.0.4",

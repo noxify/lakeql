@@ -38,6 +38,10 @@
   "sideEffects": false,
   "exports": {
     ".": {
+      "import": "./dist/index.mjs",
+      "types": "./dist/index.d.mts"
+    },
+    "./cli": {
       "import": "./dist/cli.mjs"
     }
   },
@@ -68,8 +72,8 @@
     "globby": "16.2.0",
     "handlebars": "4.7.9",
     "kleur": "4.1.5",
+    "listr2": "10.2.1",
     "lodash-es": "4.18.1",
-    "ora": "9.4.0",
     "read-pkg": "10.1.0",
     "zod": "4.4.3"
   },
