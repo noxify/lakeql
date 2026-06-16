@@ -30,7 +30,7 @@ export default function configRegistryCommand() {
 }
 
 export async function runConfigRegistryGeneration(cliOverride?: string) {
-  const targetPath = resolveSourcePath(cliOverride)
+  const targetPath = await resolveSourcePath(cliOverride)
 
   const configFiles = await globby("schemas/**/config.ts", {
     cwd: targetPath,

@@ -1,9 +1,20 @@
 ---
 title: Config File
-description: Reference for the lakeql.config.json configuration file.
+description: Reference for the lakeql config file.
 ---
 
-The `lakeql.config.json` file controls where the CLI places generated code. It is created by running `lakeql-cli init`.
+The lakeql config file controls where the CLI places generated code. It is created by running `lakeql-cli init`.
+
+## Supported formats
+
+The CLI supports multiple config file formats, loaded in the following precedence order (first match wins):
+
+1. `lakeql.config.mjs` (recommended)
+2. `lakeql.config.ts`
+3. `lakeql.config.js`
+4. `lakeql.config.json`
+
+Config loading is powered by [c12](https://github.com/unjs/c12).
 
 ## Schema
 
@@ -26,11 +37,24 @@ interface LakeQLConfig {
 
 ## Path resolution
 
-- Relative paths are resolved from the directory where `lakeql.config.json` lives.
+- Relative paths are resolved from the directory where the config file lives.
 - If `src/` is detected during `lakeql-cli init`, `sourcePath` is set to `"src"` automatically.
 - The CLI `--source-path` flag overrides the config value for that invocation.
 
-## Example
+## Examples
+
+### MJS (recommended)
+
+```javascript
+// lakeql.config.mjs
+
+/** @type {import('@lakeql/cli').LakeQLConfig} */
+export default {
+  sourcePath: "src",
+}
+```
+
+### JSON
 
 ```json
 {
@@ -38,4 +62,4 @@ interface LakeQLConfig {
 }
 ```
 
-With this config, running `lakeql-cli pull` places generated files under `src/schemas/generated/{catalog}/{schema}/{table}/`.
+With either config, running `lakeql-cli pull` places generated files under `src/schemas/generated/{catalog}/{schema}/{table}/`.

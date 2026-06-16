@@ -23,7 +23,7 @@ lakeql-cli pull [options]
 | `--skip-registry`      | boolean | No       | `false`                | Skip config registry generation      |
 | `--source-path <path>` | string  | No       | Invocation directory   | Base path for generated code         |
 | `--bulk`               | boolean | No       | `false`                | Run in bulk mode using a config file |
-| `--bulk-config <path>` | string  | No       | `import.config.mjs`    | Path to the bulk import config file  |
+| `--bulk-config <path>` | string  | No       | auto-detected          | Path to the bulk import config file  |
 
 The `--table` flag can be passed multiple times to generate endpoints for several tables in one run.
 

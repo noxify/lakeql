@@ -17,14 +17,16 @@ lakeql-cli pull --bulk [options]
 | Flag                   | Type    | Required | Default              | Description                         |
 | ---------------------- | ------- | -------- | -------------------- | ----------------------------------- |
 | `--bulk`               | boolean | Yes      | —                    | Enables bulk mode                   |
-| `--bulk-config <path>` | string  | No       | `import.config.mjs`  | Path to the bulk import config file |
+| `--bulk-config <path>` | string  | No       | auto-detected        | Path to the bulk import config file |
 | `--catalog <catalog>`  | string  | No       | `HIVE_CATALOG` env   | Global catalog override             |
 | `--skip-registry`      | boolean | No       | `false`              | Skip config registry generation     |
 | `--source-path <path>` | string  | No       | Invocation directory | Base path for generated code        |
 
 ## Config file
 
-The config file is an ES module (`.mjs`) that exports an array of pull entries. Use the `@type` JSDoc annotation for type-safety and autocomplete:
+The config file is automatically detected by looking for `import.config.{mjs,ts,js,json}` in the current directory (powered by [c12](https://github.com/unjs/c12)). You can override this with `--bulk-config`.
+
+Use the `@type` JSDoc annotation for type-safety and autocomplete:
 
 ```javascript
 // import.config.mjs
@@ -48,6 +50,15 @@ export default [
   },
 ]
 ```
+
+### Supported formats
+
+The config file can be any of the following (in precedence order):
+
+1. `import.config.mjs`
+2. `import.config.ts`
+3. `import.config.js`
+4. `import.config.json`
 
 ## Config schema
 
@@ -81,7 +92,7 @@ The catalog is resolved in the following order (first match wins):
 ## Usage
 
 ```bash
-# Using default config file (import.config.mjs)
+# Auto-detect config file (import.config.mjs, .ts, .js, or .json)
 lakeql-cli pull --bulk
 
 # Using a custom config file

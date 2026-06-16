@@ -1,49 +1,47 @@
-import { existsSync, readFileSync } from "node:fs"
 import path from "node:path"
+
+import { loadConfig as c12LoadConfig } from "c12"
 
 import { getInvocationCwd } from "@/path-utils"
 
 export interface LakeQLConfig {
   /**
    * Base path for code generation (schemas, config-registry, etc.).
-   * Relative paths are resolved from the project root (where lakeql.config.json lives).
+   * Relative paths are resolved from the project root (where the config file lives).
    * @default "."
    */
   sourcePath: string
 }
-
-const CONFIG_FILE_NAME = "lakeql.config.json"
 
 const defaultConfig: LakeQLConfig = {
   sourcePath: ".",
 }
 
 /**
- * Loads the lakeql.config.json from the invocation directory.
- * Returns default values if the config file doesn't exist.
+ * Loads the lakeql config using c12.
+ * Supports .ts, .mjs, .js, .json formats.
+ * Searches for: lakeql.config.{ts,mjs,js,json}
  */
-export function loadConfig(): LakeQLConfig {
-  const configPath = path.join(getInvocationCwd(), CONFIG_FILE_NAME)
+export async function loadConfig(): Promise<LakeQLConfig> {
+  const { config } = await c12LoadConfig<LakeQLConfig>({
+    name: "lakeql",
+    cwd: getInvocationCwd(),
+    defaults: defaultConfig,
+    packageJson: false,
+    globalRc: false,
+    rcFile: false,
+    dotenv: false,
+  })
 
-  if (!existsSync(configPath)) {
-    return defaultConfig
-  }
-
-  const raw = readFileSync(configPath, "utf-8")
-  const parsed = JSON.parse(raw) as Partial<LakeQLConfig>
-
-  return {
-    ...defaultConfig,
-    ...parsed,
-  }
+  return config as LakeQLConfig
 }
 
 /**
  * Resolves the source path from config, with an optional CLI override.
  * CLI parameter takes precedence over config value.
  */
-export function resolveSourcePath(cliOverride?: string): string {
-  const config = loadConfig()
+export async function resolveSourcePath(cliOverride?: string): Promise<string> {
+  const config = await loadConfig()
   const cwd = getInvocationCwd()
 
   const sourcePath = cliOverride ?? config.sourcePath
@@ -54,5 +52,3 @@ export function resolveSourcePath(cliOverride?: string): string {
 
   return path.resolve(cwd, sourcePath)
 }
-
-export { CONFIG_FILE_NAME }

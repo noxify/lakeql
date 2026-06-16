@@ -125,7 +125,7 @@ export default function createEndpointCommand() {
       console.log("")
 
       // Generate files
-      const resolvedSourcePath = resolveSourcePath(
+      const resolvedSourcePath = await resolveSourcePath(
         sourcePath === process.cwd() ? undefined : sourcePath
       )
       const outputDir = path.join(

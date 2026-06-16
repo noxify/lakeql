@@ -6,20 +6,44 @@ import { Command } from "@commander-js/extra-typings"
 import { question, select } from "@topcli/prompts"
 import kleur from "kleur"
 
-import { CONFIG_FILE_NAME } from "@/config"
 import type { LakeQLConfig } from "@/config"
 import { getInvocationCwd } from "@/path-utils"
 
+const CONFIG_FILES = [
+  "lakeql.config.mjs",
+  "lakeql.config.ts",
+  "lakeql.config.json",
+] as const
+
+function serializeMjsConfig(config: LakeQLConfig): string {
+  const entries = Object.entries(config)
+    .map(([key, value]) => `  ${key}: ${JSON.stringify(value)},`)
+    .join("\n")
+
+  return `/** @type {import('@lakeql/cli').LakeQLConfig} */\nexport default {\n${entries}\n}\n`
+}
+
+function findExistingConfig(cwd: string): string | null {
+  for (const name of CONFIG_FILES) {
+    if (existsSync(path.join(cwd, name))) {
+      return name
+    }
+  }
+  return null
+}
+
 export default function initCommand() {
   const program = new Command("init")
-    .description("Initialize a lakeql.config.json configuration file")
+    .description("Initialize a lakeql config file")
     .action(async () => {
       const cwd = getInvocationCwd()
-      const configPath = path.join(cwd, CONFIG_FILE_NAME)
 
-      if (existsSync(configPath)) {
+      // Check if any config already exists
+      const existing = findExistingConfig(cwd)
+
+      if (existing) {
         const overwrite = await select(
-          `${CONFIG_FILE_NAME} already exists. Overwrite?`,
+          `${existing} already exists. Overwrite?`,
           {
             choices: [
               { label: "Yes", value: "yes" },
@@ -35,13 +59,20 @@ export default function initCommand() {
         }
       }
 
-      // detect if a src directory exists
+      // Choose config format
+      const format = await select("Config format:", {
+        choices: [
+          { label: "lakeql.config.mjs (recommended)", value: "mjs" },
+          { label: "lakeql.config.json", value: "json" },
+        ],
+      })
+
+      // Detect if a src directory exists
       const hasSrc = existsSync(path.join(cwd, "src"))
 
       let resolvedSourcePath: string
 
       if (hasSrc) {
-        // If src/ exists, schemas always go in src/
         resolvedSourcePath = "src"
         // oxlint-disable-next-line no-console
         console.log(
@@ -77,10 +108,19 @@ export default function initCommand() {
         sourcePath: resolvedSourcePath,
       }
 
-      await writeFile(configPath, `${JSON.stringify(config, null, 2)}\n`)
+      const fileName =
+        format === "mjs" ? "lakeql.config.mjs" : "lakeql.config.json"
+      const configPath = path.join(cwd, fileName)
+
+      const content =
+        format === "mjs"
+          ? serializeMjsConfig(config)
+          : `${JSON.stringify(config, null, 2)}\n`
+
+      await writeFile(configPath, content)
 
       // oxlint-disable-next-line no-console
-      console.log(kleur.green(`Created ${CONFIG_FILE_NAME} at ${configPath}`))
+      console.log(kleur.green(`Created ${fileName} at ${configPath}`))
     })
 
   return program

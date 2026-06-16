@@ -25,8 +25,8 @@ const bulkOption = new Option(
 
 const bulkConfigOption = new Option(
   "--bulk-config <path>",
-  "Path to the bulk import config file (default: import.config.mjs)"
-).default("import.config.mjs")
+  "Path to the bulk import config file (default: import.config.{mjs,ts,js,json})"
+)
 
 export default function PullCommand() {
   const program = new Command("pull")
@@ -74,7 +74,7 @@ export default function PullCommand() {
     const catalog = props.catalog ?? env.HIVE_CATALOG
     let { schema, table: tables, type } = props
 
-    const resolvedTargetPath = resolveSourcePath(cliOverride)
+    const resolvedTargetPath = await resolveSourcePath(cliOverride)
 
     const trinoClient = new TrinoClient({
       auth: {

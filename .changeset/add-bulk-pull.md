@@ -10,6 +10,9 @@ Add bulk pull mode (`--bulk`) to the `pull` command for importing multiple schem
 - Schema entries are processed in parallel using `listr2`
 - Catalog precedence: CLI flag > config entry > ENV variable
 - Config registry is generated once at the end (not per entry)
-- Exports `BulkPullConfig` and `BulkPullEntry` types for type-safe config files
+- Exports `BulkPullConfig`, `BulkPullEntry`, and `LakeQLConfig` types for type-safe config files
 - Replaces `ora` with `listr2` for structured terminal output
 - Extracts reusable `executePull` action from the pull command
+- Migrates config loading to [c12](https://github.com/unjs/c12) — supports `.mjs`, `.ts`, `.js`, `.json` formats
+- `lakeql.config.mjs` now takes precedence over `lakeql.config.json`
+- `init` command now lets you choose between `.mjs` (recommended) and `.json` format

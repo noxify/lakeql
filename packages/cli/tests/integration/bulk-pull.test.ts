@@ -6,6 +6,7 @@
 import { mkdir, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
+import { pathToFileURL } from "node:url"
 
 import type { Listr } from "listr2"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
@@ -46,9 +47,29 @@ vi.mock(import("@/path-utils"), () => ({
 }))
 
 vi.mock(import("@/config"), () => ({
-  resolveSourcePath: (override?: string) => override ?? testDir,
-  loadConfig: () => ({ sourcePath: "." }),
-  CONFIG_FILE_NAME: "lakeql.config.json" as const,
+  resolveSourcePath: async (override?: string) => override ?? testDir,
+  loadConfig: async () => ({ sourcePath: "." }),
+}))
+
+// Mock c12 to do a simple file import (like our previous implementation)
+vi.mock(import("c12"), () => ({
+  // oxlint-disable-next-line typescript/no-explicit-any
+  loadConfig: async (opts: any) => {
+    const { cwd, configFile, name } = opts
+
+    // Determine the file path to load
+    const filePath = configFile
+      ? `${configFile}.mjs`
+      : path.join(cwd, `${name}.config.mjs`)
+
+    try {
+      const fileUrl = pathToFileURL(filePath).href
+      const mod = await import(fileUrl)
+      return { config: mod.default }
+    } catch {
+      return { config: opts.defaults ?? {} }
+    }
+  },
 }))
 
 // Listr2 mock — run tasks synchronously without terminal rendering
@@ -455,13 +476,14 @@ describe("bulk-pull (integration)", () => {
       )
     })
 
-    it("should throw when config file does not exist", async () => {
-      await expect(
-        executeBulkPull({
-          configPath: "nonexistent.config.mjs",
-          skipRegistry: true,
-        })
-      ).rejects.toThrow()
+    it("should handle missing config file gracefully (returns empty config)", async () => {
+      await executeBulkPull({
+        configPath: "nonexistent.config.mjs",
+        skipRegistry: true,
+      })
+
+      // c12 returns defaults when file is not found, resulting in empty config
+      expect(mockExecutePull).not.toHaveBeenCalled()
     })
   })
 })

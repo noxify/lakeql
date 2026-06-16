@@ -1,98 +1,121 @@
 // oxlint-disable vitest/require-mock-type-parameters
-// oxlint-disable import/first
+import { mkdir, rm, writeFile } from "node:fs/promises"
+import { tmpdir } from "node:os"
 import path from "node:path"
 
-import { afterEach, describe, expect, test, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest"
 
-const { mockGetInvocationCwd } = vi.hoisted(() => ({
-  mockGetInvocationCwd: vi.fn(() => "/mock/project"),
+let testDir: string
+
+const mockGetInvocationCwd = vi.fn(() => testDir)
+
+vi.mock(import("@/path-utils"), () => ({
+  getInvocationCwd: () => mockGetInvocationCwd(),
+  resolveFromInvocationCwd: (p: string) =>
+    path.isAbsolute(p) ? p : path.resolve(mockGetInvocationCwd(), p),
 }))
 
-vi.mock(import("../src/path-utils"), () => ({
-  getInvocationCwd: mockGetInvocationCwd,
-}))
-
-vi.mock(import("node:fs"), () => ({
-  existsSync: vi.fn(),
-  readFileSync: vi.fn(),
-}))
-
-import { existsSync, readFileSync } from "node:fs"
-
-import { CONFIG_FILE_NAME, loadConfig, resolveSourcePath } from "../src/config"
-
-describe("CONFIG_FILE_NAME constant", () => {
-  test("is lakeql.config.json", () => {
-    expect(CONFIG_FILE_NAME).toBe("lakeql.config.json")
-  })
-})
+// Import after mock setup
+const { loadConfig, resolveSourcePath } = await import("../src/config")
 
 describe(loadConfig, () => {
-  afterEach(() => {
-    vi.mocked(existsSync).mockReset()
-    vi.mocked(readFileSync).mockReset()
+  beforeEach(async () => {
+    testDir = path.join(
+      tmpdir(),
+      `config-test-${Date.now()}-${Math.random().toString(36).slice(2)}`
+    )
+    await mkdir(testDir, { recursive: true })
   })
 
-  test("returns default config when config file does not exist", () => {
-    vi.mocked(existsSync).mockReturnValue(false)
+  afterEach(async () => {
+    await rm(testDir, { recursive: true, force: true })
+  })
 
-    const config = loadConfig()
+  test("returns default config when no config file exists", async () => {
+    const config = await loadConfig()
     expect(config).toStrictEqual({ sourcePath: "." })
   })
 
-  test("parses config file when it exists", () => {
-    vi.mocked(existsSync).mockReturnValue(true)
-    vi.mocked(readFileSync).mockReturnValue(
+  test("loads config from lakeql.config.json", async () => {
+    await writeFile(
+      path.join(testDir, "lakeql.config.json"),
       JSON.stringify({ sourcePath: "src" })
     )
 
-    const config = loadConfig()
-    expect(config).toStrictEqual({ sourcePath: "src" })
+    const config = await loadConfig()
+    expect(config.sourcePath).toBe("src")
   })
 
-  test("merges with defaults for partial config", () => {
-    vi.mocked(existsSync).mockReturnValue(true)
-    vi.mocked(readFileSync).mockReturnValue(JSON.stringify({}))
+  test("loads config from lakeql.config.mjs", async () => {
+    await writeFile(
+      path.join(testDir, "lakeql.config.mjs"),
+      `export default { sourcePath: "lib" }\n`
+    )
 
-    const config = loadConfig()
+    const config = await loadConfig()
+    expect(config.sourcePath).toBe("lib")
+  })
+
+  test("prefers .mjs over .json when both exist", async () => {
+    await writeFile(
+      path.join(testDir, "lakeql.config.mjs"),
+      `export default { sourcePath: "from-mjs" }\n`
+    )
+    await writeFile(
+      path.join(testDir, "lakeql.config.json"),
+      JSON.stringify({ sourcePath: "from-json" })
+    )
+
+    const config = await loadConfig()
+    expect(config.sourcePath).toBe("from-mjs")
+  })
+
+  test("merges with defaults for partial config", async () => {
+    await writeFile(
+      path.join(testDir, "lakeql.config.json"),
+      JSON.stringify({})
+    )
+
+    const config = await loadConfig()
     expect(config).toStrictEqual({ sourcePath: "." })
   })
 })
 
 describe(resolveSourcePath, () => {
-  afterEach(() => {
-    vi.mocked(existsSync).mockReset()
-    vi.mocked(readFileSync).mockReset()
+  beforeEach(async () => {
+    testDir = path.join(
+      tmpdir(),
+      `config-test-${Date.now()}-${Math.random().toString(36).slice(2)}`
+    )
+    await mkdir(testDir, { recursive: true })
   })
 
-  test("uses CLI override when provided as absolute path", () => {
-    vi.mocked(existsSync).mockReturnValue(false)
+  afterEach(async () => {
+    await rm(testDir, { recursive: true, force: true })
+  })
 
-    const result = resolveSourcePath("/absolute/override")
+  test("uses CLI override when provided as absolute path", async () => {
+    const result = await resolveSourcePath("/absolute/override")
     expect(result).toBe("/absolute/override")
   })
 
-  test("resolves relative CLI override from invocation cwd", () => {
-    vi.mocked(existsSync).mockReturnValue(false)
-
-    const result = resolveSourcePath("custom/path")
-    expect(result).toBe(path.resolve("/mock/project", "custom/path"))
+  test("resolves relative CLI override from invocation cwd", async () => {
+    const result = await resolveSourcePath("custom/path")
+    expect(result).toBe(path.resolve(testDir, "custom/path"))
   })
 
-  test("falls back to config sourcePath when no CLI override", () => {
-    vi.mocked(existsSync).mockReturnValue(true)
-    vi.mocked(readFileSync).mockReturnValue(
+  test("falls back to config sourcePath when no CLI override", async () => {
+    await writeFile(
+      path.join(testDir, "lakeql.config.json"),
       JSON.stringify({ sourcePath: "src" })
     )
 
-    const result = resolveSourcePath()
-    expect(result).toBe(path.resolve("/mock/project", "src"))
+    const result = await resolveSourcePath()
+    expect(result).toBe(path.resolve(testDir, "src"))
   })
 
-  test("uses default sourcePath when config file not found and no override", () => {
-    vi.mocked(existsSync).mockReturnValue(false)
-
-    const result = resolveSourcePath()
-    expect(result).toBe(path.resolve("/mock/project", "."))
+  test("uses default sourcePath when no config file and no override", async () => {
+    const result = await resolveSourcePath()
+    expect(result).toBe(path.resolve(testDir, "."))
   })
 })

@@ -1,7 +1,7 @@
 import path from "node:path"
-import { pathToFileURL } from "node:url"
 
 import { TrinoClient } from "@lakeql/trino-client"
+import { loadConfig as c12LoadConfig } from "c12"
 import { Listr } from "listr2"
 
 import type { BulkPullConfig } from "@/bulk-pull-config"
@@ -14,7 +14,7 @@ import { executePull } from "./pull-action"
 
 export interface BulkPullOptions {
   /** Path to the bulk config file (e.g. import.config.mjs). */
-  configPath: string
+  configPath?: string
   /** CLI --catalog override. */
   catalog?: string
   /** CLI --source-path override. */
@@ -24,17 +24,54 @@ export interface BulkPullOptions {
 }
 
 /**
- * Loads the bulk config from the given .mjs file via dynamic import.
+ * Loads the bulk pull config using c12.
+ * Supports .ts, .mjs, .js, .json formats.
+ * If a custom configPath is provided, it's used as the configFile option.
  */
-async function loadBulkConfig(configPath: string): Promise<BulkPullConfig> {
-  const resolved = path.isAbsolute(configPath)
-    ? configPath
-    : path.resolve(getInvocationCwd(), configPath)
+async function loadBulkConfig(configPath?: string): Promise<BulkPullConfig> {
+  const cwd = getInvocationCwd()
 
-  const fileUrl = pathToFileURL(resolved).href
-  const mod = await import(fileUrl)
+  // If user provides a custom path, extract name from it for c12
+  let configFile: string | undefined
+  if (configPath) {
+    // Strip extension and resolve relative to cwd
+    const resolved = path.isAbsolute(configPath)
+      ? configPath
+      : path.resolve(cwd, configPath)
+    const parsed = path.parse(resolved)
+    // c12 expects configFile without extension
+    configFile = path.join(parsed.dir, parsed.name)
+  }
 
-  return mod.default as BulkPullConfig
+  const { config } = await c12LoadConfig<{ default: BulkPullConfig }>({
+    name: "import",
+    cwd,
+    configFile,
+    defaults: { default: [] },
+    packageJson: false,
+    globalRc: false,
+    rcFile: false,
+    dotenv: false,
+  })
+
+  // c12 resolves the default export into the config object
+  // Handle both shapes: direct array or wrapped in default
+  const resolved = config as unknown
+  if (Array.isArray(resolved)) {
+    return resolved as BulkPullConfig
+  }
+
+  // If c12 wraps it, extract the default
+  if (
+    resolved &&
+    typeof resolved === "object" &&
+    "default" in resolved &&
+    Array.isArray((resolved as { default: unknown }).default)
+  ) {
+    return (resolved as { default: BulkPullConfig }).default
+  }
+
+  return []
 }
 
 /**
@@ -50,7 +87,7 @@ export async function executeBulkPull(options: BulkPullOptions): Promise<void> {
   } = options
 
   const env = getEnv()
-  const resolvedTargetPath = resolveSourcePath(sourcePathOverride)
+  const resolvedTargetPath = await resolveSourcePath(sourcePathOverride)
   const config = await loadBulkConfig(configPath)
 
   if (config.length === 0) {

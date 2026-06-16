@@ -66,6 +66,7 @@
     "@lakeql/trino-client": "workspace:*",
     "@t3-oss/env-core": "0.13.11",
     "@topcli/prompts": "3.1.0",
+    "c12": "4.0.0-beta.5",
     "climt": "0.2.0",
     "commander": "15.0.0",
     "dotenv": "17.4.2",
