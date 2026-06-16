@@ -1,5 +1,11 @@
 # @lakeql/query-builder
 
+## 0.1.3
+
+### Patch Changes
+
+- 5c3c967: update dependencies
+
 ## 0.1.2
 
 ### Patch Changes

@@ -1,5 +1,16 @@
 # @lakeql/api
 
+## 0.2.1
+
+### Patch Changes
+
+- 5c3c967: update dependencies
+- Updated dependencies [5c3c967]
+  - @lakeql/response-transformer@0.1.3
+  - @lakeql/query-builder@0.1.3
+  - @lakeql/trino-client@0.3.1
+  - @lakeql/helpers@0.1.3
+
 ## 0.2.0
 
 ### Minor Changes
