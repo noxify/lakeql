@@ -45,6 +45,26 @@ export interface FieldDefinition {
   options?: FieldOptions
 }
 
+export type PartitioningFormat = "year" | "year/month" | "year/month/day"
+
+export type PartitioningValue = boolean | string
+
+export type PartitioningComponent =
+  | "year"
+  | "month"
+  | "day"
+  | "hour"
+  | "minute"
+  | "second"
+export const PARTITIONING_COMPONENTS: PartitioningComponent[] = [
+  "year",
+  "month",
+  "day",
+  "hour",
+  "minute",
+  "second",
+]
+
 export type LoadStrategy = "full_load" | "full_load_append" | "append"
 
 export type StorageType = "s3" | "minio"
@@ -56,6 +76,8 @@ export interface MutationConfig {
   basePath: string
   region?: string
   endpoint?: string
+  partitioning?: PartitioningValue
+  partitioningFormat?: PartitioningFormat
 }
 
 export interface EndpointDefinition {
@@ -89,6 +111,12 @@ export const LOAD_STRATEGIES: LoadStrategy[] = [
   "full_load",
   "full_load_append",
   "append",
+]
+
+export const PARTITIONING_FORMATS: PartitioningFormat[] = [
+  "year",
+  "year/month",
+  "year/month/day",
 ]
 
 export const FIELD_TYPE_COLORS: Record<FieldType, string> = {

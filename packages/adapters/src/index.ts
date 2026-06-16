@@ -23,9 +23,23 @@ export type {
   HiveTableDefinition,
 } from "./hive-table-manager"
 export { createHiveTableManager } from "./hive-table-manager"
-export { executeWritePipeline, generatePartitionPath } from "./write-pipeline"
+export {
+  executeWritePipeline,
+  generatePartitionPath,
+  generateFlatPath,
+  resolvePartitioningConfig,
+  enrichJsonSchemaWithTimestamp,
+  injectLoadTimestamp,
+  PartitionFieldError,
+  parsePartitioningFormat,
+  generateCustomPartitionPath,
+  groupRecordsByCustomPartition,
+} from "./write-pipeline"
 export type {
   LoadStrategy,
+  PartitionMode,
+  ResolvedPartitioning,
   WritePipelineConfig,
   WritePipelineInput,
+  PartitionSegment,
 } from "./write-pipeline"

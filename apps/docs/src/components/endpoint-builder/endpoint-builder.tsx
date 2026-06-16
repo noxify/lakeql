@@ -406,6 +406,7 @@ export function EndpointBuilder() {
               <MutationForm
                 mutation={def.mutation}
                 onChange={handleMutationChange}
+                fields={def.fields}
               />
             </section>
 

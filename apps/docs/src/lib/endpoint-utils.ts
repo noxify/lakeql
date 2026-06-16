@@ -10,6 +10,8 @@ import type {
   MutationConfig,
   FieldOptions,
   FieldValidation,
+  PartitioningFormat,
+  PartitioningValue,
 } from "./endpoint-types"
 
 export function generateId(): string {
@@ -74,6 +76,11 @@ export function buildOutputJSON(def: EndpointDefinition): OutputDefinition {
   }
 
   if (def.mutation && typeof def.mutation === "object") {
+    const isCustomFormat =
+      typeof def.mutation.partitioning === "string" &&
+      (def.mutation.partitioning.includes("/") ||
+        def.mutation.partitioning.includes(":"))
+
     output.mutation = {
       loadStrategy: def.mutation.loadStrategy,
       type: def.mutation.type,
@@ -81,6 +88,16 @@ export function buildOutputJSON(def: EndpointDefinition): OutputDefinition {
       basePath: def.mutation.basePath,
       ...(def.mutation.region ? { region: def.mutation.region } : {}),
       ...(def.mutation.endpoint ? { endpoint: def.mutation.endpoint } : {}),
+      ...(def.mutation.loadStrategy !== "full_load" &&
+      def.mutation.partitioning !== undefined
+        ? { partitioning: def.mutation.partitioning }
+        : {}),
+      ...(def.mutation.loadStrategy !== "full_load" &&
+      def.mutation.partitioning !== false &&
+      !isCustomFormat &&
+      def.mutation.partitioningFormat !== undefined
+        ? { partitioningFormat: def.mutation.partitioningFormat }
+        : {}),
     }
   }
 
@@ -117,6 +134,76 @@ function parseOutputField(field: OutputField): FieldDefinition {
   return base
 }
 
+/**
+ * Resolve partitioning value during import.
+ * If partitioning is a plain field name with a partitioningFormat,
+ * convert to custom format: e.g. "event_date" + "year/month" → "event_date:year/event_date:month"
+ */
+function resolvePartitioning(
+  partitioningRaw: unknown,
+  isCustomPartitioning: boolean,
+  partitioningFormat: unknown
+): PartitioningValue | undefined {
+  if (
+    typeof partitioningRaw === "string" &&
+    !isCustomPartitioning &&
+    partitioningRaw !== "" &&
+    partitioningFormat &&
+    typeof partitioningFormat === "string"
+  ) {
+    const components = partitioningFormat.split("/")
+    return components.map((c) => `${partitioningRaw}:${c}`).join("/")
+  }
+  if (partitioningRaw !== undefined) {
+    return partitioningRaw as PartitioningValue
+  }
+  return undefined
+}
+
+/** Build a MutationConfig from imported JSON mutation data */
+function buildImportedMutation(
+  mutation: Record<string, unknown>,
+  resolvedPartitioning: PartitioningValue | undefined,
+  isCustomPartitioning: boolean
+): MutationConfig {
+  const config: MutationConfig = {
+    loadStrategy:
+      (mutation.loadStrategy as MutationConfig["loadStrategy"]) ?? "full_load",
+    type: (mutation.type as MutationConfig["type"]) ?? "s3",
+    bucket: (mutation.bucket as string) ?? "",
+    basePath: (mutation.basePath as string) ?? "",
+  }
+
+  if (mutation.region) {
+    config.region = mutation.region as string
+  }
+  if (mutation.endpoint) {
+    config.endpoint = mutation.endpoint as string
+  }
+  if (resolvedPartitioning !== undefined) {
+    config.partitioning = resolvedPartitioning
+  }
+
+  // Keep partitioningFormat for timestamp mode (partitioning === true)
+  if (
+    resolvedPartitioning === true &&
+    mutation.partitioningFormat !== undefined
+  ) {
+    config.partitioningFormat =
+      mutation.partitioningFormat as PartitioningFormat
+  } else if (
+    resolvedPartitioning !== undefined &&
+    !isCustomPartitioning &&
+    typeof resolvedPartitioning !== "string" &&
+    mutation.partitioningFormat !== undefined
+  ) {
+    config.partitioningFormat =
+      mutation.partitioningFormat as PartitioningFormat
+  }
+
+  return config
+}
+
 export function parseImportedJSON(json: unknown): EndpointDefinition | null {
   try {
     const obj = json as Record<string, unknown>
@@ -137,16 +224,24 @@ export function parseImportedJSON(json: unknown): EndpointDefinition | null {
 
     if (obj.mutation && typeof obj.mutation === "object") {
       const mutation = obj.mutation as Record<string, unknown>
-      def.mutation = {
-        loadStrategy:
-          (mutation.loadStrategy as MutationConfig["loadStrategy"]) ??
-          "full_load",
-        type: (mutation.type as MutationConfig["type"]) ?? "s3",
-        bucket: (mutation.bucket as string) ?? "",
-        basePath: (mutation.basePath as string) ?? "",
-        ...(mutation.region ? { region: mutation.region as string } : {}),
-        ...(mutation.endpoint ? { endpoint: mutation.endpoint as string } : {}),
-      }
+
+      // Detect if partitioning is a custom format string (contains / or :)
+      const partitioningRaw = mutation.partitioning
+      const isCustomPartitioning =
+        typeof partitioningRaw === "string" &&
+        (partitioningRaw.includes("/") || partitioningRaw.includes(":"))
+
+      const resolvedPartitioning = resolvePartitioning(
+        partitioningRaw,
+        isCustomPartitioning,
+        mutation.partitioningFormat
+      )
+
+      def.mutation = buildImportedMutation(
+        mutation,
+        resolvedPartitioning,
+        isCustomPartitioning
+      )
     } else if (obj.mutation === false) {
       def.mutation = false
     }

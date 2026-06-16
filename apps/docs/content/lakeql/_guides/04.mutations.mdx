@@ -85,14 +85,87 @@ See the [Load Strategies](/lakeql/guides/load-strategies) guide for detailed exp
 
 ## Mutation Configuration Reference
 
-| Field          | Type   | Required | Description                                                                                         |
-| -------------- | ------ | -------- | --------------------------------------------------------------------------------------------------- |
-| `loadStrategy` | string | Yes      | How data is written. One of `full_load`, `full_load_append`, or `append`.                           |
-| `type`         | string | Yes      | Storage adapter type. One of `s3` or `minio`. Defaults to `s3`.                                     |
-| `bucket`       | string | Yes      | S3 or MinIO bucket name where Parquet files are stored.                                             |
-| `basePath`     | string | Yes      | Path prefix within the bucket (e.g. `warehouse/analytics/events`).                                  |
-| `region`       | string | No       | AWS region override. Falls back to `AWS_DEFAULT_REGION` for S3.                                     |
-| `endpoint`     | string | No       | S3-compatible endpoint URL. Optional for S3 (falls back to `AWS_ENDPOINT_URL`), required for MinIO. |
+| Field                | Type             | Required | Description                                                                                                                                                                                          |
+| -------------------- | ---------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `loadStrategy`       | string           | Yes      | How data is written. One of `full_load`, `full_load_append`, or `append`.                                                                                                                            |
+| `type`               | string           | Yes      | Storage adapter type. One of `s3` or `minio`. Defaults to `s3`.                                                                                                                                      |
+| `bucket`             | string           | Yes      | S3 or MinIO bucket name where Parquet files are stored.                                                                                                                                              |
+| `basePath`           | string           | Yes      | Path prefix within the bucket (e.g. `warehouse/analytics/events`).                                                                                                                                   |
+| `region`             | string           | No       | AWS region override. Falls back to `AWS_DEFAULT_REGION` for S3.                                                                                                                                      |
+| `endpoint`           | string           | No       | S3-compatible endpoint URL. Optional for S3 (falls back to `AWS_ENDPOINT_URL`), required for MinIO.                                                                                                  |
+| `partitioning`       | boolean / string | No       | Controls file partitioning. `true` (default) partitions by write timestamp, `false` disables partitioning (flat layout), or a field name string to partition by that field. Ignored for `full_load`. |
+| `partitioningFormat` | string           | No       | Partition granularity. One of `"year"`, `"year/month"`, or `"year/month/day"` (default). Only applies when `partitioning` is not `false`.                                                            |
+
+## Partitioning
+
+The `partitioning` and `partitioningFormat` fields control how files are organized in storage. These settings apply to `full_load_append` and `append` strategies only — `full_load` ignores partitioning entirely.
+
+### Write-timestamp partitioning (default)
+
+When `partitioning` is `true` (the default), files are partitioned by the current UTC timestamp. A `load_timestamp` column is automatically injected into the Parquet output and added to the Hive DDL.
+
+```json
+{
+  "mutation": {
+    "loadStrategy": "append",
+    "type": "s3",
+    "bucket": "my-datalake",
+    "basePath": "warehouse/raw/events",
+    "partitioning": true,
+    "partitioningFormat": "year/month/day"
+  }
+}
+```
+
+### Disabled partitioning (flat layout)
+
+When `partitioning` is `false`, files are written to a flat directory without date-based directories. No `load_timestamp` column is injected.
+
+```json
+{
+  "mutation": {
+    "loadStrategy": "append",
+    "type": "s3",
+    "bucket": "my-datalake",
+    "basePath": "warehouse/raw/events",
+    "partitioning": false
+  }
+}
+```
+
+File layout with flat partitioning:
+
+```
+<basePath>/
+  all.parquet/
+    <uuid-1>.parquet
+    <uuid-2>.parquet
+```
+
+### Field-based partitioning
+
+When `partitioning` is set to a field name string, records are grouped by the value of that date/datetime field and written to separate partition paths. No `load_timestamp` column is injected.
+
+```json
+{
+  "mutation": {
+    "loadStrategy": "append",
+    "type": "s3",
+    "bucket": "my-datalake",
+    "basePath": "warehouse/raw/events",
+    "partitioning": "event_date",
+    "partitioningFormat": "year/month"
+  }
+}
+```
+
+The field must exist in every record and contain a valid ISO 8601 date or datetime value. Field names must start with a letter or underscore, contain only alphanumeric characters and underscores, and be 1–64 characters long.
+
+<Note>
+  The `partitioning` and `partitioningFormat` fields are not included in the
+  generated config when `loadStrategy` is `full_load`, since full-load always
+  overwrites the entire dataset as a single file.
+</Note>
 
 ## Storage Configuration
 

@@ -131,14 +131,16 @@ The JSON definition file must conform to the `EndpointDefinitionFormat` schema:
 
 The optional `mutation` field controls whether a write pipeline is generated for this endpoint. Set it to `false` (or omit it) for query-only endpoints. Set it to a configuration object to enable the mutation pipeline.
 
-| Field          | Type   | Required | Description                                                                                         |
-| -------------- | ------ | -------- | --------------------------------------------------------------------------------------------------- |
-| `loadStrategy` | string | Yes      | How data is written. One of `full_load`, `full_load_append`, or `append`.                           |
-| `type`         | string | Yes      | Storage adapter type. One of `s3` or `minio`. Defaults to `s3`.                                     |
-| `bucket`       | string | Yes      | S3 or MinIO bucket name where Parquet files are stored.                                             |
-| `basePath`     | string | Yes      | Path prefix within the bucket (e.g. `warehouse/analytics/events`).                                  |
-| `region`       | string | No       | AWS region override. Falls back to `AWS_DEFAULT_REGION` for S3.                                     |
-| `endpoint`     | string | No       | S3-compatible endpoint URL. Optional for S3 (falls back to `AWS_ENDPOINT_URL`), required for MinIO. |
+| Field                | Type             | Required | Description                                                                                                                                                                                                    |
+| -------------------- | ---------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `loadStrategy`       | string           | Yes      | How data is written. One of `full_load`, `full_load_append`, or `append`.                                                                                                                                      |
+| `type`               | string           | Yes      | Storage adapter type. One of `s3` or `minio`. Defaults to `s3`.                                                                                                                                                |
+| `bucket`             | string           | Yes      | S3 or MinIO bucket name where Parquet files are stored.                                                                                                                                                        |
+| `basePath`           | string           | Yes      | Path prefix within the bucket (e.g. `warehouse/analytics/events`).                                                                                                                                             |
+| `region`             | string           | No       | AWS region override. Falls back to `AWS_DEFAULT_REGION` for S3.                                                                                                                                                |
+| `endpoint`           | string           | No       | S3-compatible endpoint URL. Optional for S3 (falls back to `AWS_ENDPOINT_URL`), required for MinIO.                                                                                                            |
+| `partitioning`       | boolean / string | No       | Controls file partitioning. `true` (default) partitions by write timestamp, `false` disables partitioning, or a field name string to partition by that field. Only applies to `full_load_append` and `append`. |
+| `partitioningFormat` | string           | No       | Partition granularity. One of `"year"`, `"year/month"`, or `"year/month/day"` (default). Only applies when `partitioning` is not `false`.                                                                      |
 
 <Note>
   The `type` field defaults to `"s3"`. Use `"minio"` for local development with
@@ -146,6 +148,23 @@ The optional `mutation` field controls whether a write pipeline is generated for
   guide](/lakeql/guides/mutations#storage-configuration) for environment
   variable details.
 </Note>
+
+#### Mutation with partitioning options
+
+```json
+{
+  "mutation": {
+    "loadStrategy": "append",
+    "type": "s3",
+    "bucket": "my-datalake",
+    "basePath": "warehouse/raw/events",
+    "partitioning": "event_date",
+    "partitioningFormat": "year/month"
+  }
+}
+```
+
+The `partitioning` and `partitioningFormat` fields are omitted from generated configs when `loadStrategy` is `full_load`. See the [Mutations guide](/lakeql/guides/mutations#partitioning) for full details on each partitioning mode.
 
 See the [Load Strategies](/lakeql/guides/load-strategies) guide for details on when to use each strategy.
 
