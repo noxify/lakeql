@@ -3,9 +3,7 @@ import { Option } from "@commander-js/extra-typings"
 import { getInvocationCwd } from "@/path-utils"
 
 export function createCatalogOption() {
-  return new Option("--catalog <catalog>", "catalog to use").env(
-    "HIVE_CATALOG"
-  )
+  return new Option("--catalog <catalog>", "catalog to use").env("HIVE_CATALOG")
 }
 
 export function createSchemaOption() {
@@ -28,7 +26,8 @@ export function createSourcePathOption() {
 }
 
 export function createSkipRegistryOption() {
-  return new Option("--skip-registry", "Skip config registry generation").default(
-    false
-  )
+  return new Option(
+    "--skip-registry",
+    "Skip config registry generation"
+  ).default(false)
 }
