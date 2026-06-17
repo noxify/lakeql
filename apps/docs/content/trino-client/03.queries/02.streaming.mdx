@@ -7,7 +7,7 @@ description: Stream query results row-by-row using an async generator for memory
 
 The `stream` method executes a SQL statement and returns an async generator that yields rows one at a time as pages are fetched. Ideal for large result sets where holding all data in memory would be impractical.
 
-```ts shouldAnalyze
+```ts
 import { TrinoClient } from "@lakeql/trino-client"
 
 const client = new TrinoClient({
@@ -33,7 +33,7 @@ for await (const [timestamp, level, duration] of stream) {
 
 Combine streaming with `transform` to get typed objects:
 
-```ts shouldAnalyze
+```ts
 import { TrinoClient } from "@lakeql/trino-client"
 import type { Column } from "@lakeql/trino-client"
 
@@ -71,7 +71,7 @@ for await (const entry of stream) {
 
 Pass an `AbortSignal` to cancel a stream mid-flight:
 
-```ts shouldAnalyze
+```ts
 import { TrinoClient } from "@lakeql/trino-client"
 
 const client = new TrinoClient({
@@ -113,7 +113,7 @@ for await (const row of stream) {
 
 With `query`, all pages are collected into a single array before the promise resolves. With `stream`, each page is fetched on-demand and rows are yielded immediately — only one page of data is held in memory at a time.
 
-```ts shouldAnalyze
+```ts
 import { TrinoClient } from "@lakeql/trino-client"
 
 const client = new TrinoClient({

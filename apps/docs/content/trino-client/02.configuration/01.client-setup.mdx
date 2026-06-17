@@ -46,7 +46,7 @@ The token is sent as an `Authorization: Bearer ...` header.
 
 The client automatically retries on transient failures (HTTP 429, 500, 502, 503, 504 and network errors). Configure retry behavior via the `retry` option:
 
-```ts shouldAnalyze
+```ts
 import { TrinoClient } from "@lakeql/trino-client"
 
 const client = new TrinoClient({
@@ -69,7 +69,7 @@ const client = new TrinoClient({
 
 Set a default timeout (in milliseconds) for all requests. If a request exceeds this duration, it will be aborted:
 
-```ts shouldAnalyze
+```ts
 import { TrinoClient } from "@lakeql/trino-client"
 
 const client = new TrinoClient({

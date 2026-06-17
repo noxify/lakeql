@@ -13,7 +13,7 @@ Each `SortInput` specifies a column to order by and the sort direction. The `fie
 
 The `sorting` parameter accepts an array. Fields are applied in order — the first entry is the primary sort key, subsequent entries are secondary, tertiary, etc.
 
-```ts shouldAnalyze
+```ts
 import { generateQuery } from "@lakeql/query-builder"
 
 interface OrderTable {
@@ -46,7 +46,7 @@ ORDER BY "status" ASC, "created_at" DESC
 
 If a sorted field has a mapping in `transformFields`, the query builder uses the database column name in the ORDER BY clause:
 
-```ts shouldAnalyze
+```ts
 import { generateQuery } from "@lakeql/query-builder"
 
 interface OrderTable {

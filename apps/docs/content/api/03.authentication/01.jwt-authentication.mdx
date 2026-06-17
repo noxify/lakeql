@@ -51,7 +51,7 @@ curl -X POST http://localhost:4000/graphql \
 
 For production, provide a custom `getUser` resolver that verifies tokens using your identity provider:
 
-```ts shouldAnalyze path="src/auth.ts"
+```ts path="src/auth.ts"
 import type { GetUserResolver } from "@lakeql/api/types"
 import { jwtVerify, createRemoteJWKSet } from "jose"
 
@@ -85,7 +85,7 @@ export const getUser: GetUserResolver = async (req) => {
 
 Pass it to `defineConfig` in your `src/config.ts`:
 
-```ts shouldAnalyze path="src/config.ts"
+```ts path="src/config.ts"
 import { defineConfig } from "@lakeql/api/config"
 
 import { getUser } from "./auth"

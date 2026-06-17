@@ -13,7 +13,7 @@ See the [API Reference](/docs/trino-client/api-reference) for full method signat
 
 Lists all schemas in a catalog.
 
-```ts shouldAnalyze
+```ts
 import { TrinoClient } from "@lakeql/trino-client"
 
 const client = new TrinoClient({
@@ -31,7 +31,7 @@ const schemas = await client.schemas({ catalog: "hive" })
 
 Lists all base tables in a catalog and schema.
 
-```ts shouldAnalyze
+```ts
 import { TrinoClient } from "@lakeql/trino-client"
 
 const client = new TrinoClient({
@@ -49,7 +49,7 @@ const tables = await client.tables({ catalog: "hive", schema: "sales" })
 
 Lists all views in a catalog and schema.
 
-```ts shouldAnalyze
+```ts
 import { TrinoClient } from "@lakeql/trino-client"
 
 const client = new TrinoClient({
@@ -67,7 +67,7 @@ const views = await client.views({ catalog: "hive", schema: "sales" })
 
 Lists all columns for a specific table, including their types and metadata.
 
-```ts shouldAnalyze
+```ts
 import { TrinoClient } from "@lakeql/trino-client"
 
 const client = new TrinoClient({
@@ -93,7 +93,7 @@ const columns = await client.columns({
 
 Pass `asObject: true` to get `ColumnInfo[]` objects instead of raw tuples:
 
-```ts shouldAnalyze
+```ts
 import { TrinoClient } from "@lakeql/trino-client"
 
 const client = new TrinoClient({
@@ -121,7 +121,7 @@ for (const col of columns) {
 
 ## Full Discovery Example
 
-```ts shouldAnalyze
+```ts
 import { TrinoClient } from "@lakeql/trino-client"
 
 const client = new TrinoClient({

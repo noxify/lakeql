@@ -18,7 +18,7 @@ The package never executes queries against a database. Instead, it uses Kysely's
 - Map GraphQL field names to database column names via `transformFields`
 - Wrap date/time columns in `to_unixtime()` for serialization
 
-```ts shouldAnalyze
+```ts
 import { generateQuery, getSelectFields } from "@lakeql/query-builder"
 
 const query = generateQuery({

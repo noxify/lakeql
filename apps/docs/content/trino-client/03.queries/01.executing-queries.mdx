@@ -7,7 +7,7 @@ description: Run SQL statements against Trino and collect all result pages into 
 
 The `query` method executes a SQL statement and automatically follows Trino's `nextUri` pagination links until all result pages have been collected.
 
-```ts shouldAnalyze
+```ts
 import { TrinoClient } from "@lakeql/trino-client"
 
 const client = new TrinoClient({
@@ -31,7 +31,7 @@ for (const [id, region, amount] of rows) {
 
 Use the `transform` option to map raw row arrays into typed objects:
 
-```ts shouldAnalyze
+```ts
 import { TrinoClient } from "@lakeql/trino-client"
 import type { Column } from "@lakeql/trino-client"
 
@@ -68,7 +68,7 @@ The `transform` function receives the raw row array and the column metadata, and
 
 Pass `impersonateAs` to execute the query as a different Trino user. This sets the `X-Trino-User` header for that request only:
 
-```ts shouldAnalyze
+```ts
 import { TrinoClient } from "@lakeql/trino-client"
 
 const client = new TrinoClient({
@@ -89,7 +89,7 @@ const rows = await client.query<[string]>({
 
 Cancel a running query using an `AbortSignal`:
 
-```ts shouldAnalyze
+```ts
 import { TrinoClient, TrinoCancellationError } from "@lakeql/trino-client"
 
 const client = new TrinoClient({
@@ -118,7 +118,7 @@ try {
 
 You can also cancel queries by ID:
 
-```ts shouldAnalyze
+```ts
 import { TrinoClient } from "@lakeql/trino-client"
 
 const client = new TrinoClient({
@@ -142,7 +142,7 @@ const active = client.getActiveQueries()
 
 The client throws typed errors depending on the failure:
 
-```ts shouldAnalyze
+```ts
 import {
   TrinoClient,
   TrinoClientError,

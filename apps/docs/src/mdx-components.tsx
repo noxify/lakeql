@@ -258,9 +258,12 @@ export function useMDXComponents() {
     ),
 
     CodeBlock: ({
-      shouldAnalyze = false,
+      shouldAnalyze: _shouldAnalyze,
       ...props
     }: CodeBlockProps & { preview?: boolean }) => {
+      // Disable shouldAnalyze globally to avoid type resolution timeouts during SSG builds.
+      // The MDX files still declare `shouldAnalyze` but we ignore it here.
+      const shouldAnalyze = false
       if (props.language === "mermaid") {
         const { preview = false } = props
         return (
