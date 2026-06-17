@@ -174,7 +174,7 @@ export function InfoTab() {
       </section>
 
       {/* Quick start CTA */}
-      <section className="border-border rounded-lg border bg-gradient-to-r from-transparent to-transparent p-4">
+      <section className="border-border rounded-lg border bg-linear-to-r from-transparent to-transparent p-4">
         <p className="text-muted-foreground text-sm">
           Ready to start? Head to the{" "}
           <strong className="text-foreground">General</strong> tab to configure
