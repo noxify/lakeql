@@ -9,7 +9,7 @@ LakeQL's extension points let you replace built-in behavior with custom implemen
 
 Replace the built-in mock auth with your own JWT verification:
 
-```typescript
+```ts
 import type { GetUserResolver } from "@lakeql/api/types"
 import { jwtVerify } from "jose"
 
@@ -30,7 +30,7 @@ export const customGetUser: GetUserResolver = async (req) => {
 
 Override how read permissions are evaluated:
 
-```typescript
+```ts
 import type { ReadPermissionResolver } from "@lakeql/api/types"
 
 export const customReadPermission: ReadPermissionResolver = ({
@@ -57,7 +57,7 @@ export const customReadPermission: ReadPermissionResolver = ({
 
 Override how write permissions are evaluated:
 
-```typescript
+```ts
 import type { WritePermissionResolver } from "@lakeql/api/types"
 
 export const customWritePermission: WritePermissionResolver = ({
@@ -83,7 +83,7 @@ export const customWritePermission: WritePermissionResolver = ({
 
 Pass all custom resolvers via `defineConfig`:
 
-```typescript
+```ts
 import { defineConfig } from "@lakeql/api/config"
 import { allConfigs } from "./generated/configs"
 import { customGetUser } from "./auth"
@@ -101,7 +101,7 @@ export default defineConfig({
 
 Register additional scalars on the shared builder in a `query-schema.ts` file. Place it in a directory that sorts alphabetically before your other schemas (e.g., `00-scalars/`) to ensure the scalars are available when other schema files are loaded.
 
-```typescript path="src/schemas/00-scalars/query-schema.ts"
+```ts path="src/schemas/00-scalars/query-schema.ts"
 import { builder } from "@lakeql/api/builder"
 import { JSONResolver, BigIntResolver } from "graphql-scalars"
 
@@ -140,7 +140,7 @@ src/
     └── ...
 ```
 
-```typescript path="src/schemas/00-scalars/query-schema.ts"
+```ts path="src/schemas/00-scalars/query-schema.ts"
 import { GraphQLInt } from "graphql"
 
 // Preserve the original serializer as a fallback

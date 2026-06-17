@@ -7,13 +7,13 @@ description: Create a configured Hono application with GraphQL Yoga integration,
 
 ## Signature
 
-```typescript
+```ts
 function createApiServer(options?: ApiRuntimeConfig): Promise<ApiServer>
 ```
 
 ## Return type
 
-```typescript
+```ts
 interface ApiServer {
   app: Hono
   logger: ReturnType<typeof createLogger>
@@ -37,7 +37,7 @@ interface ApiServer {
 
 ## Usage
 
-```typescript path="src/server.ts"
+```ts path="src/server.ts"
 import { createApiServer } from "@lakeql/api/server"
 
 const { app, logger, yoga } = await createApiServer({
@@ -55,7 +55,7 @@ app.get("/health", (c) => c.json({ status: "ok" }))
 
 For most projects, use `defineConfig` with `startServer()` instead of calling `createApiServer` directly:
 
-```typescript path="src/index.ts"
+```ts path="src/index.ts"
 import { config } from "./config"
 
 await config.startServer()
@@ -63,7 +63,7 @@ await config.startServer()
 
 If you don't need `defineConfig`, `startApiServer` calls `createApiServer` internally and binds to a port:
 
-```typescript path="src/index.ts"
+```ts path="src/index.ts"
 import { startApiServer } from "@lakeql/api/server"
 
 await startApiServer({

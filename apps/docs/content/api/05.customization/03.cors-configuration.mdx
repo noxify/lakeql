@@ -21,7 +21,7 @@ The built-in CORS middleware is applied to POST, GET, and OPTIONS requests on th
 
 Since `createApiServer` returns the Hono `app` instance, you can add or override middleware:
 
-```typescript
+```ts
 import { createApiServer } from "@lakeql/api/server"
 import { cors } from "hono/cors"
 
@@ -46,7 +46,7 @@ app.use(
 
 The Hono app supports any compatible middleware. Add rate limiting, request logging, or custom headers:
 
-```typescript
+```ts
 import { createApiServer, startApiServer } from "@lakeql/api/server"
 import { serve } from "@hono/node-server"
 
@@ -77,7 +77,7 @@ serve({
 
 For scenarios where you need pre-GraphQL authentication checks:
 
-```typescript
+```ts
 import { createApiServer } from "@lakeql/api/server"
 
 const { app } = await createApiServer({

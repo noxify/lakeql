@@ -7,7 +7,7 @@ description: Type-safe configuration wrapper that provides createYogaServer and 
 
 ## Signature
 
-```typescript
+```ts
 function defineConfig<const TConfig extends readonly SchemaConfigEntry[]>(
   input: TConfig | DefineConfigOptions<TConfig>
 ): DefinedApiConfig<TConfig>
@@ -23,7 +23,7 @@ The `DefineConfigOptions` interface extends `ApiRuntimeConfig` with a required `
 
 `defineConfig` returns a `DefinedApiConfig` object that includes all your config options plus two convenience methods:
 
-```typescript
+```ts
 interface DefinedApiConfig<TConfig> {
   // ...all config options
   allConfigs: TConfig
@@ -36,7 +36,7 @@ interface DefinedApiConfig<TConfig> {
 
 ### Minimal — pass only configs
 
-```typescript path="src/config.ts"
+```ts path="src/config.ts"
 import { defineConfig } from "@lakeql/api/config"
 import { allConfigs } from "./config-registry"
 
@@ -45,7 +45,7 @@ export const config = defineConfig(allConfigs)
 
 ### Full configuration (matching the template)
 
-```typescript path="src/config.ts"
+```ts path="src/config.ts"
 import { defineConfig } from "@lakeql/api/config"
 
 import { getUser } from "./auth"
@@ -68,7 +68,7 @@ export const config = defineConfig({
 
 ### Using startServer
 
-```typescript path="src/index.ts"
+```ts path="src/index.ts"
 import { config } from "./config"
 
 await config.startServer()

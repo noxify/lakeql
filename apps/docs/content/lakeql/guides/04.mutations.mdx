@@ -283,7 +283,7 @@ MinIO is supported for local development and self-hosted S3-compatible storage. 
 
 The generated `mutation-schema.ts` integrates with `@lakeql/adapters` to execute the full write pipeline. Here's what the generated code looks like conceptually:
 
-```typescript path="schemas/custom/hive/analytics/user_events/mutation-schema.ts"
+```ts path="schemas/custom/hive/analytics/user_events/mutation-schema.ts"
 import { builder } from "@lakeql/api"
 import { executeWritePipeline } from "@lakeql/adapters"
 import { validationSchema } from "./validations"
@@ -358,7 +358,7 @@ This design is intentional:
 
 ### Configuring Write Permissions
 
-```typescript
+```ts
 import { defineConfig } from "@lakeql/api"
 import { allConfigs } from "./config-registry"
 
@@ -410,7 +410,7 @@ When `useSystemUser: true` is set for a permission entry, the Trino client uses 
 - The application layer controls which tables a given client can write to
 - Audit trails should track both the requesting user and the executing identity
 
-```typescript
+```ts
 {
   name: "etl-pipeline",
   useSystemUser: true,  // Execute writes as system user in Trino

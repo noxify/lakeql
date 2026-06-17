@@ -69,7 +69,9 @@
   },
   "devDependencies": {
     "@lakeql/api": "workspace:*",
+    "@lakeql/query-builder": "workspace:*",
     "@lakeql/schema-generator": "workspace:*",
+    "@lakeql/trino-client": "workspace:*",
     "@lakeql/tsconfig": "workspace:*",
     "@tailwindcss/postcss": "4.3.1",
     "@types/mdx": "2.0.14",

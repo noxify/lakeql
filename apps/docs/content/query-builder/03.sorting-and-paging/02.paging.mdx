@@ -5,17 +5,7 @@ description: Trino-specific pagination using FETCH FIRST/NEXT and OFFSET.
 
 ## PagingInput Interface
 
-```typescript
-interface PagingInput {
-  limit?: number
-  offset?: number
-}
-```
-
-| Property | Default     | Description                            |
-| -------- | ----------- | -------------------------------------- |
-| `limit`  | `100`       | Maximum number of rows to return       |
-| `offset` | `undefined` | Number of rows to skip before fetching |
+<InterfaceReference file="query-builder/src/index" name="PagingInput" />
 
 ## Trino Pagination Syntax
 
@@ -42,8 +32,16 @@ Note the difference: `FETCH FIRST` becomes `FETCH NEXT` when an offset is presen
 
 ## Usage Example
 
-```typescript
+```ts shouldAnalyze
 import { generateQuery } from "@lakeql/query-builder"
+
+// Example table type
+interface MyTable {
+  id: number
+  event_type: string
+  timestamp: string
+  user_id: number
+}
 
 // First page: 25 rows, no offset
 const page1 = generateQuery<MyTable>({

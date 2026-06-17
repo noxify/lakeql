@@ -1,5 +1,6 @@
 import { Children, isValidElement } from "react"
 import type { ComponentPropsWithoutRef, ReactNode } from "react"
+import type { CodeBlockProps } from "renoun/components"
 import { CodeBlock, Toolbar } from "renoun/components"
 import type { MDXComponents } from "renoun/mdx"
 import { createSlug } from "renoun/mdx"
@@ -255,7 +256,10 @@ export function useMDXComponents() {
       </BaseAccordionItem>
     ),
 
-    CodeBlock: (props) => {
+    CodeBlock: ({
+      shouldAnalyze = false,
+      ...props
+    }: CodeBlockProps & { preview?: boolean }) => {
       if (props.language === "mermaid") {
         const { preview = false } = props
         return (
@@ -263,6 +267,7 @@ export function useMDXComponents() {
         )
       }
 
+      // @ts-expect-error - railroad is not a valid language
       if (props.language === "railroad") {
         const { preview = false } = props
         return (
@@ -274,9 +279,9 @@ export function useMDXComponents() {
         <div className="not-prose bg-muted my-6 rounded-lg text-sm leading-6">
           <CodeBlock
             {...props}
-            shouldAnalyze={false}
             shouldFormat={false}
             showErrors={false}
+            shouldAnalyze={shouldAnalyze}
             components={{
               // oxlint-disable-next-line react/no-unstable-nested-components
               Toolbar: (toolbarProps) => (

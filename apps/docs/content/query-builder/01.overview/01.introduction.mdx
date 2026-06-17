@@ -18,7 +18,7 @@ The package never executes queries against a database. Instead, it uses Kysely's
 - Map GraphQL field names to database column names via `transformFields`
 - Wrap date/time columns in `to_unixtime()` for serialization
 
-```typescript
+```ts shouldAnalyze
 import { generateQuery, getSelectFields } from "@lakeql/query-builder"
 
 const query = generateQuery({
@@ -37,7 +37,7 @@ const query = generateQuery({
 
 Kysely normally requires a database dialect with a real driver. The query builder configures Kysely with a `PostgresAdapter`, `PostgresQueryCompiler`, and a `DummyDriver` that never opens a connection. This gives you full SQL compilation (including parameter binding) without any runtime dependency on a database.
 
-```typescript
+```ts
 import {
   DummyDriver,
   Kysely,

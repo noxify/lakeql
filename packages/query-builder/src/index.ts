@@ -57,19 +57,25 @@ export interface FieldOptions {
  * @template TableDefinition - The table type used to constrain the `field` to valid column names.
  */
 export interface SortInput<TableDefinition> {
+  /** Column name to sort by. Constrained to valid column names from the table type. */
   field: SelectExpression<
     KyselyDatabase<TableDefinition>,
     keyof KyselyDatabase<TableDefinition>
   >
+  /** Sort direction — `"asc"` for ascending, `"desc"` for descending. */
   direction: string
 }
 
 /**
  * Controls offset-based pagination.
- * When `limit` is not specified, defaults to 100 rows.
  */
 export interface PagingInput {
+  /**
+   * Maximum number of rows to return.
+   * @default 100
+   */
   limit?: number
+  /** Number of rows to skip before fetching. */
   offset?: number
 }
 
@@ -450,6 +456,18 @@ export function normalizeUserQuery(userQuery: Where): Where {
   }
 }
 
+/**
+ * Generates a compiled SQL query with pagination metadata for Trino.
+ *
+ * Returns a Kysely `CompiledQuery` containing the generated SQL and parameters.
+ * The query uses two CTEs internally:
+ * - `total_count` — provides `total_records` (total matching rows before paging)
+ * - `records` — the actual rows based on `selectFields`, filtering, sorting, and paging
+ *
+ * The compiled query is executed by the Trino client which returns the row data.
+ *
+ * @returns A compiled SQL query ready for execution via the Trino client.
+ */
 export function generateQuery<TableDefinition>({
   catalog,
   schema,

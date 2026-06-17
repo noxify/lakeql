@@ -209,9 +209,15 @@ importers:
       '@lakeql/api':
         specifier: workspace:*
         version: link:../../packages/api
+      '@lakeql/query-builder':
+        specifier: workspace:*
+        version: link:../../packages/query-builder
       '@lakeql/schema-generator':
         specifier: workspace:*
         version: link:../../packages/schema-generator
+      '@lakeql/trino-client':
+        specifier: workspace:*
+        version: link:../../packages/trino-client
       '@lakeql/tsconfig':
         specifier: workspace:*
         version: link:../../tooling/typescript

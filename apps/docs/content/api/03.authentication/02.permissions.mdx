@@ -13,7 +13,7 @@ Permissions define which catalogs, schemas, and tables a technical user can acce
 
 Use `["*"]` in the `tables` array to grant access to all tables within a catalog/schema combination:
 
-```typescript
+```ts
 {
   catalog: "hive",
   schema: "analytics",
@@ -25,7 +25,7 @@ Use `["*"]` in the `tables` array to grant access to all tables within a catalog
 
 For type-safe permission construction that validates against your generated configs, use the `createPermission` helper with `defineConfig`:
 
-```typescript path="src/permissions.ts"
+```ts path="src/permissions.ts"
 import { createPermission as createPermissionFromApi } from "@lakeql/api/helpers"
 import type { Permission } from "@lakeql/api/types"
 

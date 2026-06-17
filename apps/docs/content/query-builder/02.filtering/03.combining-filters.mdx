@@ -7,7 +7,7 @@ description: How AND/OR logic works and how filters are normalized before query 
 
 The `WhereOperator` enum defines the two logical combinators available for grouping filter conditions:
 
-```typescript
+```ts shouldAnalyze
 import { WhereOperator } from "@lakeql/query-builder"
 
 enum WhereOperator {
@@ -22,7 +22,7 @@ Every `Where` object must have either `and` or `or` as its root key. Conditions 
 
 User-supplied filter objects might not always follow the strict `{ and: [...] }` or `{ or: [...] }` root format. The `normalizeUserQuery` function ensures a consistent structure by wrapping bare field objects into an `and` root.
 
-```typescript
+```ts shouldAnalyze
 import { normalizeUserQuery } from "@lakeql/query-builder"
 
 // Input: bare fields without a root operator
@@ -37,7 +37,7 @@ const normalized = normalizeUserQuery(input)
 
 The `normalizeFilter` function handles another edge case: filter objects where multiple fields are combined in a single array element. It splits multi-field objects into separate entries so each condition is processed independently.
 
-```typescript
+```ts shouldAnalyze
 import { normalizeFilter } from "@lakeql/query-builder"
 
 // Input: multiple fields in one object
@@ -60,7 +60,7 @@ Inside `generateQuery`, both normalization functions are applied before building
 
 ## Nested Example
 
-```typescript
+```ts shouldAnalyze
 import type { Where } from "@lakeql/query-builder"
 
 const complexFilter: Where = {

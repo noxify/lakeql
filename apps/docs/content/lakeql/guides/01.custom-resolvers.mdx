@@ -11,7 +11,7 @@ Generated schemas cover standard CRUD patterns, but you'll often need custom que
 
 Create a new file in your schemas directory:
 
-```typescript path="src/schemas/custom/hive/analytics/analytics-query-schema.ts"
+```ts path="src/schemas/custom/hive/analytics/analytics-query-schema.ts"
 import { builder } from "@lakeql/api/builder"
 
 const AnalyticsResult = builder.objectRef<{
@@ -61,7 +61,7 @@ builder.queryField("orderAnalytics", (t) =>
 
 The API server loads all schema files from the configured `schemaPath` directory relative to `baseDir`. Any file ending in `-schema.ts` that imports and uses `builder` will be included in the final GraphQL schema.
 
-```typescript path="src/config.ts"
+```ts path="src/config.ts"
 import { defineConfig } from "@lakeql/api/config"
 import { allConfigs } from "./config-registry"
 
@@ -86,7 +86,7 @@ export const config = defineConfig({
 
 Define custom GraphQL types that aren't tied to a Trino table:
 
-```typescript path="src/schemas/custom/health-query-schema.ts"
+```ts path="src/schemas/custom/health-query-schema.ts"
 import { builder } from "@lakeql/api/builder"
 
 const HealthStatus = builder.objectRef<{
@@ -119,7 +119,7 @@ builder.queryField("health", (t) =>
 
 Custom resolvers have full access to the GraphQL context, including the authenticated user:
 
-```typescript
+```ts
 import { builder } from "@lakeql/api/builder"
 
 builder.queryField("myProfile", (t) =>

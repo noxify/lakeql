@@ -37,7 +37,7 @@ Install the required packages:
 
 Set up the configuration (`src/config.ts`):
 
-```typescript path="src/config.ts"
+```ts path="src/config.ts"
 import { defineConfig } from "@lakeql/api/config"
 
 import { getUser } from "./auth"
@@ -60,7 +60,7 @@ export const config = defineConfig({
 
 Create the entry point (`src/index.ts`):
 
-```typescript path="src/index.ts"
+```ts path="src/index.ts"
 import { config } from "./config"
 
 await config.startServer()

@@ -37,7 +37,7 @@ When validation fails, the GraphQL error includes:
 
 The `Paging` input type uses validation to enforce `perPage` limits:
 
-```typescript
+```ts
 import { z } from "zod"
 import { builder, getMaxRecordsPerPage } from "@lakeql/api/builder"
 
@@ -61,7 +61,7 @@ const Paging = builder.inputType("Paging", {
 
 Use the `validate` option on any input field to attach a Zod schema:
 
-```typescript
+```ts
 import { z } from "zod"
 import { builder } from "@lakeql/api/builder"
 
@@ -86,7 +86,7 @@ const CreateUserInput = builder.inputType("CreateUserInput", {
 
 You can also validate query-level arguments:
 
-```typescript
+```ts
 import { z } from "zod"
 import { builder } from "@lakeql/api/builder"
 

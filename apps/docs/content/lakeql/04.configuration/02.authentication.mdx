@@ -23,7 +23,7 @@ When mock auth is enabled, requests are authenticated if:
 
 The user's identity is read from the `x-username` header, falling back to a placeholder if not provided:
 
-```typescript
+```ts
 // Default getUser implementation (simplified)
 async function getUser(req: Request): Promise<JWTPayload | null> {
   const authHeader = req.headers.get("authorization")
@@ -46,7 +46,7 @@ async function getUser(req: Request): Promise<JWTPayload | null> {
 
 For production, provide your own `getUser` function that validates real tokens:
 
-```typescript
+```ts
 import { defineConfig } from "@lakeql/api"
 import { jwtVerify } from "jose"
 import { allConfigs } from "./config-registry"
@@ -79,7 +79,7 @@ export default defineConfig({
 
 The user object conforms to the `JWTPayload` interface from the `jose` library, extended with a `userName` field:
 
-```typescript
+```ts
 interface JWTPayload {
   userName: string
   // ... additional JWT standard claims available
@@ -112,7 +112,7 @@ Writes default to deny because they often execute under a shared system user in 
 
 Define permissions in `defineConfig`:
 
-```typescript
+```ts
 import { defineConfig } from "@lakeql/api"
 import { allConfigs } from "./config-registry"
 
@@ -150,7 +150,7 @@ export default defineConfig({
 
 Override the default permission logic entirely:
 
-```typescript
+```ts
 export default defineConfig({
   allConfigs,
   hasReadPermission({ context, catalog, schema, tableName }) {

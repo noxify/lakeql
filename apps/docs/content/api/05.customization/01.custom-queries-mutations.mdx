@@ -23,7 +23,7 @@ Any file named `query-schema.ts` or `mutation-schema.ts` (or `.js`/`.mjs`) that 
 
 Create a file in your schema directory:
 
-```typescript path="src/schemas/custom/query-schema.ts"
+```ts path="src/schemas/custom/query-schema.ts"
 import { builder } from "@lakeql/api/builder"
 
 builder.queryField("serverInfo", (t) =>
@@ -39,7 +39,7 @@ builder.queryField("serverInfo", (t) =>
 
 To add mutations, first ensure the mutation type is registered, then add your field:
 
-```typescript path="src/schemas/custom-mutations/query-schema.ts"
+```ts path="src/schemas/custom-mutations/query-schema.ts"
 import { builder } from "@lakeql/api/builder"
 
 // Register mutation type if not already done
@@ -66,7 +66,7 @@ builder.mutationField("refreshCache", (t) =>
 
 ## Custom types with arguments
 
-```typescript path="src/schemas/analytics/query-schema.ts"
+```ts path="src/schemas/analytics/query-schema.ts"
 import { builder } from "@lakeql/api/builder"
 
 const MetricResult = builder

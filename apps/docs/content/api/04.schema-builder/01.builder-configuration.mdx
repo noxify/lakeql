@@ -7,7 +7,7 @@ The Pothos `SchemaBuilder` is the foundation of LakeQL's type-safe GraphQL schem
 
 ## Builder setup
 
-```typescript
+```ts
 import SchemaBuilder from "@pothos/core"
 import ScopeAuthPlugin from "@pothos/plugin-scope-auth"
 import ValidationPlugin from "@pothos/plugin-validation"
@@ -35,7 +35,7 @@ const builder = new SchemaBuilder<{
 
 Every resolver receives this context object:
 
-```typescript
+```ts
 interface Context {
   currentUser: JWTPayload | null
   permissions: Permission[]
@@ -57,7 +57,7 @@ A `logger` instance is also injected into the context by the Yoga server setup.
 
 The builder defines three scopes that can be applied to any field:
 
-```typescript
+```ts
 AuthScopes: {
   authorized: boolean // user is authenticated
   readPermission: PermissionFields // { catalog, schema, tableName }
@@ -69,7 +69,7 @@ AuthScopes: {
 
 A shared enum for ordering query results:
 
-```typescript
+```ts
 import { SortDirection } from "@lakeql/api/builder"
 // Values: "ASC" | "DESC"
 ```
@@ -78,7 +78,7 @@ import { SortDirection } from "@lakeql/api/builder"
 
 Custom query schemas import the shared builder instance to register types and fields:
 
-```typescript
+```ts
 import { builder } from "@lakeql/api/builder"
 
 builder.queryField("hello", (t) =>
