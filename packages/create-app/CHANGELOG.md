@@ -1,5 +1,11 @@
 # @lakeql/create-app
 
+## 0.2.4
+
+### Patch Changes
+
+- b48beff: Bump tsdown devDependency from 0.22.2 to 0.22.3
+
 ## 0.2.3
 
 ### Patch Changes

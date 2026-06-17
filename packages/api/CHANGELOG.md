@@ -1,5 +1,23 @@
 # @lakeql/api
 
+## 0.2.3
+
+### Patch Changes
+
+- b48beff: Improve JSDoc documentation for public interfaces
+
+  - Added doc comments to `ApiServer` and `Context` interface members
+  - Documented `SortInput`, `PagingInput` fields and `generateQuery` return value
+
+- Updated dependencies [b48beff]
+- Updated dependencies [b48beff]
+- Updated dependencies [de184c3]
+  - @lakeql/query-builder@0.1.4
+  - @lakeql/helpers@0.1.4
+  - @lakeql/logger@0.1.3
+  - @lakeql/response-transformer@0.1.4
+  - @lakeql/trino-client@0.4.0
+
 ## 0.2.2
 
 ### Patch Changes

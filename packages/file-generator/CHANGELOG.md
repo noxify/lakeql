@@ -1,5 +1,14 @@
 # @lakeql/file-generator
 
+## 0.1.8
+
+### Patch Changes
+
+- b48beff: Bump tsdown devDependency from 0.22.2 to 0.22.3
+- Updated dependencies [b48beff]
+  - @lakeql/helpers@0.1.4
+  - @lakeql/schema-generator@0.4.2
+
 ## 0.1.7
 
 ### Patch Changes

@@ -1,5 +1,14 @@
 # @lakeql/query-builder
 
+## 0.1.4
+
+### Patch Changes
+
+- b48beff: Improve JSDoc documentation for public interfaces
+
+  - Added doc comments to `ApiServer` and `Context` interface members
+  - Documented `SortInput`, `PagingInput` fields and `generateQuery` return value
+
 ## 0.1.3
 
 ### Patch Changes
