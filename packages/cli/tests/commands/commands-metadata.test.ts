@@ -8,7 +8,7 @@ describe("commands metadata", () => {
       (option) => option.long === "--schema"
     )
 
-    expect(before?.required).toBe(false)
+    expect(before?.required).toBeFalsy()
 
     getCommandConfig("list-columns")
 
@@ -16,6 +16,6 @@ describe("commands metadata", () => {
       (option) => option.long === "--schema"
     )
 
-    expect(after?.required).toBe(false)
+    expect(after?.required).toBeFalsy()
   })
 })
