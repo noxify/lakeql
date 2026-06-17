@@ -244,11 +244,14 @@ export interface TrinoClientProps {
   catalog: string
   /** Optional default schema used for all queries. */
   schema?: string
-  /** Optional source identifier sent as `X-Trino-Source` header. Defaults to `"nodejs"`. */
+  /**
+   * Source identifier sent as `X-Trino-Source` header.
+   * @default "nodejs"
+   */
   source?: string
   /** Retry configuration for failed requests. */
   retry?: RetryConfig
-  /** Default timeout for queries in milliseconds. Default: no timeout. */
+  /** Default timeout for queries in milliseconds. No timeout when omitted. */
   timeout?: number
 }
 

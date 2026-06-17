@@ -24,9 +24,15 @@ export type LoadStrategy = "full_load" | "full_load_append" | "append"
  * Configuration for the write pipeline.
  */
 export interface WritePipelineConfig {
-  /** The load strategy for this endpoint. Defaults to "full_load". */
+  /**
+   * The load strategy for this endpoint.
+   * @default "full_load"
+   */
   loadStrategy?: LoadStrategy
-  /** Storage adapter type. Defaults to "s3". */
+  /**
+   * Storage adapter type.
+   * @default "s3"
+   */
   type?: StorageType
   /** Bucket name for storing Parquet files. */
   bucket: string
@@ -44,9 +50,15 @@ export interface WritePipelineConfig {
   }
   /** The Trino client instance for DDL operations. */
   trinoClient: TrinoClient
-  /** Partitioning mode. Default: true (timestamp-based). */
+  /**
+   * Partitioning mode. `true` partitions by write timestamp, `false` disables, or a string for field-based/custom.
+   * @default true
+   */
   partitioning?: PartitioningValue
-  /** Partition format granularity. Default: "year/month/day". */
+  /**
+   * Partition format granularity.
+   * @default "year/month/day"
+   */
   partitioningFormat?: PartitioningFormat
 }
 

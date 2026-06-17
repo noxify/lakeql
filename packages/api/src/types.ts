@@ -57,15 +57,23 @@ export interface ErrorMessage {
     | Record<string, unknown>[]
 }
 
+/**
+ * Permission rule for a technical user, defining which catalogs/schemas/tables they can read and write.
+ */
 export interface Permission {
+  /** Username to match against `currentUser.userName`. */
   name: string
+  /** Whether this user's queries run via the Trino system user. */
   useSystemUser: boolean
+  /** Read and write access rules. */
   permissions: {
+    /** Read access rules (catalog + schema + tables). Use `["*"]` for wildcard table access. */
     Query: {
       catalog: string
       schema: string
       tables: string[]
     }[]
+    /** Write access rules (catalog + schema + tables). Use `["*"]` for wildcard table access. */
     Mutation: {
       catalog: string
       schema: string
