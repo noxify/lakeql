@@ -11,7 +11,7 @@ import {
   Plus,
   Trash2,
 } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -49,6 +49,8 @@ interface FieldRowProps {
   siblingNames: string[]
   onUpdate: (updated: FieldDefinition) => void
   onDelete: () => void
+  autoFocus?: boolean
+  onAutoFocused?: () => void
 }
 
 export function FieldRow({
@@ -57,6 +59,8 @@ export function FieldRow({
   siblingNames,
   onUpdate,
   onDelete,
+  autoFocus,
+  onAutoFocused,
 }: FieldRowProps) {
   const {
     attributes,
@@ -69,6 +73,14 @@ export function FieldRow({
     id: field.id,
   })
   const [expanded, setExpanded] = useState(true)
+  const nameInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (autoFocus && nameInputRef.current) {
+      nameInputRef.current.focus()
+      onAutoFocused?.()
+    }
+  }, [autoFocus, onAutoFocused])
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -172,7 +184,7 @@ export function FieldRow({
       )}
     >
       {/* Row header */}
-      <div className="flex items-center gap-2 p-3">
+      <div className="flex flex-wrap items-center gap-2 p-3">
         {/* Drag handle */}
         <button
           {...attributes}
@@ -200,9 +212,10 @@ export function FieldRow({
           <div className="size-4" />
         )}
 
-        {/* Field name */}
-        <div className="flex flex-1 flex-col gap-1">
+        {/* Field name — full width on xs, flex-1 on sm+ */}
+        <div className="min-w-0 flex-1 basis-full flex-col gap-1 sm:basis-0">
           <Input
+            ref={nameInputRef}
             value={field.name}
             onChange={(e) => onUpdate({ ...field, name: e.target.value })}
             placeholder="field_name"
@@ -219,55 +232,50 @@ export function FieldRow({
           )}
         </div>
 
-        {/* Type dropdown */}
-        <Select
-          value={field.type}
-          onValueChange={(v) => handleTypeChange(v as FieldType)}
-        >
-          <SelectTrigger className="h-8 w-32">
-            <SelectValue placeholder="Type" />
-          </SelectTrigger>
-          <SelectContent alignItemWithTrigger={false}>
-            <SelectGroup>
-              {availableTypes.map((t) => (
-                <SelectItem key={t} value={t}>
-                  <span
-                    className={cn(
-                      "rounded px-1.5 py-0.5 text-xs font-medium",
-                      FIELD_TYPE_COLORS[t]
-                    )}
-                  >
-                    {t}
-                  </span>
-                </SelectItem>
-              ))}
-            </SelectGroup>
-          </SelectContent>
-        </Select>
+        {/* Type + Options + Delete — wraps to second row on xs */}
+        <div className="flex w-full items-center gap-2 sm:w-auto sm:pl-0">
+          {/* Type dropdown */}
+          <Select
+            value={field.type}
+            onValueChange={(v) => handleTypeChange(v as FieldType)}
+          >
+            <SelectTrigger className="h-8 w-32">
+              <SelectValue placeholder="Type" />
+            </SelectTrigger>
+            <SelectContent alignItemWithTrigger={false}>
+              <SelectGroup>
+                {availableTypes.map((t) => (
+                  <SelectItem key={t} value={t}>
+                    <span
+                      className={cn(
+                        "rounded px-1.5 py-0.5 text-xs font-medium",
+                        FIELD_TYPE_COLORS[t]
+                      )}
+                    >
+                      {t}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
 
-        {/* Type badge */}
-        {/* <Badge
-          className={cn(
-            "hidden shrink-0 text-xs sm:flex",
-            FIELD_TYPE_COLORS[field.type]
-          )}
-        >
-          {field.type}
-        </Badge> */}
+          <div className="flex-1 sm:flex-none" />
 
-        {/* Field options popover */}
-        <FieldOptionsPopover field={field} onUpdate={onUpdate} />
+          {/* Field options popover */}
+          <FieldOptionsPopover field={field} onUpdate={onUpdate} />
 
-        {/* Delete */}
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onDelete}
-          className="text-muted-foreground hover:text-destructive size-8 shrink-0"
-          aria-label="Delete field"
-        >
-          <Trash2 className="size-4" />
-        </Button>
+          {/* Delete */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onDelete}
+            className="text-muted-foreground hover:text-destructive size-8 shrink-0"
+            aria-label="Delete field"
+          >
+            <Trash2 className="size-4" />
+          </Button>
+        </div>
       </div>
 
       {/* Field options summary badges */}

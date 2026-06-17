@@ -9,9 +9,10 @@ import type { OutputDefinition } from "@/lib/endpoint-types"
 
 interface JSONPreviewProps {
   output: OutputDefinition
+  showTopbar?: boolean
 }
 
-export function JSONPreview({ output }: JSONPreviewProps) {
+export function JSONPreview({ output, showTopbar = true }: JSONPreviewProps) {
   const [copied, setCopied] = useState(false)
 
   const jsonString = JSON.stringify(output, null, 2)
@@ -35,44 +36,46 @@ export function JSONPreview({ output }: JSONPreviewProps) {
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="border-border flex items-center justify-between border-b px-4 py-3">
-        <div className="flex items-center gap-2">
-          <div className="size-2 rounded-full bg-green-500" />
-          <span className="text-sm font-medium">Live Preview</span>
+      {showTopbar && (
+        <div className="border-border flex items-center justify-between border-b px-4 py-3">
+          <div className="flex items-center gap-2">
+            <div className="size-2 rounded-full bg-green-500" />
+            <span className="text-sm font-medium">Live Preview</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleCopy}
+              className="h-7 gap-1.5 text-xs"
+            >
+              {copied ? (
+                <>
+                  <Check
+                    className="size-3 text-green-500"
+                    data-icon="inline-start"
+                  />
+                  Copied
+                </>
+              ) : (
+                <>
+                  <Copy className="size-3" data-icon="inline-start" />
+                  Copy
+                </>
+              )}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleDownload}
+              className="h-7 gap-1.5 text-xs"
+            >
+              <Download className="size-3" data-icon="inline-start" />
+              Download
+            </Button>
+          </div>
         </div>
-        <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleCopy}
-            className="h-7 gap-1.5 text-xs"
-          >
-            {copied ? (
-              <>
-                <Check
-                  className="size-3 text-green-500"
-                  data-icon="inline-start"
-                />
-                Copied
-              </>
-            ) : (
-              <>
-                <Copy className="size-3" data-icon="inline-start" />
-                Copy
-              </>
-            )}
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleDownload}
-            className="h-7 gap-1.5 text-xs"
-          >
-            <Download className="size-3" data-icon="inline-start" />
-            Download
-          </Button>
-        </div>
-      </div>
+      )}
 
       {/* JSON Content */}
       <ScrollArea className="flex-1">

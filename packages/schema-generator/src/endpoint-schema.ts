@@ -146,7 +146,17 @@ export const mutationConfigSchema = z
     partitioningFormat: z.string().optional(),
   })
   .superRefine((data, ctx) => {
-    // Skip validation when partitioning is disabled
+    // Validate endpoint is provided for MinIO
+    if (data.type === "minio" && !data.endpoint) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["endpoint"],
+        message:
+          "Endpoint is required when storage type is 'minio'. Provide the MinIO server URL (e.g. http://minio:9000).",
+      })
+    }
+
+    // Skip partitioning validation when partitioning is disabled
     if (data.partitioning === false) {
       return
     }

@@ -29,6 +29,10 @@ interface FieldListProps {
   onUpdate: (index: number, updated: FieldDefinition) => void
   onDelete: (index: number) => void
   onReorder: (fields: FieldDefinition[]) => void
+  /** ID of the field that should receive auto-focus */
+  autoFocusId?: string | null
+  /** Callback to clear the auto-focus ID after it's been applied */
+  onAutoFocused?: () => void
 }
 
 export function FieldList({
@@ -38,6 +42,8 @@ export function FieldList({
   onUpdate,
   onDelete,
   onReorder,
+  autoFocusId,
+  onAutoFocused,
 }: FieldListProps) {
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -81,6 +87,10 @@ export function FieldList({
               siblingNames={siblingNames}
               onUpdate={(updated) => onUpdate(index, updated)}
               onDelete={() => onDelete(index)}
+              autoFocus={field.id === autoFocusId}
+              onAutoFocused={
+                field.id === autoFocusId ? onAutoFocused : undefined
+              }
             />
           ))}
         </div>

@@ -15,7 +15,13 @@ import ThemeToggle from "./theme-toggle"
 
 const spaceGrotesk = Space_Grotesk({ subsets: ["latin"] })
 
-export function SiteHeader({ fullWidth = false }: { fullWidth?: boolean }) {
+export function SiteHeader({
+  fullWidth = false,
+  bordered = false,
+}: {
+  fullWidth?: boolean
+  bordered?: boolean
+}) {
   const { hasScrolled: isScrolled } = useScrollVisibility({
     hideAfterScrollY: 0,
   })
@@ -26,7 +32,10 @@ export function SiteHeader({ fullWidth = false }: { fullWidth?: boolean }) {
         "sticky top-0 z-50 w-full transition-all duration-200",
         isScrolled
           ? "border-border/60 bg-background/80 border-b backdrop-blur-sm"
-          : "border-transparent bg-transparent"
+          : "border-transparent bg-transparent",
+        bordered
+          ? "border-border/60 bg-background/80 border-b backdrop-blur-sm"
+          : ""
       )}
     >
       <div
