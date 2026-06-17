@@ -9,8 +9,8 @@
 import type { Argument, Option } from "@commander-js/extra-typings"
 
 import { buildInitCommandStructure } from "@/commands/init-metadata"
-import { buildConfigRegistryCommandStructure } from "@/metadata/config-registry-metadata"
 import { buildCreateEndpointCommandStructure } from "@/metadata/create-endpoint-metadata"
+import { buildCreateRegistryCommandStructure } from "@/metadata/create-registry-metadata"
 import { buildListColumnsCommandStructure } from "@/metadata/list-columns-metadata"
 import { buildListSchemasCommandStructure } from "@/metadata/list-schemas-metadata"
 import { buildListTablesCommandStructure } from "@/metadata/list-tables-metadata"
@@ -18,7 +18,7 @@ import { buildListViewsCommandStructure } from "@/metadata/list-views-metadata"
 import { buildPullCommandStructure } from "@/metadata/pull-metadata"
 
 type AvailableCommand =
-  | "config-registry"
+  | "create-registry"
   | "create-endpoint"
   | "init"
   | "list-columns"
@@ -101,7 +101,7 @@ function extractOptionMeta(option: Option): CommandOptionMeta {
 }
 
 const commandFactories: Record<string, () => unknown> = {
-  "config-registry": buildConfigRegistryCommandStructure,
+  "create-registry": buildCreateRegistryCommandStructure,
   "create-endpoint": buildCreateEndpointCommandStructure,
   init: buildInitCommandStructure,
   "list-columns": buildListColumnsCommandStructure,

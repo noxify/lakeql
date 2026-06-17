@@ -90,4 +90,80 @@ describe("convenience methods", () => {
       ["name", "varchar", "", "User name"],
     ])
   })
+
+  test("columns() with asObject=true returns typed objects", async () => {
+    server.use(
+      ...convenienceHandlers([
+        ["id", "bigint", "", "Primary key"],
+        ["name", "varchar", "", "User name"],
+      ])
+    )
+
+    const client = createClient()
+    const result = await client.columns({
+      catalog: "hive",
+      schema: "public",
+      table: "users",
+      asObject: true,
+    })
+
+    expect(result).toStrictEqual([
+      {
+        name: "id",
+        type: "bigint",
+        extra: "",
+        description: "Primary key",
+      },
+      {
+        name: "name",
+        type: "varchar",
+        extra: "",
+        description: "User name",
+      },
+    ])
+  })
+
+  test("columns() with asObject=false returns tuples", async () => {
+    server.use(
+      ...convenienceHandlers([
+        ["id", "bigint", "", "Primary key"],
+        ["name", "varchar", "", "User name"],
+      ])
+    )
+
+    const client = createClient()
+    const result = await client.columns({
+      catalog: "hive",
+      schema: "public",
+      table: "users",
+      asObject: false,
+    })
+
+    expect(result).toStrictEqual([
+      ["id", "bigint", "", "Primary key"],
+      ["name", "varchar", "", "User name"],
+    ])
+  })
+
+  test("columns() with asObject undefined returns tuples", async () => {
+    server.use(
+      ...convenienceHandlers([
+        ["id", "bigint", "", "Primary key"],
+        ["name", "varchar", "", "User name"],
+      ])
+    )
+
+    const client = createClient()
+    const result = await client.columns({
+      catalog: "hive",
+      schema: "public",
+      table: "users",
+      asObject: undefined,
+    })
+
+    expect(result).toStrictEqual([
+      ["id", "bigint", "", "Primary key"],
+      ["name", "varchar", "", "User name"],
+    ])
+  })
 })

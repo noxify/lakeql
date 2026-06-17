@@ -9,7 +9,7 @@ import listTablesCommand from "@/commands/list-tables"
 import listViewsCommand from "@/commands/list-views"
 import pullCommand from "@/commands/pull"
 
-import configRegistryCommand from "./commands/config-registry"
+import createRegistryCommand from "./commands/create-registry"
 import initCommand from "./commands/init"
 
 async function main() {
@@ -32,7 +32,7 @@ async function main() {
     .addCommand(listColumnsCommand())
     .addCommand(pullCommand())
     .addCommand(createEndpointCommand())
-    .addCommand(configRegistryCommand())
+    .addCommand(createRegistryCommand())
     .addCommand(initCommand())
 
   await program.parseAsync()

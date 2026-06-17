@@ -5,11 +5,11 @@
 import { Command, Option } from "@commander-js/extra-typings"
 
 import {
-  catalogOption,
-  schemaOption,
-  sourcePathOption,
-  tableOption,
-  tableOrSchemaOption,
+  createCatalogOption,
+  createSchemaOption,
+  createSourcePathOption,
+  createTableOption,
+  createTableOrSchemaOption,
 } from "@/options"
 
 const bulkOption = new Option(
@@ -32,11 +32,11 @@ export function buildPullCommandStructure() {
     .description(
       "Interactive query endpoint generation based on a remote table"
     )
-    .addOption(catalogOption)
-    .addOption(tableOrSchemaOption)
-    .addOption(schemaOption.makeOptionMandatory(false))
+    .addOption(createCatalogOption())
+    .addOption(createTableOrSchemaOption())
+    .addOption(createSchemaOption().makeOptionMandatory(false))
     .addOption(
-      tableOption
+      createTableOption()
         .makeOptionMandatory(false)
         .default([])
         .argParser((value, previous: string[]) => [...previous, value])
@@ -44,7 +44,7 @@ export function buildPullCommandStructure() {
     .addOption(
       new Option("--skip-registry", "Skip registry update").default(false)
     )
-    .addOption(sourcePathOption)
+    .addOption(createSourcePathOption())
     .addOption(bulkOption)
     .addOption(bulkConfigOption)
 }

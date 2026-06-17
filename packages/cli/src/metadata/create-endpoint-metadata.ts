@@ -3,7 +3,7 @@
  */
 import { Command, Option } from "@commander-js/extra-typings"
 
-import { skipRegistry, sourcePathOption } from "@/options"
+import { createSkipRegistryOption, createSourcePathOption } from "@/options"
 
 export function buildCreateEndpointCommandStructure() {
   return new Command("create-endpoint")
@@ -14,8 +14,8 @@ export function buildCreateEndpointCommandStructure() {
         "Path to a JSON definition file conforming to the Endpoint_Definition_Format"
       ).makeOptionMandatory(true)
     )
-    .addOption(sourcePathOption)
-    .addOption(skipRegistry)
+    .addOption(createSourcePathOption())
+    .addOption(createSkipRegistryOption())
     .addOption(
       new Option(
         "--force",

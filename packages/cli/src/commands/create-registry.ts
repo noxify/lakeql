@@ -8,10 +8,10 @@ import { globby } from "globby"
 
 import { resolveSourcePath } from "@/config"
 
-import { buildConfigRegistryCommandStructure } from "../metadata/config-registry-metadata"
+import { buildCreateRegistryCommandStructure } from "../metadata/create-registry-metadata"
 
 export default function configRegistryCommand() {
-  const program = buildConfigRegistryCommandStructure().action(
+  const program = buildCreateRegistryCommandStructure().action(
     async ({ sourcePath }) => {
       // CLI parameter overrides config; if default (invocation cwd), use config
       const cliOverride =

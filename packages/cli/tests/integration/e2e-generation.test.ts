@@ -11,7 +11,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { EndpointDefinitionFormat } from "@/pipeline/schema"
 
 // Mock the config-registry to avoid env/config dependencies
-vi.mock(import("@/commands/config-registry"), () => ({
+vi.mock(import("@/commands/create-registry"), () => ({
   runConfigRegistryGeneration: vi.fn().mockResolvedValue(undefined),
   default: vi.fn(),
 }))

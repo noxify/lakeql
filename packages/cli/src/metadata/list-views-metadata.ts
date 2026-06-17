@@ -3,12 +3,12 @@
  */
 import { Command } from "@commander-js/extra-typings"
 
-import { catalogOption, schemaOption } from "@/options"
+import { createCatalogOption, createSchemaOption } from "@/options"
 
 export function buildListViewsCommandStructure() {
   const program = new Command("list-views")
   return program
     .description("Lists the available views for the configured catalog/schema")
-    .addOption(catalogOption)
-    .addOption(schemaOption)
+    .addOption(createCatalogOption())
+    .addOption(createSchemaOption())
 }

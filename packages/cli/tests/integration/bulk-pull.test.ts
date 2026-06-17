@@ -19,7 +19,7 @@ vi.mock(import("@/commands/pull-action"), () => ({
 }))
 
 const mockRunConfigRegistryGeneration = vi.fn().mockResolvedValue(null)
-vi.mock(import("@/commands/config-registry"), () => ({
+vi.mock(import("@/commands/create-registry"), () => ({
   runConfigRegistryGeneration: (...args: unknown[]) =>
     mockRunConfigRegistryGeneration(...args),
   default: vi.fn(),

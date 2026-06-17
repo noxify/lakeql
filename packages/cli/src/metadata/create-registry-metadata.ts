@@ -3,12 +3,12 @@
  */
 import { Command } from "@commander-js/extra-typings"
 
-import { sourcePathOption } from "@/options"
+import { createSourcePathOption } from "@/options"
 
-export function buildConfigRegistryCommandStructure() {
+export function buildCreateRegistryCommandStructure() {
   return new Command("create-registry")
     .description(
       "Generates the config registry to ensure the type-safety while using `createPermission`"
     )
-    .addOption(sourcePathOption)
+    .addOption(createSourcePathOption())
 }
