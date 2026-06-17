@@ -1,3 +1,31 @@
+import type {
+  FieldOptions,
+  FieldValidation,
+  MutationConfig,
+} from "@lakeql/schema-generator/endpoint-schema"
+
+// Re-export shared types from schema-generator
+export type {
+  FieldOptions,
+  FieldValidation,
+  LoadStrategy,
+  MutationConfig,
+  PartitioningComponent,
+  PartitioningFormat,
+  PartitioningValue,
+  StorageType,
+} from "@lakeql/schema-generator/endpoint-schema"
+
+export {
+  loadStrategies as LOAD_STRATEGIES,
+  partitioningComponents as PARTITIONING_COMPONENTS,
+  partitioningFormats as PARTITIONING_FORMATS,
+  fieldNamePattern as FIELD_NAME_PATTERN,
+  metadataFieldPattern as METADATA_PATTERN,
+} from "@lakeql/schema-generator/endpoint-schema"
+
+// --- UI-specific types (not in schema-generator) ---
+
 export type FieldType =
   | "String"
   | "Integer"
@@ -17,21 +45,12 @@ export type PrimitiveType =
   | "DateTime"
 export type ArrayItemType = PrimitiveType | "Object"
 
-export type FieldValidation =
-  | { type: "email" }
-  | { type: "url" }
-  | { type: "uuid" }
-  | { type: "min"; value: number }
-  | { type: "max"; value: number }
-  | { type: "regex"; pattern: string }
-
 export type FieldValidationType = FieldValidation["type"]
 
-export interface FieldOptions {
-  required?: boolean
-  validations?: FieldValidation[]
-}
-
+/**
+ * UI-specific field definition with `id` for React keys and
+ * `arrayItemType`/`arrayItemFields` for tracking Array item state.
+ */
 export interface FieldDefinition {
   id: string
   name: string
@@ -43,41 +62,6 @@ export interface FieldDefinition {
   arrayItemFields?: FieldDefinition[] // when arrayItemType is "Object"
   // Field-level options (mutation validation)
   options?: FieldOptions
-}
-
-export type PartitioningFormat = "year" | "year/month" | "year/month/day"
-
-export type PartitioningValue = boolean | string
-
-export type PartitioningComponent =
-  | "year"
-  | "month"
-  | "day"
-  | "hour"
-  | "minute"
-  | "second"
-export const PARTITIONING_COMPONENTS: PartitioningComponent[] = [
-  "year",
-  "month",
-  "day",
-  "hour",
-  "minute",
-  "second",
-]
-
-export type LoadStrategy = "full_load" | "full_load_append" | "append"
-
-export type StorageType = "s3" | "minio"
-
-export interface MutationConfig {
-  loadStrategy: LoadStrategy
-  type: StorageType
-  bucket: string
-  basePath: string
-  region?: string
-  endpoint?: string
-  partitioning?: PartitioningValue
-  partitioningFormat?: PartitioningFormat
 }
 
 export interface EndpointDefinition {
@@ -107,17 +91,7 @@ export interface OutputDefinition {
   mutation?: false | MutationConfig
 }
 
-export const LOAD_STRATEGIES: LoadStrategy[] = [
-  "full_load",
-  "full_load_append",
-  "append",
-]
-
-export const PARTITIONING_FORMATS: PartitioningFormat[] = [
-  "year",
-  "year/month",
-  "year/month/day",
-]
+// --- UI constants ---
 
 export const FIELD_TYPE_COLORS: Record<FieldType, string> = {
   String: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
@@ -132,9 +106,6 @@ export const FIELD_TYPE_COLORS: Record<FieldType, string> = {
   Object: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
   Array: "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300",
 }
-
-export const METADATA_PATTERN = /^[a-zA-Z_][a-zA-Z0-9_]{0,127}$/u
-export const FIELD_NAME_PATTERN = /^[a-zA-Z_][a-zA-Z0-9_]{0,63}$/u
 
 export const ALL_TYPES: FieldType[] = [
   "String",

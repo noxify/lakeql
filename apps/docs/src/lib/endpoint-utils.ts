@@ -55,7 +55,10 @@ export function buildOutputField(field: FieldDefinition): OutputField | null {
     if (field.options.validations && field.options.validations.length > 0) {
       opts.validations = field.options.validations
     }
-    if (opts.required || opts.validations) {
+    if (field.options.readOnly) {
+      opts.readOnly = true
+    }
+    if (opts.required || opts.validations || opts.readOnly) {
       out.options = opts
     }
   }
@@ -128,6 +131,9 @@ function parseOutputField(field: OutputField): FieldDefinition {
     }
     if (field.options.validations && field.options.validations.length > 0) {
       base.options.validations = field.options.validations as FieldValidation[]
+    }
+    if (field.options.readOnly) {
+      base.options.readOnly = true
     }
   }
 

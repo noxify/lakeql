@@ -301,7 +301,46 @@ export function EndpointBuilderProvider({
 
   const handleMutationChange = useCallback(
     (mutation: false | MutationConfig | undefined) => {
-      setDef((prev) => ({ ...prev, mutation }))
+      setDef((prev) => {
+        const prevPartitioning =
+          prev.mutation && typeof prev.mutation === "object"
+            ? prev.mutation.partitioning
+            : undefined
+        const isTimestampMode =
+          mutation &&
+          typeof mutation === "object" &&
+          (mutation.partitioning === true ||
+            mutation.partitioning === undefined)
+        const wasTimestampMode =
+          prevPartitioning === true || prevPartitioning === undefined
+
+        const { fields: prevFields } = prev
+        let fields = prevFields
+
+        if (isTimestampMode) {
+          // Auto-inject load_timestamp if not already present
+          const hasLoadTimestamp = fields.some(
+            (f) => f.name === "load_timestamp"
+          )
+          if (!hasLoadTimestamp) {
+            const loadTimestampField: FieldDefinition = {
+              id: generateId(),
+              name: "load_timestamp",
+              type: "DateTime",
+              options: { readOnly: true },
+            }
+            fields = [...fields, loadTimestampField]
+          }
+        } else if (wasTimestampMode && !isTimestampMode) {
+          // Remove auto-injected load_timestamp (only if readOnly)
+          fields = fields.filter(
+            (f) =>
+              !(f.name === "load_timestamp" && f.options?.readOnly === true)
+          )
+        }
+
+        return { ...prev, mutation, fields }
+      })
     },
     []
   )

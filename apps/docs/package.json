@@ -69,6 +69,7 @@
   },
   "devDependencies": {
     "@lakeql/api": "workspace:*",
+    "@lakeql/schema-generator": "workspace:*",
     "@lakeql/tsconfig": "workspace:*",
     "@tailwindcss/postcss": "4.3.1",
     "@types/mdx": "2.0.14",

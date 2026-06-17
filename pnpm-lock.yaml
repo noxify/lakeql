@@ -209,6 +209,9 @@ importers:
       '@lakeql/api':
         specifier: workspace:*
         version: link:../../packages/api
+      '@lakeql/schema-generator':
+        specifier: workspace:*
+        version: link:../../packages/schema-generator
       '@lakeql/tsconfig':
         specifier: workspace:*
         version: link:../../tooling/typescript
