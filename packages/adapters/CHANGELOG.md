@@ -1,5 +1,16 @@
 # @lakeql/adapters
 
+## 0.4.2
+
+### Patch Changes
+
+- b48beff: Bump tsdown devDependency from 0.22.2 to 0.22.3
+- Updated dependencies [b48beff]
+- Updated dependencies [de184c3]
+  - @lakeql/parquet@0.2.3
+  - @lakeql/schema-generator@0.4.2
+  - @lakeql/trino-client@0.4.0
+
 ## 0.4.1
 
 ### Patch Changes
