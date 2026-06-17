@@ -7,11 +7,18 @@ import { useIsMobile } from "@/hooks/use-mobile"
 
 import { FieldsTab } from "./fields"
 import { GeneralTab } from "./general"
+import { InfoTab } from "./info"
 import { MutationsTab } from "./mutations"
 import { PreviewTab } from "./preview"
 import { TopBar } from "./top-bar"
 
-const VALID_TABS = ["general", "fields", "mutations", "preview"] as const
+const VALID_TABS = [
+  "info",
+  "general",
+  "fields",
+  "mutations",
+  "preview",
+] as const
 type TabValue = (typeof VALID_TABS)[number]
 
 function isValidTab(value: string | null): value is TabValue {
@@ -21,7 +28,7 @@ function isValidTab(value: string | null): value is TabValue {
 function getInitialTab(): TabValue {
   const params = new URLSearchParams(window.location.search)
   const tab = params.get("tab")
-  return isValidTab(tab) ? tab : "general"
+  return isValidTab(tab) ? tab : "info"
 }
 
 export function BuilderTabs() {
@@ -36,7 +43,7 @@ export function BuilderTabs() {
     setActiveTab(value)
 
     const url = new URL(window.location.href)
-    if (value === "general") {
+    if (value === "info") {
       url.searchParams.delete("tab")
     } else {
       url.searchParams.set("tab", value)
@@ -60,6 +67,7 @@ export function BuilderTabs() {
             variant="line"
             className="w-full flex-col items-start gap-1 bg-transparent p-4"
           >
+            <TabsTrigger value="info">Info</TabsTrigger>
             <TabsTrigger value="general">General</TabsTrigger>
             <TabsTrigger value="fields">Fields</TabsTrigger>
             <TabsTrigger value="mutations">Mutations</TabsTrigger>
@@ -74,6 +82,9 @@ export function BuilderTabs() {
           variant="line"
           className="border-border h-12! w-full shrink-0 justify-start border-b px-4"
         >
+          <TabsTrigger value="info" className={"cursor-pointer"}>
+            Info
+          </TabsTrigger>
           <TabsTrigger value="general" className={"cursor-pointer"}>
             General
           </TabsTrigger>
@@ -93,6 +104,9 @@ export function BuilderTabs() {
       <div className="flex min-w-0 flex-1 flex-col overflow-y-auto">
         <TopBar />
 
+        <TabsContent value="info" className="mt-0">
+          <InfoTab />
+        </TabsContent>
         <TabsContent value="general" className="mt-0">
           <GeneralTab />
         </TabsContent>
