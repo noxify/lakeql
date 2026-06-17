@@ -9,10 +9,10 @@ Generated schemas cover standard CRUD patterns, but you'll often need custom que
 
 ## Creating a Custom Query
 
-Create a new file in your schema path directory:
+Create a new file in your schemas directory:
 
-```typescript path="src/schemas/custom/analytics-query-schema.ts"
-import { builder } from "@lakeql/api"
+```typescript path="src/schemas/custom/hive/analytics/analytics-query-schema.ts"
+import { builder } from "@lakeql/api/builder"
 
 const AnalyticsResult = builder.objectRef<{
   period: string
@@ -59,16 +59,21 @@ builder.queryField("orderAnalytics", (t) =>
 
 ## File Discovery
 
-The API server loads all schema files from the configured `schemaPath` directory. Any file ending in `query-schema.ts` (or placed in the schema directory) that imports and uses `builder` will be included in the final GraphQL schema.
+The API server loads all schema files from the configured `schemaPath` directory relative to `baseDir`. Any file ending in `-schema.ts` that imports and uses `builder` will be included in the final GraphQL schema.
 
-```typescript
-// In your defineConfig, specify where schemas live
-import { defineConfig } from "@lakeql/api"
+```typescript path="src/config.ts"
+import { defineConfig } from "@lakeql/api/config"
 import { allConfigs } from "./config-registry"
 
-export default defineConfig({
+const baseDir = import.meta.dirname
+
+export const config = defineConfig({
   allConfigs,
-  schemaPath: "./src/schemas", // All .ts files here are loaded
+  baseDir,
+  schemaPath: "./schemas",
+  graphqlPath: "/graphql",
+  healthCheckEndpoint: "/live",
+  port: 4000,
 })
 ```
 
@@ -82,7 +87,7 @@ export default defineConfig({
 Define custom GraphQL types that aren't tied to a Trino table:
 
 ```typescript path="src/schemas/custom/health-query-schema.ts"
-import { builder } from "@lakeql/api"
+import { builder } from "@lakeql/api/builder"
 
 const HealthStatus = builder.objectRef<{
   status: string
@@ -115,12 +120,14 @@ builder.queryField("health", (t) =>
 Custom resolvers have full access to the GraphQL context, including the authenticated user:
 
 ```typescript
+import { builder } from "@lakeql/api/builder"
+
 builder.queryField("myProfile", (t) =>
   t.field({
     type: UserProfile,
     resolve: async (_root, _args, context) => {
       if (!context.currentUser) {
-        throw new GraphQLError("Not authenticated")
+        throw new Error("Not authenticated")
       }
 
       // Use context.currentUser.userName
@@ -132,7 +139,7 @@ builder.queryField("myProfile", (t) =>
 
 ## Best Practices
 
-- **Separate files** — Keep custom resolvers in their own files so `lakeql-cli pull` won't overwrite them
+- **Separate files** — Keep custom resolvers in `schemas/custom/` so `lakeql-cli pull` won't overwrite them
 - **Name carefully** — Prefix custom types to avoid conflicts (e.g. `CustomAnalyticsResult` vs generated `OrdersResult`)
-- **Use the builder** — Always import `builder` from `@lakeql/api` to ensure types are registered in the same schema
-- **Check permissions** — Call `context.hasReadPermission` or implement your own auth checks in custom resolvers
+- **Use the builder** — Always import `builder` from `@lakeql/api/builder` to ensure types are registered in the same schema
+- **Check permissions** — Use auth scopes or implement your own auth checks in custom resolvers

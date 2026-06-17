@@ -12,7 +12,7 @@ Generated query schemas provide standard fields, filtering, and pagination. You 
 Create a companion file that adds fields to an existing generated type:
 
 ```typescript path="src/schemas/custom/orders-extensions.ts"
-import { builder } from "@lakeql/api"
+import { builder } from "@lakeql/api/builder"
 
 // Reference the generated type by name
 const OrdersType = builder.objectRef<{ id: number; total: number }>("Orders")
@@ -38,9 +38,8 @@ builder.objectField(OrdersType, "customerName", (t) =>
 
 <Note>
   Extension files must be placed in the schema path directory (e.g.
-  `src/schemas/custom/`) so the API server loads them at startup. Never place
-  custom code inside `schemas/generated/` — it will be overwritten on the next
-  `pull`.
+  `src/schemas/custom/`). Never place custom code inside generated directories —
+  it will be overwritten on the next `pull`.
 </Note>
 
 ## Custom Comparison Types
@@ -48,7 +47,7 @@ builder.objectField(OrdersType, "customerName", (t) =>
 Generated schemas include standard comparison operators (`eq`, `neq`, `gt`, `lt`, `like`, etc.). You can define custom input types for more specific filtering:
 
 ```typescript path="src/schemas/custom/date-range-input.ts"
-import { builder } from "@lakeql/api"
+import { builder } from "@lakeql/api/builder"
 
 export const DateRangeInput = builder.inputType("DateRangeInput", {
   fields: (t) => ({
@@ -68,7 +67,7 @@ export const AmountRangeInput = builder.inputType("AmountRangeInput", {
 Use these inputs in custom query fields:
 
 ```typescript
-import { builder } from "@lakeql/api"
+import { builder } from "@lakeql/api/builder"
 import { DateRangeInput, AmountRangeInput } from "../custom/date-range-input"
 
 builder.queryField("ordersByRange", (t) =>
@@ -91,7 +90,7 @@ builder.queryField("ordersByRange", (t) =>
 Add fields that derive values from existing data at the GraphQL layer:
 
 ```typescript path="src/schemas/custom/computed-fields.ts"
-import { builder } from "@lakeql/api"
+import { builder } from "@lakeql/api/builder"
 
 const OrdersType = builder.objectRef<{
   total: number
@@ -139,7 +138,7 @@ builder.objectField(OrdersType, "ageInDays", (t) =>
 Define enum types for fields that have a fixed set of values:
 
 ```typescript path="src/schemas/custom/enums.ts"
-import { builder } from "@lakeql/api"
+import { builder } from "@lakeql/api/builder"
 
 export const OrderStatus = builder.enumType("OrderStatus", {
   values: [
@@ -150,15 +149,11 @@ export const OrderStatus = builder.enumType("OrderStatus", {
     "cancelled",
   ] as const,
 })
-
-export const SortDirection = builder.enumType("SortDirection", {
-  values: ["ASC", "DESC"] as const,
-})
 ```
 
 ## Tips for Extension Files
 
 - **Don't modify generated files** — They'll be overwritten on the next `pull`
 - **Use descriptive file names** — e.g. `orders-extensions.ts`, `orders-computed.ts`
-- **Place in `schemas/custom/`** — Keep custom code separate from `schemas/generated/` so it's never overwritten
+- **Place in `schemas/custom/`** — Keep custom code separate from generated directories
 - **Test independently** — Extensions can introduce runtime errors if the parent type changes after a `pull`
