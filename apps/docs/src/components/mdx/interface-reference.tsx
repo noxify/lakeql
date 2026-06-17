@@ -1,5 +1,8 @@
+import { readFile } from "node:fs/promises"
+
 import { Markdown } from "renoun/components"
 import type { ModuleExport } from "renoun/file-system"
+import { Node, Project, SyntaxKind } from "ts-morph"
 
 import { PackagesDirectory } from "@/collections"
 import {
@@ -18,6 +21,8 @@ interface InterfaceReferenceProps {
   file: string
   /** Export name of the interface to render. */
   name: string
+  /** Extraction mode. "declaration" avoids resolving external library types. */
+  mode?: "declaration" | "resolved"
 }
 
 interface ResolvedProperty {
@@ -36,6 +41,146 @@ interface ResolvedType {
   type?: { kind: string; members?: ResolvedProperty[] }
 }
 
+function extractMembers(resolvedType: ResolvedType): ResolvedProperty[] {
+  if (resolvedType.kind === "Interface" && resolvedType.members) {
+    return resolvedType.members.filter(
+      (member) => member.kind === "PropertySignature"
+    )
+  }
+
+  if (
+    resolvedType.kind === "TypeAlias" &&
+    resolvedType.type?.kind === "TypeLiteral" &&
+    resolvedType.type.members
+  ) {
+    return resolvedType.type.members.filter(
+      (member) => member.kind === "PropertySignature"
+    )
+  }
+
+  return []
+}
+
+function normalizeJsDocTag(tagText: string) {
+  const normalizedText = tagText.trim()
+  const match = /^@(?<name>\S+)(?:\s+(?<text>[\s\S]*))?$/u.exec(normalizedText)
+
+  if (!match?.groups?.name) {
+    return {
+      name: normalizedText.replace(/^@/u, ""),
+    }
+  }
+
+  return {
+    name: match.groups.name,
+    text: match.groups.text?.trim() || undefined,
+  }
+}
+
+function resolvePropertyDescription(property: {
+  getJsDocs: () => { getDescription: () => string }[]
+}) {
+  const description = property
+    .getJsDocs()
+    .map((doc) => doc.getDescription().trim())
+    .filter(Boolean)
+    .join("\n\n")
+
+  return description || undefined
+}
+
+function resolvePropertyTags(property: {
+  getJsDocs: () => { getTags: () => { getText: () => string }[] }[]
+}) {
+  const tags = property
+    .getJsDocs()
+    .flatMap((doc) =>
+      doc.getTags().map((tag) => normalizeJsDocTag(tag.getText()))
+    )
+
+  return tags.length > 0 ? tags : undefined
+}
+
+function toResolvedProperty(property: {
+  getName: () => string
+  getTypeNode: () => { getText: () => string } | undefined
+  hasQuestionToken: () => boolean
+  isReadonly: () => boolean
+  getJsDocs: () => {
+    getDescription: () => string
+    getTags: () => { getText: () => string }[]
+  }[]
+}): ResolvedProperty {
+  return {
+    name: property.getName(),
+    kind: "PropertySignature",
+    type: {
+      text: property.getTypeNode()?.getText().trim() || "unknown",
+    },
+    isOptional: property.hasQuestionToken(),
+    isReadonly: property.isReadonly(),
+    description: resolvePropertyDescription(property),
+    tags: resolvePropertyTags(property),
+  }
+}
+
+async function getDeclarationType(file: string, name: string) {
+  const sourceEntry = await PackagesDirectory.getFile(file, "ts")
+  const filePath = sourceEntry.absolutePath
+  const fileContent = await readFile(filePath, "utf-8")
+  const project = new Project({
+    skipAddingFilesFromTsConfig: true,
+    useInMemoryFileSystem: true,
+  })
+  const sourceFile = project.createSourceFile(filePath, fileContent, {
+    overwrite: true,
+  })
+
+  const interfaceDeclaration = sourceFile.getInterface(name)
+
+  if (interfaceDeclaration) {
+    return {
+      kind: "Interface",
+      members: interfaceDeclaration.getProperties().map(toResolvedProperty),
+    } satisfies ResolvedType
+  }
+
+  const typeAliasDeclaration = sourceFile.getTypeAlias(name)
+  const typeLiteral = typeAliasDeclaration
+    ?.getTypeNode()
+    ?.asKind(SyntaxKind.TypeLiteral)
+
+  if (!typeLiteral) {
+    return
+  }
+
+  return {
+    kind: "TypeAlias",
+    type: {
+      kind: "TypeLiteral",
+      members: typeLiteral
+        .getMembers()
+        .filter(Node.isPropertySignature)
+        .map(toResolvedProperty),
+    },
+  } satisfies ResolvedType
+}
+
+async function getResolvedType(file: string, name: string) {
+  const sourceFile = await PackagesDirectory.getFile(file, "ts")
+  // oxlint-disable-next-line typescript/no-explicit-any
+  const fileExports: ModuleExport<any>[] =
+    // oxlint-disable-next-line typescript/no-explicit-any
+    await (sourceFile as any).getExports()
+  const targetExport = fileExports.find((exp) => exp.name === name)
+
+  if (!targetExport) {
+    return
+  }
+
+  return (await targetExport.getType()) as ResolvedType | undefined
+}
+
 /**
  * Renders a TypeScript interface as a properties table with description as sub-row
  * and @default tag support. Styled consistently with the InlineReference/Reference component.
@@ -43,43 +188,19 @@ interface ResolvedType {
 export async function InterfaceReference({
   file,
   name,
+  mode = "declaration",
 }: InterfaceReferenceProps) {
   try {
-    const sourceFile = await PackagesDirectory.getFile(file, "ts")
-    // oxlint-disable-next-line typescript/no-explicit-any
-    const fileExports: ModuleExport<any>[] =
-      // oxlint-disable-next-line typescript/no-explicit-any
-      await (sourceFile as any).getExports()
-    const targetExport = fileExports.find((exp) => exp.name === name)
-
-    if (!targetExport) {
-      return null
-    }
-
-    const resolvedType = (await targetExport.getType()) as
-      | ResolvedType
-      | undefined
+    const resolvedType =
+      mode === "resolved"
+        ? await getResolvedType(file, name)
+        : await getDeclarationType(file, name)
 
     if (!resolvedType) {
       return null
     }
 
-    // Extract members from Interface or TypeAlias with TypeLiteral
-    let members: ResolvedProperty[] = []
-
-    if (resolvedType.kind === "Interface" && resolvedType.members) {
-      members = resolvedType.members.filter(
-        (m) => m.kind === "PropertySignature"
-      )
-    } else if (
-      resolvedType.kind === "TypeAlias" &&
-      resolvedType.type?.kind === "TypeLiteral" &&
-      resolvedType.type.members
-    ) {
-      members = resolvedType.type.members.filter(
-        (m) => m.kind === "PropertySignature"
-      )
-    }
+    const members = extractMembers(resolvedType)
 
     if (members.length === 0) {
       return null
@@ -131,11 +252,11 @@ function PropertyRow({
   return (
     <>
       <TableRow>
-        <TableCell className="max-w-[300px] font-mono text-xs font-semibold break-all whitespace-normal">
+        <TableCell className="max-w-75 font-mono text-xs font-semibold break-all whitespace-normal">
           {member.name}
           {member.isOptional ? "?" : ""}
         </TableCell>
-        <TableCell className="text-muted-foreground max-w-[300px] font-mono text-xs break-all whitespace-normal">
+        <TableCell className="text-muted-foreground max-w-75 font-mono text-xs break-all whitespace-normal">
           <code className="border-border bg-muted/60 inline-flex rounded border px-1.5 py-0.5 font-mono text-xs">
             {member.type.text}
           </code>
