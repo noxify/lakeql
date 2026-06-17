@@ -85,6 +85,9 @@ importers:
       '@icons-pack/react-simple-icons':
         specifier: 13.13.0
         version: 13.13.0(react@19.2.7)
+      '@lakeql/cli':
+        specifier: workspace:*
+        version: link:../../packages/cli
       '@mdx-js/loader':
         specifier: 3.1.1
         version: 3.1.1
@@ -175,6 +178,9 @@ importers:
       renoun:
         specifier: 11.7.1
         version: 11.7.1(prettier@3.8.4)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(tm-grammars@1.31.15)(tm-themes@1.12.2)
+      server-only:
+        specifier: ^0.0.1
+        version: 0.0.1
       shadcn:
         specifier: 4.11.0
         version: 4.11.0(typescript@6.0.3)
@@ -239,6 +245,9 @@ importers:
       '@types/serve-handler':
         specifier: 6.1.4
         version: 6.1.4
+      commander:
+        specifier: 15.0.0
+        version: 15.0.0
       postcss:
         specifier: 8.5.15
         version: 8.5.15
@@ -5348,6 +5357,9 @@ packages:
   serve-static@2.2.1:
     resolution: {integrity: sha512-xRXBn0pPqQTVQiC8wyQrKs2MOlX24zQ0POGaj0kultvoOCstBQM5yvOhAVSUwOMjQtTvsPWoNCHfPGwaaQJhTw==}
     engines: {node: '>= 18'}
+
+  server-only@0.0.1:
+    resolution: {integrity: sha512-qepMx2JxAa5jjfzxG79yPPq+8BuFToHd1hm7kI+Z4zAq1ftQiP7HcxMhDDItrbtwVeLg/cY2JnKnrcFkmiswNA==}
 
   set-cookie-parser@3.1.0:
     resolution: {integrity: sha512-kjnC1DXBHcxaOaOXBHBeRtltsDG2nUiUni+jP92M9gYdW12rsmx92UsfpH7o5tDRs7I1ZZPSQJQGv3UaRfCiuw==}
@@ -10800,6 +10812,8 @@ snapshots:
       send: 1.2.1
     transitivePeerDependencies:
       - supports-color
+
+  server-only@0.0.1: {}
 
   set-cookie-parser@3.1.0: {}
 

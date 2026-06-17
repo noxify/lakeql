@@ -12,16 +12,6 @@ The bulk pull mode allows you to define all tables and views to pull in a single
 lakeql-cli pull --bulk [options]
 ```
 
-## Options
-
-| Flag                   | Type    | Required | Default              | Description                         |
-| ---------------------- | ------- | -------- | -------------------- | ----------------------------------- |
-| `--bulk`               | boolean | Yes      | —                    | Enables bulk mode                   |
-| `--bulk-config <path>` | string  | No       | auto-detected        | Path to the bulk import config file |
-| `--catalog <catalog>`  | string  | No       | `HIVE_CATALOG` env   | Global catalog override             |
-| `--skip-registry`      | boolean | No       | `false`              | Skip config registry generation     |
-| `--source-path <path>` | string  | No       | Invocation directory | Base path for generated code        |
-
 ## Config file
 
 The config file is automatically detected by looking for `import.config.{mjs,ts,js,json}` in the current directory (powered by [c12](https://github.com/unjs/c12)). You can override this with `--bulk-config`.
@@ -124,3 +114,13 @@ The `BulkPullConfig` and `BulkPullEntry` types are exported from `@lakeql/cli` f
 ```ts
 import type { BulkPullConfig, BulkPullEntry } from "@lakeql/cli"
 ```
+
+## Options
+
+| Flag                   | Type    | Required | Default              | Description                         |
+| ---------------------- | ------- | -------- | -------------------- | ----------------------------------- |
+| `--bulk`               | boolean | Yes      | —                    | Enables bulk mode                   |
+| `--bulk-config <path>` | string  | No       | auto-detected        | Path to the bulk import config file |
+| `--catalog <catalog>`  | string  | No       | `HIVE_CATALOG` env   | Global catalog override             |
+| `--skip-registry`      | boolean | No       | `false`              | Skip config registry generation     |
+| `--source-path <path>` | string  | No       | Invocation directory | Base path for generated code        |

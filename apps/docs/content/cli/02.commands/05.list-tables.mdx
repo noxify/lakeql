@@ -12,13 +12,6 @@ Queries Trino and prints all tables in the specified catalog and schema. If `--s
 lakeql-cli list-tables [options]
 ```
 
-## Options
-
-| Flag                  | Type   | Required | Default                | Description                                 |
-| --------------------- | ------ | -------- | ---------------------- | ------------------------------------------- |
-| `--catalog <catalog>` | string | No       | `HIVE_CATALOG` env var | Catalog to use                              |
-| `--schema <schema>`   | string | No       | —                      | Schema to use (interactive if not provided) |
-
 ## Usage
 
 ```bash
@@ -35,3 +28,10 @@ lakeql-cli list-tables --catalog hive --schema analytics
 │ page_views     │
 └────────────────┘
 ```
+
+## Options
+
+| Flag                  | Type   | Required | Default                | Description                                 |
+| --------------------- | ------ | -------- | ---------------------- | ------------------------------------------- |
+| `--catalog <catalog>` | string | No       | `HIVE_CATALOG` env var | Catalog to use                              |
+| `--schema <schema>`   | string | No       | —                      | Schema to use (interactive if not provided) |

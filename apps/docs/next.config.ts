@@ -58,7 +58,6 @@ const nextConfig: NextConfig = {
   /** Enables hot reloading for local packages without a build step */
   transpilePackages: [
     "@lakeql/core",
-    "@lakeql/cli",
     "@lakeql/create-app",
     "@lakeql/trino-client",
     "@lakeql/query-builder",

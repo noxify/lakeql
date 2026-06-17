@@ -2,30 +2,30 @@
 title: "lakeql-cli pull"
 navTitle: "pull"
 description: Interactive query endpoint generation based on a remote table.
+cliCommand: "pull"
 ---
 
 Connects to Trino, introspects table columns, and generates a full set of TypeScript files for type-safe query endpoints. When run without flags, the command walks you through interactive prompts to select a schema and tables.
 
-## Syntax
+## Usage
 
 ```bash
 lakeql-cli pull [options]
 ```
 
-## Options
+```bash
+lakeql-cli pull --catalog hive --schema myschema --table users
+```
 
-| Flag                   | Type    | Required | Default                | Description                          |
-| ---------------------- | ------- | -------- | ---------------------- | ------------------------------------ |
-| `--catalog <catalog>`  | string  | No       | `HIVE_CATALOG` env var | Catalog to use                       |
-| `--type <type>`        | string  | No       | —                      | Show tables or views                 |
-| `--schema <schema>`    | string  | No       | —                      | Schema to use                        |
-| `--table <table>`      | string  | No       | —                      | Table to use (can be repeated)       |
-| `--skip-registry`      | boolean | No       | `false`                | Skip config registry generation      |
-| `--source-path <path>` | string  | No       | Invocation directory   | Base path for generated code         |
-| `--bulk`               | boolean | No       | `false`                | Run in bulk mode using a config file |
-| `--bulk-config <path>` | string  | No       | auto-detected          | Path to the bulk import config file  |
-
-The `--table` flag can be passed multiple times to generate endpoints for several tables in one run.
+```
+✔ Introspecting hive.myschema.users
+  → schemas/generated/hive/myschema/users/config.ts
+  → schemas/generated/hive/myschema/users/interface.ts
+  → schemas/generated/hive/myschema/users/query-schema.ts
+  → schemas/generated/hive/myschema/users/json-schema.json
+  → schemas/generated/hive/myschema/users/endpoint.json
+✔ Config registry updated
+```
 
 ## Bulk mode
 
@@ -43,18 +43,6 @@ For each selected table, the following files are created under `schemas/generate
 
 `pull` generates query-only endpoints, so `mutation-schema.ts` is not created for pulled tables.
 
-## Usage
+## Options
 
-```bash
-lakeql-cli pull --catalog hive --schema myschema --table users
-```
-
-```
-✔ Introspecting hive.myschema.users
-  → schemas/generated/hive/myschema/users/config.ts
-  → schemas/generated/hive/myschema/users/interface.ts
-  → schemas/generated/hive/myschema/users/query-schema.ts
-  → schemas/generated/hive/myschema/users/json-schema.json
-  → schemas/generated/hive/myschema/users/endpoint.json
-✔ Config registry updated
-```
+<CliCommandDetails command="pull" />

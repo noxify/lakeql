@@ -24,6 +24,7 @@ import {
 import { TableOfContentsScript } from "@/components/toc"
 import { SidebarInset } from "@/components/ui/sidebar"
 import { SidebarGridProvider } from "@/components/ui/sidebar-grid-provider"
+import { getCliCommandTocSections } from "@/lib/cli-commands"
 import {
   getCollectionNavigation,
   getFavoriteNavigationItems,
@@ -195,6 +196,13 @@ export default async function DocsSlugLayout({
             ]
           : []),
       ]
+    }
+
+    if (frontmatter?.cliCommand) {
+      const cliSections = getCliCommandTocSections(frontmatter.cliCommand)
+      // Replace the static "Options" heading (if any) with the dynamic one
+      // that has the individual options as children
+      headings = [...headings.filter((h) => h.id !== "options"), ...cliSections]
     }
   }
 

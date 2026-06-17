@@ -11,7 +11,8 @@
       }
     ],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@lakeql/cli/commands": ["../../packages/cli/dist/commands.d.mts"]
     },
     "strictNullChecks": true
   },

@@ -12,14 +12,6 @@ Queries Trino and prints all columns for a specific table, including their data 
 lakeql-cli list-columns [options]
 ```
 
-## Options
-
-| Flag                  | Type   | Required | Default                | Description    |
-| --------------------- | ------ | -------- | ---------------------- | -------------- |
-| `--catalog <catalog>` | string | No       | `HIVE_CATALOG` env var | Catalog to use |
-| `--schema <schema>`   | string | Yes      | —                      | Schema to use  |
-| `--table <table>`     | string | Yes      | —                      | Table to use   |
-
 ## Usage
 
 ```bash
@@ -36,3 +28,11 @@ lakeql-cli list-columns --catalog hive --schema analytics --table users
 │ is_active   │ boolean  │       │ Whether user active │
 └─────────────┴──────────┴───────┴─────────────────────┘
 ```
+
+## Options
+
+| Flag                  | Type   | Required | Default                | Description    |
+| --------------------- | ------ | -------- | ---------------------- | -------------- |
+| `--catalog <catalog>` | string | No       | `HIVE_CATALOG` env var | Catalog to use |
+| `--schema <schema>`   | string | Yes      | —                      | Schema to use  |
+| `--table <table>`     | string | Yes      | —                      | Table to use   |

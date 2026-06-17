@@ -43,6 +43,10 @@
     },
     "./cli": {
       "import": "./dist/cli.mjs"
+    },
+    "./commands-metadata": {
+      "import": "./dist/commands-metadata.mjs",
+      "types": "./dist/commands-metadata.d.mts"
     }
   },
   "scripts": {

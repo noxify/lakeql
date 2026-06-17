@@ -60,14 +60,6 @@ lakeql-cli create-endpoint --from-file ./my-endpoint.json
 ✔ Config registry updated
 ```
 
-## Options
-
-| Option                 | Description                                   |
-| ---------------------- | --------------------------------------------- |
-| `--from-file <path>`   | **(required)** Path to a JSON definition file |
-| `--source-path <path>` | Base path for generated code (default: CWD)   |
-| `--skip-registry`      | Skip config registry generation               |
-
 ## Definition file format
 
 The JSON definition file must conform to the `EndpointDefinitionFormat` schema:
@@ -208,3 +200,11 @@ Each field can include an optional `options` object to control mutation input be
 3. Download the JSON definition file
 4. Run `lakeql-cli create-endpoint --from-file ./your-endpoint.json`
 5. The generated mutation resolver is fully wired to the write pipeline — no manual stub implementation needed
+
+## Options
+
+| Option                 | Description                                   |
+| ---------------------- | --------------------------------------------- |
+| `--from-file <path>`   | **(required)** Path to a JSON definition file |
+| `--source-path <path>` | Base path for generated code (default: CWD)   |
+| `--skip-registry`      | Skip config registry generation               |
