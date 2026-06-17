@@ -19,11 +19,11 @@ export function generateId(): string {
 }
 
 export function buildOutputField(field: FieldDefinition): OutputField | null {
-  const out: OutputField = { name: field.name, type: field.type }
+  const out: OutputField = { name: field.name ?? "", type: field.type }
 
   if (field.type === "Object") {
     const children = (field.fields ?? [])
-      .filter((f) => f.name.trim() !== "")
+      .filter((f) => f.name?.trim())
       .map(buildOutputField)
       .filter((f): f is OutputField => f !== null)
     if (children.length === 0) {
@@ -34,7 +34,7 @@ export function buildOutputField(field: FieldDefinition): OutputField | null {
     const itemType = field.arrayItemType ?? "String"
     if (itemType === "Object") {
       const children = (field.arrayItemFields ?? [])
-        .filter((f) => f.name.trim() !== "")
+        .filter((f) => f.name?.trim())
         .map(buildOutputField)
         .filter((f): f is OutputField => f !== null)
       if (children.length === 0) {
@@ -66,11 +66,11 @@ export function buildOutputField(field: FieldDefinition): OutputField | null {
 export function buildOutputJSON(def: EndpointDefinition): OutputDefinition {
   const output: OutputDefinition = {
     version: "1.0",
-    tableName: def.tableName,
-    catalog: def.catalog,
-    schema: def.schema,
-    fields: def.fields
-      .filter((f) => f.name.trim() !== "")
+    tableName: def.tableName ?? "",
+    catalog: def.catalog ?? "",
+    schema: def.schema ?? "",
+    fields: (def.fields ?? [])
+      .filter((f) => f.name?.trim() !== "" && f.name !== undefined)
       .map(buildOutputField)
       .filter((f): f is OutputField => f !== null),
   }

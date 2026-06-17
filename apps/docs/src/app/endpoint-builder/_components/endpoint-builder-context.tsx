@@ -41,39 +41,40 @@ function collectWarnings(
   path: string[]
 ) {
   for (const field of fields) {
-    const fieldPath = [...path, field.name || "(unnamed)"].join(".")
+    const name = field.name ?? ""
+    const fieldPath = [...path, name || "(unnamed)"].join(".")
 
-    if (!field.name.trim()) {
+    if (!name.trim()) {
       warnings.push(
         `Empty field name${path.length > 0 ? ` in ${path.join(".")}` : ""} — will be excluded from output`
       )
     }
 
     if (field.type === "Object") {
-      const namedChildren = (field.fields ?? []).filter((f) => f.name.trim())
-      if (namedChildren.length === 0 && field.name.trim()) {
+      const namedChildren = (field.fields ?? []).filter((f) => f.name?.trim())
+      if (namedChildren.length === 0 && name.trim()) {
         warnings.push(
           `"${fieldPath}" has no children — will be excluded from output`
         )
       }
       collectWarnings(field.fields ?? [], warnings, [
         ...path,
-        field.name || "(unnamed)",
+        name || "(unnamed)",
       ])
     }
 
     if (field.type === "Array" && field.arrayItemType === "Object") {
       const namedChildren = (field.arrayItemFields ?? []).filter((f) =>
-        f.name.trim()
+        f.name?.trim()
       )
-      if (namedChildren.length === 0 && field.name.trim()) {
+      if (namedChildren.length === 0 && name.trim()) {
         warnings.push(
           `"${fieldPath}" array items have no children — will be excluded from output`
         )
       }
       collectWarnings(field.arrayItemFields ?? [], warnings, [
         ...path,
-        field.name || "(unnamed)",
+        name || "(unnamed)",
         "items",
       ])
     }
@@ -88,11 +89,11 @@ function collectMutationWarnings(
     return
   }
 
-  if (!mutation.bucket.trim()) {
+  if (!mutation.bucket?.trim()) {
     warnings.push("Mutation: Bucket is required")
   }
 
-  if (!mutation.basePath.trim()) {
+  if (!mutation.basePath?.trim()) {
     warnings.push("Mutation: Base Path is required")
   }
 
@@ -197,11 +198,11 @@ export function EndpointBuilderProvider({
   useEffect(() => {
     if (!initialized.current && persistedDraft) {
       setDef({
-        version: persistedDraft.version,
-        tableName: persistedDraft.tableName,
-        catalog: persistedDraft.catalog,
-        schema: persistedDraft.schema,
-        fields: persistedDraft.fields,
+        version: persistedDraft.version ?? "1.0",
+        tableName: persistedDraft.tableName ?? "",
+        catalog: persistedDraft.catalog ?? "",
+        schema: persistedDraft.schema ?? "",
+        fields: persistedDraft.fields ?? [],
         mutation: persistedDraft.mutation,
       })
       initialized.current = true
@@ -217,9 +218,9 @@ export function EndpointBuilderProvider({
   const hasInserted = useRef(!!persistedDraft)
 
   const hasContent =
-    def.tableName.trim() !== "" ||
-    def.catalog.trim() !== "" ||
-    def.schema.trim() !== "" ||
+    (def.tableName ?? "").trim() !== "" ||
+    (def.catalog ?? "").trim() !== "" ||
+    (def.schema ?? "").trim() !== "" ||
     def.fields.length > 0 ||
     (def.mutation !== undefined && def.mutation !== false)
 
