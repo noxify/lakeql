@@ -17,20 +17,7 @@ function defineConfig<const TConfig extends readonly SchemaConfigEntry[]>(
 
 The `DefineConfigOptions` interface extends `ApiRuntimeConfig` with a required `allConfigs` field:
 
-| Field                 | Type                           | Default                                  | Description                                        |
-| --------------------- | ------------------------------ | ---------------------------------------- | -------------------------------------------------- |
-| `port`                | `number`                       | `API_PORT` env or `4000`                 | Server port                                        |
-| `graphqlPath`         | `string`                       | `"/graphql"`                             | GraphQL endpoint path                              |
-| `healthCheckEndpoint` | `string`                       | `"/live"`                                | Health check endpoint path                         |
-| `maxRecordsPerPage`   | `number`                       | `API_MAX_RECORDS_PER_PAGE` env or `2000` | Maximum records per paginated response             |
-| `schemaPath`          | `string`                       | —                                        | Path to query schema files                         |
-| `baseDir`             | `string`                       | `process.cwd()`                          | Base directory for resolving relative paths        |
-| `getUser`             | `GetUserResolver`              | Built-in mock auth resolver              | Custom JWT authentication resolver                 |
-| `hasReadPermission`   | `ReadPermissionResolver`       | Built-in read permission check           | Custom read permission resolver                    |
-| `hasWritePermission`  | `WritePermissionResolver`      | Built-in write permission check          | Custom write permission resolver                   |
-| `yogaConfig`          | `YogaConfigOverrides`          | —                                        | Override GraphQL Yoga options                      |
-| `permissions`         | `Permission[]`                 | `[]`                                     | Permission rules for technical users               |
-| `allConfigs`          | `readonly SchemaConfigEntry[]` | —                                        | Generated schema configs for type-safe permissions |
+<InlineReference file="api/src/config" include={["ApiRuntimeConfig"]} />
 
 ## Return type
 

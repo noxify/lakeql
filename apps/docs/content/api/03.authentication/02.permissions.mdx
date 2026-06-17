@@ -7,31 +7,7 @@ Permissions define which catalogs, schemas, and tables a technical user can acce
 
 ## Permission interface
 
-```typescript
-interface Permission {
-  name: string
-  useSystemUser: boolean
-  permissions: {
-    Query: {
-      catalog: string
-      schema: string
-      tables: string[]
-    }[]
-    Mutation: {
-      catalog: string
-      schema: string
-      tables: string[]
-    }[]
-  }
-}
-```
-
-| Field                  | Description                                               |
-| ---------------------- | --------------------------------------------------------- |
-| `name`                 | Username to match against `currentUser.userName`          |
-| `useSystemUser`        | Whether this user's queries run via the Trino system user |
-| `permissions.Query`    | Read access rules (catalog + schema + tables)             |
-| `permissions.Mutation` | Write access rules (catalog + schema + tables)            |
+<InlineReference file="api/src/types" include={["Permission"]} />
 
 ## Wildcard access
 
