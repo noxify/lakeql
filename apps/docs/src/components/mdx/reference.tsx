@@ -220,15 +220,16 @@ const Code: ReferenceComponents["Code"] = ({ children }) => (
 )
 
 type AnchorProps = ComponentPropsWithoutRef<"a">
+
 // Description
 const Description: ReferenceComponents["Description"] = ({ children }) => (
   <div className="prose prose-sm dark:prose-invert text-muted-foreground max-w-none text-sm">
     <Markdown
       components={{
         // oxlint-disable-next-line no-shadow react/no-unstable-nested-components
-        a: ({ href, children, ...props }: AnchorProps) => (
+        a: ({ href, children: linkChildren, ...props }: AnchorProps) => (
           <LinkHandler href={href} {...props}>
-            {children}
+            {linkChildren}
           </LinkHandler>
         ),
       }}

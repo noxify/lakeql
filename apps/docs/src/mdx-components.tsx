@@ -11,6 +11,7 @@ import {
   MarkdownImageHandler,
 } from "@/components/mdx/image-handler"
 import { InlineReference } from "@/components/mdx/inline-reference"
+import { InterfaceReference } from "@/components/mdx/interface-reference"
 import { LinkHandler } from "@/components/mdx/link-handler"
 import { MermaidDiagram } from "@/components/mdx/mermaid"
 import { RailroadDiagram } from "@/components/mdx/railroad"
@@ -298,6 +299,7 @@ export function useMDXComponents() {
 
     Command,
     InlineReference,
+    InterfaceReference,
     References,
   } satisfies MDXComponents
 }

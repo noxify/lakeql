@@ -131,9 +131,9 @@ The JSON definition file must conform to the `EndpointDefinitionFormat` schema:
 
 The optional `mutation` field controls whether a write pipeline is generated for this endpoint. Set it to `false` (or omit it) for query-only endpoints. Set it to a configuration object to enable the mutation pipeline.
 
-<InlineReference
+<InterfaceReference
   file="schema-generator/src/endpoint-schema"
-  include={["MutationConfig"]}
+  name="MutationConfig"
 />
 
 <Note>
@@ -171,9 +171,9 @@ See the [Load Strategies](/lakeql/guides/load-strategies) guide for details on w
 
 Each field can include an optional `options` object to control mutation input behavior:
 
-<InlineReference
+<InterfaceReference
   file="schema-generator/src/endpoint-schema"
-  include={["FieldOptions"]}
+  name="FieldOptions"
 />
 
 <Note>
