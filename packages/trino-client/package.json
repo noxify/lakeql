@@ -43,13 +43,14 @@
     "clean:cache": "git clean -xdf .cache .turbo",
     "clean:dist": "git clean -xdf dist",
     "dev": "tsdown --watch",
+    "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@lakeql/tsconfig": "workspace:*",
     "@types/node": "24.13.2",
     "msw": "2.14.6",
-    "tsdown": "0.22.2",
+    "tsdown": "0.22.3",
     "typescript": "6.0.3",
     "vitest": "4.1.9"
   }

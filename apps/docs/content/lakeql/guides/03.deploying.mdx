@@ -1,0 +1,292 @@
+---
+title: Deploying
+description: Build and deploy a LakeQL API to production with Docker, Compose, and environment variable management.
+---
+
+## Production Build
+
+LakeQL projects use `tsdown` for building TypeScript into production-ready JavaScript:
+
+```bash
+pnpm run build
+```
+
+This produces optimized output in the `dist/` directory. The entry point is `dist/index.mjs`.
+
+```bash
+# Run the production build locally
+node dist/index.mjs
+```
+
+## Docker
+
+The app template includes a multi-stage `Dockerfile` that produces a minimal production image:
+
+```dockerfile path="Dockerfile"
+# Build stage
+FROM node:24-alpine AS builder
+
+WORKDIR /app
+
+ARG PNPM_VERSION=11
+RUN npm i -g pnpm@${PNPM_VERSION} && \
+    pnpm config set store-dir ~/.pnpm-store
+
+# Install dependencies
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
+
+# Copy source and build
+COPY . .
+RUN pnpm run build
+
+# Production stage
+FROM node:24-alpine AS runner
+
+WORKDIR /app
+
+ENV NODE_ENV=production
+
+# OCI image labels for traceability
+ARG COMMIT_SHA
+ARG SOURCE_URL
+ARG VERSION
+ARG LICENSE
+ARG AUTHORS
+
+LABEL org.opencontainers.image.revision=${COMMIT_SHA} \
+      org.opencontainers.image.source=${SOURCE_URL} \
+      org.opencontainers.image.version=${VERSION} \
+      org.opencontainers.image.licenses=${LICENSE} \
+      org.opencontainers.image.authors=${AUTHORS}
+
+# Copy built output and production dependencies only
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/package.json ./
+COPY --from=builder /app/node_modules ./node_modules
+
+# OpenShift compatibility: allow random UID (root group) to access files
+RUN chgrp -R 0 /app && \
+    chmod -R g=u /app
+
+USER 1001
+
+EXPOSE 4000
+
+HEALTHCHECK --interval=30s --timeout=3s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:4000/live || exit 1
+
+CMD ["node", "dist/index.mjs"]
+```
+
+Build and run:
+
+```bash
+docker build -t my-lakeql-api \
+  --build-arg COMMIT_SHA=$(git rev-parse HEAD) \
+  --build-arg SOURCE_URL=$(git remote get-url origin) \
+  --build-arg VERSION=1.0.0 \
+  .
+docker run -p 4000:4000 --env-file .env.production my-lakeql-api
+```
+
+## Docker Compose
+
+The template includes a `compose.yaml` for running the API alongside MinIO (S3-compatible storage for the mutation write pipeline):
+
+```bash
+# Start all services
+docker compose up -d
+
+# View logs
+docker compose logs -f app
+
+# Stop
+docker compose down
+```
+
+The Compose setup includes:
+
+- **app** — The LakeQL API server on port 4000
+- **minio** — S3-compatible storage on port 9000 (console on 9001)
+- **minio-init** — Creates the default bucket on startup
+
+<Note>
+  The Compose file does not include Trino or Hive Metastore. These are
+  infrastructure services that should be managed separately. Configure the
+  `HIVE_HOST` environment variable to point to your Trino cluster.
+</Note>
+
+## Environment Variables
+
+For production, set environment variables through your deployment platform rather than `.env` files:
+
+```bash
+docker run -p 4000:4000 \
+  -e HIVE_HOST="https://trino.prod.internal" \
+  -e HIVE_PORT=8446 \
+  -e HIVE_USERNAME="lakeql-service" \
+  -e HIVE_PASSWORD="$TRINO_PASSWORD" \
+  -e HIVE_CATALOG=hive \
+  -e API_PORT=4000 \
+  -e API_LOGGER=warn \
+  -e AUTH_MOCK=false \
+  -e NODE_ENV=production \
+  my-lakeql-api
+```
+
+| Variable          | Required | Description                                  |
+| ----------------- | -------- | -------------------------------------------- |
+| `HIVE_HOST`       | Yes      | Trino server URL                             |
+| `HIVE_PORT`       | Yes      | Trino port (default: 8080)                   |
+| `HIVE_CATALOG`    | Yes      | Trino catalog name                           |
+| `HIVE_USERNAME`   | Yes      | Trino username                               |
+| `HIVE_PASSWORD`   | No       | Trino password                               |
+| `HIVE_SOURCE`     | No       | Source identifier (default: "lakeql")        |
+| `AUTH_MOCK`       | No       | Enable mock authentication (default: false)  |
+| `AUTH_MOCK_TOKEN` | No       | Token for mock auth                          |
+| `API_PORT`        | No       | Server port (default: 4000)                  |
+| `API_LOGGER`      | No       | Log level: error, warn, info (default: warn) |
+
+<Warning>
+  Never include `.env` files with real credentials in Docker images. Use secrets
+  management (AWS Secrets Manager, Vault, Kubernetes secrets) for sensitive
+  values.
+</Warning>
+
+## Health Check
+
+LakeQL exposes a configurable health check endpoint (default: `/live`):
+
+```ts path="src/config.ts"
+import { defineConfig } from "@lakeql/api/config"
+import { allConfigs } from "./config-registry"
+
+const baseDir = import.meta.dirname
+
+export const config = defineConfig({
+  allConfigs,
+  baseDir,
+  healthCheckEndpoint: "/live",
+  // ...
+})
+```
+
+Use this for container orchestrator probes (Docker, Kubernetes, ECS):
+
+```yaml
+# Kubernetes liveness probe
+livenessProbe:
+  httpGet:
+    path: /live
+    port: 4000
+  initialDelaySeconds: 5
+  periodSeconds: 10
+```
+
+## Production Checklist
+
+<Stepper>
+<StepperItem title="Disable mock auth">
+
+Set `AUTH_MOCK=false` and implement a real `getUser` resolver with JWT validation in `src/auth.ts`.
+
+</StepperItem>
+<StepperItem title="Set appropriate limits">
+
+Configure `API_MAX_RECORDS_PER_PAGE` to prevent excessively large responses that could overwhelm Trino or the network.
+
+</StepperItem>
+<StepperItem title="Configure logging">
+
+Set `API_LOGGER=warn` or `API_LOGGER=error` in production. Use `info` only for troubleshooting.
+
+</StepperItem>
+<StepperItem title="Secure Trino credentials">
+
+Store `HIVE_USERNAME` and `HIVE_PASSWORD` in a secrets manager. Rotate credentials regularly.
+
+</StepperItem>
+<StepperItem title="Set NODE_ENV">
+
+Always set `NODE_ENV=production` for deployments. This affects error messages and performance optimizations.
+
+</StepperItem>
+<StepperItem title="Run generated schemas in CI">
+
+Include `lakeql-cli pull` in your CI pipeline to verify schemas are up to date with the target Trino cluster.
+
+</StepperItem>
+</Stepper>
+
+## Scaling
+
+- **Stateless** — LakeQL API servers are stateless. Scale horizontally behind a load balancer.
+- **Connection pooling** — Trino handles connections efficiently. Multiple API instances can share the same Trino cluster.
+- **Caching** — Consider adding HTTP caching (e.g. CDN or Redis) for frequently-accessed, slowly-changing data.
+- **Rate limiting** — Add rate limiting middleware to protect Trino from excessive query load.
+
+## Platform-Specific Notes
+
+### AWS ECS / Fargate
+
+```bash
+# Build and push to ECR
+aws ecr get-login-password --region eu-central-1 | docker login --username AWS --password-stdin <account>.dkr.ecr.eu-central-1.amazonaws.com
+docker build -t lakeql-api .
+docker tag lakeql-api:latest <account>.dkr.ecr.eu-central-1.amazonaws.com/lakeql-api:latest
+docker push <account>.dkr.ecr.eu-central-1.amazonaws.com/lakeql-api:latest
+```
+
+### Google Cloud Run
+
+```bash
+gcloud run deploy lakeql-api \
+  --source . \
+  --port 4000 \
+  --set-env-vars "HIVE_HOST=..." \
+  --region europe-west1
+```
+
+### Kubernetes
+
+```yaml path="k8s/deployment.yaml"
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lakeql-api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: lakeql-api
+  template:
+    metadata:
+      labels:
+        app: lakeql-api
+    spec:
+      containers:
+        - name: lakeql-api
+          image: my-registry/lakeql-api:latest
+          ports:
+            - containerPort: 4000
+          env:
+            - name: HIVE_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: trino-credentials
+                  key: host
+          livenessProbe:
+            httpGet:
+              path: /live
+              port: 4000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+```

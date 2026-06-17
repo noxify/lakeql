@@ -5,17 +5,7 @@ description: Multi-field sorting with configurable direction for query results.
 
 ## SortInput Interface
 
-```typescript
-import type { SelectExpression } from "kysely"
-
-interface SortInput<TableDefinition> {
-  field: SelectExpression<
-    KyselyDatabase<TableDefinition>,
-    keyof KyselyDatabase<TableDefinition>
-  >
-  direction: "asc" | "desc"
-}
-```
+<InterfaceReference file="query-builder/src/index" name="SortInput" />
 
 Each `SortInput` specifies a column to order by and the sort direction. The `field` property uses Kysely's `SelectExpression` type for type safety, but in practice it's a string matching a column name.
 
@@ -23,8 +13,15 @@ Each `SortInput` specifies a column to order by and the sort direction. The `fie
 
 The `sorting` parameter accepts an array. Fields are applied in order — the first entry is the primary sort key, subsequent entries are secondary, tertiary, etc.
 
-```typescript
+```ts
 import { generateQuery } from "@lakeql/query-builder"
+
+interface OrderTable {
+  id: number
+  status: string
+  created_at: string
+  customerName: string
+}
 
 const compiled = generateQuery<OrderTable>({
   catalog: "hive",
@@ -49,9 +46,22 @@ ORDER BY "status" ASC, "created_at" DESC
 
 If a sorted field has a mapping in `transformFields`, the query builder uses the database column name in the ORDER BY clause:
 
-```typescript
+```ts
+import { generateQuery } from "@lakeql/query-builder"
+
+interface OrderTable {
+  id: number
+  status: string
+  created_at: string
+  customerName: string
+}
+
 const compiled = generateQuery<OrderTable>({
-  // ...
+  catalog: "hive",
+  schema: "sales",
+  table: "orders",
+  selectFields: ["id", "status", "created_at"],
+  userQuery: {},
   sorting: [{ field: "customerName", direction: "asc" }],
   transformFields: { customerName: "customer_name" },
 })

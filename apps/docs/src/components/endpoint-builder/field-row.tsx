@@ -89,6 +89,7 @@ export function FieldRow({
 
   const nameError = getNameError(field.name, siblingNames)
   const atMaxDepth = depth >= MAX_DEPTH
+  const isReadOnly = field.options?.readOnly === true
 
   function handleTypeChange(type: FieldType) {
     const updated: FieldDefinition = { ...field, type }
@@ -180,7 +181,8 @@ export function FieldRow({
       style={style}
       className={cn(
         "rounded-lg border border-border bg-card transition-opacity",
-        isDragging && "opacity-50 shadow-lg"
+        isDragging && "opacity-50 shadow-lg",
+        isReadOnly && "opacity-60"
       )}
     >
       {/* Row header */}
@@ -219,6 +221,7 @@ export function FieldRow({
             value={field.name}
             onChange={(e) => onUpdate({ ...field, name: e.target.value })}
             placeholder="field_name"
+            disabled={isReadOnly}
             className={cn(
               "h-8 font-mono text-sm",
               field.name &&
@@ -270,6 +273,7 @@ export function FieldRow({
             variant="ghost"
             size="icon"
             onClick={onDelete}
+            disabled={isReadOnly}
             className="text-muted-foreground hover:text-destructive size-8 shrink-0"
             aria-label="Delete field"
           >
@@ -279,9 +283,15 @@ export function FieldRow({
       </div>
 
       {/* Field options summary badges */}
-      {(field.options?.required ||
+      {(isReadOnly ||
+        field.options?.required ||
         (field.options?.validations?.length ?? 0) > 0) && (
         <div className="border-border flex flex-wrap items-center gap-1.5 border-t px-3 py-1.5">
+          {isReadOnly && (
+            <Badge variant="secondary" className="text-xs font-normal">
+              system
+            </Badge>
+          )}
           {field.options?.required && (
             <Badge variant="outline" className="text-xs font-normal">
               required

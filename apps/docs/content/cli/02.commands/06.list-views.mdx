@@ -12,13 +12,6 @@ Queries Trino and prints all views in the specified catalog and schema. If `--sc
 lakeql-cli list-views [options]
 ```
 
-## Options
-
-| Flag                  | Type   | Required | Default                | Description                                 |
-| --------------------- | ------ | -------- | ---------------------- | ------------------------------------------- |
-| `--catalog <catalog>` | string | No       | `HIVE_CATALOG` env var | Catalog to use                              |
-| `--schema <schema>`   | string | No       | —                      | Schema to use (interactive if not provided) |
-
 ## Usage
 
 ```bash
@@ -34,3 +27,7 @@ lakeql-cli list-views --catalog hive --schema analytics
 │ session_aggregates   │
 └──────────────────────┘
 ```
+
+## Options
+
+<CliCommandDetails command="list-views" />

@@ -14,6 +14,7 @@ export const frontmatterSchema = z.object({
   apiReference: z
     .array(z.object({ name: z.string(), file: z.string() }))
     .default([]),
+  cliCommand: z.string().optional(),
   separator: z.boolean().optional().default(false),
   tags: z.array(z.string()).optional(),
   title: z.string().optional(),

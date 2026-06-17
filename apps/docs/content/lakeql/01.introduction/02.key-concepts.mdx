@@ -17,7 +17,7 @@ LakeQL sits on top of this stack, exposing lakehouse data through a GraphQL API 
 
 LakeQL translates incoming GraphQL queries into Trino SQL. This translation uses Kysely as a type-safe query builder:
 
-```typescript
+```ts
 // A GraphQL query like this:
 query {
   orders(filter: { status: { eq: "shipped" } }, paging: { limit: 10 }) {

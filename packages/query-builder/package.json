@@ -57,7 +57,7 @@
     "@pothos/core": "4.12.0",
     "@types/node": "24.13.2",
     "graphql": "16.14.2",
-    "tsdown": "0.22.2",
+    "tsdown": "0.22.3",
     "typescript": "6.0.3",
     "vitest": "4.1.9"
   }

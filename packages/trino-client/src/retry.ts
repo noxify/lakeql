@@ -4,15 +4,30 @@ import { TrinoCancellationError, TrinoClientError } from "./errors"
  * Configuration for automatic retry behavior.
  */
 export interface RetryConfig {
-  /** Maximum number of retry attempts. Default: 3. */
+  /**
+   * Maximum number of retry attempts.
+   * @default 3
+   */
   maxRetries?: number
-  /** Initial delay between retries in ms. Default: 1000. */
+  /**
+   * Initial delay between retries in ms.
+   * @default 1000
+   */
   initialDelay?: number
-  /** Maximum delay between retries in ms. Default: 30000. */
+  /**
+   * Maximum delay between retries in ms.
+   * @default 30000
+   */
   maxDelay?: number
-  /** Multiplier for exponential backoff. Default: 2. */
+  /**
+   * Multiplier for exponential backoff.
+   * @default 2
+   */
   backoffMultiplier?: number
-  /** HTTP status codes that trigger a retry. Default: [429, 500, 502, 503, 504]. */
+  /**
+   * HTTP status codes that trigger a retry.
+   * @default [429, 500, 502, 503, 504]
+   */
   retryableStatusCodes?: number[]
 }
 

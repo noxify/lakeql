@@ -2,48 +2,16 @@
 title: "lakeql-cli pull"
 navTitle: "pull"
 description: Interactive query endpoint generation based on a remote table.
+cliCommand: "pull"
 ---
 
 Connects to Trino, introspects table columns, and generates a full set of TypeScript files for type-safe query endpoints. When run without flags, the command walks you through interactive prompts to select a schema and tables.
 
-## Syntax
+## Usage
 
 ```bash
 lakeql-cli pull [options]
 ```
-
-## Options
-
-| Flag                   | Type    | Required | Default                | Description                          |
-| ---------------------- | ------- | -------- | ---------------------- | ------------------------------------ |
-| `--catalog <catalog>`  | string  | No       | `HIVE_CATALOG` env var | Catalog to use                       |
-| `--type <type>`        | string  | No       | —                      | Show tables or views                 |
-| `--schema <schema>`    | string  | No       | —                      | Schema to use                        |
-| `--table <table>`      | string  | No       | —                      | Table to use (can be repeated)       |
-| `--skip-registry`      | boolean | No       | `false`                | Skip config registry generation      |
-| `--source-path <path>` | string  | No       | Invocation directory   | Base path for generated code         |
-| `--bulk`               | boolean | No       | `false`                | Run in bulk mode using a config file |
-| `--bulk-config <path>` | string  | No       | auto-detected          | Path to the bulk import config file  |
-
-The `--table` flag can be passed multiple times to generate endpoints for several tables in one run.
-
-## Bulk mode
-
-When `--bulk` is specified, the command reads a config file and processes multiple schemas and tables in parallel. See [Bulk Pull](/cli/02.commands/09.bulk-pull) for details.
-
-## Generated files
-
-For each selected table, the following files are created under `schemas/generated/{catalog}/{schema}/{table}/`:
-
-- `config.ts` — Endpoint configuration
-- `interface.ts` — TypeScript interface for the table columns
-- `query-schema.ts` — GraphQL query schema definition
-- `json-schema.json` — JSON Schema representation
-- `endpoint.json` — Endpoint definition for re-generation
-
-`pull` generates query-only endpoints, so `mutation-schema.ts` is not created for pulled tables.
-
-## Usage
 
 ```bash
 lakeql-cli pull --catalog hive --schema myschema --table users
@@ -58,3 +26,132 @@ lakeql-cli pull --catalog hive --schema myschema --table users
   → schemas/generated/hive/myschema/users/endpoint.json
 ✔ Config registry updated
 ```
+
+## Bulk mode
+
+When `--bulk` is specified, the command reads a config file and processes multiple schemas and tables in parallel — instead of using interactive prompts.
+
+### Syntax
+
+```bash
+lakeql-cli pull --bulk [options]
+```
+
+### Config file
+
+The config file is automatically detected by looking for `import.config.{mjs,ts,js,json}` in the current directory (powered by [c12](https://github.com/unjs/c12)). You can override this with `--bulk-config`.
+
+Use the `@type` JSDoc annotation for type-safety and autocomplete:
+
+```javascript
+// import.config.mjs
+
+/** @type {import('@lakeql/cli').BulkPullConfig} */
+export default [
+  {
+    schema: "sales",
+    tables: ["orders", "customers", "products"],
+    views: ["daily_revenue"],
+  },
+  {
+    schema: "analytics",
+    tables: ["events", "sessions"],
+  },
+  {
+    schema: "inventory",
+    catalog: "warehouse", // optional catalog override per entry
+    tables: ["stock_levels"],
+    views: ["low_stock_alerts"],
+  },
+]
+```
+
+#### Supported formats
+
+The config file can be any of the following (in precedence order):
+
+1. `import.config.mjs`
+2. `import.config.ts`
+3. `import.config.js`
+4. `import.config.json`
+
+### Config schema
+
+Each entry in the array has the following shape:
+
+| Field     | Type       | Required | Description                     |
+| --------- | ---------- | -------- | ------------------------------- |
+| `schema`  | `string`   | Yes      | The schema to pull from         |
+| `catalog` | `string`   | No       | Catalog override for this entry |
+| `tables`  | `string[]` | No       | List of tables to pull          |
+| `views`   | `string[]` | No       | List of views to pull           |
+
+At least one of `tables` or `views` should be provided per entry.
+
+### Catalog precedence
+
+The catalog is resolved in the following order (first match wins):
+
+1. `--catalog` CLI flag (highest priority)
+2. `catalog` field in the config entry
+3. `HIVE_CATALOG` environment variable (fallback)
+
+### Execution behavior
+
+- All schema entries are processed **in parallel** for faster execution.
+- Tables and views within a single entry are processed sequentially.
+- The config registry is generated **once** at the end (not per entry).
+- If one entry fails, the remaining entries continue to execute.
+- Progress is displayed using a structured task list in the terminal.
+
+### Usage
+
+```bash
+# Auto-detect config file (import.config.mjs, .ts, .js, or .json)
+lakeql-cli pull --bulk
+
+# Using a custom config file
+lakeql-cli pull --bulk --bulk-config=./my-import.config.mjs
+
+# With global catalog override
+lakeql-cli pull --bulk --catalog my_catalog
+
+# Skip registry generation
+lakeql-cli pull --bulk --skip-registry
+```
+
+### Terminal output
+
+```
+⠋ Pull data
+  ✓ hive/sales — 4 item(s) pulled
+  ⠋ hive/analytics — 2 item(s)
+    → Pulling 2 table(s)...
+  ✓ warehouse/inventory — 2 item(s) pulled
+✓ Pull data
+✓ Create registry
+```
+
+### Type export
+
+The `BulkPullConfig` and `BulkPullEntry` types are exported from `@lakeql/cli` for use in your config file:
+
+```ts
+import type { BulkPullConfig, BulkPullEntry } from "@lakeql/cli"
+```
+
+## Generated files
+
+For each selected table, the following files are created under `schemas/generated/{catalog}/{schema}/{table}/`:
+
+- `config.ts` — Endpoint configuration
+- `interface.ts` — TypeScript interface for the table columns
+- `query-schema.ts` — GraphQL query schema definition
+- `json-schema.json` — JSON Schema representation
+- `endpoint.json` — Endpoint definition for re-generation
+
+`pull` generates query-only endpoints, so `mutation-schema.ts` is not created for pulled tables.
+
+## Options
+
+<CliCommandDetails command="pull" />

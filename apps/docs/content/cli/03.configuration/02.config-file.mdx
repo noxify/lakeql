@@ -16,24 +16,9 @@ The CLI supports multiple config file formats, loaded in the following precedenc
 
 Config loading is powered by [c12](https://github.com/unjs/c12).
 
-## Schema
+## Configuration
 
-```typescript
-interface LakeQLConfig {
-  /**
-   * Base path for code generation (schemas, config-registry, etc.).
-   * Relative paths are resolved from the config file location.
-   * @default "."
-   */
-  sourcePath: string
-}
-```
-
-## Fields
-
-| Field        | Type   | Default | Description                              |
-| ------------ | ------ | ------- | ---------------------------------------- |
-| `sourcePath` | string | `"."`   | Base directory for generated code output |
+<InterfaceReference file="cli/src/config" name="LakeQLConfig" />
 
 ## Path resolution
 

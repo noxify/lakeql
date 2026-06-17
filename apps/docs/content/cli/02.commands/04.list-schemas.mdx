@@ -12,12 +12,6 @@ Queries Trino and prints all schemas available in the specified catalog.
 lakeql-cli list-schemas [options]
 ```
 
-## Options
-
-| Flag                  | Type   | Required | Default                | Description    |
-| --------------------- | ------ | -------- | ---------------------- | -------------- |
-| `--catalog <catalog>` | string | No       | `HIVE_CATALOG` env var | Catalog to use |
-
 ## Usage
 
 ```bash
@@ -34,3 +28,7 @@ lakeql-cli list-schemas --catalog hive
 │ raw         │
 └─────────────┘
 ```
+
+## Options
+
+<CliCommandDetails command="list-schemas" />

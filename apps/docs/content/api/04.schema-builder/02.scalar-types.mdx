@@ -28,7 +28,7 @@ An input-only scalar for file uploads. Attempting to serialize (output) a `File`
 
 ## Source code
 
-```typescript
+```ts
 import { DateResolver, DateTimeResolver } from "graphql-scalars"
 import { builder } from "@lakeql/api/builder"
 
@@ -46,7 +46,7 @@ builder.scalarType("File", {
 
 Reference these scalars by name when defining fields:
 
-```typescript
+```ts
 import { builder } from "@lakeql/api/builder"
 
 const EventType = builder

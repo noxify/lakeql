@@ -15,7 +15,10 @@ export type StorageType = "s3" | "minio"
  * - MinIO: MINIO_ACCESS_KEY_ID, MINIO_SECRET_ACCESS_KEY, requires explicit endpoint
  */
 export interface StorageConfig {
-  /** Storage adapter type. Defaults to "s3". */
+  /**
+   * Storage adapter type.
+   * @default "s3"
+   */
   type: StorageType
   /** Bucket name. */
   bucket: string

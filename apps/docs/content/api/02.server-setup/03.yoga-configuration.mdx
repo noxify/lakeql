@@ -7,7 +7,7 @@ The `yogaConfig` option in `defineConfig` (or `createApiServer`) lets you overri
 
 ## Type
 
-```typescript
+```ts
 type YogaConfigOverrides = Omit<
   NonNullable<Parameters<typeof createYoga>[0]>,
   "schema" | "context"
@@ -35,7 +35,7 @@ Without any overrides, the server applies these defaults:
 
 ## Usage
 
-```typescript path="src/config.ts"
+```ts path="src/config.ts"
 import { defineConfig } from "@lakeql/api/config"
 
 import { getUser } from "./auth"

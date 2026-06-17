@@ -7,7 +7,7 @@ description: Run SQL statements against Trino and collect all result pages into 
 
 The `query` method executes a SQL statement and automatically follows Trino's `nextUri` pagination links until all result pages have been collected.
 
-```typescript
+```ts
 import { TrinoClient } from "@lakeql/trino-client"
 
 const client = new TrinoClient({
@@ -31,7 +31,18 @@ for (const [id, region, amount] of rows) {
 
 Use the `transform` option to map raw row arrays into typed objects:
 
-```typescript
+```ts
+import { TrinoClient } from "@lakeql/trino-client"
+import type { Column } from "@lakeql/trino-client"
+
+const client = new TrinoClient({
+  host: "https://trino.example.com",
+  port: 8443,
+  auth: { type: "basic", username: "analyst", password: "secret" },
+  catalog: "hive",
+  schema: "sales",
+})
+
 interface Order {
   id: string
   region: string
@@ -40,7 +51,7 @@ interface Order {
 
 const orders = await client.query<Order>({
   sql: "SELECT id, region, amount FROM orders",
-  transform: (row) => ({
+  transform: (row: unknown[], columns: Column[]) => ({
     id: row[0] as string,
     region: row[1] as string,
     amount: row[2] as number,
@@ -57,7 +68,16 @@ The `transform` function receives the raw row array and the column metadata, and
 
 Pass `impersonateAs` to execute the query as a different Trino user. This sets the `X-Trino-User` header for that request only:
 
-```typescript
+```ts
+import { TrinoClient } from "@lakeql/trino-client"
+
+const client = new TrinoClient({
+  host: "https://trino.example.com",
+  port: 8443,
+  auth: { type: "basic", username: "analyst", password: "secret" },
+  catalog: "hive",
+})
+
 const rows = await client.query<[string]>({
   sql: "SELECT current_user",
   impersonateAs: "data-team-service",
@@ -69,7 +89,16 @@ const rows = await client.query<[string]>({
 
 Cancel a running query using an `AbortSignal`:
 
-```typescript
+```ts
+import { TrinoClient, TrinoCancellationError } from "@lakeql/trino-client"
+
+const client = new TrinoClient({
+  host: "https://trino.example.com",
+  port: 8443,
+  auth: { type: "basic", username: "analyst", password: "secret" },
+  catalog: "hive",
+})
+
 const controller = new AbortController()
 
 // Cancel after 10 seconds
@@ -89,7 +118,16 @@ try {
 
 You can also cancel queries by ID:
 
-```typescript
+```ts
+import { TrinoClient } from "@lakeql/trino-client"
+
+const client = new TrinoClient({
+  host: "https://trino.example.com",
+  port: 8443,
+  auth: { type: "basic", username: "analyst", password: "secret" },
+  catalog: "hive",
+})
+
 // Cancel a specific query
 await client.cancelQuery("20240101_123456_00001_abcde")
 
@@ -104,12 +142,20 @@ const active = client.getActiveQueries()
 
 The client throws typed errors depending on the failure:
 
-```typescript
+```ts
 import {
+  TrinoClient,
   TrinoClientError,
   TrinoQueryError,
   TrinoCancellationError,
 } from "@lakeql/trino-client"
+
+const client = new TrinoClient({
+  host: "https://trino.example.com",
+  port: 8443,
+  auth: { type: "basic", username: "analyst", password: "secret" },
+  catalog: "hive",
+})
 
 try {
   const rows = await client.query({ sql: "SELECT * FROM nonexistent_table" })
@@ -142,6 +188,4 @@ This is entirely transparent — you call `query()` and get the complete result 
 
 ## QueryProps Reference
 
-<InlineReference file="trino-client/src/types" include={["QueryProps"]} />
-This is entirely transparent — you call `query()` and get the complete result
-regardless of how many pages Trino needed internally.
+<InterfaceReference file="trino-client/src/types" name="QueryProps" />

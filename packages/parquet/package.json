@@ -54,7 +54,7 @@
     "@types/node": "24.13.2",
     "fast-check": "^4.8.0",
     "hyparquet": "1.26.0",
-    "tsdown": "0.22.2",
+    "tsdown": "0.22.3",
     "typescript": "6.0.3",
     "vitest": "4.1.9"
   }

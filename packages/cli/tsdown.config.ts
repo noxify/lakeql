@@ -1,11 +1,20 @@
 import { defineConfig } from "tsdown"
 
-export default defineConfig({
-  deps: {
-    skipNodeModulesBundle: true,
+export default defineConfig([
+  {
+    deps: {
+      skipNodeModulesBundle: true,
+    },
+    dts: true,
+    entry: ["src/index.ts", "src/cli.ts"],
+    minify: true,
   },
-  dts: { entry: "src/index.ts" },
-  entry: ["src/cli.ts", "src/index.ts"],
-  minify: true,
-  tsconfig: "./tsconfig.json",
-})
+  {
+    deps: {
+      skipNodeModulesBundle: true,
+    },
+    dts: true,
+    entry: ["src/commands-metadata.ts"],
+    minify: true,
+  },
+])

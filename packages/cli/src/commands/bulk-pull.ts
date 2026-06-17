@@ -5,7 +5,7 @@ import { loadConfig as c12LoadConfig } from "c12"
 import { Listr } from "listr2"
 
 import type { BulkPullConfig } from "@/bulk-pull-config"
-import { runConfigRegistryGeneration } from "@/commands/config-registry"
+import { runConfigRegistryGeneration } from "@/commands/create-registry"
 import { resolveSourcePath } from "@/config"
 import { getEnv } from "@/env"
 import { getInvocationCwd } from "@/path-utils"

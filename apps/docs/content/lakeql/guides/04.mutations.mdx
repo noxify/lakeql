@@ -85,16 +85,10 @@ See the [Load Strategies](/lakeql/guides/load-strategies) guide for detailed exp
 
 ## Mutation Configuration Reference
 
-| Field                | Type             | Required | Description                                                                                                                                                                                                                                                                                      |
-| -------------------- | ---------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `loadStrategy`       | string           | Yes      | How data is written. One of `full_load`, `full_load_append`, or `append`.                                                                                                                                                                                                                        |
-| `type`               | string           | Yes      | Storage adapter type. One of `s3` or `minio`. Defaults to `s3`.                                                                                                                                                                                                                                  |
-| `bucket`             | string           | Yes      | S3 or MinIO bucket name where Parquet files are stored.                                                                                                                                                                                                                                          |
-| `basePath`           | string           | Yes      | Path prefix within the bucket (e.g. `warehouse/analytics/events`).                                                                                                                                                                                                                               |
-| `region`             | string           | No       | AWS region override. Falls back to `AWS_DEFAULT_REGION` for S3.                                                                                                                                                                                                                                  |
-| `endpoint`           | string           | No       | S3-compatible endpoint URL. Optional for S3 (falls back to `AWS_ENDPOINT_URL`), required for MinIO.                                                                                                                                                                                              |
-| `partitioning`       | boolean / string | No       | Controls file partitioning. `true` (default) partitions by write timestamp, `false` disables partitioning (flat layout), a field name string to partition by that field, or a custom format string (e.g. `"customer_id/event_date:year"`) for multi-field partitioning. Ignored for `full_load`. |
-| `partitioningFormat` | string           | No       | Partition granularity. One of `"year"`, `"year/month"`, or `"year/month/day"` (default). Only applies when `partitioning` is `true` or a simple field name. Ignored for custom format strings.                                                                                                   |
+<InterfaceReference
+  file="schema-generator/src/endpoint-schema"
+  name="MutationConfig"
+/>
 
 ## Partitioning
 
@@ -102,10 +96,18 @@ The `partitioning` and `partitioningFormat` fields control how files are organiz
 
 ### Write-timestamp partitioning (default)
 
-When `partitioning` is `true` (the default), files are partitioned by the current UTC timestamp. A `load_timestamp` column is automatically injected into the Parquet output and added to the Hive DDL.
+When `partitioning` is `true` (the default), files are partitioned by the current UTC timestamp. A `load_timestamp` field is added to the endpoint definition with `readOnly: true` — it appears in the query schema and Hive DDL but is excluded from the mutation input. The write pipeline populates it automatically at runtime.
 
 ```json
 {
+  "fields": [
+    { "name": "event_type", "type": "String" },
+    {
+      "name": "load_timestamp",
+      "type": "DateTime",
+      "options": { "readOnly": true }
+    }
+  ],
   "mutation": {
     "loadStrategy": "append",
     "type": "s3",
@@ -117,9 +119,15 @@ When `partitioning` is `true` (the default), files are partitioned by the curren
 }
 ```
 
+<Note>
+  The Endpoint Builder adds the `load_timestamp` field automatically when
+  timestamp partitioning is active. Fields with `readOnly: true` are queryable
+  via GraphQL but cannot be provided as mutation input.
+</Note>
+
 ### Disabled partitioning (flat layout)
 
-When `partitioning` is `false`, files are written to a flat directory without date-based directories. No `load_timestamp` column is injected.
+When `partitioning` is `false`, files are written to a flat directory without date-based directories. No `load_timestamp` field is added.
 
 ```json
 {
@@ -144,7 +152,7 @@ File layout with flat partitioning:
 
 ### Field-based partitioning
 
-When `partitioning` is set to a field name string, records are grouped by the value of that date/datetime field and written to separate partition paths. No `load_timestamp` column is injected.
+When `partitioning` is set to a field name string, records are grouped by the value of that date/datetime field and written to separate partition paths. No `load_timestamp` field is added.
 
 ```json
 {
@@ -203,7 +211,7 @@ Supported date components: `year`, `month`, `day`, `hour`, `minute`, `second`.
 
 Records are grouped by their resolved partition key — records with the same key are written to the same Parquet file.
 
-When using a custom format, the `partitioningFormat` field is ignored (the format is fully determined by the custom string). No `load_timestamp` column is injected.
+When using a custom format, the `partitioningFormat` field is ignored (the format is fully determined by the custom string). No `load_timestamp` field is added.
 
 <Note>
   Fields referenced in the custom format must exist in every record. Date
@@ -275,7 +283,7 @@ MinIO is supported for local development and self-hosted S3-compatible storage. 
 
 The generated `mutation-schema.ts` integrates with `@lakeql/adapters` to execute the full write pipeline. Here's what the generated code looks like conceptually:
 
-```typescript path="schemas/custom/hive/analytics/user_events/mutation-schema.ts"
+```ts path="schemas/custom/hive/analytics/user_events/mutation-schema.ts"
 import { builder } from "@lakeql/api"
 import { executeWritePipeline } from "@lakeql/adapters"
 import { validationSchema } from "./validations"
@@ -350,7 +358,7 @@ This design is intentional:
 
 ### Configuring Write Permissions
 
-```typescript
+```ts
 import { defineConfig } from "@lakeql/api"
 import { allConfigs } from "./config-registry"
 
@@ -402,7 +410,7 @@ When `useSystemUser: true` is set for a permission entry, the Trino client uses 
 - The application layer controls which tables a given client can write to
 - Audit trails should track both the requesting user and the executing identity
 
-```typescript
+```ts
 {
   name: "etl-pipeline",
   useSystemUser: true,  // Execute writes as system user in Trino

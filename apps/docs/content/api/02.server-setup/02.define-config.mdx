@@ -7,7 +7,7 @@ description: Type-safe configuration wrapper that provides createYogaServer and 
 
 ## Signature
 
-```typescript
+```ts
 function defineConfig<const TConfig extends readonly SchemaConfigEntry[]>(
   input: TConfig | DefineConfigOptions<TConfig>
 ): DefinedApiConfig<TConfig>
@@ -17,26 +17,13 @@ function defineConfig<const TConfig extends readonly SchemaConfigEntry[]>(
 
 The `DefineConfigOptions` interface extends `ApiRuntimeConfig` with a required `allConfigs` field:
 
-| Field                 | Type                           | Default                                  | Description                                        |
-| --------------------- | ------------------------------ | ---------------------------------------- | -------------------------------------------------- |
-| `port`                | `number`                       | `API_PORT` env or `4000`                 | Server port                                        |
-| `graphqlPath`         | `string`                       | `"/graphql"`                             | GraphQL endpoint path                              |
-| `healthCheckEndpoint` | `string`                       | `"/live"`                                | Health check endpoint path                         |
-| `maxRecordsPerPage`   | `number`                       | `API_MAX_RECORDS_PER_PAGE` env or `2000` | Maximum records per paginated response             |
-| `schemaPath`          | `string`                       | —                                        | Path to query schema files                         |
-| `baseDir`             | `string`                       | `process.cwd()`                          | Base directory for resolving relative paths        |
-| `getUser`             | `GetUserResolver`              | Built-in mock auth resolver              | Custom JWT authentication resolver                 |
-| `hasReadPermission`   | `ReadPermissionResolver`       | Built-in read permission check           | Custom read permission resolver                    |
-| `hasWritePermission`  | `WritePermissionResolver`      | Built-in write permission check          | Custom write permission resolver                   |
-| `yogaConfig`          | `YogaConfigOverrides`          | —                                        | Override GraphQL Yoga options                      |
-| `permissions`         | `Permission[]`                 | `[]`                                     | Permission rules for technical users               |
-| `allConfigs`          | `readonly SchemaConfigEntry[]` | —                                        | Generated schema configs for type-safe permissions |
+<InterfaceReference file="api/src/config" name="ApiRuntimeConfig" />
 
 ## Return type
 
 `defineConfig` returns a `DefinedApiConfig` object that includes all your config options plus two convenience methods:
 
-```typescript
+```ts
 interface DefinedApiConfig<TConfig> {
   // ...all config options
   allConfigs: TConfig
@@ -49,7 +36,7 @@ interface DefinedApiConfig<TConfig> {
 
 ### Minimal — pass only configs
 
-```typescript path="src/config.ts"
+```ts path="src/config.ts"
 import { defineConfig } from "@lakeql/api/config"
 import { allConfigs } from "./config-registry"
 
@@ -58,7 +45,7 @@ export const config = defineConfig(allConfigs)
 
 ### Full configuration (matching the template)
 
-```typescript path="src/config.ts"
+```ts path="src/config.ts"
 import { defineConfig } from "@lakeql/api/config"
 
 import { getUser } from "./auth"
@@ -81,7 +68,7 @@ export const config = defineConfig({
 
 ### Using startServer
 
-```typescript path="src/index.ts"
+```ts path="src/index.ts"
 import { config } from "./config"
 
 await config.startServer()

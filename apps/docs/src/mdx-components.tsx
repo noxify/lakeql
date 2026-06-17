@@ -1,9 +1,11 @@
 import { Children, isValidElement } from "react"
 import type { ComponentPropsWithoutRef, ReactNode } from "react"
+import type { CodeBlockProps } from "renoun/components"
 import { CodeBlock, Toolbar } from "renoun/components"
 import type { MDXComponents } from "renoun/mdx"
 import { createSlug } from "renoun/mdx"
 
+import { CliCommandDetails } from "@/components/mdx/cli-command-details"
 import { CommandWrapper as Command } from "@/components/mdx/command"
 import { Heading } from "@/components/mdx/heading"
 import {
@@ -11,6 +13,7 @@ import {
   MarkdownImageHandler,
 } from "@/components/mdx/image-handler"
 import { InlineReference } from "@/components/mdx/inline-reference"
+import { InterfaceReference } from "@/components/mdx/interface-reference"
 import { LinkHandler } from "@/components/mdx/link-handler"
 import { MermaidDiagram } from "@/components/mdx/mermaid"
 import { RailroadDiagram } from "@/components/mdx/railroad"
@@ -254,7 +257,13 @@ export function useMDXComponents() {
       </BaseAccordionItem>
     ),
 
-    CodeBlock: (props) => {
+    CodeBlock: ({
+      shouldAnalyze: _shouldAnalyze,
+      ...props
+    }: CodeBlockProps & { preview?: boolean }) => {
+      // Disable shouldAnalyze globally to avoid type resolution timeouts during SSG builds.
+      // The MDX files still declare `shouldAnalyze` but we ignore it here.
+      const shouldAnalyze = false
       if (props.language === "mermaid") {
         const { preview = false } = props
         return (
@@ -262,6 +271,7 @@ export function useMDXComponents() {
         )
       }
 
+      // @ts-expect-error - railroad is not a valid language
       if (props.language === "railroad") {
         const { preview = false } = props
         return (
@@ -273,9 +283,9 @@ export function useMDXComponents() {
         <div className="not-prose bg-muted my-6 rounded-lg text-sm leading-6">
           <CodeBlock
             {...props}
-            shouldAnalyze={false}
             shouldFormat={false}
             showErrors={false}
+            shouldAnalyze={shouldAnalyze}
             components={{
               // oxlint-disable-next-line react/no-unstable-nested-components
               Toolbar: (toolbarProps) => (
@@ -297,7 +307,9 @@ export function useMDXComponents() {
     },
 
     Command,
+    CliCommandDetails,
     InlineReference,
+    InterfaceReference,
     References,
   } satisfies MDXComponents
 }

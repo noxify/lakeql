@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest"
 
-import { formatFieldTree } from "../../src/commands/create-endpoint/format-field-tree"
+import { formatFieldTree } from "../../src/commands/create-endpoint"
 import type { FieldDefinition } from "../../src/pipeline/schema"
 
 describe(formatFieldTree, () => {

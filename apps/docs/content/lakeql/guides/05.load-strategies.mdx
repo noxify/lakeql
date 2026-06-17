@@ -188,9 +188,9 @@ The default is `"year/month/day"`. The UUID filename prevents collisions when mu
 
 The `partitioning` field controls which date value is used for partition paths:
 
-- **`true`** (default) — Partitions by the write timestamp. A `load_timestamp` column is injected into the Parquet output.
+- **`true`** (default) — Partitions by the write timestamp. A `load_timestamp` field (DateTime, readOnly) is added to the endpoint definition and populated automatically at runtime.
 - **`false`** — Disables partitioning entirely. Files are written flat under `all.parquet/<uuid>.parquet` with no date directories.
-- **`"field_name"`** — Partitions by the value of the named date/datetime field in the record data. No `load_timestamp` is injected.
+- **`"field_name"`** — Partitions by the value of the named date/datetime field in the record data. No `load_timestamp` field is added.
 - **Custom format string** (e.g. `"customer_id/event_date:year/event_date:month"`) — Partitions by a combination of fields and date components. See the [Mutations guide](/lakeql/guides/mutations#custom-partition-format) for syntax details.
 
 <Note>

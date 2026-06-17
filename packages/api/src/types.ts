@@ -3,10 +3,17 @@ import type { StandardSchemaV1 } from "@pothos/plugin-validation"
 import type { createYoga } from "graphql-yoga"
 import type { JWTPayload } from "jose"
 
+/**
+ * The GraphQL context object available in every resolver.
+ */
 export interface Context {
+  /** Authenticated user payload from JWT verification, or `null` for unauthenticated requests. */
   currentUser: JWTPayload | null
+  /** Configured permission rules for technical users. */
   permissions: Permission[]
+  /** Custom resolver for read permission checks. */
   hasReadPermission?: ReadPermissionResolver
+  /** Custom resolver for write permission checks. */
   hasWritePermission?: WritePermissionResolver
 }
 
@@ -57,15 +64,23 @@ export interface ErrorMessage {
     | Record<string, unknown>[]
 }
 
+/**
+ * Permission rule for a technical user, defining which catalogs/schemas/tables they can read and write.
+ */
 export interface Permission {
+  /** Username to match against `currentUser.userName`. */
   name: string
+  /** Whether this user's queries run via the Trino system user. */
   useSystemUser: boolean
+  /** Read and write access rules. */
   permissions: {
+    /** Read access rules (catalog + schema + tables). Use `["*"]` for wildcard table access. */
     Query: {
       catalog: string
       schema: string
       tables: string[]
     }[]
+    /** Write access rules (catalog + schema + tables). Use `["*"]` for wildcard table access. */
     Mutation: {
       catalog: string
       schema: string

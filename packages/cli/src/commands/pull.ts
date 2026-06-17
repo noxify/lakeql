@@ -1,52 +1,17 @@
 // oxlint-disable no-await-in-loop
-import { Command, Option } from "@commander-js/extra-typings"
 import { error } from "@lakeql/logger/console"
 import { TrinoClient } from "@lakeql/trino-client"
 import { multiselect, select, validators } from "@topcli/prompts"
 
 import { resolveSourcePath } from "@/config"
 import { getEnv } from "@/env"
-import {
-  catalogOption,
-  schemaOption,
-  skipRegistry as skipRegistryOption,
-  sourcePathOption,
-  tableOption,
-  tableOrSchemaOption,
-} from "@/options"
 
+import { buildPullCommandStructure } from "../metadata/pull-metadata"
 import { executeBulkPull } from "./bulk-pull"
 import { executePull } from "./pull-action"
 
-const bulkOption = new Option(
-  "--bulk",
-  "Run in bulk mode using a config file"
-).default(false)
-
-const bulkConfigOption = new Option(
-  "--bulk-config <path>",
-  "Path to the bulk import config file (default: import.config.{mjs,ts,js,json})"
-)
-
 export default function PullCommand() {
-  const program = new Command("pull")
-  const pullCommand = program
-    .description(
-      "Interactive query endpoint generation based on a remote table"
-    )
-    .addOption(catalogOption)
-    .addOption(tableOrSchemaOption)
-    .addOption(schemaOption.makeOptionMandatory(false))
-    .addOption(
-      tableOption
-        .makeOptionMandatory(false)
-        .default([])
-        .argParser((value, previous: string[]) => [...previous, value])
-    )
-    .addOption(skipRegistryOption)
-    .addOption(sourcePathOption)
-    .addOption(bulkOption)
-    .addOption(bulkConfigOption)
+  const pullCommand = buildPullCommandStructure()
 
   pullCommand.action(async (props) => {
     const { skipRegistry, sourcePath, bulk, bulkConfig } = props
@@ -117,7 +82,7 @@ export default function PullCommand() {
           : await trinoClient.tables({ catalog, schema })
 
       if (remoteTables.length === 0) {
-        program.error(
+        pullCommand.error(
           error(`There are no ${type} in schema '${catalog}.${schema}'.`),
           {
             exitCode: 0,

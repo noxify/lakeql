@@ -2,21 +2,17 @@ import { existsSync } from "node:fs"
 import { rm, writeFile } from "node:fs/promises"
 import path from "node:path"
 
-import { Command } from "@commander-js/extra-typings"
 import { generateCode } from "@lakeql/file-generator"
 import { generateConfigReqistry } from "@lakeql/file-generator/config-registry"
 import { globby } from "globby"
 
 import { resolveSourcePath } from "@/config"
-import { sourcePathOption } from "@/options"
+
+import { buildCreateRegistryCommandStructure } from "../metadata/create-registry-metadata"
 
 export default function configRegistryCommand() {
-  const program = new Command("create-registry")
-    .description(
-      "Generates the config registry to ensure the type-safety while using `createPermission`"
-    )
-    .addOption(sourcePathOption)
-    .action(async ({ sourcePath }) => {
+  const program = buildCreateRegistryCommandStructure().action(
+    async ({ sourcePath }) => {
       // CLI parameter overrides config; if default (invocation cwd), use config
       const cliOverride =
         // oxlint-disable-next-line no-restricted-properties
@@ -24,7 +20,8 @@ export default function configRegistryCommand() {
           ? sourcePath
           : undefined
       await runConfigRegistryGeneration(cliOverride)
-    })
+    }
+  )
 
   return program
 }

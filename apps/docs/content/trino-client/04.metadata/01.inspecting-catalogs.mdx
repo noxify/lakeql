@@ -13,7 +13,7 @@ See the [API Reference](/docs/trino-client/api-reference) for full method signat
 
 Lists all schemas in a catalog.
 
-```typescript
+```ts
 import { TrinoClient } from "@lakeql/trino-client"
 
 const client = new TrinoClient({
@@ -31,7 +31,16 @@ const schemas = await client.schemas({ catalog: "hive" })
 
 Lists all base tables in a catalog and schema.
 
-```typescript
+```ts
+import { TrinoClient } from "@lakeql/trino-client"
+
+const client = new TrinoClient({
+  host: "https://trino.example.com",
+  port: 8443,
+  auth: { type: "basic", username: "analyst", password: "secret" },
+  catalog: "hive",
+})
+
 const tables = await client.tables({ catalog: "hive", schema: "sales" })
 // ["orders", "customers", "products", "invoices"]
 ```
@@ -40,7 +49,16 @@ const tables = await client.tables({ catalog: "hive", schema: "sales" })
 
 Lists all views in a catalog and schema.
 
-```typescript
+```ts
+import { TrinoClient } from "@lakeql/trino-client"
+
+const client = new TrinoClient({
+  host: "https://trino.example.com",
+  port: 8443,
+  auth: { type: "basic", username: "analyst", password: "secret" },
+  catalog: "hive",
+})
+
 const views = await client.views({ catalog: "hive", schema: "sales" })
 // ["monthly_revenue", "top_customers"]
 ```
@@ -49,7 +67,16 @@ const views = await client.views({ catalog: "hive", schema: "sales" })
 
 Lists all columns for a specific table, including their types and metadata.
 
-```typescript
+```ts
+import { TrinoClient } from "@lakeql/trino-client"
+
+const client = new TrinoClient({
+  host: "https://trino.example.com",
+  port: 8443,
+  auth: { type: "basic", username: "analyst", password: "secret" },
+  catalog: "hive",
+})
+
 const columns = await client.columns({
   catalog: "hive",
   schema: "sales",
@@ -62,15 +89,45 @@ const columns = await client.columns({
 // ]
 ```
 
-## Full Discovery Example
+### Typed objects with `asObject`
 
-```typescript
+Pass `asObject: true` to get `ColumnInfo[]` objects instead of raw tuples:
+
+```ts
 import { TrinoClient } from "@lakeql/trino-client"
 
 const client = new TrinoClient({
   host: "https://trino.example.com",
   port: 8443,
-  auth: { type: "bearer", token: process.env.TRINO_TOKEN },
+  auth: { type: "basic", username: "analyst", password: "secret" },
+  catalog: "hive",
+})
+
+const columns = await client.columns({
+  catalog: "hive",
+  schema: "sales",
+  table: "orders",
+  asObject: true,
+})
+// [
+//   { name: "id", type: "varchar", extra: "", description: "Order identifier" },
+//   { name: "amount", type: "double", extra: "", description: "Total order amount" },
+// ]
+
+for (const col of columns) {
+  console.log(`${col.name}: ${col.type}`)
+}
+```
+
+## Full Discovery Example
+
+```ts
+import { TrinoClient } from "@lakeql/trino-client"
+
+const client = new TrinoClient({
+  host: "https://trino.example.com",
+  port: 8443,
+  auth: { type: "bearer", token: "eyJhbGciOiJSUzI1NiIs..." },
   catalog: "iceberg",
 })
 
@@ -78,7 +135,9 @@ const client = new TrinoClient({
 const schemas = await client.schemas({ catalog: "iceberg" })
 
 for (const schema of schemas) {
-  if (schema === "information_schema") continue
+  if (schema === "information_schema") {
+    continue
+  }
 
   const tables = await client.tables({ catalog: "iceberg", schema })
   console.log(`${schema}: ${tables.join(", ")}`)

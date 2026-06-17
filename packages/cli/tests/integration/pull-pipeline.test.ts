@@ -13,7 +13,7 @@ import { endpointDefinitionSchema } from "@/pipeline/schema"
 import { trinoColumnsToDefinition } from "@/pipeline/trino-to-definition"
 
 // Mock the config-registry to avoid transitive env/options import
-vi.mock(import("@/commands/config-registry"), () => ({
+vi.mock(import("@/commands/create-registry"), () => ({
   runConfigRegistryGeneration: vi.fn().mockResolvedValue(null),
   default: vi.fn(),
 }))

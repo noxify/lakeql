@@ -26,7 +26,7 @@ src/schemas/generated/hive/sales/orders/
 
 **config.ts** — Contains the table's catalog, schema, table name, and docs settings:
 
-```typescript
+```ts
 export const hiveConfig = {
   catalog: "hive",
   schema: "sales",
@@ -43,7 +43,7 @@ export const docsConfig = {
 
 **interface.ts** — A TypeScript interface matching the table's column types:
 
-```typescript
+```ts
 export interface Orders {
   id: number
   customer_id: number
@@ -55,7 +55,7 @@ export interface Orders {
 
 **query-schema.ts** — A Pothos query schema defining the GraphQL type, comparison inputs, and resolver with filtering, sorting, and pagination:
 
-```typescript
+```ts
 import { builder } from "@lakeql/api"
 import { hiveConfig } from "./config"
 

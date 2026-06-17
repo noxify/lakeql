@@ -39,7 +39,7 @@ Writes always require explicit permission because they execute via a system user
 
 Override the default logic by providing custom resolvers in `defineConfig`:
 
-```typescript path="src/config.ts"
+```ts path="src/config.ts"
 import { defineConfig } from "@lakeql/api/config"
 
 import { allConfigs } from "./config-registry"
@@ -64,7 +64,7 @@ export const config = defineConfig({
 
 When building custom query schemas, use `authScopes` to protect fields:
 
-```typescript
+```ts
 import { builder } from "@lakeql/api/builder"
 
 builder.queryField("sensitiveData", (t) =>
@@ -84,7 +84,7 @@ builder.queryField("sensitiveData", (t) =>
 
 For mutations, use `writePermission`:
 
-```typescript
+```ts
 builder.mutationField("updateRecord", (t) =>
   t.field({
     type: "Boolean",

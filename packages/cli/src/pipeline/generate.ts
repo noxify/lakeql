@@ -11,7 +11,7 @@ import type { GenerateModelProps } from "@lakeql/schema-generator/graphql-schema
 import { generateModel } from "@lakeql/schema-generator/graphql-schema"
 import { generateJsonSchemaFromFields } from "@lakeql/schema-generator/json-schema"
 
-import { runConfigRegistryGeneration } from "@/commands/config-registry"
+import { runConfigRegistryGeneration } from "@/commands/create-registry"
 
 import { deriveNames } from "./derive-names"
 import { generateMutationSchema } from "./mutation-schema"

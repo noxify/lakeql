@@ -7,7 +7,7 @@ description: Stream query results row-by-row using an async generator for memory
 
 The `stream` method executes a SQL statement and returns an async generator that yields rows one at a time as pages are fetched. Ideal for large result sets where holding all data in memory would be impractical.
 
-```typescript
+```ts
 import { TrinoClient } from "@lakeql/trino-client"
 
 const client = new TrinoClient({
@@ -33,7 +33,18 @@ for await (const [timestamp, level, duration] of stream) {
 
 Combine streaming with `transform` to get typed objects:
 
-```typescript
+```ts
+import { TrinoClient } from "@lakeql/trino-client"
+import type { Column } from "@lakeql/trino-client"
+
+const client = new TrinoClient({
+  host: "https://trino.example.com",
+  port: 8443,
+  auth: { type: "basic", username: "analyst", password: "secret" },
+  catalog: "hive",
+  schema: "logs",
+})
+
 interface LogEntry {
   timestamp: string
   level: string
@@ -42,7 +53,7 @@ interface LogEntry {
 
 const stream = await client.stream<LogEntry>({
   sql: "SELECT timestamp, level, duration FROM request_logs",
-  transform: (row) => ({
+  transform: (row: unknown[], columns: Column[]) => ({
     timestamp: row[0] as string,
     level: row[1] as string,
     duration: row[2] as number,
@@ -51,7 +62,7 @@ const stream = await client.stream<LogEntry>({
 
 for await (const entry of stream) {
   if (entry.level === "ERROR") {
-    await alertSlack(entry)
+    console.error(`Error at ${entry.timestamp}: ${entry.duration}ms`)
   }
 }
 ```
@@ -60,7 +71,17 @@ for await (const entry of stream) {
 
 Pass an `AbortSignal` to cancel a stream mid-flight:
 
-```typescript
+```ts
+import { TrinoClient } from "@lakeql/trino-client"
+
+const client = new TrinoClient({
+  host: "https://trino.example.com",
+  port: 8443,
+  auth: { type: "basic", username: "analyst", password: "secret" },
+  catalog: "hive",
+  schema: "logs",
+})
+
 const controller = new AbortController()
 
 const stream = await client.stream({
@@ -92,7 +113,17 @@ for await (const row of stream) {
 
 With `query`, all pages are collected into a single array before the promise resolves. With `stream`, each page is fetched on-demand and rows are yielded immediately — only one page of data is held in memory at a time.
 
-```typescript
+```ts
+import { TrinoClient } from "@lakeql/trino-client"
+
+const client = new TrinoClient({
+  host: "https://trino.example.com",
+  port: 8443,
+  auth: { type: "basic", username: "analyst", password: "secret" },
+  catalog: "hive",
+  schema: "analytics",
+})
+
 // Processing millions of rows without loading them all into memory
 const stream = await client.stream<[string, number]>({
   sql: "SELECT user_id, event_count FROM daily_aggregates",
@@ -100,7 +131,7 @@ const stream = await client.stream<[string, number]>({
 
 let processed = 0
 for await (const [userId, count] of stream) {
-  await writeToFile(userId, count)
+  console.log(`${userId}: ${count}`)
   processed += 1
 }
 

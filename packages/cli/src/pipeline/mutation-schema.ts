@@ -70,6 +70,9 @@ export function generateMutationSchema({
   // Build a lookup map from field name → options.required
   const requiredMap = buildRequiredMap(fieldDefinitions)
 
+  // Build a set of field names that are read-only (excluded from mutation input)
+  const excludedSet = buildExcludedSet(fieldDefinitions)
+
   // Separate nested models from root model
   const nestedModels = Object.values(models).filter((model) => !model.root)
 
@@ -77,9 +80,9 @@ export function generateMutationSchema({
   return [
     ...generateRealResolverImports(hasValidations),
     ...nestedModels.map((model) =>
-      generateInputType(model, models, requiredMap)
+      generateInputType(model, models, requiredMap, excludedSet)
     ),
-    generateInputType(rootModel, models, requiredMap),
+    generateInputType(rootModel, models, requiredMap, excludedSet),
     generateRealMutationFields(mutationName, rootModel, hasValidations),
   ]
 }
@@ -102,6 +105,23 @@ function buildRequiredMap(
     map.set(field.name, isRequired)
   }
   return map
+}
+
+/**
+ * Builds a set of field names that have readOnly: true.
+ * These fields should be excluded from mutation input types.
+ */
+function buildExcludedSet(fieldDefinitions?: FieldDefinition[]): Set<string> {
+  const set = new Set<string>()
+  if (!fieldDefinitions) {
+    return set
+  }
+  for (const field of fieldDefinitions) {
+    if (field.options?.readOnly === true) {
+      set.add(field.name)
+    }
+  }
+  return set
 }
 
 /**
@@ -132,13 +152,14 @@ function generateRealResolverImports(
 function generateInputType(
   model: ModelResponse,
   allModels: Record<string, ModelResponse>,
-  requiredMap: Map<string, boolean>
+  requiredMap: Map<string, boolean>,
+  excludedSet: Set<string>
 ): ts.Node {
   const inputTypeName = `${model.modelName}Input`
 
-  const fieldProperties = Object.values(model.fields).map((field) =>
-    generateInputField(field, allModels, requiredMap)
-  )
+  const fieldProperties = Object.values(model.fields)
+    .filter((field) => !excludedSet.has(field.name))
+    .map((field) => generateInputField(field, allModels, requiredMap))
 
   return constStatement(
     inputTypeName,

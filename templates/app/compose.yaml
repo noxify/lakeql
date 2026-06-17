@@ -1,0 +1,59 @@
+services:
+  app:
+    build: .
+    ports:
+      - "4000:4000"
+    environment:
+      - NODE_ENV=production
+      - HIVE_HOST=${HIVE_HOST:-http://trino:8080}
+      - HIVE_PORT=${HIVE_PORT:-8080}
+      - HIVE_CATALOG=${HIVE_CATALOG:-hive}
+      - HIVE_USERNAME=${HIVE_USERNAME:-admin}
+      - HIVE_PASSWORD=${HIVE_PASSWORD:-}
+      - HIVE_SOURCE=${HIVE_SOURCE:-lakeql}
+      - AUTH_MOCK=${AUTH_MOCK:-false}
+      - AUTH_MOCK_TOKEN=${AUTH_MOCK_TOKEN:-}
+      - API_PORT=4000
+      - API_LOGGER=${API_LOGGER:-warn}
+    depends_on:
+      minio:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # MinIO for local S3-compatible storage (mutation write pipeline)
+  minio:
+    image: minio/minio:latest
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER:-admin}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-password}
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Create default bucket on startup
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 $${MINIO_ROOT_USER:-admin} $${MINIO_ROOT_PASSWORD:-password};
+      mc mb --ignore-existing local/$${MINIO_BUCKET:-warehouse};
+      exit 0;
+      "
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER:-admin}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-password}
+      - MINIO_BUCKET=${MINIO_BUCKET:-warehouse}
+
+volumes:
+  minio-data:

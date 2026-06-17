@@ -12,12 +12,6 @@ Scans your project for all `schemas/**/config.ts` files and generates a unified 
 lakeql-cli create-registry [options]
 ```
 
-## Options
-
-| Flag                   | Type   | Required | Default              | Description                  |
-| ---------------------- | ------ | -------- | -------------------- | ---------------------------- |
-| `--source-path <path>` | string | No       | Invocation directory | Base path for generated code |
-
 ## Usage
 
 ```bash
@@ -30,3 +24,7 @@ lakeql-cli create-registry
 ```
 
 The generated file imports all discovered config modules and re-exports them as a typed registry object.
+
+## Options
+
+<CliCommandDetails command="create-registry" />

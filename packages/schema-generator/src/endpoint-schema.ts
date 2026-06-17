@@ -115,7 +115,10 @@ export type PartitioningValue = boolean | string
 export interface MutationConfig {
   /** Load strategy for the write pipeline. */
   loadStrategy: LoadStrategy
-  /** Storage adapter type. Defaults to "s3". */
+  /**
+   * Storage adapter type.
+   * @default "s3"
+   */
   type: StorageType
   /** S3/MinIO bucket name for endpoint data. */
   bucket: string
@@ -125,9 +128,15 @@ export interface MutationConfig {
   region?: string
   /** Optional custom endpoint. Required for MinIO, optional for S3. */
   endpoint?: string
-  /** Partitioning mode. Default: true */
+  /**
+   * Partitioning mode. `true` partitions by write timestamp, `false` disables partitioning, or a string for field-based/custom partitioning.
+   * @default true
+   */
   partitioning?: PartitioningValue
-  /** Partition path granularity. Default: "year/month/day" */
+  /**
+   * Partition path granularity. One of `"year"`, `"year/month"`, or `"year/month/day"`.
+   * @default "year/month/day"
+   */
   partitioningFormat?: string
 }
 
@@ -231,10 +240,21 @@ export type FieldValidation =
  * Field-level options for mutation input validation.
  */
 export interface FieldOptions {
-  /** Whether the field is required in mutation input. Default: false. */
+  /**
+   * Whether the field is required in mutation input.
+   * @default false
+   */
   required?: boolean
-  /** Validation refinements to apply via Zod. */
+  /**
+   * Validation refinements to apply via Zod at runtime.
+   * @default []
+   */
   validations?: FieldValidation[]
+  /**
+   * Whether the field is read-only. Read-only fields appear in the query schema and Hive DDL but are excluded from the mutation input type.
+   * @default false
+   */
+  readOnly?: boolean
 }
 
 /**
@@ -255,6 +275,7 @@ export const fieldValidationSchema: z.ZodType<FieldValidation> = z.union([
 export const fieldOptionsSchema: z.ZodType<FieldOptions> = z.object({
   required: z.boolean().optional(),
   validations: z.array(fieldValidationSchema).optional(),
+  readOnly: z.boolean().optional(),
 })
 
 export interface ArrayItemDefinition {

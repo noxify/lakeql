@@ -19,7 +19,7 @@ flowchart LR
 
 `@lakeql/trino-client` connects to your Trino instance and executes metadata queries:
 
-```typescript
+```ts
 // The CLI issues this for each table
 SHOW COLUMNS FROM hive.sales.orders
 ```
@@ -38,7 +38,7 @@ Trino returns rows like:
 
 `@lakeql/column-parser` transforms raw type strings into structured objects. This handles Trino's complex type syntax including nested rows, arrays, and maps:
 
-```typescript
+```ts
 // Input: "array(row(id bigint, name varchar))"
 // Output:
 {
@@ -81,7 +81,7 @@ This stage maps Trino types to TypeScript and GraphQL types:
 
 After generation, the CLI also updates the **config registry** — an aggregated index file that imports all generated configs:
 
-```typescript path="src/config-registry.ts"
+```ts path="src/config-registry.ts"
 import { ordersConfig } from "./schemas/generated/hive/sales/orders/config"
 import { customersConfig } from "./schemas/generated/hive/sales/customers/config"
 

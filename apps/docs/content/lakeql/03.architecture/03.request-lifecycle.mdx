@@ -43,7 +43,7 @@ The request hits the Hono HTTP framework. Middleware handles:
 - CORS headers for cross-origin requests
 - Routing to the GraphQL endpoint (default: `/graphql`)
 
-```typescript
+```ts
 app.on(
   ["POST", "GET", "OPTIONS"],
   "/graphql/*",
@@ -63,7 +63,7 @@ The context factory calls `getUser(req)` to resolve the current user from the re
 - **Mock auth** — When `AUTH_MOCK=true`, any request with the correct `AUTH_MOCK_TOKEN` is authenticated. The `x-username` header sets the user identity.
 - **Custom auth** — You can provide your own `getUser` resolver in `defineConfig` to integrate JWT validation, OAuth2, or any other auth mechanism.
 
-```typescript
+```ts
 // Default mock auth behavior
 if (
   authHeader &&
@@ -87,7 +87,7 @@ Before executing the resolver, the system checks whether the authenticated user 
 
 The resolver extracts the requested fields from GraphQL's `resolveInfo` object. Only fields the client actually selected are included in the SQL query:
 
-```typescript
+```ts
 // If the client requests { nodes { id, name } }
 // selectFields becomes ["id", "name"]
 const selectFields = getSelectFields(info, true)
@@ -131,7 +131,7 @@ This dual-CTE approach retrieves both the total count and the paginated results 
 
 Trino returns data as arrays (e.g. `[1001, 42, "shipped", 249.99]`). The response transformer maps these arrays to named objects using the JSON schema definition:
 
-```typescript
+```ts
 // Input from Trino:  [1001, 42, "shipped", 249.99]
 // Output:            { id: 1001, customer_id: 42, status: "shipped", total: 249.99 }
 ```
@@ -142,7 +142,7 @@ This also handles nested objects (Trino `row` types) and arrays.
 
 The helpers package calculates pagination metadata from the total count, current offset, and page size:
 
-```typescript
+```ts
 {
   hasNext: true,
   hasPrevious: false,

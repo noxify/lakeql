@@ -5,7 +5,7 @@ description: Configuration options and authentication for the Trino client.
 
 ## Basic Authentication
 
-```typescript
+```ts
 import { TrinoClient } from "@lakeql/trino-client"
 
 const client = new TrinoClient({
@@ -25,7 +25,7 @@ The username and password are Base64-encoded and sent as an `Authorization: Basi
 
 ## Bearer Token Authentication
 
-```typescript
+```ts
 import { TrinoClient } from "@lakeql/trino-client"
 
 const client = new TrinoClient({
@@ -46,7 +46,9 @@ The token is sent as an `Authorization: Bearer ...` header.
 
 The client automatically retries on transient failures (HTTP 429, 500, 502, 503, 504 and network errors). Configure retry behavior via the `retry` option:
 
-```typescript
+```ts
+import { TrinoClient } from "@lakeql/trino-client"
+
 const client = new TrinoClient({
   host: "https://trino.example.com",
   port: 8443,
@@ -61,13 +63,15 @@ const client = new TrinoClient({
 })
 ```
 
-<InlineReference file="trino-client/src/retry" include={["RetryConfig"]} />
+<InterfaceReference file="trino-client/src/retry" name="RetryConfig" />
 
 ## Timeout
 
 Set a default timeout (in milliseconds) for all requests. If a request exceeds this duration, it will be aborted:
 
-```typescript
+```ts
+import { TrinoClient } from "@lakeql/trino-client"
+
 const client = new TrinoClient({
   host: "https://trino.example.com",
   port: 8443,
@@ -91,7 +95,7 @@ On construction, the client sets the following Trino headers automatically:
 
 You can modify headers after construction using `setHeader()` or `setRawHeader()`:
 
-```typescript
+```ts
 client.setHeader("X-Trino-Schema", "production")
 client.setRawHeader("X-Custom-Header", "value")
 ```
