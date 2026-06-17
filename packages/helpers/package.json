@@ -65,7 +65,7 @@
   "devDependencies": {
     "@lakeql/tsconfig": "workspace:*",
     "@types/node": "24.13.2",
-    "tsdown": "0.22.2",
+    "tsdown": "0.22.3",
     "typescript": "6.0.3",
     "vitest": "4.1.9"
   }

@@ -76,7 +76,7 @@
     "@lakeql/tsconfig": "workspace:*",
     "@types/node": "24.13.2",
     "lodash-es": "4.18.1",
-    "tsdown": "0.22.2",
+    "tsdown": "0.22.3",
     "vitest": "4.1.9"
   }
 }
