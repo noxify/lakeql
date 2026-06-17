@@ -111,9 +111,7 @@ const commandFactories: Record<string, () => unknown> = {
   pull: buildPullCommandStructure,
 }
 
-export function getCommandConfig(
-  commandName: AvailableCommand | (string & {})
-): CommandConfig {
+export function getCommandConfig(commandName: string): CommandConfig {
   const commandFn = commandFactories[commandName]
 
   if (!commandFn) {
