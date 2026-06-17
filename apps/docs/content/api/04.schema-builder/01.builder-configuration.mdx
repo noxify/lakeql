@@ -35,21 +35,7 @@ const builder = new SchemaBuilder<{
 
 Every resolver receives this context object:
 
-```ts
-interface Context {
-  currentUser: JWTPayload | null
-  permissions: Permission[]
-  hasReadPermission?: ReadPermissionResolver
-  hasWritePermission?: WritePermissionResolver
-}
-```
-
-| Field                | Description                          |
-| -------------------- | ------------------------------------ |
-| `currentUser`        | Authenticated user payload or `null` |
-| `permissions`        | Configured permission rules          |
-| `hasReadPermission`  | Resolver for read permission checks  |
-| `hasWritePermission` | Resolver for write permission checks |
+<InterfaceReference file="api/src/types" name="Context" />
 
 A `logger` instance is also injected into the context by the Yoga server setup.
 
@@ -78,7 +64,7 @@ import { SortDirection } from "@lakeql/api/builder"
 
 Custom query schemas import the shared builder instance to register types and fields:
 
-```ts
+```ts shouldAnalyze
 import { builder } from "@lakeql/api/builder"
 
 builder.queryField("hello", (t) =>

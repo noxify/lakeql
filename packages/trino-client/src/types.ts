@@ -301,6 +301,25 @@ export interface GetViewsProps extends GetSchemasProps {
 export interface GetColumnsProps extends GetTablesProps {
   /** The table to describe. */
   table: string
+  /**
+   * When true, returns typed objects instead of raw tuples.
+   * @default false
+   */
+  asObject?: boolean
+}
+
+/**
+ * Column metadata returned by `columns()` when `asObject` is true.
+ */
+export interface ColumnInfo {
+  /** Column name. */
+  name: string
+  /** Trino data type (e.g. "varchar", "integer", "timestamp(3)"). */
+  type: string
+  /** Extra column metadata (e.g. partition key info). */
+  extra: string
+  /** Column description/comment. */
+  description: string
 }
 
 /**

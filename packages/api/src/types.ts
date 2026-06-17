@@ -3,10 +3,17 @@ import type { StandardSchemaV1 } from "@pothos/plugin-validation"
 import type { createYoga } from "graphql-yoga"
 import type { JWTPayload } from "jose"
 
+/**
+ * The GraphQL context object available in every resolver.
+ */
 export interface Context {
+  /** Authenticated user payload from JWT verification, or `null` for unauthenticated requests. */
   currentUser: JWTPayload | null
+  /** Configured permission rules for technical users. */
   permissions: Permission[]
+  /** Custom resolver for read permission checks. */
   hasReadPermission?: ReadPermissionResolver
+  /** Custom resolver for write permission checks. */
   hasWritePermission?: WritePermissionResolver
 }
 

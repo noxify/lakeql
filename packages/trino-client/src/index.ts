@@ -6,6 +6,7 @@ import {
 import { withRetry } from "./retry"
 import type { RetryConfig } from "./retry"
 import type {
+  ColumnInfo,
   CreateTableProps,
   DropTableProps,
   GetColumnsProps,
@@ -34,6 +35,7 @@ export type {
   ClientTypeSignatureParameter,
   Column,
   ColumnDefinition,
+  ColumnInfo,
   CreateTableProps,
   DropTableProps,
   ErrorLocation,
@@ -276,14 +278,35 @@ export class TrinoClient {
     return rows.flat()
   }
 
-  /** Lists all columns for the given table. */
+  /** Lists all columns for the given table as typed objects. */
+  async columns(
+    props: GetColumnsProps & { asObject: true }
+  ): Promise<ColumnInfo[]>
+  /** Lists all columns for the given table as raw tuples. */
+  async columns(
+    props: GetColumnsProps & { asObject?: false }
+  ): Promise<[name: string, type: string, extra: string, description: string][]>
   async columns({
     catalog,
     schema,
     table,
+    asObject,
   }: GetColumnsProps): Promise<
-    [name: string, type: string, extra: string, description: string][]
+    | ColumnInfo[]
+    | [name: string, type: string, extra: string, description: string][]
   > {
+    if (asObject) {
+      return this.query<ColumnInfo>({
+        sql: `SHOW COLUMNS from ${catalog}.${schema}.${table}`,
+        transform: (row) => ({
+          name: row[0] as string,
+          type: row[1] as string,
+          extra: row[2] as string,
+          description: row[3] as string,
+        }),
+      })
+    }
+
     return this.query<
       [name: string, type: string, extra: string, description: string]
     >({

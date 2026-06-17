@@ -13,19 +13,7 @@ function createApiServer(options?: ApiRuntimeConfig): Promise<ApiServer>
 
 ## Return type
 
-```ts
-interface ApiServer {
-  app: Hono
-  logger: ReturnType<typeof createLogger>
-  yoga: ApiYoga
-}
-```
-
-| Field    | Description                                           |
-| -------- | ----------------------------------------------------- |
-| `app`    | The Hono application instance with all routes mounted |
-| `logger` | Configured logger instance from `@lakeql/logger`      |
-| `yoga`   | The GraphQL Yoga server handling `/graphql` requests  |
+<InterfaceReference file="api/src/server" name="ApiServer" />
 
 ## What it sets up
 
@@ -37,7 +25,7 @@ interface ApiServer {
 
 ## Usage
 
-```ts path="src/server.ts"
+```ts shouldAnalyze path="src/server.ts"
 import { createApiServer } from "@lakeql/api/server"
 
 const { app, logger, yoga } = await createApiServer({
@@ -55,7 +43,7 @@ app.get("/health", (c) => c.json({ status: "ok" }))
 
 For most projects, use `defineConfig` with `startServer()` instead of calling `createApiServer` directly:
 
-```ts path="src/index.ts"
+```ts shouldAnalyze path="src/index.ts"
 import { config } from "./config"
 
 await config.startServer()
@@ -63,7 +51,7 @@ await config.startServer()
 
 If you don't need `defineConfig`, `startApiServer` calls `createApiServer` internally and binds to a port:
 
-```ts path="src/index.ts"
+```ts shouldAnalyze path="src/index.ts"
 import { startApiServer } from "@lakeql/api/server"
 
 await startApiServer({

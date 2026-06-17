@@ -89,6 +89,36 @@ const columns = await client.columns({
 // ]
 ```
 
+### Typed objects with `asObject`
+
+Pass `asObject: true` to get `ColumnInfo[]` objects instead of raw tuples:
+
+```ts shouldAnalyze
+import { TrinoClient } from "@lakeql/trino-client"
+
+const client = new TrinoClient({
+  host: "https://trino.example.com",
+  port: 8443,
+  auth: { type: "basic", username: "analyst", password: "secret" },
+  catalog: "hive",
+})
+
+const columns = await client.columns({
+  catalog: "hive",
+  schema: "sales",
+  table: "orders",
+  asObject: true,
+})
+// [
+//   { name: "id", type: "varchar", extra: "", description: "Order identifier" },
+//   { name: "amount", type: "double", extra: "", description: "Total order amount" },
+// ]
+
+for (const col of columns) {
+  console.log(`${col.name}: ${col.type}`)
+}
+```
+
 ## Full Discovery Example
 
 ```ts shouldAnalyze
