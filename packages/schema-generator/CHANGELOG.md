@@ -1,5 +1,11 @@
 # @lakeql/schema-generator
 
+## 0.4.1
+
+### Patch Changes
+
+- 3ba4ef2: add missing endpoint check for minio
+
 ## 0.4.0
 
 ### Minor Changes

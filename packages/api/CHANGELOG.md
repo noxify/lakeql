@@ -1,5 +1,11 @@
 # @lakeql/api
 
+## 0.2.2
+
+### Patch Changes
+
+- 3ba4ef2: update dependencies
+
 ## 0.2.1
 
 ### Patch Changes
