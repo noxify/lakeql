@@ -71,9 +71,25 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
-  pkg-new-release:
-    needs: [lint, format, typecheck]
+  detect-package-changes:
     if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    outputs:
+      packages_changed: ${{ steps.filter.outputs.packages }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            packages:
+              - 'packages/**'
+              - 'pnpm-lock.yaml'
+
+  pkg-new-release:
+    needs: [lint, format, typecheck, detect-package-changes]
+    if: github.event_name == 'pull_request' && needs.detect-package-changes.outputs.packages_changed == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
