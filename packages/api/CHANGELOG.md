@@ -1,5 +1,12 @@
 # @lakeql/api
 
+## 0.2.4
+
+### Patch Changes
+
+- Updated dependencies [ef6209b]
+  - @lakeql/logger@0.2.0
+
 ## 0.2.3
 
 ### Patch Changes

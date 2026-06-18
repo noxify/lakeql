@@ -1,5 +1,14 @@
 # @lakeql/logger
 
+## 0.2.0
+
+### Minor Changes
+
+- ef6209b: Extend console formatting helpers used by CLI output.
+
+  - Add `info()` and `warning()` console helpers in `@lakeql/logger/console`.
+  - Enable consistent status/error formatting across CLI command and error output paths.
+
 ## 0.1.3
 
 ### Patch Changes
