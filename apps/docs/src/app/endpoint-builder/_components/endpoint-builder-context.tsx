@@ -331,11 +331,44 @@ export function EndpointBuilderProvider({
             }
             fields = [...fields, loadTimestampField]
           }
+          // Auto-inject load_timestamp_year if not already present
+          const hasLoadTimestampYear = fields.some(
+            (f) => f.name === "load_timestamp_year"
+          )
+          if (!hasLoadTimestampYear) {
+            const loadTimestampYearField: FieldDefinition = {
+              id: generateId(),
+              name: "load_timestamp_year",
+              type: "Integer",
+              options: { readOnly: true },
+            }
+            fields = [...fields, loadTimestampYearField]
+          }
+          // Auto-inject load_timestamp_month if not already present
+          const hasLoadTimestampMonth = fields.some(
+            (f) => f.name === "load_timestamp_month"
+          )
+          if (!hasLoadTimestampMonth) {
+            const loadTimestampMonthField: FieldDefinition = {
+              id: generateId(),
+              name: "load_timestamp_month",
+              type: "Integer",
+              options: { readOnly: true },
+            }
+            fields = [...fields, loadTimestampMonthField]
+          }
         } else if (wasTimestampMode && !isTimestampMode) {
-          // Remove auto-injected load_timestamp (only if readOnly)
+          // Remove auto-injected timestamp fields (only if readOnly)
           fields = fields.filter(
             (f) =>
-              !(f.name === "load_timestamp" && f.options?.readOnly === true)
+              !(f.name === "load_timestamp" && f.options?.readOnly === true) &&
+              !(
+                f.name === "load_timestamp_year" && f.options?.readOnly === true
+              ) &&
+              !(
+                f.name === "load_timestamp_month" &&
+                f.options?.readOnly === true
+              )
           )
         }
 

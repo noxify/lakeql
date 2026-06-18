@@ -96,7 +96,7 @@ The `partitioning` and `partitioningFormat` fields control how files are organiz
 
 ### Write-timestamp partitioning (default)
 
-When `partitioning` is `true` (the default), files are partitioned by the current UTC timestamp. A `load_timestamp` field is added to the endpoint definition with `readOnly: true` — it appears in the query schema and Hive DDL but is excluded from the mutation input. The write pipeline populates it automatically at runtime.
+When `partitioning` is `true` (the default), files are partitioned by the current UTC timestamp. A `load_timestamp` field is added to the endpoint definition with `readOnly: true` — it appears in the query schema and Hive DDL but is excluded from the mutation input. The write pipeline populates it automatically at runtime. Additionally, `load_timestamp_year` (Integer) and `load_timestamp_month` (Integer) fields are injected as materialized partition columns, enabling direct filtering in tools that read Parquet files without Hive metastore awareness (e.g. Jupyter notebooks with PyArrow, Pandas, or DuckDB).
 
 ```json
 {
@@ -105,6 +105,16 @@ When `partitioning` is `true` (the default), files are partitioned by the curren
     {
       "name": "load_timestamp",
       "type": "DateTime",
+      "options": { "readOnly": true }
+    },
+    {
+      "name": "load_timestamp_year",
+      "type": "Integer",
+      "options": { "readOnly": true }
+    },
+    {
+      "name": "load_timestamp_month",
+      "type": "Integer",
       "options": { "readOnly": true }
     }
   ],
@@ -120,9 +130,10 @@ When `partitioning` is `true` (the default), files are partitioned by the curren
 ```
 
 <Note>
-  The Endpoint Builder adds the `load_timestamp` field automatically when
-  timestamp partitioning is active. Fields with `readOnly: true` are queryable
-  via GraphQL but cannot be provided as mutation input.
+  The Endpoint Builder adds the `load_timestamp`, `load_timestamp_year`, and
+  `load_timestamp_month` fields automatically when timestamp partitioning is
+  active. Fields with `readOnly: true` are queryable via GraphQL but cannot be
+  provided as mutation input.
 </Note>
 
 ### Disabled partitioning (flat layout)

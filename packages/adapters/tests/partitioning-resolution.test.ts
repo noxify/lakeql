@@ -115,6 +115,8 @@ describe(enrichJsonSchemaWithTimestamp, () => {
 
     expect(enriched.properties).toStrictEqual({
       load_timestamp: { type: "string", format: "date-time" },
+      load_timestamp_year: { type: "integer" },
+      load_timestamp_month: { type: "integer" },
     })
   })
 })
@@ -127,8 +129,18 @@ describe(injectLoadTimestamp, () => {
     const result = injectLoadTimestamp(records, timestamp)
 
     expect(result).toStrictEqual([
-      { name: "Alice", load_timestamp: "2024-06-15T10:30:00.000Z" },
-      { name: "Bob", load_timestamp: "2024-06-15T10:30:00.000Z" },
+      {
+        name: "Alice",
+        load_timestamp: "2024-06-15T10:30:00.000Z",
+        load_timestamp_year: 2024,
+        load_timestamp_month: 6,
+      },
+      {
+        name: "Bob",
+        load_timestamp: "2024-06-15T10:30:00.000Z",
+        load_timestamp_year: 2024,
+        load_timestamp_month: 6,
+      },
     ])
   })
 

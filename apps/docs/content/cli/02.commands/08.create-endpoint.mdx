@@ -170,9 +170,11 @@ Each field can include an optional `options` object to control mutation input be
 
 <Note>
   When timestamp-based partitioning is active, the Endpoint Builder
-  automatically adds a `load_timestamp` field with `readOnly: true`. This field
-  is populated by the write pipeline at runtime and is queryable in Hive, but
-  users cannot provide it as mutation input.
+  automatically adds `load_timestamp` (DateTime), `load_timestamp_year`
+  (Integer), and `load_timestamp_month` (Integer) fields with `readOnly: true`.
+  These fields are populated by the write pipeline at runtime and are queryable
+  in Hive and directly in Parquet, but users cannot provide them as mutation
+  input.
 </Note>
 
 #### Available validations
