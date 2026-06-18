@@ -30,7 +30,7 @@ interface StepProps {
 
 const steps: StepProps[] = [
   {
-    code: "@lakeql/create-app@latest my-project",
+    code: "@lakeql/create-app@latest my-lakeql-project",
     command: "exec",
     description: "Run the following command to scaffold a new LakeQL project.",
     title: "Create your project",

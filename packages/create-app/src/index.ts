@@ -184,7 +184,7 @@ function setupQuietMode(): void {
 async function promptProjectName(): Promise<string> {
   const result = await text({
     message: "What is your project name?",
-    placeholder: "my-lakeql-app",
+    placeholder: "my-lakeql-project",
     validate: (value) => {
       if (!value) {
         return "Project name is required"

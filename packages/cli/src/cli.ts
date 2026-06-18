@@ -16,6 +16,7 @@ async function main() {
   const packageInfo = await readPackage()
 
   const program = new Command()
+  const argv = process.argv.slice(2)
 
   program.configureHelp({
     sortSubcommands: true,
@@ -34,6 +35,11 @@ async function main() {
     .addCommand(createEndpointCommand())
     .addCommand(createRegistryCommand())
     .addCommand(initCommand())
+
+  if (argv.length === 0) {
+    program.outputHelp()
+    return
+  }
 
   await program.parseAsync()
 }

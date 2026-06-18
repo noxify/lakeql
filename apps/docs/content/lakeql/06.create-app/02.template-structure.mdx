@@ -8,7 +8,7 @@ description: Understand the project layout created by `@lakeql/create-app`.
 After scaffolding, your project has this structure:
 
 ```
-my-api/
+my-lakeql-project/
 ├── src/
 │   ├── index.ts             # Entry point — starts the API server
 │   ├── config.ts            # defineConfig with runtime options
@@ -19,6 +19,7 @@ my-api/
 │   └── schemas/             # Generated schemas go here after pull
 │       └── generated/
 ├── .env.example             # Template environment variables
+├── .nvmrc                   # Node.js major version used by the template
 ├── package.json             # Dependencies and scripts
 ├── tsconfig.json            # TypeScript configuration
 ├── tsdown.config.ts         # Build configuration
@@ -222,6 +223,9 @@ Pre-configured with LakeQL packages and development tooling:
     "tsdown": "^latest",
     "tsx": "^latest",
     "typescript": "^latest"
+  },
+  "engines": {
+    "node": ">=24"
   }
 }
 ```
