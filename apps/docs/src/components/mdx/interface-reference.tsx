@@ -110,7 +110,9 @@ function resolvePropertyTags(property: {
  */
 // oxlint-disable-next-line typescript/no-explicit-any
 function resolveNestedMembers(typeNode: any): ResolvedProperty[] | undefined {
-  if (!typeNode) return undefined
+  if (!typeNode) {
+    return undefined
+  }
 
   // Direct TypeLiteral: { foo: string; bar: number }
   if (typeNode.getKind?.() === SyntaxKind.TypeLiteral) {
@@ -359,6 +361,7 @@ function PropertyRow({
         <TableRow>
           <TableCell colSpan={2} className="p-0">
             <NestedMembersTable
+              // oxlint-disable-next-line typescript/no-non-null-assertion
               members={member.nestedMembers!}
               depth={depth + 1}
             />
