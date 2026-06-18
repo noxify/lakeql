@@ -1,6 +1,18 @@
-import { Option } from "@commander-js/extra-typings"
+import { InvalidArgumentError, Option } from "@commander-js/extra-typings"
 
 import { getInvocationCwd } from "@/path-utils"
+
+export const DEFAULT_PULL_CONCURRENCY = 8
+
+function parsePositiveInteger(value: string) {
+  const parsed = Number.parseInt(value, 10)
+
+  if (!Number.isInteger(parsed) || parsed < 1) {
+    throw new InvalidArgumentError("must be a positive integer")
+  }
+
+  return parsed
+}
 
 export function createCatalogOption() {
   return new Option("--catalog <catalog>", "catalog to use").env("HIVE_CATALOG")
@@ -30,4 +42,13 @@ export function createSkipRegistryOption() {
     "--skip-registry",
     "Skip config registry generation"
   ).default(false)
+}
+
+export function createConcurrencyOption() {
+  return new Option(
+    "--concurrency <count>",
+    "Maximum number of concurrent pull operations for multi-item pulls."
+  )
+    .argParser(parsePositiveInteger)
+    .default(DEFAULT_PULL_CONCURRENCY)
 }

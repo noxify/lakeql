@@ -8,13 +8,13 @@ import { runConfigRegistryGeneration } from "@/commands/create-registry"
 import { resolveSourcePath } from "@/config"
 import { getEnv } from "@/env"
 import { CliError, createTrinoConnectionError } from "@/errors"
+import { DEFAULT_PULL_CONCURRENCY } from "@/options"
 
 import { buildPullCommandStructure } from "../metadata/pull-metadata"
 import { executeBulkPull } from "./bulk-pull"
 import { executePull } from "./pull-action"
 
 const LARGE_PULL_THRESHOLD = 10
-const MAX_CONCURRENT_PULLS = 8
 const MAX_ACTIVE_PREVIEW = 5
 
 async function withTrinoContext<T>(
@@ -33,7 +33,13 @@ export default function PullCommand() {
   const pullCommand = buildPullCommandStructure()
 
   pullCommand.action(async (props) => {
-    const { skipRegistry, sourcePath, bulk, bulkConfig } = props
+    const {
+      skipRegistry,
+      sourcePath,
+      bulk,
+      bulkConfig,
+      concurrency = DEFAULT_PULL_CONCURRENCY,
+    } = props
 
     // CLI --source-path overrides config; if it's the default (invocation cwd), use config
     const cliOverride =
@@ -47,6 +53,7 @@ export default function PullCommand() {
       await executeBulkPull({
         configPath: bulkConfig,
         catalog: props.catalog,
+        concurrency,
         sourcePathOverride: cliOverride,
         skipRegistry,
       })
@@ -158,14 +165,20 @@ export default function PullCommand() {
                     })
                   },
                 })),
-                { concurrent: false, exitOnError: true }
+                {
+                  concurrent:
+                    tables.length > 1
+                      ? Math.min(concurrency, tables.length)
+                      : false,
+                  exitOnError: true,
+                }
               )
             }
 
             const queue = [...tables]
             const activeLoads = new Set<string>()
             let completed = 0
-            const parallelism = Math.min(MAX_CONCURRENT_PULLS, tables.length)
+            const parallelism = Math.min(concurrency, tables.length)
 
             const updateOutput = () => {
               const activeList = [...activeLoads]

@@ -12,15 +12,51 @@ import { runConfigRegistryGeneration } from "@/commands/create-registry"
 import { resolveSourcePath } from "@/config"
 import { getEnv } from "@/env"
 import { CliError, createTrinoConnectionError } from "@/errors"
+import { DEFAULT_PULL_CONCURRENCY } from "@/options"
 import { getInvocationCwd } from "@/path-utils"
 
 import { executePull } from "./pull-action"
+
+const LARGE_BULK_ENTRY_THRESHOLD = 10
+const MAX_ACTIVE_PREVIEW = 5
+
+function createConcurrencyLimiter(maxConcurrent: number) {
+  let activeCount = 0
+  const queue: (() => void)[] = []
+
+  const release = () => {
+    activeCount -= 1
+    const next = queue.shift()
+    next?.()
+  }
+
+  return async function runWithLimit<T>(
+    operation: () => Promise<T>
+  ): Promise<T> {
+    if (activeCount >= maxConcurrent) {
+      // oxlint-disable-next-line promise/avoid-new
+      await new Promise<void>((resolve) => {
+        queue.push(resolve)
+      })
+    }
+
+    activeCount += 1
+
+    try {
+      return await operation()
+    } finally {
+      release()
+    }
+  }
+}
 
 export interface BulkPullOptions {
   /** Path to the bulk config file (e.g. import.config.mjs). */
   configPath?: string
   /** CLI --catalog override. */
   catalog?: string
+  /** Maximum number of concurrent pull operations. */
+  concurrency?: number
   /** CLI --source-path override. */
   sourcePathOverride?: string
   /** Skip config registry generation. */
@@ -88,6 +124,7 @@ export async function executeBulkPull(options: BulkPullOptions): Promise<void> {
   const {
     configPath,
     catalog: cliCatalog,
+    concurrency = DEFAULT_PULL_CONCURRENCY,
     sourcePathOverride,
     skipRegistry,
   } = options
@@ -121,6 +158,8 @@ export async function executeBulkPull(options: BulkPullOptions): Promise<void> {
     return
   }
 
+  const runWithPullSlot = createConcurrencyLimiter(concurrency)
+
   const tasks = new Listr(
     [
       {
@@ -132,10 +171,33 @@ export async function executeBulkPull(options: BulkPullOptions): Promise<void> {
               const tableCount = entry.tables?.length ?? 0
               const viewCount = entry.views?.length ?? 0
               const itemCount = tableCount + viewCount
+              const useCompactProgress = itemCount > LARGE_BULK_ENTRY_THRESHOLD
 
               return {
                 title: `${catalog}/${entry.schema} — ${itemCount} item(s)`,
                 task: async (_ctx, subtask) => {
+                  let completed = 0
+                  const activeItems = new Set<string>()
+                  const parallelism = Math.min(concurrency, itemCount)
+
+                  const updateCompactOutput = () => {
+                    const activeList = [...activeItems]
+                      .slice(0, MAX_ACTIVE_PREVIEW)
+                      .map((name) => `  - ${catalog}.${entry.schema}.${name}`)
+                      .join("\n")
+
+                    const extraActive =
+                      activeItems.size > MAX_ACTIVE_PREVIEW
+                        ? `\n  ... +${activeItems.size - MAX_ACTIVE_PREVIEW} more active`
+                        : ""
+
+                    subtask.output = `Completed ${completed}/${itemCount} | Active ${activeItems.size}/${parallelism}${activeList ? `\n${activeList}${extraActive}` : ""}`
+                  }
+
+                  if (useCompactProgress) {
+                    updateCompactOutput()
+                  }
+
                   const trinoClient = new TrinoClient({
                     auth: {
                       password: env.HIVE_PASSWORD,
@@ -147,43 +209,119 @@ export async function executeBulkPull(options: BulkPullOptions): Promise<void> {
                     port: env.HIVE_PORT,
                   })
 
-                  if (entry.tables && entry.tables.length > 0) {
-                    subtask.output = `Pulling ${entry.tables.length} table(s)...`
+                  const runSingleItemPull = async (
+                    itemName: string,
+                    itemKind: "tables" | "views"
+                  ) => {
                     try {
-                      await executePull({
-                        trinoClient,
-                        catalog,
-                        schema: entry.schema,
-                        tables: entry.tables,
-                        resolvedTargetPath,
-                        skipRegistry: true,
-                        sourcePathOverride,
-                      })
+                      await runWithPullSlot(() =>
+                        executePull({
+                          trinoClient,
+                          catalog,
+                          schema: entry.schema,
+                          tables: [itemName],
+                          resolvedTargetPath,
+                          skipRegistry: true,
+                          sourcePathOverride,
+                        })
+                      )
+                    } catch (error) {
+                      throw createTrinoConnectionError(
+                        itemKind === "tables" ? "pull tables" : "pull views",
+                        `bulk pull (catalog=${catalog}, schema=${entry.schema}, ${itemKind}=${itemName})`,
+                        error
+                      )
+                    }
+                  }
+
+                  if (useCompactProgress) {
+                    const queue = [
+                      ...(entry.tables?.map((itemName) => ({
+                        itemKind: "tables" as const,
+                        itemName,
+                      })) ?? []),
+                      ...(entry.views?.map((itemName) => ({
+                        itemKind: "views" as const,
+                        itemName,
+                      })) ?? []),
+                    ]
+
+                    const worker = async () => {
+                      while (queue.length > 0) {
+                        const nextItem = queue.shift()
+                        if (!nextItem) {
+                          return
+                        }
+
+                        activeItems.add(nextItem.itemName)
+                        updateCompactOutput()
+
+                        try {
+                          // oxlint-disable-next-line no-await-in-loop
+                          await runSingleItemPull(
+                            nextItem.itemName,
+                            nextItem.itemKind
+                          )
+                          completed += 1
+                        } finally {
+                          activeItems.delete(nextItem.itemName)
+                          updateCompactOutput()
+                        }
+                      }
+                    }
+
+                    await Promise.all(
+                      Array.from({ length: parallelism }, () => worker())
+                    )
+
+                    subtask.output = `Completed ${completed}/${itemCount}`
+                    subtask.title = `${catalog}/${entry.schema} — ${itemCount} item(s) pulled`
+                    return
+                  }
+
+                  if (entry.tables && entry.tables.length > 0) {
+                    const { tables } = entry
+                    subtask.output = `Pulling ${tables.length} table(s)...`
+                    try {
+                      await runWithPullSlot(() =>
+                        executePull({
+                          trinoClient,
+                          catalog,
+                          schema: entry.schema,
+                          tables,
+                          resolvedTargetPath,
+                          skipRegistry: true,
+                          sourcePathOverride,
+                        })
+                      )
                     } catch (error) {
                       throw createTrinoConnectionError(
                         "pull tables",
-                        `bulk pull (catalog=${catalog}, schema=${entry.schema}, tables=${entry.tables.join(",")})`,
+                        `bulk pull (catalog=${catalog}, schema=${entry.schema}, tables=${tables.join(",")})`,
                         error
                       )
                     }
                   }
 
                   if (entry.views && entry.views.length > 0) {
-                    subtask.output = `Pulling ${entry.views.length} view(s)...`
+                    const { views } = entry
+                    subtask.output = `Pulling ${views.length} view(s)...`
                     try {
-                      await executePull({
-                        trinoClient,
-                        catalog,
-                        schema: entry.schema,
-                        tables: entry.views,
-                        resolvedTargetPath,
-                        skipRegistry: true,
-                        sourcePathOverride,
-                      })
+                      await runWithPullSlot(() =>
+                        executePull({
+                          trinoClient,
+                          catalog,
+                          schema: entry.schema,
+                          tables: views,
+                          resolvedTargetPath,
+                          skipRegistry: true,
+                          sourcePathOverride,
+                        })
+                      )
                     } catch (error) {
                       throw createTrinoConnectionError(
                         "pull views",
-                        `bulk pull (catalog=${catalog}, schema=${entry.schema}, views=${entry.views.join(",")})`,
+                        `bulk pull (catalog=${catalog}, schema=${entry.schema}, views=${views.join(",")})`,
                         error
                       )
                     }

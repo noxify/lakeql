@@ -16,6 +16,8 @@ export interface PullActionParams {
   resolvedTargetPath: string
   skipRegistry: boolean
   sourcePathOverride?: string
+  onItemStart?: (itemName: string) => void
+  onItemFinish?: (itemName: string, success: boolean) => void
 }
 
 /**
@@ -31,49 +33,60 @@ export async function executePull(params: PullActionParams): Promise<void> {
     resolvedTargetPath,
     skipRegistry,
     sourcePathOverride,
+    onItemStart,
+    onItemFinish,
   } = params
 
   for (const table of tables) {
-    const columns = await trinoClient.columns({
-      catalog,
-      schema,
-      table,
-    })
+    let succeeded = false
+    onItemStart?.(table)
 
-    const transformedResponse = columns.map((values) =>
-      convertTrinoResponse<{
-        name: string
-        type: string
-        extra: string
-        description: string
-      }>({
-        keys: ["name", "type", "extra", "description"],
-        values,
+    try {
+      const columns = await trinoClient.columns({
+        catalog,
+        schema,
+        table,
       })
-    )
 
-    const parsedColumns = parseColumns(transformedResponse)
+      const transformedResponse = columns.map((values) =>
+        convertTrinoResponse<{
+          name: string
+          type: string
+          extra: string
+          description: string
+        }>({
+          keys: ["name", "type", "extra", "description"],
+          values,
+        })
+      )
 
-    const definition = trinoColumnsToDefinition({
-      tableName: table,
-      catalog,
-      schema,
-      parsedColumns,
-    })
+      const parsedColumns = parseColumns(transformedResponse)
 
-    const targetPath = path.join(
-      resolvedTargetPath,
-      "schemas/generated",
-      catalog,
-      schema,
-      table
-    )
+      const definition = trinoColumnsToDefinition({
+        tableName: table,
+        catalog,
+        schema,
+        parsedColumns,
+      })
 
-    await generateEndpoint({
-      definition,
-      outputDir: targetPath,
-      skipRegistry,
-      sourcePathOverride,
-    })
+      const targetPath = path.join(
+        resolvedTargetPath,
+        "schemas/generated",
+        catalog,
+        schema,
+        table
+      )
+
+      await generateEndpoint({
+        definition,
+        outputDir: targetPath,
+        skipRegistry,
+        sourcePathOverride,
+      })
+
+      succeeded = true
+    } finally {
+      onItemFinish?.(table, succeeded)
+    }
   }
 }

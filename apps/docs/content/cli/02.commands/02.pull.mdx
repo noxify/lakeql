@@ -29,6 +29,7 @@ lakeql-cli pull --catalog hive --schema myschema --table users
 The registry is generated once after all selected items are processed.
 
 When more than 10 tables are selected in non-bulk mode, `pull` switches to a compact live progress view (`Completed X/Y | Active A/B`) with active load preview, instead of rendering one task line per table.
+Use `--concurrency <count>` to override the default limit of `8` concurrent pull operations.
 
 ## Bulk mode
 
@@ -103,10 +104,14 @@ The catalog is resolved in the following order (first match wins):
 ### Execution behavior
 
 - All schema entries are processed **in parallel** for faster execution.
-- Tables and views within a single entry are processed sequentially.
+- Tables and views within a single entry are processed sequentially for small entries.
+- Bulk item pulls are capped globally at 8 concurrent operations across the whole bulk run by default.
+- Bulk entries with more than 10 items switch to bounded parallel item processing under that global cap.
+- Use `--concurrency <count>` to raise or lower that limit for both bulk and non-bulk multi-item pulls.
 - The config registry is generated **once** at the end (not per entry).
 - If one entry fails, the remaining entries continue to execute.
 - Progress is displayed using a structured task list in the terminal.
+- Bulk entries with more than 10 items switch to the same compact live progress view used by large non-bulk pulls.
 
 ### Usage
 
@@ -120,6 +125,9 @@ lakeql-cli pull --bulk --bulk-config=./my-import.config.mjs
 # With global catalog override
 lakeql-cli pull --bulk --catalog my_catalog
 
+# With a custom concurrency limit
+lakeql-cli pull --bulk --concurrency 5
+
 # Skip registry generation
 lakeql-cli pull --bulk --skip-registry
 ```
@@ -129,8 +137,13 @@ lakeql-cli pull --bulk --skip-registry
 ```
 ⠋ Pull data
   ✓ hive/sales — 4 item(s) pulled
-  ⠋ hive/analytics — 2 item(s)
-    → Pulling 2 table(s)...
+  ⠋ hive/analytics — 11 item(s)
+    › Completed 6/11 | Active 5/8
+    ›   - hive.analytics.events_6
+    ›   - hive.analytics.events_7
+    ›   - hive.analytics.events_8
+    ›   - hive.analytics.events_9
+    ›   - hive.analytics.events_10
   ✓ warehouse/inventory — 2 item(s) pulled
 ✓ Pull data
 ✓ Create registry

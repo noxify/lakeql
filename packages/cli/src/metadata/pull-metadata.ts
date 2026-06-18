@@ -6,6 +6,7 @@ import { Command, Option } from "@commander-js/extra-typings"
 
 import {
   createCatalogOption,
+  createConcurrencyOption,
   createSchemaOption,
   createSourcePathOption,
   createTableOption,
@@ -45,6 +46,7 @@ export function buildPullCommandStructure() {
       new Option("--skip-registry", "Skip registry update").default(false)
     )
     .addOption(createSourcePathOption())
+    .addOption(createConcurrencyOption())
     .addOption(bulkOption)
     .addOption(bulkConfigOption)
 }

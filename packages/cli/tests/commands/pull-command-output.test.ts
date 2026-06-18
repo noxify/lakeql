@@ -56,7 +56,8 @@ const { default: pullCommandFactory } = await import("@/commands/pull")
 describe("pull command output", () => {
   afterEach(() => {
     vi.restoreAllMocks()
-    mockExecutePull.mockClear()
+    mockExecutePull.mockReset()
+    mockExecutePull.mockResolvedValue()
     mockExecuteBulkPull.mockClear()
     mockRunConfigRegistryGeneration.mockClear()
   })
@@ -165,5 +166,53 @@ describe("pull command output", () => {
     expect(logSpy).toHaveBeenCalledWith(
       "SUCCESS Pull completed: 11 item(s) generated under /tmp/lakeql-out/schemas/generated/hive/analytics"
     )
+  })
+
+  it("passes custom concurrency to bulk pull", async () => {
+    const command = pullCommandFactory()
+
+    await command.parseAsync(
+      ["--bulk", "--concurrency", "5", "--skip-registry"],
+      { from: "user" }
+    )
+
+    expect(mockExecuteBulkPull).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        concurrency: 5,
+        skipRegistry: true,
+      })
+    )
+  })
+
+  it("uses custom concurrency for non-bulk multi-table pulls", async () => {
+    let inFlight = 0
+    let maxInFlight = 0
+
+    mockExecutePull.mockImplementation(async () => {
+      inFlight += 1
+      maxInFlight = Math.max(maxInFlight, inFlight)
+      // oxlint-disable-next-line promise/avoid-new no-promise-executor-return
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      inFlight -= 1
+    })
+
+    const command = pullCommandFactory()
+    const tables = Array.from({ length: 6 }, (_, i) => `events_${i}`)
+
+    await command.parseAsync(
+      [
+        "--catalog",
+        "hive",
+        "--schema",
+        "analytics",
+        "--concurrency",
+        "3",
+        ...tables.flatMap((table) => ["--table", table]),
+      ],
+      { from: "user" }
+    )
+
+    expect(mockExecutePull).toHaveBeenCalledTimes(6)
+    expect(maxInFlight).toBeLessThanOrEqual(3)
   })
 })

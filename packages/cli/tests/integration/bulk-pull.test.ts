@@ -13,9 +13,34 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 // --- Mocks ---
 
-const mockExecutePull = vi.fn().mockResolvedValue(null)
+const taskOutputs: string[] = []
+
+function setDefaultExecutePullMock() {
+  mockExecutePull.mockImplementation(
+    async (params?: {
+      tables?: string[]
+      onItemStart?: (itemName: string) => void
+      onItemFinish?: (itemName: string, success: boolean) => void
+    }) => {
+      for (const table of params?.tables ?? []) {
+        params?.onItemStart?.(table)
+        params?.onItemFinish?.(table, true)
+      }
+      // oxlint-disable-next-line no-useless-return
+      return
+    }
+  )
+}
+
+const mockExecutePull = vi.fn()
+setDefaultExecutePullMock()
+
 vi.mock(import("@/commands/pull-action"), () => ({
-  executePull: (...args: unknown[]) => mockExecutePull(...args),
+  executePull: (params?: {
+    tables?: string[]
+    onItemStart?: (itemName: string) => void
+    onItemFinish?: (itemName: string, success: boolean) => void
+  }) => mockExecutePull(params),
 }))
 
 const mockRunConfigRegistryGeneration = vi.fn().mockResolvedValue(null)
@@ -80,8 +105,18 @@ interface MockTaskEntry {
 }
 
 class MockTask {
-  output = ""
+  private _output = ""
   title = ""
+
+  get output() {
+    return this._output
+  }
+
+  set output(value: string) {
+    this._output = value
+    taskOutputs.push(value)
+  }
+
   newListr(tasks: MockTaskEntry[], options: { concurrent?: boolean } = {}) {
     return new MockListr(tasks, options)
   }
@@ -152,8 +187,10 @@ describe("bulk-pull (integration)", () => {
       `bulk-pull-test-${Date.now()}-${Math.random().toString(36).slice(2)}`
     )
     await mkdir(testDir, { recursive: true })
-    mockExecutePull.mockClear()
+    mockExecutePull.mockReset()
+    setDefaultExecutePullMock()
     mockRunConfigRegistryGeneration.mockClear()
+    taskOutputs.length = 0
   })
 
   afterEach(async () => {
@@ -250,6 +287,100 @@ describe("bulk-pull (integration)", () => {
           tables: ["v1", "v2"],
         })
       )
+    })
+
+    it("should show compact live progress for bulk entries with more than 10 items", async () => {
+      await writeConfig([
+        {
+          schema: "schema1",
+          tables: Array.from({ length: 11 }, (_, i) => `events_${i}`),
+        },
+      ])
+
+      await executeBulkPull({
+        configPath: "import.config.mjs",
+        skipRegistry: true,
+      })
+
+      expect(mockExecutePull).toHaveBeenCalledTimes(11)
+      expect(taskOutputs).toContain("Completed 0/11 | Active 0/8")
+      expect(
+        taskOutputs.some(
+          (output) =>
+            output.includes("Active 8/8") &&
+            output.includes("default_catalog.schema1.events_0")
+        )
+      ).toBeTruthy()
+      expect(taskOutputs).toContain("Completed 11/11")
+    })
+
+    it("should cap total concurrent bulk pulls across entries", async () => {
+      let inFlight = 0
+      let maxInFlight = 0
+
+      mockExecutePull.mockImplementation(async () => {
+        inFlight += 1
+        maxInFlight = Math.max(maxInFlight, inFlight)
+        // oxlint-disable-next-line promise/avoid-new no-promise-executor-return
+        await new Promise((resolve) => setTimeout(resolve, 0))
+        inFlight -= 1
+        // oxlint-disable-next-line no-useless-return
+        return
+      })
+
+      await writeConfig([
+        {
+          schema: "schema1",
+          tables: Array.from({ length: 11 }, (_, i) => `events_a_${i}`),
+        },
+        {
+          schema: "schema2",
+          tables: Array.from({ length: 11 }, (_, i) => `events_b_${i}`),
+        },
+      ])
+
+      await executeBulkPull({
+        configPath: "import.config.mjs",
+        skipRegistry: true,
+      })
+
+      expect(mockExecutePull).toHaveBeenCalledTimes(22)
+      expect(maxInFlight).toBeLessThanOrEqual(8)
+    })
+
+    it("should respect custom bulk concurrency", async () => {
+      let inFlight = 0
+      let maxInFlight = 0
+
+      mockExecutePull.mockImplementation(async () => {
+        inFlight += 1
+        maxInFlight = Math.max(maxInFlight, inFlight)
+        // oxlint-disable-next-line promise/avoid-new no-promise-executor-return
+        await new Promise((resolve) => setTimeout(resolve, 0))
+        inFlight -= 1
+        // oxlint-disable-next-line no-useless-return
+        return
+      })
+
+      await writeConfig([
+        {
+          schema: "schema1",
+          tables: Array.from({ length: 11 }, (_, i) => `events_a_${i}`),
+        },
+        {
+          schema: "schema2",
+          tables: Array.from({ length: 11 }, (_, i) => `events_b_${i}`),
+        },
+      ])
+
+      await executeBulkPull({
+        configPath: "import.config.mjs",
+        concurrency: 5,
+        skipRegistry: true,
+      })
+
+      expect(mockExecutePull).toHaveBeenCalledTimes(22)
+      expect(maxInFlight).toBeLessThanOrEqual(5)
     })
   })
 
@@ -431,9 +562,11 @@ describe("bulk-pull (integration)", () => {
   describe("error resilience", () => {
     it("should continue other entries when one fails", async () => {
       mockExecutePull
-        .mockResolvedValueOnce(null) // schema1 succeeds
+        // oxlint-disable-next-line unicorn/no-useless-undefined
+        .mockResolvedValueOnce(undefined) // schema1 succeeds
         .mockRejectedValueOnce(new Error("Connection failed")) // schema2 fails
-        .mockResolvedValueOnce(null) // schema3 succeeds
+        // oxlint-disable-next-line unicorn/no-useless-undefined
+        .mockResolvedValueOnce(undefined) // schema3 succeeds
 
       await writeConfig([
         { schema: "schema1", tables: ["t1"] },
