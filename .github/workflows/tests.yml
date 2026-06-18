@@ -3,8 +3,14 @@ name: Tests
 on:
   pull_request:
     branches: ["*"]
+    paths:
+      - "packages/**"
+      - "pnpm-lock.yaml"
   push:
     branches: ["main", "changesets/release"]
+    paths:
+      - "packages/**"
+      - "pnpm-lock.yaml"
   merge_group:
   workflow_dispatch:
     inputs:
