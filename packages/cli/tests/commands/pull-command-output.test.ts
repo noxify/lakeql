@@ -2,9 +2,12 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 
 const mockExecutePull = vi.fn<(...args: unknown[]) => Promise<void>>()
 const mockExecuteBulkPull = vi.fn<(...args: unknown[]) => Promise<void>>()
+const mockRunConfigRegistryGeneration =
+  vi.fn<(...args: unknown[]) => Promise<void>>()
 
 mockExecutePull.mockResolvedValue()
 mockExecuteBulkPull.mockResolvedValue()
+mockRunConfigRegistryGeneration.mockResolvedValue()
 
 vi.mock(import("@/commands/pull-action"), () => ({
   executePull: (...args: unknown[]) => mockExecutePull(...args),
@@ -13,6 +16,18 @@ vi.mock(import("@/commands/pull-action"), () => ({
 vi.mock(import("@/commands/bulk-pull"), () => ({
   executeBulkPull: (...args: unknown[]) => mockExecuteBulkPull(...args),
 }))
+
+vi.mock(import("@/commands/create-registry"), async (importOriginal) => {
+  const actual = await importOriginal()
+
+  return {
+    ...actual,
+    runConfigRegistryGeneration: (...args: unknown[]) =>
+      mockRunConfigRegistryGeneration(...args),
+    // oxlint-disable-next-line vitest/require-mock-type-parameters
+    default: vi.fn(actual.default),
+  }
+})
 
 vi.mock(import("@/config"), () => ({
   resolveSourcePath: vi
@@ -43,6 +58,7 @@ describe("pull command output", () => {
     vi.restoreAllMocks()
     mockExecutePull.mockClear()
     mockExecuteBulkPull.mockClear()
+    mockRunConfigRegistryGeneration.mockClear()
   })
 
   it("prints start and completion messages for successful non-interactive pull", async () => {
@@ -76,6 +92,36 @@ describe("pull command output", () => {
     expect(logSpy).toHaveBeenCalledWith(
       "INFO Pulling 1 item(s) from hive.analytics into /tmp/lakeql-out/schemas/generated..."
     )
+    expect(logSpy).toHaveBeenCalledWith(
+      "SUCCESS Pull completed: 1 item(s) generated under /tmp/lakeql-out/schemas/generated/hive/analytics"
+    )
+
+    expect(mockRunConfigRegistryGeneration).not.toHaveBeenCalled()
+  })
+
+  it("runs config registry generation once when skip-registry is not set", async () => {
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {})
+
+    const command = pullCommandFactory()
+
+    await command.parseAsync(
+      ["--catalog", "hive", "--schema", "analytics", "--table", "events"],
+      { from: "user" }
+    )
+
+    expect(mockExecutePull).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        catalog: "hive",
+        schema: "analytics",
+        tables: ["events"],
+        resolvedTargetPath: "/tmp/lakeql-out",
+        skipRegistry: true,
+      })
+    )
+
+    expect(mockRunConfigRegistryGeneration).toHaveBeenCalledOnce()
+    expect(mockRunConfigRegistryGeneration.mock.calls[0]?.[0]).toBeUndefined()
+
     expect(logSpy).toHaveBeenCalledWith(
       "SUCCESS Pull completed: 1 item(s) generated under /tmp/lakeql-out/schemas/generated/hive/analytics"
     )

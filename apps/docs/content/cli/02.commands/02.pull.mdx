@@ -19,8 +19,14 @@ lakeql-cli pull --catalog hive --schema myschema --table users
 
 ```
 › Pulling 1 item(s) from hive.myschema into ./src/schemas/generated...
+❯ Pull 1 item(s)
+  ✓ hive.myschema.users
+✓ Pull 1 item(s)
+✓ Create registry
 ✔ Pull completed: 1 item(s) generated under ./src/schemas/generated/hive/myschema
 ```
+
+The registry is generated once after all selected items are processed.
 
 ## Bulk mode
 
@@ -162,6 +168,9 @@ For each selected table, the following files are created under `schemas/generate
 - `endpoint.json` — Endpoint definition for re-generation
 
 `pull` generates query-only endpoints, so `mutation-schema.ts` is not created for pulled tables.
+
+Field names from source schemas are normalized to valid identifier names during generation (for example, spaces become underscores).
+If two source fields normalize to the same generated name, generation fails with a clear collision error instead of producing ambiguous output.
 
 ## Options
 

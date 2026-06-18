@@ -2,7 +2,9 @@
 import { info, success } from "@lakeql/logger/console"
 import { TrinoClient } from "@lakeql/trino-client"
 import { multiselect, select, validators } from "@topcli/prompts"
+import { Listr } from "listr2"
 
+import { runConfigRegistryGeneration } from "@/commands/create-registry"
 import { resolveSourcePath } from "@/config"
 import { getEnv } from "@/env"
 import { CliError, createTrinoConnectionError } from "@/errors"
@@ -127,15 +129,42 @@ export default function PullCommand() {
       )
     )
 
-    await executePull({
-      trinoClient,
-      catalog,
-      schema,
-      tables: [...tables],
-      resolvedTargetPath,
-      skipRegistry,
-      sourcePathOverride: cliOverride,
-    })
+    const pullTasks = new Listr(
+      [
+        {
+          title: `Pull ${tables.length} item(s)`,
+          task: (_, task) =>
+            task.newListr(
+              tables.map((table) => ({
+                title: `${catalog}.${schema}.${table}`,
+                task: async () => {
+                  await executePull({
+                    trinoClient,
+                    catalog,
+                    schema,
+                    tables: [table],
+                    resolvedTargetPath,
+                    // Generate registry once at the end, not per endpoint.
+                    skipRegistry: true,
+                    sourcePathOverride: cliOverride,
+                  })
+                },
+              })),
+              { concurrent: false, exitOnError: true }
+            ),
+        },
+        {
+          title: "Create registry",
+          enabled: !skipRegistry,
+          task: async () => {
+            await runConfigRegistryGeneration(cliOverride)
+          },
+        },
+      ],
+      { concurrent: false, exitOnError: true }
+    )
+
+    await pullTasks.run()
 
     // oxlint-disable-next-line no-console
     console.log(

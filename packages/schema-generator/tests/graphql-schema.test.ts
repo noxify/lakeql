@@ -612,5 +612,81 @@ describe(generateModel, () => {
         },
       })
     })
+
+    test("normalizes invalid identifiers", () => {
+      const jsonSchema: JSONSchema7 = {
+        properties: {
+          "   ": {
+            type: "string",
+          },
+          "status des preises": {
+            type: "string",
+          },
+          "datum preisermittlung": {
+            type: "integer",
+          },
+        },
+        type: "object",
+      }
+
+      const models = generateModel({
+        isRoot: true,
+        models: {},
+        name: "Objects",
+        source: jsonSchema,
+      })
+
+      expect(models).toStrictEqual({
+        Objects: {
+          dateTimeFields: [],
+          fields: {
+            field: {
+              filter: true,
+              graphqlTplType: "'String'",
+              graphqlType: "String",
+              interfaceName: undefined,
+              interfaceType: "string",
+              isArray: false,
+              name: "field",
+              nullable: true,
+              rawFieldName: "   ",
+              transformed: true,
+            },
+            status_des_preises: {
+              filter: true,
+              graphqlTplType: "'String'",
+              graphqlType: "String",
+              interfaceName: undefined,
+              interfaceType: "string",
+              isArray: false,
+              name: "status_des_preises",
+              nullable: true,
+              rawFieldName: "status des preises",
+              transformed: true,
+            },
+            datum_preisermittlung: {
+              filter: true,
+              graphqlTplType: "'Int'",
+              graphqlType: "Int",
+              interfaceName: undefined,
+              interfaceType: "number",
+              isArray: false,
+              name: "datum_preisermittlung",
+              nullable: true,
+              rawFieldName: "datum preisermittlung",
+              transformed: true,
+            },
+          },
+          interfaceName: "ObjectsInterface",
+          modelName: "Objects",
+          root: true,
+          transformFields: [
+            ["field", "   "],
+            ["status_des_preises", "status des preises"],
+            ["datum_preisermittlung", "datum preisermittlung"],
+          ],
+        },
+      })
+    })
   })
 })

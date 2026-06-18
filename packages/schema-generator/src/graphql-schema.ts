@@ -66,6 +66,37 @@ export interface GenerateModelProps {
 }
 
 /**
+ * Sanitizes a raw field name into a valid GraphQL/TypeScript identifier-like key.
+ */
+export function sanitizeFieldName(rawFieldName: string): string {
+  const normalizedFieldName = replaceSpecialCharacters(rawFieldName)
+    .replaceAll(/[^a-zA-Z0-9_]/gu, "_")
+    .replaceAll(/_+/gu, "_")
+    .replaceAll(/^_+|_+$/gu, "")
+
+  if (normalizedFieldName.length === 0) {
+    return "field"
+  }
+
+  return normalizedFieldName.replace(/^(?<digit>\d)/u, "_$<digit>")
+}
+
+function ensureUniqueFieldName(
+  candidateFieldName: string,
+  usedFieldNames: Set<string>,
+  rawFieldName: string
+): string {
+  if (!usedFieldNames.has(candidateFieldName)) {
+    usedFieldNames.add(candidateFieldName)
+    return candidateFieldName
+  }
+
+  throw new Error(
+    `Field name collision after normalization: "${rawFieldName}" -> "${candidateFieldName}".`
+  )
+}
+
+/**
  * Generates a GraphQL model definition from JSON Schema.
  */
 export const generateModel = ({
@@ -77,20 +108,17 @@ export const generateModel = ({
 }: GenerateModelProps) => {
   const currentElement = omit(source, ["additionalProperties"])
   const nestedModels: Record<string, ModelResponse> = { ...models }
+  const usedFieldNames = new Set<string>()
 
   const currentModel: Record<string, CurrentModelResponse> = {}
   for (const [rawFieldName, fieldDefinition] of Object.entries(
     currentElement.properties as JSONSchema7
   )) {
-    // * Replaces `-` and `.` with `_`
-    // * appends an `_` to all fields which starts with a number
-    // to be honest, i don't understand why people are doing it
-    // but they're doing it - so we have to make sure, we catch these cases
-    // to make sure the schema is generated correctly
-    const fieldName = replaceSpecialCharacters(rawFieldName)
-      .replace("-", "_")
-      .replace(".", "_")
-      .replace(/^(?<digit>\d)/u, "_$<digit>")
+    const fieldName = ensureUniqueFieldName(
+      sanitizeFieldName(rawFieldName),
+      usedFieldNames,
+      rawFieldName
+    )
 
     const field = generateFieldDefinition({
       fieldDefinition: fieldDefinition as JSONSchema7,
