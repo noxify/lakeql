@@ -1,3 +1,5 @@
+import { z } from "zod/v4"
+
 /**
  * Configuration for a single pull entry in a bulk import.
  */
@@ -26,3 +28,29 @@ export interface BulkPullEntry {
  * ```
  */
 export type BulkPullConfig = BulkPullEntry[]
+
+const bulkPullEntrySchema = z
+  .object({
+    schema: z.string().min(1),
+    catalog: z.string().min(1).optional(),
+    tables: z.array(z.string().min(1)).optional(),
+    views: z.array(z.string().min(1)).optional(),
+  })
+  .superRefine((entry, ctx) => {
+    const hasTables = Array.isArray(entry.tables) && entry.tables.length > 0
+    const hasViews = Array.isArray(entry.views) && entry.views.length > 0
+
+    if (!hasTables && !hasViews) {
+      ctx.addIssue({
+        code: "custom",
+        message: "At least one non-empty list is required: tables or views.",
+        path: ["tables"],
+      })
+    }
+  })
+
+export const bulkPullConfigSchema = z.array(bulkPullEntrySchema)
+
+export function validateBulkPullConfig(input: unknown): BulkPullConfig {
+  return bulkPullConfigSchema.parse(input)
+}

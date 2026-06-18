@@ -51,6 +51,6 @@ export async function runCli(
     return 0
   }
 
-  await program.parseAsync(argv)
+  await program.parseAsync(argv, { from: "user" })
   return 0
 }

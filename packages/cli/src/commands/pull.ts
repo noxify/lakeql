@@ -1,14 +1,26 @@
 // oxlint-disable no-await-in-loop
-import { error } from "@lakeql/logger/console"
 import { TrinoClient } from "@lakeql/trino-client"
 import { multiselect, select, validators } from "@topcli/prompts"
 
 import { resolveSourcePath } from "@/config"
 import { getEnv } from "@/env"
+import { CliError, createTrinoConnectionError } from "@/errors"
 
 import { buildPullCommandStructure } from "../metadata/pull-metadata"
 import { executeBulkPull } from "./bulk-pull"
 import { executePull } from "./pull-action"
+
+async function withTrinoContext<T>(
+  action: string,
+  context: string,
+  fn: () => Promise<T>
+): Promise<T> {
+  try {
+    return await fn()
+  } catch (error) {
+    throw createTrinoConnectionError(action, context, error)
+  }
+}
 
 export default function PullCommand() {
   const pullCommand = buildPullCommandStructure()
@@ -53,7 +65,11 @@ export default function PullCommand() {
     })
 
     if (!schema) {
-      const remoteSchemas = await trinoClient.schemas({ catalog })
+      const remoteSchemas = await withTrinoContext(
+        "list schemas",
+        `pull (catalog=${catalog})`,
+        () => trinoClient.schemas({ catalog })
+      )
 
       schema = await select(`Choose a schema from the ${catalog} catalog`, {
         autocomplete: true,
@@ -76,15 +92,21 @@ export default function PullCommand() {
     if (tables.length === 0) {
       type ??= "tables"
       let remoteTables: string[] = []
-      remoteTables =
-        type === "views"
-          ? await trinoClient.views({ catalog, schema })
-          : await trinoClient.tables({ catalog, schema })
+      remoteTables = await withTrinoContext(
+        type === "views" ? "list views" : "list tables",
+        `pull (catalog=${catalog}, schema=${schema})`,
+        () =>
+          type === "views"
+            ? trinoClient.views({ catalog, schema })
+            : trinoClient.tables({ catalog, schema })
+      )
 
       if (remoteTables.length === 0) {
-        pullCommand.error(
-          error(`There are no ${type} in schema '${catalog}.${schema}'.`),
+        throw new CliError(
+          `No ${type} found in schema '${catalog}.${schema}'.`,
           {
+            code: "PULL_NO_RESULTS",
+            hint: `Use a different schema or check permissions for '${catalog}.${schema}'.`,
             exitCode: 0,
           }
         )

@@ -223,13 +223,15 @@ describe("bulk-pull (integration)", () => {
       )
     })
 
-    it("should skip executePull when tables and views are empty", async () => {
+    it("should fail validation when tables and views are empty", async () => {
       await writeConfig([{ schema: "schema1", tables: [], views: [] }])
 
-      await executeBulkPull({
-        configPath: "import.config.mjs",
-        skipRegistry: true,
-      })
+      await expect(
+        executeBulkPull({
+          configPath: "import.config.mjs",
+          skipRegistry: true,
+        })
+      ).rejects.toThrow("Invalid bulk pull config")
 
       expect(mockExecutePull).not.toHaveBeenCalled()
     })

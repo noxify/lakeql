@@ -2,9 +2,11 @@ import { existsSync } from "node:fs"
 import { readFile } from "node:fs/promises"
 import path from "node:path"
 
+import { info, success } from "@lakeql/logger/console"
 import { confirm } from "@topcli/prompts"
 
 import { resolveSourcePath } from "@/config"
+import { CliError, createAbortError } from "@/errors"
 import { generateEndpoint } from "@/pipeline/generate"
 import {
   endpointDefinitionSchema,
@@ -63,9 +65,9 @@ export default function createEndpointCommand() {
 
     // 1. Check file exists
     if (!existsSync(filePath)) {
-      // oxlint-disable-next-line no-console
-      console.error(`Error: File not found: ${filePath}`)
-      process.exit(1)
+      throw new CliError(`File not found: ${filePath}`, {
+        code: "ENDPOINT_FILE_NOT_FOUND",
+      })
     }
 
     // Read file content
@@ -74,9 +76,10 @@ export default function createEndpointCommand() {
       fileContent = await readFile(filePath, "utf-8")
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error)
-      // oxlint-disable-next-line no-console
-      console.error(`Error: Cannot read file: ${filePath}: ${message}`)
-      process.exit(1)
+      throw new CliError(`Cannot read file: ${filePath}: ${message}`, {
+        code: "ENDPOINT_FILE_READ_FAILED",
+        cause: error,
+      })
     }
 
     // Parse JSON
@@ -85,9 +88,10 @@ export default function createEndpointCommand() {
       parsed = JSON.parse(fileContent)
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error)
-      // oxlint-disable-next-line no-console
-      console.error(`Error: Invalid JSON in ${filePath}: ${message}`)
-      process.exit(1)
+      throw new CliError(`Invalid JSON in ${filePath}: ${message}`, {
+        code: "ENDPOINT_INVALID_JSON",
+        cause: error,
+      })
     }
 
     // Validate against endpointDefinitionSchema
@@ -100,9 +104,11 @@ export default function createEndpointCommand() {
           return `  - ${issuePath}: ${issue.message}`
         })
         .join("\n")
-      // oxlint-disable-next-line no-console
-      console.error(`Error: Validation failed for ${filePath}:\n${issues}`)
-      process.exit(1)
+
+      throw new CliError(`Validation failed for ${filePath}.`, {
+        code: "ENDPOINT_VALIDATION_FAILED",
+        details: [issues],
+      })
     }
 
     const definition = result.data
@@ -116,32 +122,34 @@ export default function createEndpointCommand() {
           return `  - Duplicate field "${d.name}" at level: ${location}`
         })
         .join("\n")
-      // oxlint-disable-next-line no-console
-      console.error(`Error: Validation failed for ${filePath}:\n${details}`)
-      process.exit(1)
+
+      throw new CliError(`Validation failed for ${filePath}.`, {
+        code: "ENDPOINT_DUPLICATE_FIELDS",
+        details: [details],
+      })
     }
 
     // Show summary
     // oxlint-disable-next-line no-console
-    console.log("\nLoaded definition summary:")
+    console.log(`\n${info("Loaded definition summary:")}`)
     // oxlint-disable-next-line no-console
-    console.log(`  tableName: ${definition.tableName}`)
+    console.log(info(`tableName: ${definition.tableName}`))
     // oxlint-disable-next-line no-console
-    console.log(`  catalog:   ${definition.catalog}`)
+    console.log(info(`catalog: ${definition.catalog}`))
     // oxlint-disable-next-line no-console
-    console.log(`  schema:    ${definition.schema}`)
+    console.log(info(`schema: ${definition.schema}`))
 
     // Display mutation configuration status
     const mutationDisplay = definition.mutation
       ? definition.mutation.loadStrategy
       : "disabled"
     // oxlint-disable-next-line no-console
-    console.log(`  mutation:  ${mutationDisplay}`)
+    console.log(info(`mutation: ${mutationDisplay}`))
 
     // oxlint-disable-next-line no-console
-    console.log("\n  Fields:")
+    console.log(`\n${info("Fields:")}`)
     // oxlint-disable-next-line no-console
-    console.log(formatFieldTree(definition.fields))
+    console.log(info(formatFieldTree(definition.fields)))
     // oxlint-disable-next-line no-console
     console.log("")
 
@@ -163,9 +171,9 @@ export default function createEndpointCommand() {
         `Directory "${outputDir}" already exists. Overwrite?`
       )
       if (!shouldOverwrite) {
-        // oxlint-disable-next-line no-console
-        console.log("Aborted.")
-        process.exit(0)
+        throw createAbortError(
+          "Aborted: endpoint generation was not confirmed."
+        )
       }
     }
 
@@ -177,7 +185,7 @@ export default function createEndpointCommand() {
     })
 
     // oxlint-disable-next-line no-console
-    console.log(`Endpoint generated successfully at: ${outputDir}`)
+    console.log(success(`Endpoint generated successfully at: ${outputDir}`))
   })
 
   return program

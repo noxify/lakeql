@@ -34,4 +34,17 @@ HIVE_CATALOG=hive
 LOG_LEVEL=info
 ```
 
-The CLI loads `.env` from the project root automatically using `dotenv`. Place the file at the root of your workspace or monorepo.
+The CLI does not load `.env` automatically.
+Make sure variables are present in the process environment before running commands.
+
+You can do this in different ways:
+
+- export variables in your shell session
+- use a wrapper like `dotenv-cli`
+- run commands through your process manager or CI environment
+
+Example with `dotenv-cli`:
+
+```bash
+dotenv -e ./.env -- lakeql-cli pull
+```

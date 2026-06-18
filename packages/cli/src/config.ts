@@ -4,6 +4,7 @@ import path from "node:path"
 
 import { loadConfig as c12LoadConfig } from "c12"
 
+import { CliError } from "@/errors"
 import { getInvocationCwd } from "@/path-utils"
 
 export interface LakeQLConfig {
@@ -83,7 +84,15 @@ export async function loadConfig(): Promise<LakeQLConfig> {
       return loadJsonConfig(cwd)
     }
 
-    throw error
+    throw new CliError("Failed to load LakeQL config.", {
+      code: "LAKEQL_CONFIG_LOAD_FAILED",
+      hint: "Check lakeql.config.{ts,mjs,js,json} syntax and ensure exported values are valid.",
+      details: [
+        `Context: config loading from ${cwd}`,
+        `Expected files: lakeql.config.ts, lakeql.config.mjs, lakeql.config.js, lakeql.config.json`,
+      ],
+      cause: error,
+    })
   }
 }
 

@@ -1,13 +1,17 @@
 import path from "node:path"
 
+import { info } from "@lakeql/logger/console"
 import { TrinoClient } from "@lakeql/trino-client"
 import { loadConfig as c12LoadConfig } from "c12"
 import { Listr } from "listr2"
+import { ZodError } from "zod/v4"
 
 import type { BulkPullConfig } from "@/bulk-pull-config"
+import { validateBulkPullConfig } from "@/bulk-pull-config"
 import { runConfigRegistryGeneration } from "@/commands/create-registry"
 import { resolveSourcePath } from "@/config"
 import { getEnv } from "@/env"
+import { CliError, createTrinoConnectionError } from "@/errors"
 import { getInvocationCwd } from "@/path-utils"
 
 import { executePull } from "./pull-action"
@@ -54,11 +58,11 @@ async function loadBulkConfig(configPath?: string): Promise<BulkPullConfig> {
     dotenv: false,
   })
 
-  // c12 resolves the default export into the config object
-  // Handle both shapes: direct array or wrapped in default
+  // c12 resolves the default export into the config object.
+  // Handle both shapes: direct array or wrapped in default.
   const resolved = config as unknown
   if (Array.isArray(resolved)) {
-    return resolved as BulkPullConfig
+    return validateBulkPullConfig(resolved)
   }
 
   // If c12 wraps it, extract the default
@@ -68,10 +72,10 @@ async function loadBulkConfig(configPath?: string): Promise<BulkPullConfig> {
     "default" in resolved &&
     Array.isArray((resolved as { default: unknown }).default)
   ) {
-    return (resolved as { default: BulkPullConfig }).default
+    return validateBulkPullConfig((resolved as { default: unknown }).default)
   }
 
-  return []
+  return validateBulkPullConfig([])
 }
 
 /**
@@ -88,11 +92,30 @@ export async function executeBulkPull(options: BulkPullOptions): Promise<void> {
 
   const env = getEnv()
   const resolvedTargetPath = await resolveSourcePath(sourcePathOverride)
-  const config = await loadBulkConfig(configPath)
+  let config: BulkPullConfig
+  try {
+    config = await loadBulkConfig(configPath)
+  } catch (error) {
+    if (error instanceof ZodError) {
+      const details = error.issues.map((issue) => {
+        const issuePath = issue.path.length > 0 ? issue.path.join(".") : "root"
+        return `  - ${issuePath}: ${issue.message}`
+      })
+
+      throw new CliError("Invalid bulk pull config.", {
+        code: "BULK_CONFIG_INVALID",
+        details,
+        hint: "Ensure each entry defines a schema and at least one non-empty list: tables or views.",
+        cause: error,
+      })
+    }
+
+    throw error
+  }
 
   if (config.length === 0) {
     // oxlint-disable-next-line no-console
-    console.log("No entries found in bulk config.")
+    console.log(info("No entries found in bulk config."))
     return
   }
 
@@ -124,28 +147,44 @@ export async function executeBulkPull(options: BulkPullOptions): Promise<void> {
 
                   if (entry.tables && entry.tables.length > 0) {
                     subtask.output = `Pulling ${entry.tables.length} table(s)...`
-                    await executePull({
-                      trinoClient,
-                      catalog,
-                      schema: entry.schema,
-                      tables: entry.tables,
-                      resolvedTargetPath,
-                      skipRegistry: true,
-                      sourcePathOverride,
-                    })
+                    try {
+                      await executePull({
+                        trinoClient,
+                        catalog,
+                        schema: entry.schema,
+                        tables: entry.tables,
+                        resolvedTargetPath,
+                        skipRegistry: true,
+                        sourcePathOverride,
+                      })
+                    } catch (error) {
+                      throw createTrinoConnectionError(
+                        "pull tables",
+                        `bulk pull (catalog=${catalog}, schema=${entry.schema}, tables=${entry.tables.join(",")})`,
+                        error
+                      )
+                    }
                   }
 
                   if (entry.views && entry.views.length > 0) {
                     subtask.output = `Pulling ${entry.views.length} view(s)...`
-                    await executePull({
-                      trinoClient,
-                      catalog,
-                      schema: entry.schema,
-                      tables: entry.views,
-                      resolvedTargetPath,
-                      skipRegistry: true,
-                      sourcePathOverride,
-                    })
+                    try {
+                      await executePull({
+                        trinoClient,
+                        catalog,
+                        schema: entry.schema,
+                        tables: entry.views,
+                        resolvedTargetPath,
+                        skipRegistry: true,
+                        sourcePathOverride,
+                      })
+                    } catch (error) {
+                      throw createTrinoConnectionError(
+                        "pull views",
+                        `bulk pull (catalog=${catalog}, schema=${entry.schema}, views=${entry.views.join(",")})`,
+                        error
+                      )
+                    }
                   }
 
                   subtask.title = `${catalog}/${entry.schema} — ${itemCount} item(s) pulled`

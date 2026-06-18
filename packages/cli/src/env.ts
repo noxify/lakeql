@@ -1,6 +1,5 @@
 /* eslint-disable no-restricted-properties */
 import { createEnv } from "@t3-oss/env-core"
-import dotenv from "dotenv"
 import { number, string, enum as zodEnum } from "zod/v4"
 
 type Env = ReturnType<typeof buildEnv>
@@ -8,10 +7,6 @@ type Env = ReturnType<typeof buildEnv>
 let _env: Env | undefined
 
 function buildEnv() {
-  dotenv.config({
-    path: "../../.env",
-  })
-
   return createEnv({
     runtimeEnv: process.env,
     server: {

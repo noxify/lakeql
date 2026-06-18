@@ -45,3 +45,19 @@ HIVE_USERNAME=your-username
 HIVE_PASSWORD=your-password
 HIVE_CATALOG=hive
 ```
+
+The CLI does not auto-load `.env` files.
+Load variables into the process environment before invocation.
+
+```bash
+# Option 1: export in your shell
+export HIVE_HOST=https://trino.example.com
+export HIVE_PORT=443
+export HIVE_USERNAME=your-username
+export HIVE_PASSWORD=your-password
+export HIVE_CATALOG=hive
+lakeql-cli pull
+
+# Option 2: use dotenv-cli
+dotenv -e ./.env -- lakeql-cli pull
+```

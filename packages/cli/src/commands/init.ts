@@ -2,8 +2,8 @@ import { existsSync } from "node:fs"
 import { writeFile } from "node:fs/promises"
 import path from "node:path"
 
+import { info, success } from "@lakeql/logger/console"
 import { question, select } from "@topcli/prompts"
-import kleur from "kleur"
 
 import type { LakeQLConfig } from "@/config"
 import { getInvocationCwd } from "@/path-utils"
@@ -50,7 +50,7 @@ export default function initCommand() {
 
       if (overwrite === "no") {
         // oxlint-disable-next-line no-console
-        console.log(kleur.yellow("Aborted."))
+        console.log(info("Aborted."))
         return
       }
     }
@@ -72,9 +72,7 @@ export default function initCommand() {
       resolvedSourcePath = "src"
       // oxlint-disable-next-line no-console
       console.log(
-        kleur.cyan(
-          `Detected src/ directory — generated code will be placed in src/`
-        )
+        info(`Detected src/ directory - generated code will be placed in src/`)
       )
     } else {
       const sourcePath = await select(
@@ -116,7 +114,7 @@ export default function initCommand() {
     await writeFile(configPath, content)
 
     // oxlint-disable-next-line no-console
-    console.log(kleur.green(`Created ${fileName} at ${configPath}`))
+    console.log(success(`Created ${fileName} at ${configPath}`))
   })
 
   return program

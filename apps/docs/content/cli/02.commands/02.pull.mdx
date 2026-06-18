@@ -79,14 +79,15 @@ The config file can be any of the following (in precedence order):
 
 Each entry in the array has the following shape:
 
-| Field     | Type       | Required | Description                     |
-| --------- | ---------- | -------- | ------------------------------- |
-| `schema`  | `string`   | Yes      | The schema to pull from         |
-| `catalog` | `string`   | No       | Catalog override for this entry |
-| `tables`  | `string[]` | No       | List of tables to pull          |
-| `views`   | `string[]` | No       | List of views to pull           |
+| Field     | Type       | Required | Description                      |
+| --------- | ---------- | -------- | -------------------------------- |
+| `schema`  | `string`   | Yes      | The schema to pull from          |
+| `catalog` | `string`   | No       | Catalog override for this entry  |
+| `tables`  | `string[]` | No       | Non-empty list of tables to pull |
+| `views`   | `string[]` | No       | Non-empty list of views to pull  |
 
-At least one of `tables` or `views` should be provided per entry.
+At least one non-empty list (`tables` or `views`) must be provided per entry.
+Entries with both lists missing or empty fail validation before execution.
 
 ### Catalog precedence
 
@@ -131,6 +132,21 @@ lakeql-cli pull --bulk --skip-registry
 ✓ Pull data
 ✓ Create registry
 ```
+
+## Error output
+
+When a request fails, the CLI prints structured output with context and hints:
+
+```text
+✖ LakeQL CLI failed.
+› Reason: Failed to list schemas.
+› Context: list-schemas (catalog=hive)
+› Root cause: fetch failed
+› Error code: ECONNREFUSED
+› Hint: Verify HIVE_HOST/HIVE_PORT, credentials and network reachability to Trino.
+```
+
+For non-error aborts (for example prompt cancellation), the headline is shown as a warning and the command exits with code `0`.
 
 ### Type export
 

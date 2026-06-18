@@ -2,6 +2,7 @@ import { TrinoClient } from "@lakeql/trino-client"
 import { ClimtTable } from "climt"
 
 import { getEnv } from "@/env"
+import { createTrinoConnectionError } from "@/errors"
 
 import { buildListSchemasCommandStructure } from "../metadata/list-schemas-metadata"
 
@@ -21,7 +22,16 @@ export default function listSchemasCommand() {
       port: env.HIVE_PORT,
     })
 
-    const schemas = await trinoClient.schemas({ catalog: resolvedCatalog })
+    let schemas: string[]
+    try {
+      schemas = await trinoClient.schemas({ catalog: resolvedCatalog })
+    } catch (error) {
+      throw createTrinoConnectionError(
+        "list schemas",
+        `list-schemas (catalog=${resolvedCatalog})`,
+        error
+      )
+    }
 
     const table = new ClimtTable()
     table.column("Schema Name", "s")

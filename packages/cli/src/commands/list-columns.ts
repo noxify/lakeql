@@ -3,6 +3,7 @@ import { select } from "@topcli/prompts"
 import { ClimtTable } from "climt"
 
 import { getEnv } from "@/env"
+import { createTrinoConnectionError } from "@/errors"
 
 import { buildListColumnsCommandStructure } from "../metadata/list-columns-metadata"
 
@@ -24,9 +25,18 @@ export default function listColumnsCommand() {
 
     let resolvedSchema = schema
     if (resolvedSchema === undefined) {
-      const remoteSchemas = await trinoClient.schemas({
-        catalog: resolvedCatalog,
-      })
+      let remoteSchemas: string[]
+      try {
+        remoteSchemas = await trinoClient.schemas({
+          catalog: resolvedCatalog,
+        })
+      } catch (error) {
+        throw createTrinoConnectionError(
+          "list schemas",
+          `list-columns (catalog=${resolvedCatalog})`,
+          error
+        )
+      }
 
       resolvedSchema = await select(
         `Choose a schema from the ${resolvedCatalog} catalog`,
@@ -39,10 +49,19 @@ export default function listColumnsCommand() {
 
     let resolvedTable = table
     if (resolvedTable === undefined) {
-      const remoteTables = await trinoClient.tables({
-        catalog: resolvedCatalog,
-        schema: resolvedSchema,
-      })
+      let remoteTables: string[]
+      try {
+        remoteTables = await trinoClient.tables({
+          catalog: resolvedCatalog,
+          schema: resolvedSchema,
+        })
+      } catch (error) {
+        throw createTrinoConnectionError(
+          "list tables",
+          `list-columns (catalog=${resolvedCatalog}, schema=${resolvedSchema})`,
+          error
+        )
+      }
 
       resolvedTable = await select(
         `Choose a table from "${resolvedCatalog}.${resolvedSchema}"`,
@@ -53,11 +72,20 @@ export default function listColumnsCommand() {
       )
     }
 
-    const columns = await trinoClient.columns({
-      catalog: resolvedCatalog,
-      schema: resolvedSchema,
-      table: resolvedTable,
-    })
+    let columns: [string, string, string, string][]
+    try {
+      columns = await trinoClient.columns({
+        catalog: resolvedCatalog,
+        schema: resolvedSchema,
+        table: resolvedTable,
+      })
+    } catch (error) {
+      throw createTrinoConnectionError(
+        "list columns",
+        `list-columns (catalog=${resolvedCatalog}, schema=${resolvedSchema}, table=${resolvedTable})`,
+        error
+      )
+    }
 
     const transformedColumns = columns.map(
       ([name, type, extra, description]) => ({

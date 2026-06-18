@@ -3,6 +3,7 @@ import { select } from "@topcli/prompts"
 import { ClimtTable } from "climt"
 
 import { getEnv } from "@/env"
+import { createTrinoConnectionError } from "@/errors"
 
 import { buildListViewsCommandStructure } from "../metadata/list-views-metadata"
 
@@ -24,9 +25,18 @@ export default function listViewsCommand() {
 
     let resolvedSchema = schema
     if (resolvedSchema === undefined) {
-      const remoteSchemas = await trinoClient.schemas({
-        catalog: resolvedCatalog,
-      })
+      let remoteSchemas: string[]
+      try {
+        remoteSchemas = await trinoClient.schemas({
+          catalog: resolvedCatalog,
+        })
+      } catch (error) {
+        throw createTrinoConnectionError(
+          "list schemas",
+          `list-views (catalog=${resolvedCatalog})`,
+          error
+        )
+      }
 
       resolvedSchema = await select(
         `Choose a schema from the ${resolvedCatalog} catalog`,
@@ -36,10 +46,19 @@ export default function listViewsCommand() {
       )
     }
 
-    const remoteViews = await trinoClient.views({
-      catalog: resolvedCatalog,
-      schema: resolvedSchema,
-    })
+    let remoteViews: string[]
+    try {
+      remoteViews = await trinoClient.views({
+        catalog: resolvedCatalog,
+        schema: resolvedSchema,
+      })
+    } catch (error) {
+      throw createTrinoConnectionError(
+        "list views",
+        `list-views (catalog=${resolvedCatalog}, schema=${resolvedSchema})`,
+        error
+      )
+    }
 
     const table = new ClimtTable()
     table.column("View Name", "v")
