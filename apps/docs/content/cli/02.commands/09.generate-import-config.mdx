@@ -1,0 +1,65 @@
+---
+title: "lakeql-cli generate-import-config"
+navTitle: "generate-import-config"
+description: Generate an import.config.mjs from already-pulled schemas.
+cliCommand: "generate-import-config"
+---
+
+Scans the `schemas/generated/` directory and generates a ready-to-use `import.config.mjs` for the [`pull --bulk`](/cli/commands/pull#bulk-mode) command.
+
+This is useful when you have already pulled a set of schemas and want to re-use them as a bulk config — without having to maintain the file by hand.
+
+## Syntax
+
+```bash
+lakeql-cli generate-import-config [options]
+```
+
+## Usage
+
+```bash
+lakeql-cli generate-import-config
+```
+
+If the output file does not exist yet, the command writes it directly:
+
+```
+Written to "/my-project/import.config.mjs".
+```
+
+### Overwriting an existing file
+
+If the output file already exists, the command warns and prompts for confirmation before overwriting:
+
+Use `--force` to skip the prompt entirely:
+
+```bash
+lakeql-cli generate-import-config --force
+```
+
+### Custom output path
+
+```bash
+lakeql-cli generate-import-config --output ./config/bulk.mjs
+```
+
+## How it works
+
+The command reads your `lakeql.config` config file to determine the base path for generated files (same as all other commands).
+The `--source-path` flag overrides the config value if needed.
+
+It then scans the directory structure under `schemas/generated/`:
+
+```
+schemas/generated/
+└── <catalog>/
+    └── <schema>/
+        └── <table>/       ← each subdirectory becomes a table entry
+```
+
+Each catalog/schema combination becomes one entry in the generated config.
+Schemas that contain no table subdirectories are silently skipped.
+
+## Options
+
+<CliCommandDetails command="generate-import-config" />

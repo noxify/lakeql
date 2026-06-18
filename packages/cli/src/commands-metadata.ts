@@ -11,6 +11,7 @@ import type { Argument, Option } from "@commander-js/extra-typings"
 import { buildInitCommandStructure } from "@/commands/init-metadata"
 import { buildCreateEndpointCommandStructure } from "@/metadata/create-endpoint-metadata"
 import { buildCreateRegistryCommandStructure } from "@/metadata/create-registry-metadata"
+import { buildGenerateImportConfigCommandStructure } from "@/metadata/generate-import-config-metadata"
 import { buildListColumnsCommandStructure } from "@/metadata/list-columns-metadata"
 import { buildListSchemasCommandStructure } from "@/metadata/list-schemas-metadata"
 import { buildListTablesCommandStructure } from "@/metadata/list-tables-metadata"
@@ -20,6 +21,7 @@ import { buildPullCommandStructure } from "@/metadata/pull-metadata"
 type AvailableCommand =
   | "create-registry"
   | "create-endpoint"
+  | "generate-import-config"
   | "init"
   | "list-columns"
   | "list-schemas"
@@ -103,6 +105,7 @@ function extractOptionMeta(option: Option): CommandOptionMeta {
 const commandFactories: Record<string, () => unknown> = {
   "create-registry": buildCreateRegistryCommandStructure,
   "create-endpoint": buildCreateEndpointCommandStructure,
+  "generate-import-config": buildGenerateImportConfigCommandStructure,
   init: buildInitCommandStructure,
   "list-columns": buildListColumnsCommandStructure,
   "list-schemas": buildListSchemasCommandStructure,

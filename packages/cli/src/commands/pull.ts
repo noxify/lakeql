@@ -129,6 +129,9 @@ export default function PullCommand() {
       )
     )
 
+    // Switch to parallel processing for large pulls (>10 items) like bulk pull does
+    const useConcurrent = tables.length > 10
+
     const pullTasks = new Listr(
       [
         {
@@ -150,7 +153,7 @@ export default function PullCommand() {
                   })
                 },
               })),
-              { concurrent: false, exitOnError: true }
+              { concurrent: useConcurrent, exitOnError: true }
             ),
         },
         {

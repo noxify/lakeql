@@ -2,6 +2,7 @@ import { Command } from "@commander-js/extra-typings"
 import { readPackage } from "read-pkg"
 
 import createEndpointCommand from "@/commands/create-endpoint"
+import generateImportConfigCommand from "@/commands/generate-import-config"
 import listColumnsCommand from "@/commands/list-columns"
 import listSchemasCommand from "@/commands/list-schemas"
 import listTablesCommand from "@/commands/list-tables"
@@ -34,6 +35,7 @@ function createProgram(packageInfo: PackageInfo) {
     .addCommand(pullCommand())
     .addCommand(createEndpointCommand())
     .addCommand(createRegistryCommand())
+    .addCommand(generateImportConfigCommand())
     .addCommand(initCommand())
 
   return program
