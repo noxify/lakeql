@@ -5,8 +5,8 @@ import {
   warning as formatWarning,
 } from "@lakeql/logger/console"
 
-import { CliError, createAbortError, isPromptAbortError } from "./errors.js"
-import { runCli } from "./run-cli.js"
+import { CliError, createAbortError, isPromptAbortError } from "@/errors"
+import { runCli } from "@/run-cli"
 
 interface ErrorLike {
   message?: string

@@ -1,4 +1,5 @@
 // oxlint-disable no-await-in-loop
+import { info, success } from "@lakeql/logger/console"
 import { TrinoClient } from "@lakeql/trino-client"
 import { multiselect, select, validators } from "@topcli/prompts"
 
@@ -119,6 +120,13 @@ export default function PullCommand() {
       })
     }
 
+    // oxlint-disable-next-line no-console
+    console.log(
+      info(
+        `Pulling ${tables.length} item(s) from ${catalog}.${schema} into ${resolvedTargetPath}/schemas/generated...`
+      )
+    )
+
     await executePull({
       trinoClient,
       catalog,
@@ -128,6 +136,13 @@ export default function PullCommand() {
       skipRegistry,
       sourcePathOverride: cliOverride,
     })
+
+    // oxlint-disable-next-line no-console
+    console.log(
+      success(
+        `Pull completed: ${tables.length} item(s) generated under ${resolvedTargetPath}/schemas/generated/${catalog}/${schema}`
+      )
+    )
   })
 
   return pullCommand
