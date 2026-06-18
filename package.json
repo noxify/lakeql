@@ -43,7 +43,7 @@
     "test:ui": "vitest --ui",
     "prune": "turbo prune --docker",
     "cs": "changeset",
-    "ci:publish": "pnpm build:pkg && pnpm publish -r --access public --publish-branch main --provenance && pnpm changeset tag && git push --follow-tags",
+    "ci:publish": "pnpm build:pkg && pnpm publish -r --access public --publish-branch main --provenance && pnpm changeset tag",
     "ci:version": "pnpm changeset version && pnpm install --no-frozen-lockfile && pnpm format:fix && git add .",
     "with-env": "dotenv -e ./.env --",
     "mt:start": "uv run minitrino -v provision -m hive -m minio -m ldap -m oauth2",
@@ -52,7 +52,7 @@
     "mt:clean": "uv run minitrino down"
   },
   "devDependencies": {
-    "@changesets/cli": "3.0.0-next.5",
+    "@changesets/cli": "2.31.0",
     "@vitest/coverage-v8": "4.1.9",
     "@vitest/ui": "4.1.9",
     "dotenv-cli": "11.0.0",
