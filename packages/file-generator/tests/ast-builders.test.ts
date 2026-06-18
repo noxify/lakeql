@@ -90,11 +90,6 @@ describe("ast-builders", () => {
       expect(ts.isStringLiteral(node.initializer)).toBeTruthy()
       expect((node.initializer as ts.StringLiteral).text).toBe("value")
     })
-    test("property throws for non-identifier names", () => {
-      expect(() => property("customer-id", stringLiteral("value"))).toThrow(
-        'Invalid identifier name: "customer-id"'
-      )
-    })
 
     test("shorthand creates a shorthand property assignment", () => {
       const node = shorthand("name")
@@ -409,11 +404,6 @@ describe("ast-builders", () => {
       expect((node.name as ts.Identifier).text).toBe("name")
       expect(node.questionToken).toBeUndefined()
       expect(ts.isTypeReferenceNode(node.type as ts.Node)).toBeTruthy()
-    })
-    test("propertySignature throws for non-identifier names", () => {
-      expect(() => propertySignature("order-total", "string")).toThrow(
-        'Invalid identifier name: "order-total"'
-      )
     })
 
     test("propertySignature creates an optional property signature", () => {

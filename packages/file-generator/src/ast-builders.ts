@@ -3,13 +3,8 @@ import ts from "typescript"
 const { factory } = ts
 
 type TypeLike = string | ts.TypeNode
-const identifierPattern = /^[a-zA-Z_][a-zA-Z0-9_]*$/u
 
 function toIdentifier(name: string) {
-  if (!identifierPattern.test(name)) {
-    throw new Error(`Invalid identifier name: "${name}"`)
-  }
-
   return factory.createIdentifier(name)
 }
 
