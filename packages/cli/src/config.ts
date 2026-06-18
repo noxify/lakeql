@@ -84,7 +84,14 @@ export async function loadConfig(): Promise<LakeQLConfig> {
       return loadJsonConfig(cwd)
     }
 
-    throw new CliError("Failed to load LakeQL config.", {
+    const causeMessage =
+      error instanceof Error
+        ? error.message
+        : typeof error === "string"
+          ? error
+          : "Unknown error"
+
+    throw new CliError(`Failed to load LakeQL config: ${causeMessage}`, {
       code: "LAKEQL_CONFIG_LOAD_FAILED",
       hint: "Check lakeql.config.{ts,mjs,js,json} syntax and ensure exported values are valid.",
       details: [
