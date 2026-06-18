@@ -1,5 +1,11 @@
 # @lakeql/cli
 
+## 0.7.2
+
+### Patch Changes
+
+- 10d231c: Export `loadBulkConfig` function for testing and add comprehensive test suite for bulk config loading. Supports multiple config file formats (.mjs, .json, .js, .ts) with auto-discovery and explicit paths.
+
 ## 0.7.1
 
 ### Patch Changes
