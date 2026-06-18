@@ -13,6 +13,10 @@ import { buildPullCommandStructure } from "../metadata/pull-metadata"
 import { executeBulkPull } from "./bulk-pull"
 import { executePull } from "./pull-action"
 
+const LARGE_PULL_THRESHOLD = 10
+const MAX_CONCURRENT_PULLS = 8
+const MAX_ACTIVE_PREVIEW = 5
+
 async function withTrinoContext<T>(
   action: string,
   context: string,
@@ -129,32 +133,88 @@ export default function PullCommand() {
       )
     )
 
-    // Switch to parallel processing for large pulls (>10 items) like bulk pull does
-    const useConcurrent = tables.length > 10
+    // Switch to compact live output for large pulls to avoid flooding terminal logs
+    const useCompactLargePullMode = tables.length > LARGE_PULL_THRESHOLD
 
     const pullTasks = new Listr(
       [
         {
           title: `Pull ${tables.length} item(s)`,
-          task: (_, task) =>
-            task.newListr(
-              tables.map((table) => ({
-                title: `${catalog}.${schema}.${table}`,
-                task: async () => {
-                  await executePull({
-                    trinoClient,
-                    catalog,
-                    schema,
-                    tables: [table],
-                    resolvedTargetPath,
-                    // Generate registry once at the end, not per endpoint.
-                    skipRegistry: true,
-                    sourcePathOverride: cliOverride,
-                  })
-                },
-              })),
-              { concurrent: useConcurrent, exitOnError: true }
-            ),
+          task: async (_, task) => {
+            if (!useCompactLargePullMode) {
+              return task.newListr(
+                tables.map((table) => ({
+                  title: `${catalog}.${schema}.${table}`,
+                  task: async () => {
+                    await executePull({
+                      trinoClient,
+                      catalog,
+                      schema,
+                      tables: [table],
+                      resolvedTargetPath,
+                      // Generate registry once at the end, not per endpoint.
+                      skipRegistry: true,
+                      sourcePathOverride: cliOverride,
+                    })
+                  },
+                })),
+                { concurrent: false, exitOnError: true }
+              )
+            }
+
+            const queue = [...tables]
+            const activeLoads = new Set<string>()
+            let completed = 0
+            const parallelism = Math.min(MAX_CONCURRENT_PULLS, tables.length)
+
+            const updateOutput = () => {
+              const activeList = [...activeLoads]
+                .slice(0, MAX_ACTIVE_PREVIEW)
+                .map((name) => `  - ${catalog}.${schema}.${name}`)
+                .join("\n")
+
+              const extraActive =
+                activeLoads.size > MAX_ACTIVE_PREVIEW
+                  ? `\n  ... +${activeLoads.size - MAX_ACTIVE_PREVIEW} more active`
+                  : ""
+
+              task.output = `Completed ${completed}/${tables.length} | Active ${activeLoads.size}/${parallelism}${activeList ? `\n${activeList}${extraActive}` : ""}`
+            }
+
+            updateOutput()
+
+            const worker = async () => {
+              while (queue.length > 0) {
+                const table = queue.shift()
+                if (!table) {
+                  return
+                }
+
+                activeLoads.add(table)
+                updateOutput()
+
+                await executePull({
+                  trinoClient,
+                  catalog,
+                  schema,
+                  tables: [table],
+                  resolvedTargetPath,
+                  skipRegistry: true,
+                  sourcePathOverride: cliOverride,
+                })
+
+                activeLoads.delete(table)
+                completed += 1
+                updateOutput()
+              }
+            }
+
+            await Promise.all(
+              Array.from({ length: parallelism }, () => worker())
+            )
+
+            task.output = `Completed ${completed}/${tables.length}`
+          },
         },
         {
           title: "Create registry",

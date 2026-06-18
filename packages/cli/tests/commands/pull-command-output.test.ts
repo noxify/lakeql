@@ -126,4 +126,44 @@ describe("pull command output", () => {
       "SUCCESS Pull completed: 1 item(s) generated under /tmp/lakeql-out/schemas/generated/hive/analytics"
     )
   })
+
+  it("processes large table selections without switching to bulk command", async () => {
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {})
+
+    const command = pullCommandFactory()
+    const tables = Array.from({ length: 11 }, (_, i) => `events_${i}`)
+
+    const args = [
+      "--catalog",
+      "hive",
+      "--schema",
+      "analytics",
+      ...tables.flatMap((table) => ["--table", table]),
+    ]
+
+    await command.parseAsync(args, { from: "user" })
+
+    expect(mockExecutePull).toHaveBeenCalledTimes(11)
+    for (const table of tables) {
+      expect(mockExecutePull).toHaveBeenCalledWith(
+        expect.objectContaining({
+          catalog: "hive",
+          schema: "analytics",
+          tables: [table],
+          resolvedTargetPath: "/tmp/lakeql-out",
+          skipRegistry: true,
+        })
+      )
+    }
+
+    expect(mockExecuteBulkPull).not.toHaveBeenCalled()
+    expect(mockRunConfigRegistryGeneration).toHaveBeenCalledOnce()
+
+    expect(logSpy).toHaveBeenCalledWith(
+      "INFO Pulling 11 item(s) from hive.analytics into /tmp/lakeql-out/schemas/generated..."
+    )
+    expect(logSpy).toHaveBeenCalledWith(
+      "SUCCESS Pull completed: 11 item(s) generated under /tmp/lakeql-out/schemas/generated/hive/analytics"
+    )
+  })
 })

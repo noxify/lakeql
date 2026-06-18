@@ -28,6 +28,8 @@ lakeql-cli pull --catalog hive --schema myschema --table users
 
 The registry is generated once after all selected items are processed.
 
+When more than 10 tables are selected in non-bulk mode, `pull` switches to a compact live progress view (`Completed X/Y | Active A/B`) with active load preview, instead of rendering one task line per table.
+
 ## Bulk mode
 
 When `--bulk` is specified, the command reads a config file and processes multiple schemas and tables in parallel — instead of using interactive prompts.
