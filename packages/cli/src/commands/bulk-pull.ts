@@ -31,8 +31,11 @@ export interface BulkPullOptions {
  * Loads the bulk pull config using c12.
  * Supports .ts, .mjs, .js, .json formats.
  * If a custom configPath is provided, it's used as the configFile option.
+ * Exported for testing purposes.
  */
-async function loadBulkConfig(configPath?: string): Promise<BulkPullConfig> {
+export async function loadBulkConfig(
+  configPath?: string
+): Promise<BulkPullConfig> {
   const cwd = getInvocationCwd()
 
   // If user provides a custom path, extract name from it for c12
@@ -51,7 +54,6 @@ async function loadBulkConfig(configPath?: string): Promise<BulkPullConfig> {
     name: "import",
     cwd,
     configFile,
-    defaults: { default: [] },
     packageJson: false,
     globalRc: false,
     rcFile: false,
