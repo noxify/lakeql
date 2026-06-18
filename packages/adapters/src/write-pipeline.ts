@@ -155,7 +155,8 @@ export function resolvePartitioningConfig(
 }
 
 /**
- * Adds load_timestamp to JSON Schema for consistent Parquet + Hive DDL derivation.
+ * Adds load_timestamp, load_timestamp_year, and load_timestamp_month to JSON Schema
+ * for consistent Parquet + Hive DDL derivation.
  * Returns a new schema object (does not mutate the input).
  */
 export function enrichJsonSchemaWithTimestamp(
@@ -169,12 +170,18 @@ export function enrichJsonSchemaWithTimestamp(
         type: "string",
         format: "date-time",
       },
+      load_timestamp_year: {
+        type: "integer",
+      },
+      load_timestamp_month: {
+        type: "integer",
+      },
     },
   }
 }
 
 /**
- * Injects load_timestamp value into each record.
+ * Injects load_timestamp, load_timestamp_year, and load_timestamp_month into each record.
  * Returns new record array (does not mutate input).
  */
 export function injectLoadTimestamp(
@@ -182,9 +189,13 @@ export function injectLoadTimestamp(
   timestamp: Date
 ): Record<string, unknown>[] {
   const isoValue = timestamp.toISOString()
+  const year = timestamp.getUTCFullYear()
+  const month = timestamp.getUTCMonth() + 1
   return records.map((record) => ({
     ...record,
     load_timestamp: isoValue,
+    load_timestamp_year: year,
+    load_timestamp_month: month,
   }))
 }
 
