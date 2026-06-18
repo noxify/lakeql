@@ -1,6 +1,6 @@
 {
   "name": "@lakeql/cli",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "CLI for introspecting Trino schemas and generating type-safe GraphQL endpoints",
   "keywords": [
     "cli",

@@ -1,5 +1,12 @@
 # @lakeql/create-app
 
+## 0.2.5
+
+### Patch Changes
+
+- 814d864: Update the create-app template prompt to use `my-lakeql-project` as the default
+  placeholder for the project name.
+
 ## 0.2.4
 
 ### Patch Changes
