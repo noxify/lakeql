@@ -1,23 +1,21 @@
-import { spawnSync } from "node:child_process"
-import path from "node:path"
+import { Command } from "@commander-js/extra-typings"
+import { afterEach, describe, expect, test, vi } from "vitest"
 
-import { describe, expect, test } from "vitest"
+const { runCli } = await import("../src/run-cli")
 
 describe("CLI entrypoint", () => {
-  test("exits successfully when invoked without arguments", () => {
-    const projectRoot = path.resolve(import.meta.dirname, "..")
-    const result = spawnSync(
-      process.execPath,
-      ["--import", "tsx", "src/cli.ts"],
-      {
-        cwd: projectRoot,
-        encoding: "utf-8",
-        timeout: 10_000,
-      }
-    )
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
 
-    expect(result.status).toBe(0)
-    expect(result.stderr).toBe("")
-    expect(result.stdout).toContain("LakeQL CLI")
+  test("exits successfully when invoked without arguments", async () => {
+    const outputHelpSpy = vi
+      .spyOn(Command.prototype, "outputHelp")
+      .mockImplementation(() => {})
+
+    const exitCode = await runCli([], { version: "1.0.0" })
+
+    expect(exitCode).toBe(0)
+    expect(outputHelpSpy).toHaveBeenCalledOnce()
   })
 })
