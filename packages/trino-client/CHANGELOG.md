@@ -1,5 +1,11 @@
 # @lakeql/trino-client
 
+## 0.4.1
+
+### Patch Changes
+
+- bfcca1a: update dependencies
+
 ## 0.4.0
 
 ### Minor Changes

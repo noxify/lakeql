@@ -1,5 +1,11 @@
 # @lakeql/column-parser
 
+## 0.1.5
+
+### Patch Changes
+
+- bfcca1a: update dependencies
+
 ## 0.1.4
 
 ### Patch Changes

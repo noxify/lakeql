@@ -1,5 +1,13 @@
 # @lakeql/schema-generator
 
+## 0.4.4
+
+### Patch Changes
+
+- bfcca1a: update dependencies
+- Updated dependencies [bfcca1a]
+  - @lakeql/helpers@0.1.5
+
 ## 0.4.3
 
 ### Patch Changes
