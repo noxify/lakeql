@@ -57,7 +57,7 @@
     "@lakeql/parquet": "workspace:*",
     "@lakeql/schema-generator": "workspace:*",
     "@lakeql/trino-client": "workspace:*",
-    "files-sdk": "1.9.0"
+    "files-sdk": "2.0.0"
   },
   "devDependencies": {
     "@lakeql/tsconfig": "workspace:*",

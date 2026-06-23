@@ -49,13 +49,13 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@hono/node-server": "2.0.5",
+    "@hono/node-server": "2.0.6",
     "@lakeql/helpers": "workspace:*",
     "@lakeql/logger": "workspace:*",
     "@lakeql/query-builder": "workspace:*",
     "@lakeql/response-transformer": "workspace:*",
     "@lakeql/trino-client": "workspace:*",
-    "@pothos/core": "4.12.0",
+    "@pothos/core": "4.13.0",
     "@pothos/plugin-scope-auth": "4.1.6",
     "@pothos/plugin-validation": "4.3.0",
     "@t3-oss/env-core": "0.13.11",
@@ -64,7 +64,7 @@
     "graphql": "16.14.2",
     "graphql-scalars": "1.25.0",
     "graphql-yoga": "5.21.2",
-    "hono": "4.12.25",
+    "hono": "4.12.26",
     "jose": "6.2.3",
     "zod": "4.4.3"
   },
