@@ -860,6 +860,9 @@ importers:
       '@faker-js/faker':
         specifier: 10.5.0
         version: 10.5.0
+      '@lakeql/trino-client':
+        specifier: workspace:*
+        version: link:../../packages/trino-client
       '@lakeql/tsconfig':
         specifier: workspace:*
         version: link:../typescript
@@ -8681,7 +8684,7 @@ snapshots:
 
   '@types/set-cookie-parser@2.4.10':
     dependencies:
-      '@types/node': 25.9.2
+      '@types/node': 24.13.2
 
   '@types/statuses@2.0.6': {}
 

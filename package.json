@@ -49,7 +49,11 @@
     "mt:start": "uv run minitrino -v provision -m hive -m minio -m ldap -m oauth2",
     "mt:restart": "uv run minitrino restart",
     "mt:stop": "uv run minitrino down --keep",
-    "mt:clean": "uv run minitrino down"
+    "mt:clean": "uv run minitrino down",
+    "mt:proxy": "docker compose -f docker-compose.minitrino-override.yaml up -d",
+    "mt:proxy:stop": "docker compose -f docker-compose.minitrino-override.yaml down",
+    "query": "pnpm -F test-data query",
+    "seed": "pnpm -F test-data seed"
   },
   "devDependencies": {
     "@changesets/cli": "2.31.0",

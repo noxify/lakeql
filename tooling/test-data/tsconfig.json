@@ -4,6 +4,6 @@
     "tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.json",
     "strictNullChecks": true
   },
-  "include": ["src"],
+  "include": ["src", "seed.config.ts"],
   "exclude": ["node_modules"]
 }
