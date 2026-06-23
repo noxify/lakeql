@@ -1,5 +1,11 @@
 # @lakeql/logger
 
+## 0.2.2
+
+### Patch Changes
+
+- bfcca1a: update dependencies
+
 ## 0.2.1
 
 ### Patch Changes

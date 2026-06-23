@@ -1,5 +1,17 @@
 # @lakeql/api
 
+## 0.2.6
+
+### Patch Changes
+
+- bfcca1a: update dependencies
+- Updated dependencies [bfcca1a]
+  - @lakeql/helpers@0.1.5
+  - @lakeql/logger@0.2.2
+  - @lakeql/query-builder@0.1.5
+  - @lakeql/response-transformer@0.1.5
+  - @lakeql/trino-client@0.4.1
+
 ## 0.2.5
 
 ### Patch Changes

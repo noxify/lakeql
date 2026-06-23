@@ -1,5 +1,19 @@
 # @lakeql/cli
 
+## 0.7.4
+
+### Patch Changes
+
+- bfcca1a: update dependencies
+- Updated dependencies [bfcca1a]
+  - @lakeql/column-parser@0.1.5
+  - @lakeql/file-generator@0.1.10
+  - @lakeql/helpers@0.1.5
+  - @lakeql/logger@0.2.2
+  - @lakeql/response-transformer@0.1.5
+  - @lakeql/schema-generator@0.4.4
+  - @lakeql/trino-client@0.4.1
+
 ## 0.7.3
 
 ### Patch Changes

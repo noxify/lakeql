@@ -1,5 +1,15 @@
 # @lakeql/adapters
 
+## 0.5.1
+
+### Patch Changes
+
+- bfcca1a: update dependencies
+- Updated dependencies [bfcca1a]
+  - @lakeql/parquet@0.2.4
+  - @lakeql/schema-generator@0.4.4
+  - @lakeql/trino-client@0.4.1
+
 ## 0.5.0
 
 ### Minor Changes
