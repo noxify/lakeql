@@ -2,8 +2,8 @@ import path from "node:path"
 
 import { parquetWriteFile } from "hyparquet-writer"
 
-import type { ColumnDefinition } from "../seed/config"
 import { jsonSchemaToHyparquetSchema } from "../helpers.js"
+import type { ColumnDefinition } from "../seed/config"
 
 /**
  * Trino column definitions for the simple dataset.

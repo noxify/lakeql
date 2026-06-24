@@ -16,10 +16,7 @@
       "tableName": "orders",
       "refreshInterval": "61s",
       "gracePeriod": "5m",
-      "columns": [
-        "orderkey",
-        "totalprice"
-      ]
+      "columns": ["orderkey", "totalprice"]
     }
   ]
 }

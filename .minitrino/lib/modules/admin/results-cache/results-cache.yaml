@@ -1,6 +1,5 @@
 ---
 services:
-
   minitrino:
     environment:
       RESULTS_CACHE_CONFIG_PROPERTIES: |-

@@ -1,6 +1,5 @@
 ---
 services:
-
   minitrino:
     volumes:
       - ./modules/catalog/postgres/resources/cluster/postgres.properties:/mnt/etc/catalog/postgres.properties:ro

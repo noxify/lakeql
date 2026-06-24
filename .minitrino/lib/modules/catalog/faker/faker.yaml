@@ -1,6 +1,5 @@
 ---
 services:
-
   minitrino:
     volumes:
       - ./modules/catalog/faker/resources/cluster/faker.properties:/mnt/etc/catalog/faker.properties:ro

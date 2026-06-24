@@ -31,28 +31,20 @@ type OutputFormat = "table" | "json" | "csv"
 
 function validateFormat(value: string): OutputFormat {
   if (value !== "table" && value !== "json" && value !== "csv") {
-    console.error(
-      `Invalid format "${value}". Allowed values: table, json, csv`
-    )
+    console.error(`Invalid format "${value}". Allowed values: table, json, csv`)
     process.exit(1)
   }
   return value
 }
 
-function formatTable(
-  columns: string[],
-  rows: unknown[][]
-): string {
+function formatTable(columns: string[], rows: unknown[][]): string {
   if (rows.length === 0) {
     return `(0 rows)\n\nColumns: ${columns.join(", ")}`
   }
 
   // Calculate column widths
   const widths = columns.map((col, i) =>
-    Math.max(
-      col.length,
-      ...rows.map((row) => String(row[i] ?? "NULL").length)
-    )
+    Math.max(col.length, ...rows.map((row) => String(row[i] ?? "NULL").length))
   )
 
   const separator = widths.map((w) => "─".repeat(w + 2)).join("┼")
@@ -93,7 +85,9 @@ async function main() {
 
   if (!sql) {
     console.error("Please provide a SQL query as argument.")
-    console.error('Example: pnpm query "SELECT * FROM hive.test.products LIMIT 5"')
+    console.error(
+      'Example: pnpm query "SELECT * FROM hive.test.products LIMIT 5"'
+    )
     process.exit(1)
   }
 
@@ -145,14 +139,11 @@ async function getColumnNames(
   // We need to get column metadata. The simplest approach:
   // wrap in a LIMIT 0 subquery to get column info without re-executing.
   // But that's fragile. Instead, let's use the stream API which gives us columns.
-  const response = await fetch(
-    `${client.host}:${client.port}/v1/statement`,
-    {
-      method: "POST",
-      body: sql,
-      headers: client.getHeaders(),
-    }
-  )
+  const response = await fetch(`${client.host}:${client.port}/v1/statement`, {
+    method: "POST",
+    body: sql,
+    headers: client.getHeaders(),
+  })
 
   if (!response.ok) {
     return []

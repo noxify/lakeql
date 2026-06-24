@@ -1,6 +1,5 @@
 ---
 services:
-
   minitrino:
     environment:
       INSIGHTS_CONFIG_PROPERTIES: |-

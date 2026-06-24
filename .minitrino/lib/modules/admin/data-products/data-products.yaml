@@ -1,6 +1,5 @@
 ---
 services:
-
   minitrino:
     environment:
       DATA_PRODUCTS_CONFIG_PROPERTIES: |-

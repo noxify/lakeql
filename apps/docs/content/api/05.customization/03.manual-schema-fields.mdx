@@ -7,7 +7,10 @@ description: Add hand-written query and mutation fields using the Pothos builder
 For advanced use cases that don't fit the endpoint builder pattern, you can write schema fields manually using the Pothos builder. This gives you full control over types, resolvers, and authorization.
 
 <Note>
-For most endpoints, the [CLI endpoint builder](/docs/api/customization/custom-queries-mutations) is the recommended approach. Use manual fields for cross-cutting concerns (health checks, cache management, aggregation queries) that don't map to a single table.
+  For most endpoints, the [CLI endpoint
+  builder](/docs/api/customization/custom-queries-mutations) is the recommended
+  approach. Use manual fields for cross-cutting concerns (health checks, cache
+  management, aggregation queries) that don't map to a single table.
 </Note>
 
 ## File discovery
@@ -109,10 +112,10 @@ builder.queryField("metrics", (t) =>
 
 LakeQL provides three built-in auth scopes you can use in manual fields:
 
-| Scope | Description |
-|-------|-------------|
-| `authorized` | User must be authenticated |
-| `readPermission` | User must have read access to the specified catalog/schema/table |
+| Scope             | Description                                                       |
+| ----------------- | ----------------------------------------------------------------- |
+| `authorized`      | User must be authenticated                                        |
+| `readPermission`  | User must have read access to the specified catalog/schema/table  |
 | `writePermission` | User must have write access to the specified catalog/schema/table |
 
 ```ts
@@ -139,5 +142,6 @@ src/schemas/
 ```
 
 <Warning>
-Don't modify files in `generated/` or `custom/` — they will be overwritten by the CLI. Put custom logic in `manual/` or another directory of your choice.
+  Don't modify files in `generated/` or `custom/` — they will be overwritten by
+  the CLI. Put custom logic in `manual/` or another directory of your choice.
 </Warning>

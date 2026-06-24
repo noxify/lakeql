@@ -46,61 +46,31 @@
       "group": "clusteradmins",
       "catalog": ".*",
       "schema": ".*",
-      "privileges": [
-        "SELECT",
-        "INSERT",
-        "DELETE",
-        "OWNERSHIP",
-        "GRANT_SELECT"
-      ]
+      "privileges": ["SELECT", "INSERT", "DELETE", "OWNERSHIP", "GRANT_SELECT"]
     },
     {
       "group": "metadata-users",
       "catalog": "system",
       "schema": "metadata",
-      "privileges": [
-        "SELECT",
-        "INSERT",
-        "DELETE",
-        "OWNERSHIP",
-        "GRANT_SELECT"
-      ]
+      "privileges": ["SELECT", "INSERT", "DELETE", "OWNERSHIP", "GRANT_SELECT"]
     },
     {
       "group": "metadata-users",
       "catalog": "system",
       "schema": "jdbc",
-      "privileges": [
-        "SELECT",
-        "INSERT",
-        "DELETE",
-        "OWNERSHIP",
-        "GRANT_SELECT"
-      ]
+      "privileges": ["SELECT", "INSERT", "DELETE", "OWNERSHIP", "GRANT_SELECT"]
     },
     {
       "group": "metadata-users",
       "catalog": "system",
       "schema": "information_schema",
-      "privileges": [
-        "SELECT",
-        "INSERT",
-        "DELETE",
-        "OWNERSHIP",
-        "GRANT_SELECT"
-      ]
+      "privileges": ["SELECT", "INSERT", "DELETE", "OWNERSHIP", "GRANT_SELECT"]
     },
     {
       "group": "platform-users",
       "catalog": "system",
       "schema": "runtime",
-      "privileges": [
-        "SELECT",
-        "INSERT",
-        "DELETE",
-        "OWNERSHIP",
-        "GRANT_SELECT"
-      ]
+      "privileges": ["SELECT", "INSERT", "DELETE", "OWNERSHIP", "GRANT_SELECT"]
     },
     {
       "group": ".*",

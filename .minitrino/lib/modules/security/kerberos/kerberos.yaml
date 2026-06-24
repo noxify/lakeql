@@ -1,6 +1,5 @@
 ---
 services:
-
   minitrino:
     environment:
       KERBEROS_CONFIG_PROPERTIES: |-

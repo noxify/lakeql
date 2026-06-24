@@ -1,6 +1,5 @@
 ---
 services:
-
   minitrino:
     volumes:
       - ./modules/catalog/iceberg/resources/cluster/iceberg.properties:/mnt/etc/catalog/iceberg.properties:ro

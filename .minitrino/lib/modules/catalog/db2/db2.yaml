@@ -1,6 +1,5 @@
 ---
 services:
-
   minitrino:
     volumes:
       - ./modules/catalog/db2/resources/cluster/db2.properties:/mnt/etc/catalog/db2.properties:ro

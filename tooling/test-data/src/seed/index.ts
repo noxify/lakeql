@@ -2,8 +2,8 @@ import fs from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
 
-import type { SeedConnector } from "./connectors"
 import type { SeedDefinition } from "./config"
+import type { SeedConnector } from "./connectors"
 import { MINITRINO } from "./defaults"
 
 const TMPDIR = path.join(os.tmpdir(), "lakeql-seed")
@@ -62,7 +62,11 @@ export async function seedAll(
   definitions: SeedDefinition[],
   connector: SeedConnector,
   options: SeedOptions,
-  onProgress?: (name: string, status: "start" | "done" | "error", error?: string) => void
+  onProgress?: (
+    name: string,
+    status: "start" | "done" | "error",
+    error?: string
+  ) => void
 ): Promise<SeedResult[]> {
   const results: SeedResult[] = []
 

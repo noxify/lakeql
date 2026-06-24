@@ -1,6 +1,5 @@
 ---
 services:
-
   minitrino:
     volumes:
       - ./modules/catalog/pinot/resources/cluster/pinot.properties:/mnt/etc/catalog/pinot.properties:ro

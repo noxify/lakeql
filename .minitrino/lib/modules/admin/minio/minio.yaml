@@ -1,6 +1,5 @@
 ---
 services:
-
   minio:
     image: minio/minio:${MINIO_VER}
     container_name: minio-${CLUSTER_NAME}

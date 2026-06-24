@@ -1,6 +1,5 @@
 ---
 services:
-
   # Mount bootstrap to special dir (000-run-first) to force early run This is a
   # workaround for the fact that the bootstrap scripts are not run in any
   # particular order, but can be loosely enforced using this hack.

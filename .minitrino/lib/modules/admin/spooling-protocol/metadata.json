@@ -1,12 +1,7 @@
 {
   "description": "Enables the spooling client protocol.",
   "incompatibleModules": [],
-  "dependentModules": [
-    "minio"
-  ],
+  "dependentModules": ["minio"],
   "enterprise": false,
-  "versions": [
-    "466",
-    "9999"
-  ]
+  "versions": ["466", "9999"]
 }

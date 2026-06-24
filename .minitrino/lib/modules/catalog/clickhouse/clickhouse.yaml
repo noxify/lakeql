@@ -1,6 +1,5 @@
 ---
 services:
-
   minitrino:
     volumes:
       - ./modules/catalog/clickhouse/resources/cluster/clickhouse.properties:/mnt/etc/catalog/clickhouse.properties:ro

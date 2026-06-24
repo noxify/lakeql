@@ -1,6 +1,5 @@
 ---
 services:
-
   minitrino:
     volumes:
       - ./modules/admin/file-group-provider/resources/cluster/group-provider.properties:/mnt/etc/group-provider.properties:ro

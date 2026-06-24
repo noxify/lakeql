@@ -1,6 +1,5 @@
 ---
 services:
-
   minitrino:
     volumes:
       - ./modules/admin/resource-groups/resources/cluster/resource-groups.json:/mnt/etc/resource-groups.json:ro

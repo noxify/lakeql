@@ -1,6 +1,5 @@
 ---
 services:
-
   minitrino:
     build:
       context: ./image/
@@ -18,7 +17,7 @@ services:
         - org.minitrino.module.minitrino=true
     image: minitrino/cluster:${CLUSTER_VER:-479}-${CLUSTER_DIST:-trino}
     container_name: minitrino-${CLUSTER_NAME:-default}
-    restart: 'no'
+    restart: "no"
     environment:
       COORDINATOR: true
       CLUSTER_NAME: ${CLUSTER_NAME:-default}

@@ -1,6 +1,5 @@
 ---
 services:
-
   minitrino:
     environment:
       MYSQL_EVENT_LISTENER_CONFIG_PROPERTIES: |-
@@ -23,7 +22,11 @@ services:
       - mysql-event-listener-db-data:/var/lib/mysql
       - ./modules/admin/mysql-event-listener/resources/mysql/create-event-listener-db.sql:/docker-entrypoint-initdb.d/create-event-listener-db.sql
     healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
+      test:
+        [
+          "CMD-SHELL",
+          'mysqladmin ping -h 127.0.0.1 -uroot -p"$$MYSQL_ROOT_PASSWORD" --silent',
+        ]
       interval: 5s
       timeout: 5s
       retries: 30

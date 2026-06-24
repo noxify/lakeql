@@ -1,5 +1,5 @@
-import { simpleColumns, simpleGenerate } from "./src/datasets/simple"
 import { complexColumns, complexGenerate } from "./src/datasets/complex"
+import { simpleColumns, simpleGenerate } from "./src/datasets/simple"
 import { defineSeeds } from "./src/seed/config"
 
 export default defineSeeds([

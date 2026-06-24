@@ -1,6 +1,5 @@
 ---
 services:
-
   minitrino:
     volumes:
       - ./modules/catalog/sqlserver/resources/cluster/sqlserver.properties:/mnt/etc/catalog/sqlserver.properties:ro

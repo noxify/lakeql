@@ -1,6 +1,5 @@
 ---
 services:
-
   minitrino:
     volumes:
       - ./modules/catalog/mariadb/resources/cluster/mariadb.properties:/mnt/etc/catalog/mariadb.properties:ro

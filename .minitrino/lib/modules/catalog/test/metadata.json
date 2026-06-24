@@ -1,11 +1,7 @@
 {
   "description": "Test module.",
-  "incompatibleModules": [
-    "ldap"
-  ],
-  "dependentModules": [
-    "file-access-control"
-  ],
+  "incompatibleModules": ["ldap"],
+  "dependentModules": ["file-access-control"],
   "versions": [],
   "enterprise": false,
   "dependentClusters": []

@@ -1,16 +1,12 @@
 {
   "description": "Starburst Gateway module",
   "incompatibleModules": [],
-  "dependentModules": [
-    "insights"
-  ],
+  "dependentModules": ["insights"],
   "enterprise": true,
   "dependentClusters": [
     {
       "name": "starburst-gateway-replica",
-      "modules": [
-        "insights"
-      ],
+      "modules": ["insights"],
       "workers": 0,
       "env": {
         "__PORT_MINITRINO": "60801",

@@ -1,6 +1,5 @@
 ---
 services:
-
   minitrino:
     environment:
       OAUTH2_CONFIG_PROPERTIES: |-

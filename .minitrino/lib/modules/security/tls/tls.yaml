@@ -1,6 +1,5 @@
 ---
 services:
-
   minitrino:
     environment:
       TLS_CONFIG_PROPERTIES: |-

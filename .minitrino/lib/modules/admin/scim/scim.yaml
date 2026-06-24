@@ -1,6 +1,5 @@
 ---
 services:
-
   minitrino:
     environment:
       SCIM_CONFIG_PROPERTIES: |-

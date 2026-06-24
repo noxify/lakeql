@@ -1,6 +1,5 @@
 ---
 services:
-
   minitrino:
     environment:
       CACHE_SERVICE_JVM_CONFIG: |-

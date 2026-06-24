@@ -1,6 +1,5 @@
 ---
 services:
-
   minitrino:
     volumes:
       - ./modules/security/file-access-control/resources/cluster/rules.json:/mnt/etc/rules.json:ro
