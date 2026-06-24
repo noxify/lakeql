@@ -1,0 +1,121 @@
+---
+title: Hive Table Manager
+navTitle: Hive Table Manager
+description: How the write pipeline manages Hive external tables in Trino.
+---
+
+The Hive Table Manager is responsible for creating and maintaining external tables in Trino's Hive catalog. After the write pipeline uploads Parquet files to object storage, the table manager ensures a corresponding Hive table exists that points to that data — making it immediately queryable.
+
+## How it works
+
+Every mutation write goes through this flow:
+
+1. Data is written as Parquet to S3/MinIO
+2. The existing Hive table is dropped (if present)
+3. A new external table is created pointing to the uploaded data
+
+This "drop + create" approach ensures the table schema always matches the current data, even if fields were added or removed.
+
+## External table locations
+
+Hive external tables point to a **directory** in object storage, not a single file. The table manager uses the `s3a://` URI scheme, which is required by Hive's underlying Hadoop FileSystem.
+
+```
+s3a://<bucket>/<basePath>/latest.parquet/
+         │         │              │
+         │         │              └─ Directory containing Parquet file(s)
+         │         └─ Configured basePath for the endpoint
+         └─ Configured bucket name
+```
+
+<Note>
+  The `s3a://` scheme is always used — regardless of whether the storage is AWS
+  S3 or MinIO. The standard `s3://` scheme is not recognized by Hadoop's
+  FileSystem.
+</Note>
+
+## Table strategies
+
+Depending on the [load strategy](/docs/adapters/write-pipeline/load-strategies), different tables are managed:
+
+| Strategy           | Tables created                                                               |
+| ------------------ | ---------------------------------------------------------------------------- |
+| `full_load`        | `<tableName>` → `latest.parquet/`                                            |
+| `full_load_append` | `<tableName>_latest` → `latest.parquet/`, `<tableName>_all` → `all.parquet/` |
+| `append`           | `<tableName>` → `all.parquet/`                                               |
+
+For `full_load_append`, both tables are managed atomically — if creating one fails, the manager attempts a best-effort rollback by dropping both.
+
+## Usage
+
+The table manager is typically used internally by `executeWritePipeline`. For direct usage:
+
+```ts
+import { createHiveTableManager } from "@lakeql/adapters"
+import { TrinoClient } from "@lakeql/trino-client"
+
+const trinoClient = new TrinoClient({
+  host: "https://trino.example.com",
+  port: 8443,
+  auth: { type: "basic", username: "admin", password: "secret" },
+  catalog: "hive",
+})
+
+const hiveManager = createHiveTableManager({
+  client: trinoClient,
+  bucket: "my-datalake",
+})
+
+// Build a properly formatted location URI
+const location = hiveManager.buildExternalLocation(
+  "analytics/events/latest.parquet/"
+)
+// => "s3a://my-datalake/analytics/events/latest.parquet/"
+
+// Create a table pointing to that location
+await hiveManager.recreateTable({
+  catalog: "hive",
+  schema: "analytics",
+  tableName: "events",
+  externalLocation: location,
+  columns: [
+    { name: "event_id", type: "VARCHAR" },
+    { name: "message", type: "VARCHAR" },
+    { name: "created_at", type: "TIMESTAMP(3)" },
+  ],
+})
+```
+
+## Generated DDL
+
+The above produces:
+
+```sql
+DROP TABLE IF EXISTS hive.analytics.events;
+
+CREATE TABLE hive.analytics.events (
+  event_id VARCHAR,
+  message VARCHAR,
+  created_at TIMESTAMP(3)
+)
+WITH (
+  external_location = 's3a://my-datalake/analytics/events/latest.parquet/',
+  format = 'PARQUET'
+);
+```
+
+## Configuration
+
+<InterfaceReference
+  file="adapters/src/hive-table-manager"
+  name="HiveTableManagerConfig"
+  mode="declaration"
+/>
+
+## Table definition
+
+<InterfaceReference
+  file="adapters/src/hive-table-manager"
+  name="HiveTableDefinition"
+  mode="declaration"
+/>

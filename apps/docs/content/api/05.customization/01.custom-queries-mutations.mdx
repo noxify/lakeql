@@ -1,132 +1,119 @@
 ---
 title: Custom Queries & Mutations
 navTitle: Custom Queries & Mutations
-description: Add custom query and mutation fields by creating query-schema files in the schema directory.
+description: Add custom query and mutation endpoints using the CLI endpoint builder.
 ---
 
-Beyond the auto-generated query schemas from the CLI, you can add custom GraphQL queries and mutations by creating additional schema files. The server discovers them automatically via glob patterns during startup.
+The recommended way to add custom queries and mutations is through the CLI's `create-endpoint` command. It generates all necessary files (schema, config, types, JSON Schema) from a simple endpoint definition — the same way the `pull` command works, but from a JSON definition instead of an existing Trino table.
+
+## Creating an endpoint definition
+
+Define your endpoint as a JSON file:
+
+```json path="my-endpoint.json"
+{
+  "version": "1.0",
+  "tableName": "user_events",
+  "catalog": "hive",
+  "schema": "analytics",
+  "fields": [
+    { "name": "event_id", "type": "String", "options": { "required": true } },
+    { "name": "message", "type": "String" },
+    { "name": "timestamp", "type": "DateTime" }
+  ],
+  "mutation": {
+    "loadStrategy": "full_load",
+    "type": "minio",
+    "bucket": "my-datalake",
+    "basePath": "analytics/user_events",
+    "endpoint": "http://localhost:9000"
+  }
+}
+```
+
+## Generating the endpoint
+
+Run the CLI to generate all files:
+
+<Command variant="exec">
+  lakeql-cli create-endpoint --from-file ./my-endpoint.json
+</Command>
+
+This generates:
+
+```
+src/schemas/custom/hive/analytics/user_events/
+├── config.ts              # Hive + storage config
+├── endpoint.json          # Persisted definition
+├── json-schema.json       # JSON Schema for Parquet serialization
+├── query-schema.ts        # GraphQL query with sorting, filtering, paging
+└── mutation-schema.ts     # GraphQL mutation with write pipeline
+```
+
+The `config-registry.ts` is updated automatically to include the new endpoint.
+
+## Query-only endpoints
+
+Omit the `mutation` field to generate a query-only endpoint:
+
+```json path="query-only.json"
+{
+  "version": "1.0",
+  "tableName": "reports",
+  "catalog": "hive",
+  "schema": "analytics",
+  "fields": [
+    { "name": "report_id", "type": "String" },
+    { "name": "title", "type": "String" },
+    { "name": "created_at", "type": "DateTime" }
+  ]
+}
+```
+
+Or explicitly disable mutations:
+
+```json
+{ "mutation": false }
+```
+
+## Field options
+
+Each field supports options for mutation input behavior:
+
+| Option        | Default | Description                                                    |
+| ------------- | ------- | -------------------------------------------------------------- |
+| `required`    | `false` | Field is required in mutation input                            |
+| `readOnly`    | `false` | Field appears in queries but is excluded from mutation input   |
+| `validations` | `[]`    | Zod validation refinements (email, url, uuid, min, max, regex) |
+
+```json
+{
+  "name": "email",
+  "type": "String",
+  "options": {
+    "required": true,
+    "validations": [{ "type": "email" }]
+  }
+}
+```
+
+## Mutation load strategies
+
+The `mutation` config supports three strategies. See [Load Strategies](/docs/adapters/write-pipeline/load-strategies) for details.
+
+| Strategy           | Behavior                        |
+| ------------------ | ------------------------------- |
+| `full_load`        | Replace all data on every write |
+| `full_load_append` | Replace latest + keep history   |
+| `append`           | Append only                     |
 
 ## File discovery
 
-The schema loader scans for files matching these patterns in the configured `schemaPath` directory:
+The API server automatically discovers all schema files at startup by scanning for:
 
 ```
 schemas/**/query-schema.{ts,js,mjs}
 schemas/**/mutation-schema.{ts,js,mjs}
-**/query-schema.{ts,js,mjs}
-**/mutation-schema.{ts,js,mjs}
 ```
 
-Any file named `query-schema.ts` or `mutation-schema.ts` (or `.js`/`.mjs`) that imports and uses the shared builder will have its types registered in the final schema.
-
-## Creating a custom query
-
-Create a file in your schema directory:
-
-```ts path="src/schemas/custom/query-schema.ts"
-import { builder } from "@lakeql/api/builder"
-
-builder.queryField("serverInfo", (t) =>
-  t.field({
-    type: "String",
-    description: "Returns the current server version",
-    resolve: () => "1.0.0",
-  })
-)
-```
-
-## Creating a custom mutation
-
-To add mutations, first ensure the mutation type is registered, then add your field:
-
-```ts path="src/schemas/custom-mutations/query-schema.ts"
-import { builder } from "@lakeql/api/builder"
-
-// Register mutation type if not already done
-builder.mutationType({})
-
-builder.mutationField("refreshCache", (t) =>
-  t.field({
-    type: "Boolean",
-    description: "Invalidates the internal cache",
-    authScopes: {
-      authorized: true,
-    },
-    resolve: async (_parent, _args, context) => {
-      context.logger.info(
-        "Cache refresh triggered by",
-        context.currentUser?.userName
-      )
-      // perform cache invalidation
-      return true
-    },
-  })
-)
-```
-
-## Custom types with arguments
-
-```ts path="src/schemas/analytics/query-schema.ts"
-import { builder } from "@lakeql/api/builder"
-
-const MetricResult = builder
-  .objectRef<{
-    name: string
-    value: number
-    timestamp: Date
-  }>("MetricResult")
-  .implement({
-    fields: (t) => ({
-      name: t.exposeString("name"),
-      value: t.exposeFloat("value"),
-      timestamp: t.expose("timestamp", { type: "DateTime" }),
-    }),
-  })
-
-builder.queryField("metrics", (t) =>
-  t.field({
-    type: [MetricResult],
-    args: {
-      name: t.arg.string({ required: true }),
-      from: t.arg({ type: "DateTime", required: true }),
-      to: t.arg({ type: "DateTime", required: true }),
-    },
-    authScopes: {
-      readPermission: {
-        catalog: "hive",
-        schema: "analytics",
-        tableName: "metrics",
-      },
-    },
-    resolve: async (_parent, args, context) => {
-      // Query Trino for metrics data
-      return []
-    },
-  })
-)
-```
-
-## Directory structure example
-
-```
-src/schemas/
-├── generated/                    # Auto-generated by `lakeql-cli pull`
-│   └── hive/
-│       └── sales/
-│           ├── users/
-│           │   ├── query-schema.ts
-│           │   └── mutation-schema.ts
-│           └── orders/
-│               ├── query-schema.ts
-│               └── mutation-schema.ts
-├── custom/                       # Auto-generated by `lakeql-cli create-endpoint`
-│   └── analytics/
-│       └── tracking/
-│           └── user_events/
-│               ├── query-schema.ts
-│               └── mutation-schema.ts
-├── manual/                       # Your hand-written custom schemas
-│   └── query-schema.ts
-└── analytics/
-    └── query-schema.ts
-```
+No manual registration is needed — just generate and start the server.

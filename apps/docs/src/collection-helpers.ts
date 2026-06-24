@@ -684,7 +684,7 @@ export const getApiReferenceExports = cache(
                 return {
                   slug: e.slug ?? e.name,
                   name: e.name,
-                  title: e.title ?? e.name,
+                  title: e.name,
                   kind: typeInfo?.kind ? kindToLabel(typeInfo.kind) : null,
                   methods,
                 }
