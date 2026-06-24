@@ -64,6 +64,11 @@ Use `pnpm build` to generate the production `dist` output, which you can then us
 
 Full docs and examples are available at https://lakeql.dev
 
+## Contributing
+
+- [Local Development](./LOCAL_DEVELOPMENT.md) — set up minitrino, seed test data, run queries
+- [Contribution Guide](./apps/docs/content/lakeql/contributing/02.contribution-guide.mdx) — code style, changesets, project structure
+
 ## Project background
 
 This project has its roots in the original [datalake-graphql-wrapper](https://github.com/dbsystel/datalake-graphql-wrapper).

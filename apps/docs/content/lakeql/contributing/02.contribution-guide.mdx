@@ -1,0 +1,137 @@
+---
+title: Contribution Guide
+description: Guidelines for contributing to the LakeQL project.
+---
+
+## Getting Started
+
+1. Fork and clone the repository
+2. Follow the [Local Development](/docs/lakeql/contributing/local-development) guide to set up your environment
+3. Create a feature branch from `main`
+
+## Project Structure
+
+```
+lakeql/
+├── apps/
+│   └── docs/              # Documentation site
+├── packages/
+│   ├── adapters/          # Storage adapters (Hive/S3, future: Iceberg, ClickHouse)
+│   ├── api/               # GraphQL API (Pothos + Yoga)
+│   ├── cli/               # CLI tool
+│   ├── query-builder/     # SQL query builder (Kysely-based)
+│   ├── trino-client/      # Trino REST API client
+│   └── ...
+├── tooling/
+│   └── test-data/         # Test data generation + seed tooling
+├── .minitrino/            # Local Trino cluster configuration
+└── templates/             # App scaffolding templates
+```
+
+## Development Workflow
+
+```bash
+# Start local infrastructure
+pnpm mt:start
+pnpm seed --all
+
+# Run the development server
+pnpm dev:backend
+
+# Run tests
+pnpm test
+
+# Type checking
+pnpm typecheck
+
+# Linting
+pnpm lint
+```
+
+## Code Style
+
+- TypeScript strict mode is required
+- Follow existing patterns in the codebase
+
+Before committing, run:
+
+```bash
+# Lint (check)
+pnpm lint
+
+# Lint (auto-fix)
+pnpm lint:fix
+
+# Format (check)
+pnpm format
+
+# Format (auto-fix)
+pnpm format:fix
+```
+
+## Changesets
+
+We use [changesets](https://github.com/changesets/changesets) to manage versioning and changelogs for published packages.
+When your change affects a published `@lakeql/*` package, create a changeset:
+
+```bash
+pnpm cs
+```
+
+This opens an interactive prompt to select affected packages and describe the change.
+The changeset file is committed alongside your code.
+
+When a changeset is **not** needed:
+
+- Changes to `tooling/`, docs, or dev infrastructure
+- Changes to `private: true` packages
+
+When a changeset **is** needed:
+
+- Any change to a published `@lakeql/*` package — including bug fixes, features, and refactors
+
+## Commits and PRs
+
+- Keep commits focused on a single change
+- Use clear commit messages describing the "what" and "why"
+- PRs should reference any related issues
+
+## Adding a New Dataset Template
+
+The seed system uses dataset templates to generate test data for local development.
+Each template defines a set of Trino columns and a generator function that produces Parquet files.
+If you need test data with a different structure — for example when working on a new feature that requires a specific schema — you can add a new template.
+
+1. Create a new file in `tooling/test-data/src/datasets/`
+2. Export `columns` (Trino column definitions) and `generate` (Parquet generator function)
+3. Import and use in `tooling/test-data/seed.config.ts`
+
+```ts
+// tooling/test-data/src/datasets/my-dataset.ts
+import type { ColumnDefinition } from "../seed/config"
+
+export const myColumns: ColumnDefinition[] = [
+  { name: "id", type: "BIGINT" },
+  { name: "value", type: "VARCHAR" },
+]
+
+export async function myGenerate(
+  amount: number,
+  targetDir: string
+): Promise<string> {
+  // Generate parquet file, return path
+}
+```
+
+## Running Tests
+
+```bash
+# All tests
+pnpm test
+
+# Specific package
+pnpm -F @lakeql/trino-client test
+
+# With coverage
+pnpm test -- --coverage
+```
