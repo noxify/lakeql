@@ -51,6 +51,17 @@ async function buildSchema(schemaDir: string) {
     )
   }
 
+  const hasMutationSchemas = uniqueSchemaFiles.some((f) =>
+    f.includes("mutation-schema")
+  )
+
+  // Register mutationType only when mutation schema files exist.
+  // Pothos requires at least one field on a type — registering mutationType
+  // without any mutationFields causes "Type Mutation must define one or more fields".
+  if (hasMutationSchemas) {
+    builder.mutationType({})
+  }
+
   for (const filePath of uniqueSchemaFiles) {
     // oxlint-disable-next-line no-await-in-loop
     await import(pathToFileURL(filePath).href)
