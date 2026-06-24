@@ -1,0 +1,6 @@
+export { HeroSection } from "./hero"
+export { GettingStartedSection } from "./getting-started"
+export { CtaSection } from "./cta"
+export { FeaturesSection } from "./features"
+export { PoweredBySection } from "./powered-by"
+export { OpenSourceSection } from "./open-source"
