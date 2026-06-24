@@ -56,8 +56,8 @@ docker-configs/jars/
 test-data/
 !tooling/test-data/
 
-# project-local minitrino state
-.minitrino/
+# project-local minitrino (lib is tracked, runtime state is not)
+.minitrino/crashdump.log
 .venv
 .renoun/
 apps/docs/public/search-index.json

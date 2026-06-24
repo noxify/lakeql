@@ -1,11 +1,7 @@
-# Override for minitrino's minio service to expose the S3 API port (9000)
-# for local seed commands.
+# Override for minitrino to expose MinIO S3 API (port 9000) for local
+# seed commands and tooling.
 #
-# Usage (after minitrino is running):
-#   docker compose -f docker-compose.minitrino-override.yaml up -d
-#
-# This creates a lightweight socat proxy that forwards localhost:9000
-# to the minio container's S3 API.
+# Usage: automatically applied via mt:start / mt:restart scripts.
 
 services:
   minio-s3-proxy:
