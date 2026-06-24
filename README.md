@@ -5,6 +5,15 @@
 <h1 align="center" style="border-width:0px;margin-bottom:0px">LakeQL</h1>
 <div align="center" style="margin-bottom:50px;">Streamlined Data Access Layer for Data Platforms</div>
 
+<p align="center">
+  <a href="https://npmx.dev/package/@lakeql/api"><img src="https://img.shields.io/npm/v/@lakeql/api?label=%40lakeql%2Fapi&color=blue" alt="@lakeql/api on npm" /></a>
+  <a href="https://npmx.dev/package/@lakeql/cli"><img src="https://img.shields.io/npm/v/@lakeql/cli?label=%40lakeql%2Fcli&color=blue" alt="@lakeql/cli on npm" /></a>
+  <a href="https://npmx.dev/package/@lakeql/adapters"><img src="https://img.shields.io/npm/v/@lakeql/adapters?label=%40lakeql%2Fadapters&color=blue" alt="@lakeql/adapters on npm" /></a>
+  <a href="https://npmx.dev/package/@lakeql/trino-client"><img src="https://img.shields.io/npm/v/@lakeql/trino-client?label=%40lakeql%2Ftrino-client&color=blue" alt="@lakeql/trino-client on npm" /></a>
+  <a href="https://npmx.dev/package/@lakeql/query-builder"><img src="https://img.shields.io/npm/v/@lakeql/query-builder?label=%40lakeql%2Fquery-builder&color=blue" alt="@lakeql/query-builder on npm" /></a>
+  <a href="https://npmx.dev/package/@lakeql/create-app"><img src="https://img.shields.io/npm/v/@lakeql/create-app?label=%40lakeql%2Fcreate-app&color=blue" alt="@lakeql/create-app on npm" /></a>
+</p>
+
 LakeQL is a monorepo that provides a type-safe GraphQL access layer for Trino-powered data platforms.
 It combines a backend runtime with a CLI that generates schema and query files from your existing data model.
 
