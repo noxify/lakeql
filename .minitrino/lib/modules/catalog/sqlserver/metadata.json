@@ -1,0 +1,5 @@
+{
+  "description": "SQL Server catalog module",
+  "incompatibleModules": [],
+  "enterprise": false
+}

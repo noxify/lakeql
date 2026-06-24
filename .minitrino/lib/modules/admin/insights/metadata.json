@@ -1,0 +1,6 @@
+{
+  "description": "Insights (enterprise UI) module",
+  "incompatibleModules": [],
+  "dependentModules": [],
+  "enterprise": true
+}

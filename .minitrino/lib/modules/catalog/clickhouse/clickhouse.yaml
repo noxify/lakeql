@@ -1,0 +1,26 @@
+---
+services:
+
+  minitrino:
+    volumes:
+      - ./modules/catalog/clickhouse/resources/cluster/clickhouse.properties:/mnt/etc/catalog/clickhouse.properties:ro
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:${CLICKHOUSE_VER}
+    container_name: clickhouse-${CLUSTER_NAME}
+    env_file:
+      - ./modules/catalog/clickhouse/resources/clickhouse/clickhouse.env
+    expose:
+      - 8123
+    volumes:
+      - clickhouse-data:/var/lib/clickhouse
+      - ./modules/catalog/clickhouse/resources/clickhouse/init.sh:/docker-entrypoint-initdb.d/init.sh
+    labels:
+      - org.minitrino.root=true
+      - org.minitrino.module.catalog.clickhouse=true
+
+volumes:
+  clickhouse-data:
+    labels:
+      - org.minitrino.root=true
+      - org.minitrino.module.catalog.clickhouse=true

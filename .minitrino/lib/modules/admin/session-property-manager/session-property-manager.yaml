@@ -1,0 +1,9 @@
+---
+services:
+
+  minitrino:
+    volumes:
+      - ./modules/admin/session-property-manager/resources/cluster/session-property.json:/mnt/etc/session-property.json:ro
+      - ./modules/admin/session-property-manager/resources/cluster/session-property-config.properties:/mnt/etc/session-property-config.properties:ro
+    labels:
+      - org.minitrino.module.admin.session-property-manager=true

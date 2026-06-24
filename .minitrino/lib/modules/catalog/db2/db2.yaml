@@ -1,0 +1,20 @@
+---
+services:
+
+  minitrino:
+    volumes:
+      - ./modules/catalog/db2/resources/cluster/db2.properties:/mnt/etc/catalog/db2.properties:ro
+
+  db2:
+    image: ibmcom/db2:${DB2_VER}
+    container_name: db2-${CLUSTER_NAME}
+    env_file:
+      - ./modules/catalog/db2/resources/db2/db2.env
+    privileged: true
+    tty: true
+    stdin_open: true
+    ports:
+      - ${__PORT_DB2}:50000
+    labels:
+      - org.minitrino.root=true
+      - org.minitrino.module.catalog.db2=true

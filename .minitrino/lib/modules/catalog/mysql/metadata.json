@@ -1,0 +1,5 @@
+{
+  "description": "MySQL catalog module",
+  "incompatibleModules": [],
+  "enterprise": false
+}
