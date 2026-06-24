@@ -5,7 +5,7 @@ import ora from "ora"
 import type { ConnectorType, SeedDefinition } from "./seed/config"
 import { createSeedConnector } from "./seed/connectors"
 import { MINITRINO } from "./seed/defaults"
-import { seedAll, seedDefinition } from "./seed/index"
+import { seedDefinition } from "./seed/index"
 
 const parsed = cli({
   name: "seed",
@@ -39,8 +39,11 @@ const parsed = cli({
 function validateConnector(
   value: string | undefined
 ): ConnectorType | undefined {
-  if (!value) return undefined
+  if (!value) {
+    return undefined
+  }
   if (value !== "hive" && value !== "clickhouse") {
+    // eslint-disable-next-line no-console
     console.error(
       `Invalid connector "${value}". Allowed values: hive, clickhouse`
     )
@@ -70,6 +73,7 @@ function resolveDefinitions(
       const found = allDefinitions.find((d) => d.name === name)
       if (!found) {
         const available = allDefinitions.map((d) => d.name).join(", ")
+        // eslint-disable-next-line no-console
         console.error(`Definition "${name}" not found. Available: ${available}`)
         process.exit(1)
       }
@@ -78,6 +82,7 @@ function resolveDefinitions(
     return resolved
   }
 
+  // eslint-disable-next-line no-console
   console.error(
     "Please specify --all to seed everything, or --definition <name> to seed specific definitions.\n" +
       "Examples:\n" +
@@ -101,6 +106,7 @@ async function main() {
     )
   } catch (error) {
     spinner.fail("Failed to load seed.config.ts")
+    // eslint-disable-next-line no-console
     console.error(error instanceof Error ? error.message : error)
     process.exit(1)
   }
@@ -108,7 +114,7 @@ async function main() {
   // Resolve which definitions to seed
   const definitions = resolveDefinitions(allDefinitions, flags)
   const connectorOverride = validateConnector(flags.connector)
-  const amount = flags.amount
+  const { amount } = flags
 
   // Create Trino client
   const client = new TrinoClient({
@@ -148,12 +154,15 @@ async function main() {
   }
 
   // Summary
+  // eslint-disable-next-line no-console
   console.log()
   if (failCount === 0) {
+    // eslint-disable-next-line no-console
     console.log(
       `Done. Seeded ${successCount}/${definitions.length} definition(s) successfully.`
     )
   } else {
+    // eslint-disable-next-line no-console
     console.log(
       `Done. ${successCount}/${definitions.length} succeeded, ${failCount} failed.`
     )
@@ -164,6 +173,7 @@ async function main() {
 try {
   await main()
 } catch (error) {
+  // eslint-disable-next-line no-console
   console.error(error)
   process.exit(1)
 }

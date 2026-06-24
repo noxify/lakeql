@@ -31,6 +31,7 @@ type OutputFormat = "table" | "json" | "csv"
 
 function validateFormat(value: string): OutputFormat {
   if (value !== "table" && value !== "json" && value !== "csv") {
+    // eslint-disable-next-line no-console
     console.error(`Invalid format "${value}". Allowed values: table, json, csv`)
     process.exit(1)
   }
@@ -63,14 +64,14 @@ function formatTable(columns: string[], rows: unknown[][]): string {
   )
 }
 
-function formatCsv(columns: string[], rows: unknown[][]): string {
-  const escape = (val: unknown) => {
-    const str = String(val ?? "")
-    return str.includes(",") || str.includes('"') || str.includes("\n")
-      ? `"${str.replace(/"/g, '""')}"`
-      : str
-  }
+function escape(val: unknown) {
+  const str = String(val ?? "")
+  return str.includes(",") || str.includes('"') || str.includes("\n")
+    ? `"${str.replaceAll('"', '""')}"`
+    : str
+}
 
+function formatCsv(columns: string[], rows: unknown[][]): string {
   const lines = [
     columns.map(escape).join(","),
     ...rows.map((row) => row.map(escape).join(",")),
@@ -80,11 +81,13 @@ function formatCsv(columns: string[], rows: unknown[][]): string {
 }
 
 async function main() {
-  const sql = parsed._.sql
+  const { sql } = parsed._
   const format = validateFormat(parsed.flags.format)
 
   if (!sql) {
+    // eslint-disable-next-line no-console
     console.error("Please provide a SQL query as argument.")
+    // eslint-disable-next-line no-console
     console.error(
       'Example: pnpm query "SELECT * FROM hive.test.products LIMIT 5"'
     )
@@ -115,14 +118,18 @@ async function main() {
           columnNames.map((col, i) => [col, (row as unknown[])[i]])
         )
       )
+      // eslint-disable-next-line no-console
       console.log(JSON.stringify(objects, null, 2))
     } else if (format === "csv") {
+      // eslint-disable-next-line no-console
       console.log(formatCsv(columnNames, rows as unknown[][]))
     } else {
+      // eslint-disable-next-line no-console
       console.log(formatTable(columnNames, rows as unknown[][]))
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
+    // eslint-disable-next-line no-console
     console.error(`Query failed: ${message}`)
     process.exit(1)
   }
@@ -136,10 +143,8 @@ async function getColumnNames(
   client: TrinoClient,
   sql: string
 ): Promise<string[]> {
-  // We need to get column metadata. The simplest approach:
-  // wrap in a LIMIT 0 subquery to get column info without re-executing.
-  // But that's fragile. Instead, let's use the stream API which gives us columns.
-  const response = await fetch(`${client.host}:${client.port}/v1/statement`, {
+  const { host, port } = client
+  const response = await fetch(`${host}:${port}/v1/statement`, {
     method: "POST",
     body: sql,
     headers: client.getHeaders(),
@@ -157,8 +162,8 @@ async function getColumnNames(
   // Cancel the query since we only needed column names
   if (result.nextUri) {
     // Follow until we get columns or it finishes
-    let nextUri = result.nextUri
-    let columns = result.columns
+    let { nextUri } = result
+    let { columns } = result
 
     while (!columns && nextUri) {
       // oxlint-disable-next-line no-await-in-loop
@@ -170,7 +175,7 @@ async function getColumnNames(
         columns?: { name: string }[]
         nextUri?: string
       }
-      columns = nextResult.columns
+      ;({ columns } = nextResult)
       nextUri = nextResult.nextUri ?? ""
     }
 
@@ -183,6 +188,7 @@ async function getColumnNames(
 try {
   await main()
 } catch (error) {
+  // eslint-disable-next-line no-console
   console.error(error)
   process.exit(1)
 }

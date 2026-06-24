@@ -1,6 +1,6 @@
 import fs from "node:fs/promises"
 
-import { TrinoClient } from "@lakeql/trino-client"
+import type { TrinoClient } from "@lakeql/trino-client"
 import { Files } from "files-sdk"
 import { s3 } from "files-sdk/s3"
 
@@ -16,19 +16,19 @@ export interface SeedConnector {
   type: ConnectorType
 
   /** Ensures the Trino schema exists (connector-specific DDL). */
-  ensureSchema(catalog: string, schema: string): Promise<void>
+  ensureSchema: (catalog: string, schema: string) => Promise<void>
 
   /**
    * Executes a full seed cycle for one definition:
    * Drop existing table → Delete existing data → Upload new data → Create table
    */
-  seed(props: {
+  seed: (props: {
     catalog: string
     schema: string
     table: string
     columns: ColumnDefinition[]
     parquetFilePath: string
-  }): Promise<void>
+  }) => Promise<void>
 }
 
 /**

@@ -27,7 +27,7 @@ export async function seedDefinition(
   connector: SeedConnector,
   options: SeedOptions
 ): Promise<void> {
-  const catalog = MINITRINO.trino.catalog
+  const { catalog } = MINITRINO.trino
   const { schema, table, columns, generate } = definition
 
   // Prepare tmpdir
@@ -51,7 +51,9 @@ export async function seedDefinition(
     })
   } finally {
     // Cleanup tmp files (best-effort)
-    await fs.rm(targetDir, { recursive: true, force: true }).catch(() => {})
+    await fs.rm(targetDir, { recursive: true, force: true }).catch(() => {
+      // intentionally empty — cleanup is best-effort
+    })
   }
 }
 
