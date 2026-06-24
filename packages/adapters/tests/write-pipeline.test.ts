@@ -44,13 +44,15 @@ const mockRecreateTablePair = vi.fn<() => Promise<void>>()
 
 vi.mock("../src/hive-table-manager", async () => ({
   createHiveTableManager: vi.fn<
-    () => {
+    (config: { client: unknown; bucket: string }) => {
       recreateTable: typeof mockRecreateTable
       recreateTablePair: typeof mockRecreateTablePair
+      buildExternalLocation: (path: string) => string
     }
-  >(() => ({
+  >((config) => ({
     recreateTable: mockRecreateTable,
     recreateTablePair: mockRecreateTablePair,
+    buildExternalLocation: (path: string) => `s3a://${config.bucket}/${path}`,
   })),
 }))
 
@@ -137,12 +139,12 @@ describe(executeWritePipeline, () => {
       expect(mockDeletePrefix).toHaveBeenCalledWith("warehouse/analytics/users")
     })
 
-    test("uploads to basePath/latest.parquet", async () => {
+    test("uploads to basePath/latest.parquet/ directory", async () => {
       await executeWritePipeline(createInput({ loadStrategy: "full_load" }))
 
       expect(mockUpload).toHaveBeenCalledWith(
         expect.any(Uint8Array),
-        "warehouse/analytics/users/latest.parquet"
+        "warehouse/analytics/users/latest.parquet/test-uuid-1234.parquet"
       )
     })
 
@@ -155,7 +157,7 @@ describe(executeWritePipeline, () => {
           schema: "analytics",
           tableName: "users",
           externalLocation:
-            "s3://my-bucket/warehouse/analytics/users/latest.parquet",
+            "s3a://my-bucket/warehouse/analytics/users/latest.parquet/",
           columns: expect.arrayContaining([
             { name: "name", type: "VARCHAR" },
             { name: "age", type: "BIGINT" },
@@ -194,7 +196,7 @@ describe(executeWritePipeline, () => {
       ])
     })
 
-    test("uploads to both latest.parquet and all.parquet/<partition_path>", async () => {
+    test("uploads to both latest.parquet/ and all.parquet/<partition_path>", async () => {
       await executeWritePipeline(
         createInput({ loadStrategy: "full_load_append" })
       )
@@ -202,7 +204,7 @@ describe(executeWritePipeline, () => {
       expect(mockUpload).toHaveBeenCalledTimes(2)
       expect(mockUpload).toHaveBeenCalledWith(
         expect.any(Uint8Array),
-        "warehouse/analytics/users/latest.parquet"
+        "warehouse/analytics/users/latest.parquet/test-uuid-1234.parquet"
       )
       // The all path includes partition path with our mocked UUID
       expect(mockUpload).toHaveBeenCalledWith(
@@ -222,12 +224,12 @@ describe(executeWritePipeline, () => {
         expect.objectContaining({
           tableName: "users_latest",
           externalLocation:
-            "s3://my-bucket/warehouse/analytics/users/latest.parquet",
+            "s3a://my-bucket/warehouse/analytics/users/latest.parquet/",
         }),
         expect.objectContaining({
           tableName: "users_all",
           externalLocation:
-            "s3://my-bucket/warehouse/analytics/users/all.parquet/",
+            "s3a://my-bucket/warehouse/analytics/users/all.parquet/",
         })
       )
     })
@@ -267,7 +269,7 @@ describe(executeWritePipeline, () => {
         expect.objectContaining({
           tableName: "users",
           externalLocation:
-            "s3://my-bucket/warehouse/analytics/users/all.parquet/",
+            "s3a://my-bucket/warehouse/analytics/users/all.parquet/",
         })
       )
     })
@@ -311,7 +313,7 @@ describe(executeWritePipeline, () => {
       expect(mockDeletePrefix).toHaveBeenCalledWith("warehouse/analytics/users")
       expect(mockUpload).toHaveBeenCalledWith(
         expect.any(Uint8Array),
-        "warehouse/analytics/users/latest.parquet"
+        "warehouse/analytics/users/latest.parquet/test-uuid-1234.parquet"
       )
     })
   })
