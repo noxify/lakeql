@@ -1,6 +1,9 @@
+import { Space_Grotesk } from "next/font/google"
 import Image from "next/image"
 
 import { PageContainer } from "@/components/page-container"
+
+const spaceGrotesk = Space_Grotesk({ subsets: ["latin"] })
 
 const poweredBy = [
   {
@@ -48,7 +51,10 @@ export function PoweredBySection() {
     <section className="">
       <PageContainer>
         <div className="mb-12 text-center">
-          <h2 className="text-3xl font-semibold tracking-tight">
+          <h2
+            className="text-3xl font-semibold tracking-tight"
+            style={{ fontFamily: spaceGrotesk.style.fontFamily }}
+          >
             Standing on the shoulders of giants
           </h2>
           <p className="text-muted-foreground mt-3 text-lg">

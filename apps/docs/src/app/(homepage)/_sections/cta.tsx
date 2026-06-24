@@ -1,9 +1,12 @@
 import { ArrowRight } from "lucide-react"
+import { Space_Grotesk } from "next/font/google"
 import Link from "next/link"
 
 import { GradientGridBackground } from "@/components/grid-background"
 import { PageContainer } from "@/components/page-container"
 import { buttonVariants } from "@/components/ui/button"
+
+const spaceGrotesk = Space_Grotesk({ subsets: ["latin"] })
 
 export function CtaSection() {
   return (
@@ -21,7 +24,10 @@ export function CtaSection() {
         fadeRadiusYPercent={80}
       >
         <PageContainer className="py-24 text-center">
-          <h2 className="text-3xl font-semibold tracking-tight">
+          <h2
+            className="text-3xl font-semibold tracking-tight"
+            style={{ fontFamily: spaceGrotesk.style.fontFamily }}
+          >
             Ready to dive deeper?
           </h2>
           <p className="text-muted-foreground mt-4 text-lg">

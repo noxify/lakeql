@@ -1,3 +1,5 @@
+import { Space_Grotesk } from "next/font/google"
+
 import { PageContainer } from "@/components/page-container"
 import {
   Card,
@@ -5,6 +7,8 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card"
+
+const spaceGrotesk = Space_Grotesk({ subsets: ["latin"] })
 
 const features = [
   {
@@ -44,7 +48,10 @@ export function FeaturesSection() {
     <section className="py-24">
       <PageContainer>
         <div className="mb-12 text-center">
-          <h2 className="text-3xl font-semibold tracking-tight">
+          <h2
+            className="text-3xl font-semibold tracking-tight"
+            style={{ fontFamily: spaceGrotesk.style.fontFamily }}
+          >
             Powerful features
           </h2>
           <p className="text-muted-foreground mt-3 text-lg">

@@ -1,9 +1,12 @@
 import dedent from "dedent"
+import { Space_Grotesk } from "next/font/google"
 import type { CommandProps } from "renoun"
 import { CodeBlock, MDX } from "renoun"
 
 import { CommandWrapper } from "@/components/mdx/command"
 import { PageContainer } from "@/components/page-container"
+
+const spaceGrotesk = Space_Grotesk({ subsets: ["latin"] })
 
 interface StepProps {
   title: string
@@ -51,7 +54,10 @@ export function GettingStartedSection() {
     <section className="py-24">
       <PageContainer>
         <div className="mb-12 text-center">
-          <h2 className="text-3xl font-semibold tracking-tight">
+          <h2
+            className="text-3xl font-semibold tracking-tight"
+            style={{ fontFamily: spaceGrotesk.style.fontFamily }}
+          >
             Getting started
           </h2>
           <p className="text-muted-foreground mt-3 text-lg">

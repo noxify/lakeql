@@ -1,5 +1,9 @@
+import { Space_Grotesk } from "next/font/google"
+
 import { GradientGridBackground } from "@/components/grid-background"
 import { PageContainer } from "@/components/page-container"
+
+const spaceGrotesk = Space_Grotesk({ subsets: ["latin"] })
 
 export function OpenSourceSection() {
   return (
@@ -17,7 +21,10 @@ export function OpenSourceSection() {
         fadeRadiusYPercent={80}
       >
         <PageContainer className="text-center">
-          <h2 className="text-3xl font-semibold tracking-tight">
+          <h2
+            className="text-3xl font-semibold tracking-tight"
+            style={{ fontFamily: spaceGrotesk.style.fontFamily }}
+          >
             Free &amp; open source
           </h2>
           <p className="text-muted-foreground mx-auto mt-4 max-w-2xl text-lg">
