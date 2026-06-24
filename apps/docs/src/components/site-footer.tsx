@@ -94,6 +94,10 @@ export function SiteFooter() {
               Renoun
             </a>
           </p>
+          <p className="text-muted-foreground/60 mt-3 text-xs">
+            Trino is a trademark of the Trino Software Foundation. All other
+            trademarks are the property of their respective owners.
+          </p>
         </div>
       </PageContainer>
     </footer>
