@@ -1,0 +1,127 @@
+{
+  "interactiveLogin": true,
+  "rotateRefreshToken": true,
+  "httpServer": {
+    "type": "NettyWrapper",
+    "ssl": {
+      "keyPassword": "changeit",
+      "keystorePassword": "changeit",
+      "keystoreFile": "/app/keystore.jks",
+      "keystoreType": "JKS"
+    }
+  },
+  "tokenCallbacks": [
+    {
+      "issuerId": "minitrino-issuer",
+      "tokenExpiry": 3600,
+      "requestMappings": [
+        {
+          "requestParam": "foo",
+          "match": "all",
+          "claims": {
+            "sub": "admin",
+            "aud": ["minitrino"],
+            "email": "admin@minitrino.com",
+            "groups": ["clusteradmins"]
+          }
+        }
+      ]
+    },
+    {
+      "issuerId": "minitrino-issuer",
+      "tokenExpiry": 3600,
+      "requestMappings": [
+        {
+          "requestParam": "foo",
+          "match": "all",
+          "claims": {
+            "sub": "cachesvc",
+            "aud": ["minitrino"],
+            "email": "cachesvc@minitrino.com",
+            "groups": ["clusteradmins"]
+          }
+        }
+      ]
+    },
+    {
+      "issuerId": "minitrino-issuer",
+      "tokenExpiry": 3600,
+      "requestMappings": [
+        {
+          "requestParam": "foo",
+          "match": "all",
+          "claims": {
+            "sub": "bob",
+            "aud": ["minitrino"],
+            "email": "bob@minitrino.com",
+            "groups": ["metadata-users"]
+          }
+        }
+      ]
+    },
+    {
+      "issuerId": "minitrino-issuer",
+      "tokenExpiry": 3600,
+      "requestMappings": [
+        {
+          "requestParam": "foo",
+          "match": "all",
+          "claims": {
+            "sub": "alice",
+            "aud": ["minitrino"],
+            "email": "alice@minitrino.com",
+            "groups": ["platform-users"]
+          }
+        }
+      ]
+    },
+    {
+      "issuerId": "minitrino-issuer",
+      "tokenExpiry": 3600,
+      "requestMappings": [
+        {
+          "requestParam": "foo",
+          "match": "all",
+          "claims": {
+            "sub": "metadata-user",
+            "aud": ["minitrino"],
+            "email": "metadata-user@minitrino.com",
+            "groups": ["metadata-users"]
+          }
+        }
+      ]
+    },
+    {
+      "issuerId": "minitrino-issuer",
+      "tokenExpiry": 3600,
+      "requestMappings": [
+        {
+          "requestParam": "foo",
+          "match": "all",
+          "claims": {
+            "sub": "platform-user",
+            "aud": ["minitrino"],
+            "email": "platform-user@minitrino.com",
+            "groups": ["platform-users"]
+          }
+        }
+      ]
+    },
+    {
+      "issuerId": "minitrino-issuer",
+      "tokenExpiry": 3600,
+      "requestMappings": [
+        {
+          "requestParam": "foo",
+          "match": "all",
+          "claims": {
+            "sub": "test",
+            "aud": ["minitrino"],
+            "email": "test@minitrino.com",
+            "groups": ["clusteradmins", "metadata-users", "platform-users"]
+          }
+        }
+      ]
+    }
+  ]
+}

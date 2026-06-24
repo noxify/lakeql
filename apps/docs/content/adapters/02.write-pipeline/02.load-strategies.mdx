@@ -1,0 +1,71 @@
+---
+title: Load Strategies
+navTitle: Load Strategies
+description: How full_load, full_load_append, and append strategies control data storage and table management.
+---
+
+The `loadStrategy` configuration determines how new data is stored and how Hive tables are managed. Each strategy provides a different tradeoff between data freshness, history retention, and storage costs.
+
+## Available strategies
+
+### full_load
+
+The default strategy. Replaces all existing data with the new records on every write.
+
+**Steps:**
+
+1. Delete all existing files at the base path
+2. Upload new Parquet file to `<basePath>/latest.parquet/<uuid>.parquet`
+3. Drop and recreate the Hive table pointing to the `latest.parquet/` directory
+
+**Use when:** You always want the table to reflect the most recent payload. No history is kept.
+
+**Table structure:**
+| Table | Location |
+|-------|----------|
+| `<tableName>` | `s3a://<bucket>/<basePath>/latest.parquet/` |
+
+### full_load_append
+
+Combines `full_load` with historical archiving. The latest data is always queryable, and all historical writes are preserved in an append-only directory.
+
+**Steps:**
+
+1. Upload Parquet file to `<basePath>/latest.parquet/<uuid>.parquet` (replaces previous)
+2. Upload the same Parquet file to `<basePath>/all.parquet/<partition_path>`
+3. Drop and recreate both `_latest` and `_all` Hive tables
+
+**Use when:** You need both a "current state" view and a historical log of all writes.
+
+**Table structure:**
+| Table | Location |
+|-------|----------|
+| `<tableName>_latest` | `s3a://<bucket>/<basePath>/latest.parquet/` |
+| `<tableName>_all` | `s3a://<bucket>/<basePath>/all.parquet/` |
+
+### append
+
+Only appends data. No "latest" snapshot is maintained.
+
+**Steps:**
+
+1. Upload Parquet file to `<basePath>/all.parquet/<partition_path>`
+2. Drop and recreate the Hive table pointing to the `all.parquet/` directory
+
+**Use when:** You're building a log or event stream where every write adds to the history.
+
+**Table structure:**
+| Table | Location |
+|-------|----------|
+| `<tableName>` | `s3a://<bucket>/<basePath>/all.parquet/` |
+
+## Partitioning interaction
+
+For `full_load`, partitioning configuration is ignored — data is always written as a single file in `latest.parquet/`.
+
+For `full_load_append` and `append`, the partition path within `all.parquet/` is determined by the [partitioning configuration](/docs/adapters/write-pipeline/partitioning).
+
+<Note>
+  The `full_load` strategy deletes the entire base path before uploading. Make
+  sure you don't share the `basePath` between multiple endpoints.
+</Note>

@@ -1,0 +1,86 @@
+---
+title: Storage Operations
+navTitle: Storage Operations
+description: Low-level S3/MinIO storage operations for uploading and managing Parquet files.
+---
+
+Storage operations provide the low-level interface for interacting with S3 or S3-compatible object storage. The write pipeline uses these internally, but they are exported for advanced use cases.
+
+## createStorageOperations
+
+Creates a storage operations instance backed by `files-sdk`. The adapter selection is based on `config.type`:
+
+- `"s3"` — reads credentials from `AWS_*` environment variables
+- `"minio"` — reads credentials from `MINIO_*` environment variables
+
+```ts
+import { createStorageOperations } from "@lakeql/adapters"
+
+const storage = createStorageOperations({
+  type: "minio",
+  bucket: "my-datalake",
+  endpoint: "http://localhost:9000",
+})
+```
+
+## Configuration
+
+<InterfaceReference
+  file="adapters/src/storage-operations"
+  name="StorageConfig"
+  mode="declaration"
+/>
+
+## Operations
+
+The returned object provides these methods:
+
+| Method                 | Description                                           |
+| ---------------------- | ----------------------------------------------------- |
+| `upload(buffer, path)` | Upload a `Uint8Array` to the given path in the bucket |
+| `deletePrefix(prefix)` | Delete all objects under the given prefix             |
+
+## Environment variables
+
+### S3
+
+| Variable                | Description              |
+| ----------------------- | ------------------------ |
+| `AWS_ACCESS_KEY_ID`     | AWS access key           |
+| `AWS_SECRET_ACCESS_KEY` | AWS secret key           |
+| `AWS_DEFAULT_REGION`    | Default region           |
+| `AWS_ENDPOINT_URL`      | Optional custom endpoint |
+
+### MinIO
+
+| Variable                  | Description      |
+| ------------------------- | ---------------- |
+| `MINIO_ACCESS_KEY_ID`     | MinIO access key |
+| `MINIO_SECRET_ACCESS_KEY` | MinIO secret key |
+
+<Note>
+  The `endpoint` field in the config is required for MinIO. For S3, it's
+  optional and defaults to the standard AWS endpoint for the region.
+</Note>
+
+## Error handling
+
+Storage errors are wrapped in a `StorageError` with a descriptive message including the operation and path:
+
+```ts
+import { StorageError } from "@lakeql/adapters"
+
+try {
+  await storage.upload(buffer, "path/to/file.parquet")
+} catch (error) {
+  if (error instanceof StorageError) {
+    console.error(error.message)
+    // "Storage upload failed for "path/to/file.parquet": The specified bucket does not exist"
+  }
+}
+```
+
+<InlineReference
+  file="adapters/src/storage-operations"
+  include={["StorageError"]}
+/>

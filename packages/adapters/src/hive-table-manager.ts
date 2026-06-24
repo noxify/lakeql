@@ -1,6 +1,12 @@
 import type { TrinoClient } from "@lakeql/trino-client"
 
 /**
+ * The S3 URI scheme required by Hive external table locations.
+ * Hive uses the Hadoop FileSystem which requires `s3a://`.
+ */
+const HIVE_S3_SCHEME = "s3a://"
+
+/**
  * Configuration for the Hive Table Manager.
  */
 export interface HiveTableManagerConfig {
@@ -46,6 +52,15 @@ export interface HiveTableManager {
     latestDefinition: HiveTableDefinition,
     allDefinition: HiveTableDefinition
   ) => Promise<void>
+
+  /**
+   * Builds a properly-formatted external location URI for Hive tables.
+   * Uses the `s3a://` scheme required by Hive's Hadoop FileSystem.
+   *
+   * @param path - The S3 object path (without bucket prefix or scheme)
+   * @returns The full URI, e.g. `s3a://my-bucket/path/to/data/`
+   */
+  buildExternalLocation: (path: string) => string
 }
 
 /**
@@ -58,11 +73,14 @@ export interface HiveTableManager {
  *   bucket: "my-datalake",
  * })
  *
+ * const location = manager.buildExternalLocation("warehouse/analytics/user_events/latest.parquet/")
+ * // => "s3a://my-datalake/warehouse/analytics/user_events/latest.parquet/"
+ *
  * await manager.recreateTable({
  *   catalog: "hive",
  *   schema: "analytics",
  *   tableName: "user_events",
- *   externalLocation: "s3://my-datalake/warehouse/analytics/user_events/latest.parquet",
+ *   externalLocation: location,
  *   columns: [
  *     { name: "event_id", type: "VARCHAR" },
  *     { name: "timestamp", type: "TIMESTAMP(3)" },
@@ -174,8 +192,13 @@ export function createHiveTableManager(
     }
   }
 
+  function buildExternalLocation(path: string): string {
+    return `${HIVE_S3_SCHEME}${config.bucket}/${path}`
+  }
+
   return {
     recreateTable,
     recreateTablePair,
+    buildExternalLocation,
   }
 }

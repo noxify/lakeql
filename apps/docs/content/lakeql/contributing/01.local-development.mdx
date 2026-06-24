@@ -1,0 +1,140 @@
+---
+title: Local Development
+description: Set up a local Trino/MinIO environment with test data for LakeQL development.
+---
+
+## Requirements
+
+- [uv](https://docs.astral.sh/uv/) — Python package manager (for minitrino)
+- [Docker](https://www.docker.com/) — container runtime
+- [pnpm](https://pnpm.io/) — Node.js package manager
+
+## Quick Start
+
+```bash
+# 1. Install dependencies
+uv sync
+pnpm install
+
+# 2. Start the local Trino cluster (Hive, MinIO, LDAP, OAuth2)
+pnpm mt:start
+
+# 3. Seed test data
+pnpm seed --all
+
+# 4. Verify
+pnpm query "SELECT count(*) FROM hive.test.products"
+```
+
+## Minitrino
+
+The local environment uses [minitrino](https://minitrino.readthedocs.io/) to provision a Trino cluster with all necessary modules. The minitrino library configuration is stored in `.minitrino/lib/` within the project root — every developer gets the same setup.
+
+### Commands
+
+| Command           | Description                                         |
+| ----------------- | --------------------------------------------------- |
+| `pnpm mt:start`   | Provision and start the cluster (inkl. MinIO proxy) |
+| `pnpm mt:restart` | Restart the cluster                                 |
+| `pnpm mt:stop`    | Stop the cluster (keep volumes)                     |
+| `pnpm mt:clean`   | Stop and remove everything                          |
+
+### MinIO S3 Proxy
+
+Minitrino only exposes the MinIO Console (port 9001) by default. The `mt:start` command automatically starts a lightweight proxy that makes the S3 API available on `localhost:9000` for local tooling.
+
+## Seeding Test Data
+
+The seed command generates Parquet files, uploads them to MinIO, and creates the corresponding Trino schemas and tables.
+
+### Commands
+
+| Command                         | Description                         |
+| ------------------------------- | ----------------------------------- |
+| `pnpm seed --all`               | Seed all definitions                |
+| `pnpm seed -d <name>`           | Seed a specific definition          |
+| `pnpm seed -d <name> -d <name>` | Seed multiple definitions           |
+| `pnpm seed --all --amount 500`  | Custom record count (default: 1000) |
+
+Each run is a full reset — existing table and data are replaced with freshly generated records.
+
+### Configuration
+
+Seed definitions are defined in `tooling/test-data/seed.config.ts`:
+
+```ts
+import { defineSeeds } from "./src/seed/config"
+import { simpleColumns, simpleGenerate } from "./src/datasets/simple"
+import { complexColumns, complexGenerate } from "./src/datasets/complex"
+
+export default defineSeeds([
+  {
+    name: "products",
+    schema: "test",
+    table: "products",
+    connector: "hive",
+    columns: simpleColumns,
+    generate: simpleGenerate,
+  },
+  {
+    name: "orders",
+    schema: "test",
+    table: "orders",
+    connector: "hive",
+    columns: complexColumns,
+    generate: complexGenerate,
+  },
+])
+```
+
+To add a custom dataset, define `columns` and `generate` inline or create a new file under `tooling/test-data/src/datasets/`.
+
+## Querying Trino
+
+A lightweight query tool is included for quick verification:
+
+```bash
+# Table output (default)
+pnpm query "SELECT * FROM hive.test.products LIMIT 5"
+
+# JSON output
+pnpm query "SELECT * FROM hive.test.orders LIMIT 3" -f json
+
+# CSV output
+pnpm query "SELECT count(*) FROM hive.test.products" -f csv
+```
+
+## Connection Details
+
+| Service       | URL                                 | Credentials                 |
+| ------------- | ----------------------------------- | --------------------------- |
+| Trino         | `http://localhost:8080`             | user: `admin`, no password  |
+| Trino UI      | `https://localhost:8443/ui`         | `admin@minitrino.com`       |
+| MinIO Console | `http://localhost:9001`             | `access-key` / `secret-key` |
+| MinIO S3 API  | `http://localhost:9000` (via proxy) | `access-key` / `secret-key` |
+
+<Note>
+  The Trino UI requires `https://` since the setup uses OAuth2. Make sure your
+  browser allows bypassing the `net::ERR_CERT_AUTHORITY_INVALID` error.
+</Note>
+
+## Default Users
+
+The local setup uses minitrino's default users for LDAP and OAuth:
+
+- [LDAP users](https://minitrino.readthedocs.io/en/latest/modules/security/ldap.html#default-usernames-and-passwords)
+- [OAuth2 principals](https://minitrino.readthedocs.io/en/latest/modules/security/oauth2.html#default-oauth2-principals)
+
+## Troubleshooting
+
+### Seed fails with "bucket does not exist"
+
+Ensure the MinIO proxy is running. It starts automatically with `pnpm mt:start`, but you can restart it manually with `pnpm mt:proxy`.
+
+### Seed fails with "401 Unauthorized"
+
+Trino uses user-only auth (no password) for local development. This should work out of the box with minitrino defaults.
+
+### Query fails with connection error
+
+Make sure minitrino is running: `pnpm mt:start`

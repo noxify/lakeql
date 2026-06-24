@@ -584,7 +584,6 @@ export async function executeWritePipeline(
       basePath,
       table,
       columns,
-      bucket,
     })
     return
   }
@@ -613,23 +612,26 @@ export async function executeWritePipeline(
       const allPath = `${basePath}/all.parquet/${flatPath}`
 
       if (loadStrategy === "full_load_append") {
-        const latestPath = `${basePath}/latest.parquet`
-        await storage.deletePrefix(`${basePath}/latest.parquet`)
-        await storage.upload(parquetBuffer, latestPath)
+        const latestDir = `${basePath}/latest.parquet`
+        const latestFile = `${latestDir}/${crypto.randomUUID()}.parquet`
+        await storage.deletePrefix(latestDir)
+        await storage.upload(parquetBuffer, latestFile)
         await storage.upload(parquetBuffer, allPath)
 
         const latestDef: HiveTableDefinition = {
           catalog: table.catalog,
           schema: table.schema,
           tableName: `${table.tableName}_latest`,
-          externalLocation: `s3://${bucket}/${basePath}/latest.parquet`,
+          externalLocation: hiveManager.buildExternalLocation(`${latestDir}/`),
           columns,
         }
         const allDef: HiveTableDefinition = {
           catalog: table.catalog,
           schema: table.schema,
           tableName: `${table.tableName}_all`,
-          externalLocation: `s3://${bucket}/${basePath}/all.parquet/`,
+          externalLocation: hiveManager.buildExternalLocation(
+            `${basePath}/all.parquet/`
+          ),
           columns,
         }
         await hiveManager.recreateTablePair(latestDef, allDef)
@@ -641,7 +643,9 @@ export async function executeWritePipeline(
           catalog: table.catalog,
           schema: table.schema,
           tableName: table.tableName,
-          externalLocation: `s3://${bucket}/${basePath}/all.parquet/`,
+          externalLocation: hiveManager.buildExternalLocation(
+            `${basePath}/all.parquet/`
+          ),
           columns,
         }
         await hiveManager.recreateTable(tableDef)
@@ -658,23 +662,26 @@ export async function executeWritePipeline(
       const allPath = `${basePath}/all.parquet/${partitionPath}`
 
       if (loadStrategy === "full_load_append") {
-        const latestPath = `${basePath}/latest.parquet`
-        await storage.deletePrefix(`${basePath}/latest.parquet`)
-        await storage.upload(parquetBuffer, latestPath)
+        const latestDir = `${basePath}/latest.parquet`
+        const latestFile = `${latestDir}/${crypto.randomUUID()}.parquet`
+        await storage.deletePrefix(latestDir)
+        await storage.upload(parquetBuffer, latestFile)
         await storage.upload(parquetBuffer, allPath)
 
         const latestDef: HiveTableDefinition = {
           catalog: table.catalog,
           schema: table.schema,
           tableName: `${table.tableName}_latest`,
-          externalLocation: `s3://${bucket}/${basePath}/latest.parquet`,
+          externalLocation: hiveManager.buildExternalLocation(`${latestDir}/`),
           columns,
         }
         const allDef: HiveTableDefinition = {
           catalog: table.catalog,
           schema: table.schema,
           tableName: `${table.tableName}_all`,
-          externalLocation: `s3://${bucket}/${basePath}/all.parquet/`,
+          externalLocation: hiveManager.buildExternalLocation(
+            `${basePath}/all.parquet/`
+          ),
           columns,
         }
         await hiveManager.recreateTablePair(latestDef, allDef)
@@ -686,7 +693,9 @@ export async function executeWritePipeline(
           catalog: table.catalog,
           schema: table.schema,
           tableName: table.tableName,
-          externalLocation: `s3://${bucket}/${basePath}/all.parquet/`,
+          externalLocation: hiveManager.buildExternalLocation(
+            `${basePath}/all.parquet/`
+          ),
           columns,
         }
         await hiveManager.recreateTable(tableDef)
@@ -714,22 +723,25 @@ export async function executeWritePipeline(
           records,
           jsonSchema: effectiveSchema,
         })
-        const latestPath = `${basePath}/latest.parquet`
-        await storage.deletePrefix(`${basePath}/latest.parquet`)
-        await storage.upload(latestParquet, latestPath)
+        const latestDir = `${basePath}/latest.parquet`
+        const latestFile = `${latestDir}/${crypto.randomUUID()}.parquet`
+        await storage.deletePrefix(latestDir)
+        await storage.upload(latestParquet, latestFile)
 
         const latestDef: HiveTableDefinition = {
           catalog: table.catalog,
           schema: table.schema,
           tableName: `${table.tableName}_latest`,
-          externalLocation: `s3://${bucket}/${basePath}/latest.parquet`,
+          externalLocation: hiveManager.buildExternalLocation(`${latestDir}/`),
           columns,
         }
         const allDef: HiveTableDefinition = {
           catalog: table.catalog,
           schema: table.schema,
           tableName: `${table.tableName}_all`,
-          externalLocation: `s3://${bucket}/${basePath}/all.parquet/`,
+          externalLocation: hiveManager.buildExternalLocation(
+            `${basePath}/all.parquet/`
+          ),
           columns,
         }
         await hiveManager.recreateTablePair(latestDef, allDef)
@@ -739,7 +751,9 @@ export async function executeWritePipeline(
           catalog: table.catalog,
           schema: table.schema,
           tableName: table.tableName,
-          externalLocation: `s3://${bucket}/${basePath}/all.parquet/`,
+          externalLocation: hiveManager.buildExternalLocation(
+            `${basePath}/all.parquet/`
+          ),
           columns,
         }
         await hiveManager.recreateTable(tableDef)
@@ -765,22 +779,25 @@ export async function executeWritePipeline(
           records,
           jsonSchema: effectiveSchema,
         })
-        const latestPath = `${basePath}/latest.parquet`
-        await storage.deletePrefix(`${basePath}/latest.parquet`)
-        await storage.upload(latestParquet, latestPath)
+        const latestDir = `${basePath}/latest.parquet`
+        const latestFile = `${latestDir}/${crypto.randomUUID()}.parquet`
+        await storage.deletePrefix(latestDir)
+        await storage.upload(latestParquet, latestFile)
 
         const latestDef: HiveTableDefinition = {
           catalog: table.catalog,
           schema: table.schema,
           tableName: `${table.tableName}_latest`,
-          externalLocation: `s3://${bucket}/${basePath}/latest.parquet`,
+          externalLocation: hiveManager.buildExternalLocation(`${latestDir}/`),
           columns,
         }
         const allDef: HiveTableDefinition = {
           catalog: table.catalog,
           schema: table.schema,
           tableName: `${table.tableName}_all`,
-          externalLocation: `s3://${bucket}/${basePath}/all.parquet/`,
+          externalLocation: hiveManager.buildExternalLocation(
+            `${basePath}/all.parquet/`
+          ),
           columns,
         }
         await hiveManager.recreateTablePair(latestDef, allDef)
@@ -790,7 +807,9 @@ export async function executeWritePipeline(
           catalog: table.catalog,
           schema: table.schema,
           tableName: table.tableName,
-          externalLocation: `s3://${bucket}/${basePath}/all.parquet/`,
+          externalLocation: hiveManager.buildExternalLocation(
+            `${basePath}/all.parquet/`
+          ),
           columns,
         }
         await hiveManager.recreateTable(tableDef)
@@ -811,36 +830,28 @@ interface StrategyContext {
   basePath: string
   table: { catalog: string; schema: string; tableName: string }
   columns: { name: string; type: string }[]
-  bucket: string
 }
 
 /**
- * full_load strategy: delete prefix → upload latest.parquet → recreate table
+ * full_load strategy: delete prefix → upload latest.parquet/ → recreate table
  */
 async function executeFullLoad(ctx: StrategyContext): Promise<void> {
-  const {
-    storage,
-    hiveManager,
-    parquetBuffer,
-    basePath,
-    table,
-    columns,
-    bucket,
-  } = ctx
-  const latestPath = `${basePath}/latest.parquet`
+  const { storage, hiveManager, parquetBuffer, basePath, table, columns } = ctx
+  const latestDir = `${basePath}/latest.parquet`
+  const latestFile = `${latestDir}/${crypto.randomUUID()}.parquet`
 
   // Step 2a: Delete existing data at prefix (fail-fast: stops before upload)
   await storage.deletePrefix(basePath)
 
-  // Step 2b: Upload new Parquet file (fail-fast: stops before DDL)
-  await storage.upload(parquetBuffer, latestPath)
+  // Step 2b: Upload new Parquet file into the latest.parquet/ directory
+  await storage.upload(parquetBuffer, latestFile)
 
-  // Step 3: Recreate Hive table pointing to latest.parquet
+  // Step 3: Recreate Hive table pointing to latest.parquet/ directory
   const tableDefinition: HiveTableDefinition = {
     catalog: table.catalog,
     schema: table.schema,
     tableName: table.tableName,
-    externalLocation: `s3://${bucket}/${latestPath}`,
+    externalLocation: hiveManager.buildExternalLocation(`${latestDir}/`),
     columns,
   }
 

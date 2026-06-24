@@ -35,13 +35,15 @@ const mockRecreateTablePair =
 
 vi.mock("../src/hive-table-manager", async () => ({
   createHiveTableManager: vi.fn<
-    () => {
+    (config: { client: unknown; bucket: string }) => {
       recreateTable: typeof mockRecreateTable
       recreateTablePair: typeof mockRecreateTablePair
+      buildExternalLocation: (path: string) => string
     }
-  >(() => ({
+  >((config) => ({
     recreateTable: mockRecreateTable,
     recreateTablePair: mockRecreateTablePair,
+    buildExternalLocation: (path: string) => `s3a://${config.bucket}/${path}`,
   })),
 }))
 
@@ -135,7 +137,7 @@ describe("executeWritePipeline — partitioning modes", () => {
         expect.objectContaining({
           tableName: "users",
           externalLocation:
-            "s3://my-bucket/warehouse/analytics/users/all.parquet/",
+            "s3a://my-bucket/warehouse/analytics/users/all.parquet/",
           columns: expect.arrayContaining([
             { name: "name", type: "VARCHAR" },
             { name: "age", type: "BIGINT" },
@@ -158,7 +160,7 @@ describe("executeWritePipeline — partitioning modes", () => {
   })
 
   describe("disabled mode × full_load_append", () => {
-    test("uploads to both latest.parquet and flat all.parquet path", async () => {
+    test("uploads to both latest.parquet/ and flat all.parquet path", async () => {
       await executeWritePipeline(
         createInput({ loadStrategy: "full_load_append", partitioning: false })
       )
@@ -166,7 +168,7 @@ describe("executeWritePipeline — partitioning modes", () => {
       expect(mockUpload).toHaveBeenCalledTimes(2)
       expect(mockUpload).toHaveBeenCalledWith(
         expect.any(Uint8Array),
-        "warehouse/analytics/users/latest.parquet"
+        "warehouse/analytics/users/latest.parquet/test-uuid-1234.parquet"
       )
       expect(mockUpload).toHaveBeenCalledWith(
         expect.any(Uint8Array),
@@ -207,12 +209,12 @@ describe("executeWritePipeline — partitioning modes", () => {
         expect.objectContaining({
           tableName: "users_latest",
           externalLocation:
-            "s3://my-bucket/warehouse/analytics/users/latest.parquet",
+            "s3a://my-bucket/warehouse/analytics/users/latest.parquet/",
         }),
         expect.objectContaining({
           tableName: "users_all",
           externalLocation:
-            "s3://my-bucket/warehouse/analytics/users/all.parquet/",
+            "s3a://my-bucket/warehouse/analytics/users/all.parquet/",
         })
       )
     })
@@ -291,14 +293,14 @@ describe("executeWritePipeline — partitioning modes", () => {
         expect.objectContaining({
           tableName: "users",
           externalLocation:
-            "s3://my-bucket/warehouse/analytics/users/all.parquet/",
+            "s3a://my-bucket/warehouse/analytics/users/all.parquet/",
         })
       )
     })
   })
 
   describe("timestamp mode × full_load_append", () => {
-    test("uploads to both latest.parquet and partitioned all.parquet path", async () => {
+    test("uploads to both latest.parquet/ and partitioned all.parquet path", async () => {
       await executeWritePipeline(
         createInput({ loadStrategy: "full_load_append", partitioning: true })
       )
@@ -306,7 +308,7 @@ describe("executeWritePipeline — partitioning modes", () => {
       expect(mockUpload).toHaveBeenCalledTimes(2)
       expect(mockUpload).toHaveBeenCalledWith(
         expect.any(Uint8Array),
-        "warehouse/analytics/users/latest.parquet"
+        "warehouse/analytics/users/latest.parquet/test-uuid-1234.parquet"
       )
       expect(mockUpload).toHaveBeenCalledWith(
         expect.any(Uint8Array),
@@ -435,7 +437,7 @@ describe("executeWritePipeline — partitioning modes", () => {
         expect.objectContaining({
           tableName: "users",
           externalLocation:
-            "s3://my-bucket/warehouse/analytics/users/all.parquet/",
+            "s3a://my-bucket/warehouse/analytics/users/all.parquet/",
         })
       )
     })
@@ -462,7 +464,7 @@ describe("executeWritePipeline — partitioning modes", () => {
       expect(mockDeletePrefix).toHaveBeenCalledWith("warehouse/analytics/users")
       expect(mockUpload).toHaveBeenCalledWith(
         expect.any(Uint8Array),
-        "warehouse/analytics/users/latest.parquet"
+        "warehouse/analytics/users/latest.parquet/test-uuid-1234.parquet"
       )
       expect(mockRecreateTable).toHaveBeenCalledOnce()
     })
@@ -475,7 +477,7 @@ describe("executeWritePipeline — partitioning modes", () => {
       expect(mockDeletePrefix).toHaveBeenCalledWith("warehouse/analytics/users")
       expect(mockUpload).toHaveBeenCalledWith(
         expect.any(Uint8Array),
-        "warehouse/analytics/users/latest.parquet"
+        "warehouse/analytics/users/latest.parquet/test-uuid-1234.parquet"
       )
       expect(mockRecreateTable).toHaveBeenCalledOnce()
     })
@@ -597,7 +599,7 @@ describe("executeWritePipeline — partitioning modes", () => {
         expect.objectContaining({
           tableName: "users",
           externalLocation:
-            "s3://my-bucket/warehouse/analytics/users/all.parquet/",
+            "s3a://my-bucket/warehouse/analytics/users/all.parquet/",
         })
       )
     })

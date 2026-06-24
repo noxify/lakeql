@@ -1,0 +1,107 @@
+---
+title: Partitioning
+navTitle: Partitioning
+description: How data is partitioned into Hive-style paths within the all.parquet/ directory.
+---
+
+Partitioning controls how data is organized within the `all.parquet/` directory for `full_load_append` and `append` strategies. It determines the subdirectory structure using Hive-style `key=value` paths.
+
+<Note>
+  Partitioning only applies to `full_load_append` and `append` strategies. For
+  `full_load`, partitioning is ignored.
+</Note>
+
+## Partitioning modes
+
+The `partitioning` config value determines the mode:
+
+| Value                   | Mode      | Description                                               |
+| ----------------------- | --------- | --------------------------------------------------------- |
+| `true` (default)        | Timestamp | Partitions by write timestamp                             |
+| `false`                 | Disabled  | Flat file layout (UUID-only paths)                        |
+| `"fieldName"`           | Field     | Partitions by a record field's date value                 |
+| `"field:component/..."` | Custom    | Multi-segment partitioning with date component extraction |
+
+## Timestamp mode
+
+When `partitioning: true` (the default), each write is partitioned by the current timestamp. The pipeline automatically injects `load_timestamp`, `load_timestamp_year`, and `load_timestamp_month` columns into the records and schema.
+
+```
+all.parquet/year=2025/month=01/day=15/<uuid>.parquet
+```
+
+The `partitioningFormat` controls granularity:
+
+| Format             | Example path                               |
+| ------------------ | ------------------------------------------ |
+| `"year"`           | `year=2025/<uuid>.parquet`                 |
+| `"year/month"`     | `year=2025/month=01/<uuid>.parquet`        |
+| `"year/month/day"` | `year=2025/month=01/day=15/<uuid>.parquet` |
+
+## Disabled mode
+
+When `partitioning: false`, files are placed directly in `all.parquet/` with a flat UUID-based path:
+
+```
+all.parquet/<uuid>.parquet
+```
+
+## Field mode
+
+When `partitioning` is a simple field name (e.g. `"event_date"`), the pipeline extracts the date value from each record's field and partitions accordingly:
+
+```json
+{ "partitioning": "event_date", "partitioningFormat": "year/month" }
+```
+
+For a record with `event_date: "2025-03-20"`:
+
+```
+all.parquet/year=2025/month=03/<uuid>.parquet
+```
+
+Records are grouped by their partition key — records with the same partition path are written to the same Parquet file.
+
+<Warning>
+  If a record is missing the partition field, has a null value, or contains an
+  unparseable date, the pipeline throws a `PartitionFieldError`.
+</Warning>
+
+## Custom mode
+
+Custom partitioning allows multi-segment paths with field extraction and date component parsing. The format uses `/` to separate segments and `:` to specify a date component:
+
+```json
+{ "partitioning": "region/event_date:year/event_date:month" }
+```
+
+For a record with `region: "eu-west-1"` and `event_date: "2025-03-20"`:
+
+```
+all.parquet/region=eu-west-1/year=2025/month=03/<uuid>.parquet
+```
+
+### Segment types
+
+| Segment            | Description              | Example output     |
+| ------------------ | ------------------------ | ------------------ |
+| `fieldName`        | Raw field value          | `customer_id=acme` |
+| `fieldName:year`   | Year from ISO date       | `year=2025`        |
+| `fieldName:month`  | Month from ISO date      | `month=03`         |
+| `fieldName:day`    | Day from ISO date        | `day=20`           |
+| `fieldName:hour`   | Hour from ISO datetime   | `hour=14`          |
+| `fieldName:minute` | Minute from ISO datetime | `minute=30`        |
+| `fieldName:second` | Second from ISO datetime | `second=45`        |
+
+## Related types
+
+<InterfaceReference
+  file="adapters/src/write-pipeline"
+  name="ResolvedPartitioning"
+  mode="declaration"
+/>
+
+<InlineReference
+  file="adapters/src/write-pipeline"
+  include={["PartitionMode", "PartitionSegment", "PartitionFieldError"]}
+/>

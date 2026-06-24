@@ -51,7 +51,7 @@ export function createTrinoHiveS3Adapter(
 
   function buildS3Path(schema: string, table: string): string {
     const parts = [bucket, prefix, schema, table].filter(Boolean)
-    return `s3://${parts.join("/")}`
+    return `s3a://${parts.join("/")}`
   }
 
   return {

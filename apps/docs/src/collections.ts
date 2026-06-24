@@ -11,6 +11,7 @@ export const availableCollections = [
   "lakeql",
   "cli",
   "api",
+  "adapters",
   "query-builder",
   "trino-client",
 ] as const

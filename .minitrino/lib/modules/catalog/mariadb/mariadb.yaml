@@ -1,0 +1,25 @@
+---
+services:
+  minitrino:
+    volumes:
+      - ./modules/catalog/mariadb/resources/cluster/mariadb.properties:/mnt/etc/catalog/mariadb.properties:ro
+
+  mariadb:
+    image: mariadb:${MARIADB_VER}
+    container_name: mariadb-${CLUSTER_NAME}
+    env_file:
+      - ./modules/catalog/mariadb/resources/mariadb/mariadb.env
+    ports:
+      - ${__PORT_MARIA_DB}:3306
+    volumes:
+      - mariadb-data:/var/lib/mysql
+      - ./modules/catalog/mariadb/resources/mariadb/create-minitrino-db.sql:/docker-entrypoint-initdb.d/create-minitrino-db.sql
+    labels:
+      - org.minitrino.root=true
+      - org.minitrino.module.catalog.mariadb=true
+
+volumes:
+  mariadb-data:
+    labels:
+      - org.minitrino.root=true
+      - org.minitrino.module.catalog.mariadb=true

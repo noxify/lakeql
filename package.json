@@ -46,10 +46,14 @@
     "ci:publish": "pnpm build:pkg && pnpm publish -r --access public --publish-branch main --provenance && pnpm changeset tag",
     "ci:version": "pnpm changeset version && pnpm install --no-frozen-lockfile && pnpm format:fix && git add .",
     "with-env": "dotenv -e ./.env --",
-    "mt:start": "uv run minitrino -v provision -m hive -m minio -m ldap -m oauth2",
-    "mt:restart": "uv run minitrino restart",
-    "mt:stop": "uv run minitrino down --keep",
-    "mt:clean": "uv run minitrino down"
+    "mt:start": "uv run minitrino -v --env LIB_PATH=.minitrino/lib provision -m hive -m minio -m ldap -m oauth2 && docker compose -f docker-compose.minitrino-override.yaml up -d",
+    "mt:restart": "uv run minitrino --env LIB_PATH=.minitrino/lib restart && docker compose -f docker-compose.minitrino-override.yaml up -d",
+    "mt:stop": "docker compose -f docker-compose.minitrino-override.yaml down && uv run minitrino --env LIB_PATH=.minitrino/lib down --keep",
+    "mt:clean": "docker compose -f docker-compose.minitrino-override.yaml down && uv run minitrino --env LIB_PATH=.minitrino/lib down",
+    "mt:proxy": "docker compose -f docker-compose.minitrino-override.yaml up -d",
+    "mt:proxy:stop": "docker compose -f docker-compose.minitrino-override.yaml down",
+    "query": "pnpm -F test-data query",
+    "seed": "pnpm -F test-data seed"
   },
   "devDependencies": {
     "@changesets/cli": "2.31.0",

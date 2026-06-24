@@ -1,0 +1,31 @@
+---
+services:
+  minitrino:
+    volumes:
+      - ./modules/catalog/elasticsearch/resources/cluster/elasticsearch.properties:/mnt/etc/catalog/elasticsearch.properties:ro
+      - ./modules/catalog/elasticsearch/resources/cluster/bootstrap-es.sh:/mnt/bootstrap/elasticsearch/bootstrap-es.sh:ro
+
+  elasticsearch:
+    image: elasticsearch:${ELASTICSEARCH_VER}
+    container_name: elasticsearch-${CLUSTER_NAME}
+    environment:
+      discovery.type: single-node
+      bootstrap.memory_lock: true
+      network.host: 0.0.0.0
+      network.bind_host: 0.0.0.0
+      xpack.security.enabled: false
+      ES_JAVA_OPTS: -Xms256m -Xmx256m
+    expose:
+      - 9200
+      - 9300
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    labels:
+      - org.minitrino.root=true
+      - org.minitrino.module.catalog.elasticsearch=true
+
+volumes:
+  elasticsearch-data:
+    labels:
+      - org.minitrino.root=true
+      - org.minitrino.module.catalog.elasticsearch=true

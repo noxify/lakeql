@@ -1,0 +1,16 @@
+---
+services:
+  minitrino:
+    environment:
+      RESULTS_CACHE_CONFIG_PROPERTIES: |-
+        results-cache.enabled=true
+        results-cache.s3.endpoint=http://minio:9000
+        results-cache.s3.aws-access-key=access-key
+        results-cache.s3.aws-secret-key=secret-key
+        results-cache.s3.bucket=minitrino
+        results-cache.s3.region=us-east-1
+        results-cache.s3.path-style-access=true
+        results-cache.s3.prefix=sep-results-cache
+    labels:
+      - org.minitrino.root=true
+      - org.minitrino.module.admin.results-cache=true

@@ -1,0 +1,19 @@
+# Override for minitrino to expose MinIO S3 API (port 9000) for local
+# seed commands and tooling.
+#
+# Usage: automatically applied via mt:start / mt:restart scripts.
+
+services:
+  minio-s3-proxy:
+    image: alpine/socat:latest
+    container_name: minio-s3-proxy
+    command: TCP-LISTEN:9000,fork,reuseaddr TCP:minio-default:9000
+    ports:
+      - "9000:9000"
+    networks:
+      - minitrino_default
+    restart: unless-stopped
+
+networks:
+  minitrino_default:
+    external: true

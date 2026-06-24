@@ -1,0 +1,32 @@
+---
+services:
+  minitrino:
+    volumes:
+      - ./modules/catalog/iceberg/resources/cluster/iceberg.properties:/mnt/etc/catalog/iceberg.properties:ro
+      - ./modules/catalog/iceberg/resources/cluster/create-schema.sh:/mnt/bootstrap/iceberg/create-schema.sh:ro
+      - ./modules/catalog/iceberg/resources/cluster/458-native-fs-workaround.sh:/mnt/bootstrap/iceberg/458-native-fs-workaround.sh:ro
+
+  iceberg-rest:
+    image: tabulario/iceberg-rest:${ICEBERG_REST_VER}
+    container_name: iceberg-rest-${CLUSTER_NAME}
+    environment:
+      AWS_ACCESS_KEY_ID: access-key
+      AWS_SECRET_ACCESS_KEY: secret-key
+      AWS_REGION: us-east-1
+      CATALOG_URI: jdbc:sqlite:/home/iceberg/iceberg.db
+      CATALOG_WAREHOUSE: s3://minitrino/iceberg/
+      CATALOG_IO__IMPL: org.apache.iceberg.aws.s3.S3FileIO
+      CATALOG_S3_ENDPOINT: http://s3.us-east-1.minio.com:9000
+    ports:
+      - ${__PORT_ICEBERG_REST_METASTORE}:8181
+    volumes:
+      - iceberg-metadata:/home/iceberg
+    labels:
+      - org.minitrino.root=true
+      - org.minitrino.module.catalog.iceberg=true
+
+volumes:
+  iceberg-metadata:
+    labels:
+      - org.minitrino.root=true
+      - org.minitrino.module.catalog.iceberg=true
