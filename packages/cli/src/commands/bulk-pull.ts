@@ -318,7 +318,7 @@ export async function executeBulkPull(options: BulkPullOptions): Promise<void> {
                         ({ itemName, itemKind, error }) => {
                           const rootMessage =
                             getRootCauseMessage(error) || error.message
-                          return `${catalog}/${entry.schema} - ${itemName} (${itemKind}): ${rootMessage}`
+                          return `${itemName} (${itemKind}): ${rootMessage}`
                         }
                       )
 
@@ -327,11 +327,8 @@ export async function executeBulkPull(options: BulkPullOptions): Promise<void> {
                         throw new Error("Failed to collect error information")
                       }
 
-                      const itemWord =
-                        failedItems.length === 1 ? "item" : "items"
-                      const pullSummary = `${completed}/${itemCount} item(s) pulled`
                       throw new CliError(
-                        `Failed to pull ${failedItems.length} ${itemWord} in bulk (${pullSummary}).\nFailed items:\n  - ${failureDetails.join("\n  - ")}`,
+                        `${catalog}/${entry.schema} — ${completed}/${itemCount} item(s) pulled.\nFailed items:\n  - ${failureDetails.join("\n  - ")}`,
                         {
                           code: "BULK_PULL_PARTIAL_FAILURE",
                           cause: firstError,
