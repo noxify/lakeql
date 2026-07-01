@@ -1,5 +1,11 @@
 # @lakeql/file-generator
 
+## 0.1.12
+
+### Patch Changes
+
+- e0329fb: Fix query schema generation so `transformFields` no longer emits duplicate object keys for repeated mappings, and type generated empty `transformFields`/`dateFields` constants explicitly to avoid TypeScript inference errors.
+
 ## 0.1.11
 
 ### Patch Changes
