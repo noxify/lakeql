@@ -1,5 +1,12 @@
 # @lakeql/cli
 
+## 0.7.6
+
+### Patch Changes
+
+- Updated dependencies [e0329fb]
+  - @lakeql/file-generator@0.1.12
+
 ## 0.7.5
 
 ### Patch Changes
