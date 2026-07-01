@@ -246,6 +246,12 @@ export async function executeBulkPull(options: BulkPullOptions): Promise<void> {
                       })) ?? []),
                     ]
 
+                    const failedItems: Array<{
+                      itemName: string
+                      itemKind: "tables" | "views"
+                      error: Error
+                    }> = []
+
                     const worker = async () => {
                       while (queue.length > 0) {
                         const nextItem = queue.shift()
@@ -263,6 +269,12 @@ export async function executeBulkPull(options: BulkPullOptions): Promise<void> {
                             nextItem.itemKind
                           )
                           completed += 1
+                        } catch (error) {
+                          failedItems.push({
+                            itemName: nextItem.itemName,
+                            itemKind: nextItem.itemKind,
+                            error: error instanceof Error ? error : new Error(String(error)),
+                          })
                         } finally {
                           activeItems.delete(nextItem.itemName)
                           updateCompactOutput()
@@ -273,6 +285,27 @@ export async function executeBulkPull(options: BulkPullOptions): Promise<void> {
                     await Promise.all(
                       Array.from({ length: parallelism }, () => worker())
                     )
+
+                    if (failedItems.length > 0) {
+                      const failureDetails = failedItems.flatMap(
+                        ({ itemName, itemKind, error }) => [
+                          `  - ${catalog}.${entry.schema}.${itemName} (${itemKind})`,
+                          `    Error: ${error.message}`,
+                        ]
+                      )
+
+                      throw new CliError(
+                        `Failed to pull ${failedItems.length} item(s) in bulk.`,
+                        {
+                          code: "BULK_PULL_PARTIAL_FAILURE",
+                          details: [
+                            `Failed items in ${catalog}/${entry.schema}:`,
+                            ...failureDetails,
+                          ],
+                          cause: failedItems[0].error,
+                        }
+                      )
+                    }
 
                     subtask.output = `Completed ${completed}/${itemCount}`
                     subtask.title = `${catalog}/${entry.schema} — ${itemCount} item(s) pulled`
