@@ -290,11 +290,9 @@ export async function executeBulkPull(options: BulkPullOptions): Promise<void> {
                     )
 
                     if (failedItems.length > 0) {
-                      const failureDetails = failedItems.flatMap(
-                        ({ itemName, itemKind, error }) => [
-                          `  - ${catalog}.${entry.schema}.${itemName} (${itemKind})`,
-                          `    Error: ${error.message}`,
-                        ]
+                      const failureDetails = failedItems.map(
+                        ({ itemName, itemKind, error }) =>
+                          `${catalog}/${entry.schema} - ${itemName} (${itemKind}): ${error.message}`
                       )
 
                       const firstError = failedItems[0]?.error
@@ -303,13 +301,9 @@ export async function executeBulkPull(options: BulkPullOptions): Promise<void> {
                       }
 
                       throw new CliError(
-                        `Failed to pull ${failedItems.length} item(s) in bulk.`,
+                        `Failed to pull ${failedItems.length} item(s) in bulk.\nFailed items:\n  - ${failureDetails.join("\n  - ")}`,
                         {
                           code: "BULK_PULL_PARTIAL_FAILURE",
-                          details: [
-                            `Failed items in ${catalog}/${entry.schema}:`,
-                            ...failureDetails,
-                          ],
                           cause: firstError,
                         }
                       )
