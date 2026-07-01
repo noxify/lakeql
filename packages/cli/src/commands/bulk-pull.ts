@@ -20,6 +20,30 @@ import { executePull } from "./pull-action"
 const LARGE_BULK_ENTRY_THRESHOLD = 10
 const MAX_ACTIVE_PREVIEW = 5
 
+function getRootCauseMessage(error: unknown): string | undefined {
+  let current: unknown = error
+  let lastMessage: string | undefined
+
+  for (let i = 0; i < 10; i += 1) {
+    if (current instanceof Error) {
+      if (current.message) {
+        lastMessage = current.message
+      }
+      current = (current as { cause?: unknown }).cause
+    } else if (typeof current === "object" && current !== null) {
+      const msg = (current as { message?: unknown }).message
+      if (typeof msg === "string") {
+        lastMessage = msg
+      }
+      current = (current as { cause?: unknown }).cause
+    } else {
+      break
+    }
+  }
+
+  return lastMessage
+}
+
 function createConcurrencyLimiter(maxConcurrent: number) {
   let activeCount = 0
   const queue: (() => void)[] = []
@@ -291,8 +315,11 @@ export async function executeBulkPull(options: BulkPullOptions): Promise<void> {
 
                     if (failedItems.length > 0) {
                       const failureDetails = failedItems.map(
-                        ({ itemName, itemKind, error }) =>
-                          `${catalog}/${entry.schema} - ${itemName} (${itemKind}): ${error.message}`
+                        ({ itemName, itemKind, error }) => {
+                          const rootMessage =
+                            getRootCauseMessage(error) || error.message
+                          return `${catalog}/${entry.schema} - ${itemName} (${itemKind}): ${rootMessage}`
+                        }
                       )
 
                       const firstError = failedItems[0]?.error
@@ -300,8 +327,11 @@ export async function executeBulkPull(options: BulkPullOptions): Promise<void> {
                         throw new Error("Failed to collect error information")
                       }
 
+                      const itemWord =
+                        failedItems.length === 1 ? "item" : "items"
+                      const pullSummary = `${completed}/${itemCount} item(s) pulled`
                       throw new CliError(
-                        `Failed to pull ${failedItems.length} item(s) in bulk.\nFailed items:\n  - ${failureDetails.join("\n  - ")}`,
+                        `Failed to pull ${failedItems.length} ${itemWord} in bulk (${pullSummary}).\nFailed items:\n  - ${failureDetails.join("\n  - ")}`,
                         {
                           code: "BULK_PULL_PARTIAL_FAILURE",
                           cause: firstError,
