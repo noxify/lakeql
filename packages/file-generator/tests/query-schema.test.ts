@@ -1,6 +1,7 @@
 import { parseColumns } from "@lakeql/column-parser"
 import { generateModel } from "@lakeql/schema-generator/graphql-schema"
 import { generateJsonSchema } from "@lakeql/schema-generator/json-schema"
+import type { JSONSchema7 } from "json-schema"
 import { describe, expect, test } from "vitest"
 
 import { generateCode } from "../src"
@@ -236,8 +237,10 @@ describe("query-schema file generator", () => {
 
     test("generates transformFields and dateFields constants", async () => {
       const { text: code } = await buildSimpleQueryCode()
-      expect(code).toContain("const transformFields = {}")
-      expect(code).toContain("const dateFields = []")
+      expect(code).toContain(
+        "const transformFields: Record<string, string> = {}"
+      )
+      expect(code).toContain("const dateFields: string[] = [")
     })
 
     test("generates queryFields with queryName", async () => {
@@ -263,7 +266,7 @@ describe("query-schema file generator", () => {
       const { text: code } = await buildUserQueryCode()
       expect(code).toContain('"createdAt"')
       expect(code).toContain('"updatedAt"')
-      expect(code).toContain("const dateFields = [")
+      expect(code).toContain("const dateFields: string[] = [")
     })
 
     test("generates queryFields with correct queryName", async () => {
@@ -284,6 +287,128 @@ describe("query-schema file generator", () => {
       expect(code).toContain('builder.objectRef<UserInterface>("User")')
       expect(code).toContain(
         'builder.objectRef<ConnectionInterface<UserInterface>>("UserConnection")'
+      )
+    })
+
+    test("deduplicates transform fields with the same key", async () => {
+      const parsedColumns = parseColumns([
+        { description: "", extra: "", name: "fullName", type: "varchar" },
+      ])
+
+      const jsonSchema = generateJsonSchema(parsedColumns)
+
+      const models = generateModel({
+        isRoot: true,
+        models: {},
+        name: "User",
+        source: jsonSchema,
+      })
+
+      const generatedFactoryCode = generateQuerySchema({
+        dateTimeFields: [],
+        filterFields: [],
+        filterTypes: [],
+        models,
+        queryName: "users",
+        transformFields: [
+          ["full_name", "fullName"],
+          ["full_name", "fullName"],
+        ],
+      })
+
+      const generatedCodeFromFactory = await generateCode({
+        fileName: "vitest_query-schema.ts",
+        nodes: generatedFactoryCode,
+      })
+
+      const occurrences =
+        generatedCodeFromFactory.text.match(/full_name:/gu)?.length ?? 0
+
+      expect(occurrences).toBe(1)
+    })
+
+    test("throws on conflicting transform field mappings", () => {
+      const jsonSchema: JSONSchema7 = {
+        additionalProperties: false,
+        properties: {
+          fieldName: {
+            type: "string",
+          },
+        },
+        type: "object",
+      }
+
+      const models = generateModel({
+        isRoot: true,
+        models: {},
+        name: "Conflicting",
+        source: jsonSchema,
+      })
+
+      expect(() =>
+        generateQuerySchema({
+          dateTimeFields: [],
+          filterFields: [],
+          filterTypes: [],
+          models,
+          queryName: "conflicting",
+          transformFields: [
+            ["full_name", "fullName"],
+            ["full_name", "fullName2"],
+          ],
+        })
+      ).toThrow(
+        'Conflicting transform field mapping for "full_name": "fullName" vs "fullName2".'
+      )
+    })
+
+    test("types empty dateFields as string array", async () => {
+      const jsonSchema: JSONSchema7 = {
+        additionalProperties: false,
+        properties: {
+          fieldName: {
+            type: "string",
+          },
+        },
+        type: "object",
+      }
+
+      const models = generateModel({
+        isRoot: true,
+        models: {},
+        name: "NoDates",
+        source: jsonSchema,
+      })
+
+      const mainModel = Object.values(models).find((ele) => ele.root === true)
+
+      const filterFields = mainModel?.fields
+        ? Object.values(mainModel.fields)
+            .filter((ele) => ele.filter === true)
+            .map((ele) => ({
+              name: ele.name,
+              type: ele.graphqlType,
+            }))
+        : []
+
+      const filterTypes = [...new Set(filterFields.map((ele) => ele.type))]
+
+      const generatedFactoryCode = generateQuerySchema({
+        dateTimeFields: [],
+        filterFields,
+        filterTypes,
+        models,
+        queryName: "noDates",
+        transformFields: [],
+      })
+
+      const generatedCodeFromFactory = await generateCode({
+        fileName: "vitest_query-schema.ts",
+        nodes: generatedFactoryCode,
+      })
+
+      expect(generatedCodeFromFactory.text).toContain(
+        "const dateFields: string[] = []"
       )
     })
   })

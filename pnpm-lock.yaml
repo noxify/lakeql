@@ -560,6 +560,9 @@ importers:
       '@lakeql/tsconfig':
         specifier: workspace:*
         version: link:../../tooling/typescript
+      '@types/json-schema':
+        specifier: 7.0.15
+        version: 7.0.15
       '@types/node':
         specifier: 24.13.2
         version: 24.13.2
@@ -8627,7 +8630,7 @@ snapshots:
 
   '@types/set-cookie-parser@2.4.10':
     dependencies:
-      '@types/node': 25.9.2
+      '@types/node': 24.13.2
 
   '@types/statuses@2.0.6': {}
 

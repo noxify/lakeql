@@ -342,18 +342,46 @@ function generateTransformFields({
 }: {
   transformFields: string[][]
 }): ts.Node[] {
+  const uniqueTransformFields = new Map<string, string>()
+
+  for (const entry of transformFields) {
+    const [key, value] = entry
+
+    if (key === undefined || value === undefined) {
+      continue
+    }
+
+    const existingValue = uniqueTransformFields.get(key)
+
+    if (existingValue !== undefined && existingValue !== value) {
+      throw new Error(
+        `Conflicting transform field mapping for "${key}": "${existingValue}" vs "${value}".`
+      )
+    }
+
+    uniqueTransformFields.set(key, value)
+  }
+
   return [
-    constStatement(
-      "transformFields",
-      objectLiteral(
-        transformFields.map(([key, value]) =>
-          property(
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            key!,
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            stringLiteral(value!)
-          )
-        )
+    ts.factory.createVariableStatement(
+      undefined,
+      ts.factory.createVariableDeclarationList(
+        [
+          ts.factory.createVariableDeclaration(
+            ts.factory.createIdentifier("transformFields"),
+            undefined,
+            ts.factory.createTypeReferenceNode("Record", [
+              ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword),
+              ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword),
+            ]),
+            objectLiteral(
+              [...uniqueTransformFields.entries()].map(([key, value]) =>
+                property(key, stringLiteral(value))
+              )
+            )
+          ),
+        ],
+        ts.NodeFlags.Const
       )
     ),
   ]
@@ -365,9 +393,21 @@ function generateDateFields({
   dateTimeFields: string[]
 }): ts.Node[] {
   return [
-    constStatement(
-      "dateFields",
-      arrayLiteral(dateTimeFields.map((field) => stringLiteral(field)))
+    ts.factory.createVariableStatement(
+      undefined,
+      ts.factory.createVariableDeclarationList(
+        [
+          ts.factory.createVariableDeclaration(
+            ts.factory.createIdentifier("dateFields"),
+            undefined,
+            ts.factory.createArrayTypeNode(
+              ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword)
+            ),
+            arrayLiteral(dateTimeFields.map((field) => stringLiteral(field)))
+          ),
+        ],
+        ts.NodeFlags.Const
+      )
     ),
   ]
 }
