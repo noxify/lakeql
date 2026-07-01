@@ -246,11 +246,11 @@ export async function executeBulkPull(options: BulkPullOptions): Promise<void> {
                       })) ?? []),
                     ]
 
-                    const failedItems: Array<{
+                    const failedItems: {
                       itemName: string
                       itemKind: "tables" | "views"
                       error: Error
-                    }> = []
+                    }[] = []
 
                     const worker = async () => {
                       while (queue.length > 0) {
@@ -297,6 +297,11 @@ export async function executeBulkPull(options: BulkPullOptions): Promise<void> {
                         ]
                       )
 
+                      const firstError = failedItems[0]?.error
+                      if (!firstError) {
+                        throw new Error("Failed to collect error information")
+                      }
+
                       throw new CliError(
                         `Failed to pull ${failedItems.length} item(s) in bulk.`,
                         {
@@ -305,7 +310,7 @@ export async function executeBulkPull(options: BulkPullOptions): Promise<void> {
                             `Failed items in ${catalog}/${entry.schema}:`,
                             ...failureDetails,
                           ],
-                          cause: failedItems[0].error,
+                          cause: firstError,
                         }
                       )
                     }
