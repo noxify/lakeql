@@ -273,7 +273,10 @@ export async function executeBulkPull(options: BulkPullOptions): Promise<void> {
                           failedItems.push({
                             itemName: nextItem.itemName,
                             itemKind: nextItem.itemKind,
-                            error: error instanceof Error ? error : new Error(String(error)),
+                            error:
+                              error instanceof Error
+                                ? error
+                                : new Error(String(error)),
                           })
                         } finally {
                           activeItems.delete(nextItem.itemName)
