@@ -1,5 +1,13 @@
 # @lakeql/api
 
+## 0.3.1
+
+### Patch Changes
+
+- Updated dependencies [eff63b4]
+  - @lakeql/response-transformer@0.1.6
+  - @lakeql/helpers@0.1.6
+
 ## 0.3.0
 
 ### Minor Changes

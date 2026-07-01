@@ -1,5 +1,13 @@
 # @lakeql/file-generator
 
+## 0.1.11
+
+### Patch Changes
+
+- Updated dependencies [eff63b4]
+  - @lakeql/helpers@0.1.6
+  - @lakeql/schema-generator@0.4.5
+
 ## 0.1.10
 
 ### Patch Changes

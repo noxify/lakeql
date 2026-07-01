@@ -1,5 +1,11 @@
 # @lakeql/response-transformer
 
+## 0.1.6
+
+### Patch Changes
+
+- eff63b4: update dependencies
+
 ## 0.1.5
 
 ### Patch Changes
