@@ -20,6 +20,30 @@ import { executePull } from "./pull-action"
 const LARGE_BULK_ENTRY_THRESHOLD = 10
 const MAX_ACTIVE_PREVIEW = 5
 
+function getRootCauseMessage(error: unknown): string | undefined {
+  let current: unknown = error
+  let lastMessage: string | undefined
+
+  for (let i = 0; i < 10; i += 1) {
+    if (current instanceof Error) {
+      if (current.message) {
+        lastMessage = current.message
+      }
+      current = (current as { cause?: unknown }).cause
+    } else if (typeof current === "object" && current !== null) {
+      const msg = (current as { message?: unknown }).message
+      if (typeof msg === "string") {
+        lastMessage = msg
+      }
+      current = (current as { cause?: unknown }).cause
+    } else {
+      break
+    }
+  }
+
+  return lastMessage
+}
+
 function createConcurrencyLimiter(maxConcurrent: number) {
   let activeCount = 0
   const queue: (() => void)[] = []
@@ -246,6 +270,12 @@ export async function executeBulkPull(options: BulkPullOptions): Promise<void> {
                       })) ?? []),
                     ]
 
+                    const failedItems: {
+                      itemName: string
+                      itemKind: "tables" | "views"
+                      error: Error
+                    }[] = []
+
                     const worker = async () => {
                       while (queue.length > 0) {
                         const nextItem = queue.shift()
@@ -263,6 +293,15 @@ export async function executeBulkPull(options: BulkPullOptions): Promise<void> {
                             nextItem.itemKind
                           )
                           completed += 1
+                        } catch (error) {
+                          failedItems.push({
+                            itemName: nextItem.itemName,
+                            itemKind: nextItem.itemKind,
+                            error:
+                              error instanceof Error
+                                ? error
+                                : new Error(String(error)),
+                          })
                         } finally {
                           activeItems.delete(nextItem.itemName)
                           updateCompactOutput()
@@ -273,6 +312,29 @@ export async function executeBulkPull(options: BulkPullOptions): Promise<void> {
                     await Promise.all(
                       Array.from({ length: parallelism }, () => worker())
                     )
+
+                    if (failedItems.length > 0) {
+                      const failureDetails = failedItems.map(
+                        ({ itemName, itemKind, error }) => {
+                          const rootMessage =
+                            getRootCauseMessage(error) || error.message
+                          return `${itemName} (${itemKind}): ${rootMessage}`
+                        }
+                      )
+
+                      const firstError = failedItems[0]?.error
+                      if (!firstError) {
+                        throw new Error("Failed to collect error information")
+                      }
+
+                      throw new CliError(
+                        `${catalog}/${entry.schema} — ${completed}/${itemCount} item(s) pulled.\nFailed items:\n  - ${failureDetails.join("\n  - ")}`,
+                        {
+                          code: "BULK_PULL_PARTIAL_FAILURE",
+                          cause: firstError,
+                        }
+                      )
+                    }
 
                     subtask.output = `Completed ${completed}/${itemCount}`
                     subtask.title = `${catalog}/${entry.schema} — ${itemCount} item(s) pulled`

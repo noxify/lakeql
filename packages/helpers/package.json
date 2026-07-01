@@ -60,7 +60,7 @@
   "dependencies": {
     "@ianvs/prettier-plugin-sort-imports": "^4.7.1",
     "dot-path-value": "0.0.12",
-    "prettier": "3.8.4"
+    "prettier": "3.9.4"
   },
   "devDependencies": {
     "@lakeql/tsconfig": "workspace:*",
