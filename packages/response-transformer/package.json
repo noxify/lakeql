@@ -57,7 +57,7 @@
     "tsdown": "0.22.3",
     "tsx": "4.22.4",
     "typescript": "6.0.3",
-    "valibot": "1.4.1",
+    "valibot": "1.4.2",
     "vitest": "4.1.9"
   }
 }
