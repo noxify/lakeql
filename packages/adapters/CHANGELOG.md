@@ -1,5 +1,11 @@
 # @lakeql/adapters
 
+## 0.6.1
+
+### Patch Changes
+
+- @lakeql/schema-generator@0.4.5
+
 ## 0.6.0
 
 ### Minor Changes
