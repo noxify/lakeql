@@ -1,3 +1,4 @@
+// oxlint-disable react/react-compiler
 import type { ModuleExport } from "renoun/file-system"
 
 import { PackagesDirectory } from "@/collections"

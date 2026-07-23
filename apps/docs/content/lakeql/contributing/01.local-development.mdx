@@ -106,12 +106,12 @@ pnpm query "SELECT count(*) FROM hive.test.products" -f csv
 
 ## Connection Details
 
-| Service       | URL                                 | Credentials                 |
-| ------------- | ----------------------------------- | --------------------------- |
-| Trino         | `http://localhost:8080`             | user: `admin`, no password  |
-| Trino UI      | `https://localhost:8443/ui`         | `admin@minitrino.com`       |
-| MinIO Console | `http://localhost:9001`             | `access-key` / `secret-key` |
-| MinIO S3 API  | `http://localhost:9000` (via proxy) | `access-key` / `secret-key` |
+| Service | URL | Credentials |
+| --- | --- | --- |
+| Trino | `http://localhost:8080` | user: `admin`, no password |
+| Trino UI | `https://localhost:8443/ui` | `admin@minitrino.com` |
+| MinIO Console | `http://localhost:9001` | `access-key` / `secret-key` |
+| MinIO S3 API | `http://localhost:9000` (via proxy) | `access-key` / `secret-key` |
 
 <Note>
   The Trino UI requires `https://` since the setup uses OAuth2. Make sure your

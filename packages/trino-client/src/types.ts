@@ -10,13 +10,13 @@ import type { RetryConfig } from "./retry"
 // ─── Query State ─────────────────────────────────────────────────────────────
 
 export enum State {
-  "QUEUED" = "QUEUED",
-  "PLANNING" = "PLANNING",
-  "STARTING" = "STARTING",
-  "RUNNING" = "RUNNING",
-  "FINISHED" = "FINISHED",
-  "CANCELED" = "CANCELED",
-  "FAILED" = "FAILED",
+  QUEUED = "QUEUED",
+  PLANNING = "PLANNING",
+  STARTING = "STARTING",
+  RUNNING = "RUNNING",
+  FINISHED = "FINISHED",
+  CANCELED = "CANCELED",
+  FAILED = "FAILED",
 }
 
 // ─── Auth ────────────────────────────────────────────────────────────────────

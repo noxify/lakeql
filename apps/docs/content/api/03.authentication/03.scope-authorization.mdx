@@ -7,11 +7,11 @@ LakeQL uses Pothos's scope auth plugin to enforce authorization at the field lev
 
 ## Auth scopes
 
-| Scope             | Check                                              | Description                            |
-| ----------------- | -------------------------------------------------- | -------------------------------------- |
-| `authorized`      | `!!context.currentUser`                            | User is authenticated (any valid JWT)  |
-| `readPermission`  | Evaluates catalog/schema/table against permissions | User can read from the specified table |
-| `writePermission` | Evaluates catalog/schema/table against permissions | User can write to the specified table  |
+| Scope | Check | Description |
+| --- | --- | --- |
+| `authorized` | `!!context.currentUser` | User is authenticated (any valid JWT) |
+| `readPermission` | Evaluates catalog/schema/table against permissions | User can read from the specified table |
+| `writePermission` | Evaluates catalog/schema/table against permissions | User can write to the specified table |
 
 ## Read permission logic
 

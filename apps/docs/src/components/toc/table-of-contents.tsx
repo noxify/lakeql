@@ -75,6 +75,7 @@ export function TableOfContentsScript({ nonce }: { nonce?: string }) {
       id="renoun-toc-script"
       nonce={nonce}
       strategy="afterInteractive"
+      // oxlint-disable-next-line react/no-danger
       dangerouslySetInnerHTML={{
         __html: code.replaceAll(/<\/script/giu, "<\\/script"),
       }}

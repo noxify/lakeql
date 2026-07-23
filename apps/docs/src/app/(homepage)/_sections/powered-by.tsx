@@ -81,7 +81,7 @@ export function PoweredBySection() {
                 <>
                   <Image
                     src={project.logo}
-                    width={"100"}
+                    width="100"
                     height={100}
                     alt={project.name}
                     className={`w-auto opacity-60 grayscale transition-all group-hover:opacity-100 group-hover:grayscale-0 dark:hidden ${
@@ -90,7 +90,7 @@ export function PoweredBySection() {
                   />
                   <Image
                     src={project.logoDark}
-                    width={"100"}
+                    width="100"
                     height={100}
                     alt={project.name}
                     className={`hidden w-auto opacity-60 grayscale transition-all group-hover:opacity-100 group-hover:grayscale-0 dark:block ${
@@ -101,7 +101,7 @@ export function PoweredBySection() {
               ) : (
                 <Image
                   src={project.logo}
-                  width={"100"}
+                  width="100"
                   height={100}
                   alt={project.name}
                   className={`w-auto opacity-60 grayscale transition-all group-hover:opacity-100 group-hover:grayscale-0 ${

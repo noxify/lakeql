@@ -82,19 +82,19 @@ export function BuilderTabs() {
           variant="line"
           className="border-border h-12! w-full shrink-0 justify-start border-b px-4"
         >
-          <TabsTrigger value="info" className={"cursor-pointer"}>
+          <TabsTrigger value="info" className="cursor-pointer">
             Info
           </TabsTrigger>
-          <TabsTrigger value="general" className={"cursor-pointer"}>
+          <TabsTrigger value="general" className="cursor-pointer">
             General
           </TabsTrigger>
-          <TabsTrigger value="fields" className={"cursor-pointer"}>
+          <TabsTrigger value="fields" className="cursor-pointer">
             Fields
           </TabsTrigger>
-          <TabsTrigger value="mutations" className={"cursor-pointer"}>
+          <TabsTrigger value="mutations" className="cursor-pointer">
             Mutations
           </TabsTrigger>
-          <TabsTrigger value="preview" className={"cursor-pointer"}>
+          <TabsTrigger value="preview" className="cursor-pointer">
             Preview
           </TabsTrigger>
         </TabsList>

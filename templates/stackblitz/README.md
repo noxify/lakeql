@@ -4,16 +4,16 @@ These templates provide a minimal, runnable setup for reproducing bugs in LakeQL
 
 ## Available Templates
 
-| Template                                        | Package                        | Description                             |
-| ----------------------------------------------- | ------------------------------ | --------------------------------------- |
-| [generic](./generic/)                           | All standalone packages        | Multi-package reproduction              |
-| [column-parser](./column-parser/)               | `@lakeql/column-parser`        | Trino column type parsing               |
-| [helpers](./helpers/)                           | `@lakeql/helpers`              | Pagination, object utils, special chars |
-| [logger](./logger/)                             | `@lakeql/logger`               | Structured logging with redaction       |
-| [parquet](./parquet/)                           | `@lakeql/parquet`              | JSON Schema to Parquet conversion       |
-| [query-builder](./query-builder/)               | `@lakeql/query-builder`        | SQL generation from structured queries  |
-| [response-transformer](./response-transformer/) | `@lakeql/response-transformer` | Trino response to typed objects         |
-| [schema-generator](./schema-generator/)         | `@lakeql/schema-generator`     | JSON/GraphQL/Hive schema generation     |
+| Template | Package | Description |
+| --- | --- | --- |
+| [generic](./generic/) | All standalone packages | Multi-package reproduction |
+| [column-parser](./column-parser/) | `@lakeql/column-parser` | Trino column type parsing |
+| [helpers](./helpers/) | `@lakeql/helpers` | Pagination, object utils, special chars |
+| [logger](./logger/) | `@lakeql/logger` | Structured logging with redaction |
+| [parquet](./parquet/) | `@lakeql/parquet` | JSON Schema to Parquet conversion |
+| [query-builder](./query-builder/) | `@lakeql/query-builder` | SQL generation from structured queries |
+| [response-transformer](./response-transformer/) | `@lakeql/response-transformer` | Trino response to typed objects |
+| [schema-generator](./schema-generator/) | `@lakeql/schema-generator` | JSON/GraphQL/Hive schema generation |
 
 ## Usage
 
@@ -31,16 +31,16 @@ These templates provide a minimal, runnable setup for reproducing bugs in LakeQL
 
 ## Quick Links
 
-| Package              | StackBlitz                                                                                                   |
-| -------------------- | ------------------------------------------------------------------------------------------------------------ |
-| Generic              | [Open](https://stackblitz.com/fork/github/noxify/lakeql/tree/main/templates/stackblitz/generic)              |
-| column-parser        | [Open](https://stackblitz.com/fork/github/noxify/lakeql/tree/main/templates/stackblitz/column-parser)        |
-| helpers              | [Open](https://stackblitz.com/fork/github/noxify/lakeql/tree/main/templates/stackblitz/helpers)              |
-| logger               | [Open](https://stackblitz.com/fork/github/noxify/lakeql/tree/main/templates/stackblitz/logger)               |
-| parquet              | [Open](https://stackblitz.com/fork/github/noxify/lakeql/tree/main/templates/stackblitz/parquet)              |
-| query-builder        | [Open](https://stackblitz.com/fork/github/noxify/lakeql/tree/main/templates/stackblitz/query-builder)        |
+| Package | StackBlitz |
+| --- | --- |
+| Generic | [Open](https://stackblitz.com/fork/github/noxify/lakeql/tree/main/templates/stackblitz/generic) |
+| column-parser | [Open](https://stackblitz.com/fork/github/noxify/lakeql/tree/main/templates/stackblitz/column-parser) |
+| helpers | [Open](https://stackblitz.com/fork/github/noxify/lakeql/tree/main/templates/stackblitz/helpers) |
+| logger | [Open](https://stackblitz.com/fork/github/noxify/lakeql/tree/main/templates/stackblitz/logger) |
+| parquet | [Open](https://stackblitz.com/fork/github/noxify/lakeql/tree/main/templates/stackblitz/parquet) |
+| query-builder | [Open](https://stackblitz.com/fork/github/noxify/lakeql/tree/main/templates/stackblitz/query-builder) |
 | response-transformer | [Open](https://stackblitz.com/fork/github/noxify/lakeql/tree/main/templates/stackblitz/response-transformer) |
-| schema-generator     | [Open](https://stackblitz.com/fork/github/noxify/lakeql/tree/main/templates/stackblitz/schema-generator)     |
+| schema-generator | [Open](https://stackblitz.com/fork/github/noxify/lakeql/tree/main/templates/stackblitz/schema-generator) |
 
 ## Packages NOT included
 

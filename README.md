@@ -14,8 +14,7 @@
   <a href="https://npmx.dev/package/@lakeql/create-app"><img src="https://img.shields.io/npm/v/@lakeql/create-app?label=%40lakeql%2Fcreate-app&color=blue" alt="@lakeql/create-app on npm" /></a>
 </p>
 
-LakeQL is a monorepo that provides a type-safe GraphQL access layer for Trino-powered data platforms.
-It combines a backend runtime with a CLI that generates schema and query files from your existing data model.
+LakeQL is a monorepo that provides a type-safe GraphQL access layer for Trino-powered data platforms. It combines a backend runtime with a CLI that generates schema and query files from your existing data model.
 
 The goal is to reduce manual boilerplate while keeping your API predictable, secure, and easy to extend.
 

@@ -124,12 +124,16 @@ export default async function DocsPage({
       <div>
         <script
           type="application/ld+json"
+          // oxlint-disable-next-line react/no-danger
           dangerouslySetInnerHTML={{ __html: toJsonLd(breadcrumbJsonLd) }}
         />
         <script
           type="application/ld+json"
+          // oxlint-disable-next-line react/no-danger
           dangerouslySetInnerHTML={{ __html: toJsonLd(pageJsonLd) }}
         />
+
+        {/* oxlint-disable-next-line react/jsx-pascal-case */}
         <MDX
           components={{
             // oxlint-disable-next-line react/no-unstable-nested-components
@@ -145,6 +149,7 @@ export default async function DocsPage({
           {`# ${getTitle(entry)}`}
         </MDX>
 
+        {/* oxlint-disable-next-line react/jsx-pascal-case */}
         <MDX
           components={{
             // oxlint-disable-next-line react/no-unstable-nested-components
@@ -256,10 +261,12 @@ export default async function DocsPage({
     <div>
       <script
         type="application/ld+json"
+        // oxlint-disable-next-line react/no-danger
         dangerouslySetInnerHTML={{ __html: toJsonLd(breadcrumbJsonLd) }}
       />
       <script
         type="application/ld+json"
+        // oxlint-disable-next-line react/no-danger
         dangerouslySetInnerHTML={{ __html: toJsonLd(articleJsonLd) }}
       />
       <h1
@@ -269,6 +276,7 @@ export default async function DocsPage({
         {getTitle(entry, frontmatter, true)}
       </h1>
 
+      {/* oxlint-disable-next-line react/jsx-pascal-case */}
       <MDX
         components={{
           // oxlint-disable-next-line react/no-unstable-nested-components

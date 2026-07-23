@@ -8,5 +8,8 @@ export default defineConfig({
   sortImports: true,
   sortTailwindcss: true,
   trailingComma: "es5",
-  ignorePatterns: ["apps/docs/src/components/beautiful-mermaid/**"],
+  ignorePatterns: [
+    "apps/docs/src/components/beautiful-mermaid/**",
+    ".tegami/publish-lock.yaml",
+  ],
 })

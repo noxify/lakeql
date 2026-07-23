@@ -233,6 +233,7 @@ export function EndpointBuilderProvider({
       return
     }
     if (!hasContent) {
+      // oxlint-disable-next-line react/react-compiler
       setSyncStatus("idle")
       return
     }

@@ -71,15 +71,13 @@ pnpm format:fix
 
 ## Changesets
 
-We use [changesets](https://github.com/changesets/changesets) to manage versioning and changelogs for published packages.
-When your change affects a published `@lakeql/*` package, create a changeset:
+We use [changesets](https://github.com/changesets/changesets) to manage versioning and changelogs for published packages. When your change affects a published `@lakeql/*` package, create a changeset:
 
 ```bash
 pnpm cs
 ```
 
-This opens an interactive prompt to select affected packages and describe the change.
-The changeset file is committed alongside your code.
+This opens an interactive prompt to select affected packages and describe the change. The changeset file is committed alongside your code.
 
 When a changeset is **not** needed:
 
@@ -98,9 +96,7 @@ When a changeset **is** needed:
 
 ## Adding a New Dataset Template
 
-The seed system uses dataset templates to generate test data for local development.
-Each template defines a set of Trino columns and a generator function that produces Parquet files.
-If you need test data with a different structure — for example when working on a new feature that requires a specific schema — you can add a new template.
+The seed system uses dataset templates to generate test data for local development. Each template defines a set of Trino columns and a generator function that produces Parquet files. If you need test data with a different structure — for example when working on a new feature that requires a specific schema — you can add a new template.
 
 1. Create a new file in `tooling/test-data/src/datasets/`
 2. Export `columns` (Trino column definitions) and `generate` (Parquet generator function)

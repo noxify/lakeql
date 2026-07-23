@@ -7,20 +7,20 @@ The LakeQL CLI reads connection details from environment variables. These are re
 
 ## Required variables
 
-| Variable        | Type   | Description                                                          |
-| --------------- | ------ | -------------------------------------------------------------------- |
-| `HIVE_HOST`     | string | Trino host URL including protocol (e.g. `https://trino.example.com`) |
-| `HIVE_PORT`     | number | Trino port (e.g. `443`)                                              |
-| `HIVE_USERNAME` | string | Authentication username                                              |
-| `HIVE_PASSWORD` | string | Authentication password                                              |
-| `HIVE_CATALOG`  | string | Default catalog name used when `--catalog` is not provided           |
+| Variable | Type | Description |
+| --- | --- | --- |
+| `HIVE_HOST` | string | Trino host URL including protocol (e.g. `https://trino.example.com`) |
+| `HIVE_PORT` | number | Trino port (e.g. `443`) |
+| `HIVE_USERNAME` | string | Authentication username |
+| `HIVE_PASSWORD` | string | Authentication password |
+| `HIVE_CATALOG` | string | Default catalog name used when `--catalog` is not provided |
 
 ## Optional variables
 
-| Variable      | Type   | Default | Description                                        |
-| ------------- | ------ | ------- | -------------------------------------------------- |
-| `HIVE_SOURCE` | string | —       | Optional source identifier sent to Trino           |
-| `LOG_LEVEL`   | string | `warn`  | Log verbosity: `debug`, `info`, `warn`, or `error` |
+| Variable | Type | Default | Description |
+| --- | --- | --- | --- |
+| `HIVE_SOURCE` | string | — | Optional source identifier sent to Trino |
+| `LOG_LEVEL` | string | `warn` | Log verbosity: `debug`, `info`, `warn`, or `error` |
 
 ## Example .env file
 
@@ -34,8 +34,7 @@ HIVE_CATALOG=hive
 LOG_LEVEL=info
 ```
 
-The CLI does not load `.env` automatically.
-Make sure variables are present in the process environment before running commands.
+The CLI does not load `.env` automatically. Make sure variables are present in the process environment before running commands.
 
 You can do this in different ways:
 

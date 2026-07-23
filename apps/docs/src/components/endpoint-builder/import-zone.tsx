@@ -1,3 +1,4 @@
+// oxlint-disable react-hooks/exhaustive-deps
 "use client"
 
 import { Upload } from "lucide-react"
@@ -43,10 +44,10 @@ export function ImportZone({ onImport, onError }: ImportZoneProps) {
       setDragging(false)
       const [file] = e.dataTransfer.files
       if (file) {
+        // oxlint-disable-next-line react/react-compiler
         void processFile(file)
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [onImport, onError]
   )
 

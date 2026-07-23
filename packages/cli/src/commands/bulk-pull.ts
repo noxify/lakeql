@@ -277,6 +277,7 @@ export async function executeBulkPull(options: BulkPullOptions): Promise<void> {
                     }[] = []
 
                     const worker = async () => {
+                      // oxlint-disable-next-line no-unreachable-loop
                       while (queue.length > 0) {
                         const nextItem = queue.shift()
                         if (!nextItem) {

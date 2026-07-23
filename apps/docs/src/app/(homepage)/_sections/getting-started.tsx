@@ -82,6 +82,7 @@ export function GettingStartedSection() {
               <div className="w-full min-w-0 pt-0.5 pb-10">
                 <h3 className="text-base font-semibold">{step.title}</h3>
                 <div className="text-muted-foreground mt-1 mb-2">
+                  {/* oxlint-disable-next-line react/jsx-pascal-case */}
                   <MDX
                     components={{
                       // oxlint-disable-next-line react/no-unstable-nested-components

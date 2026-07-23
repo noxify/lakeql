@@ -3,6 +3,11 @@ import { http, HttpResponse } from "msw"
 import type { QueryResult, Stats, TrinoClientProps } from "../src"
 import { State, TrinoClient } from "../src"
 
+export { http, HttpResponse } from "msw"
+
+export { type QueryResult, type Stats, type TrinoClientProps } from "../src"
+
+export { State } from "../src"
 export const mockUrl = "http://trino-client.company.tld:8080"
 
 export const baseStats: Stats = {
@@ -172,7 +177,3 @@ export function statementWithDataHandlers() {
     ),
   ]
 }
-
-export { http, HttpResponse }
-export type { QueryResult, Stats, TrinoClientProps }
-export { State }

@@ -9,34 +9,34 @@ LakeQL uses environment variables for configuration. All variables are validated
 
 ### Trino Connection
 
-| Variable        | Type   | Default  | Description                                                             |
-| --------------- | ------ | -------- | ----------------------------------------------------------------------- |
-| `HIVE_HOST`     | string | —        | Trino host URL (e.g. `http://localhost` or `https://trino.example.com`) |
-| `HIVE_PORT`     | number | —        | Trino HTTP port (e.g. `8080` or `8446`)                                 |
-| `HIVE_USERNAME` | string | —        | Username for Trino authentication                                       |
-| `HIVE_PASSWORD` | string | —        | Password for Trino authentication                                       |
-| `HIVE_CATALOG`  | string | —        | Default Trino catalog (e.g. `hive`)                                     |
-| `HIVE_SOURCE`   | string | `lakeql` | Value for the `X-Trino-Source` header                                   |
+| Variable | Type | Default | Description |
+| --- | --- | --- | --- |
+| `HIVE_HOST` | string | — | Trino host URL (e.g. `http://localhost` or `https://trino.example.com`) |
+| `HIVE_PORT` | number | — | Trino HTTP port (e.g. `8080` or `8446`) |
+| `HIVE_USERNAME` | string | — | Username for Trino authentication |
+| `HIVE_PASSWORD` | string | — | Password for Trino authentication |
+| `HIVE_CATALOG` | string | — | Default Trino catalog (e.g. `hive`) |
+| `HIVE_SOURCE` | string | `lakeql` | Value for the `X-Trino-Source` header |
 
 ### API Server
 
-| Variable                   | Type   | Default | Description                                           |
-| -------------------------- | ------ | ------- | ----------------------------------------------------- |
-| `API_PORT`                 | number | `4000`  | Port the GraphQL API server listens on                |
-| `API_LOGGER`               | enum   | `warn`  | Log level: `silent`, `debug`, `info`, `warn`, `error` |
-| `API_MAX_RECORDS_PER_PAGE` | number | `2000`  | Maximum records returned per page                     |
+| Variable | Type | Default | Description |
+| --- | --- | --- | --- |
+| `API_PORT` | number | `4000` | Port the GraphQL API server listens on |
+| `API_LOGGER` | enum | `warn` | Log level: `silent`, `debug`, `info`, `warn`, `error` |
+| `API_MAX_RECORDS_PER_PAGE` | number | `2000` | Maximum records returned per page |
 
 ### Authentication
 
-| Variable          | Type    | Default | Description                                 |
-| ----------------- | ------- | ------- | ------------------------------------------- |
-| `AUTH_MOCK`       | boolean | `false` | Enable mock authentication for development  |
-| `AUTH_MOCK_TOKEN` | string  | —       | Token value that grants access in mock mode |
+| Variable | Type | Default | Description |
+| --- | --- | --- | --- |
+| `AUTH_MOCK` | boolean | `false` | Enable mock authentication for development |
+| `AUTH_MOCK_TOKEN` | string | — | Token value that grants access in mock mode |
 
 ### Runtime
 
-| Variable   | Type | Default       | Description                                      |
-| ---------- | ---- | ------------- | ------------------------------------------------ |
+| Variable | Type | Default | Description |
+| --- | --- | --- | --- |
 | `NODE_ENV` | enum | `development` | Environment: `development`, `production`, `test` |
 
 ## Example .env File

@@ -264,6 +264,7 @@ function conditionBuilder<TableDefinition>({
     SqlBool
   >[] = []
 
+  // oxlint-disable-next-line no-unreachable-loop
   for (const [key, definition] of Object.entries(query)) {
     switch (key.toLowerCase()) {
       case "and": {

@@ -15,13 +15,13 @@ The package combines three core libraries into a cohesive server stack:
 
 `@lakeql/api` sits at the center of the LakeQL architecture. It depends on several sibling packages:
 
-| Package                        | Role                                                          |
-| ------------------------------ | ------------------------------------------------------------- |
-| `@lakeql/trino-client`         | Executes SQL queries against Trino                            |
-| `@lakeql/query-builder`        | Constructs SQL from GraphQL arguments (filters, pagination)   |
+| Package | Role |
+| --- | --- |
+| `@lakeql/trino-client` | Executes SQL queries against Trino |
+| `@lakeql/query-builder` | Constructs SQL from GraphQL arguments (filters, pagination) |
 | `@lakeql/response-transformer` | Transforms raw Trino responses into GraphQL-compatible shapes |
-| `@lakeql/helpers`              | Shared utility functions                                      |
-| `@lakeql/logger`               | Structured logging                                            |
+| `@lakeql/helpers` | Shared utility functions |
+| `@lakeql/logger` | Structured logging |
 
 ## Schema loading
 

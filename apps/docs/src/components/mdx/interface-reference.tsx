@@ -1,3 +1,4 @@
+// oxlint-disable react/react-compiler
 import { readFile } from "node:fs/promises"
 
 import { Markdown } from "renoun/components"

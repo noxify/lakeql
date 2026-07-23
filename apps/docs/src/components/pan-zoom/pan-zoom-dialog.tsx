@@ -168,6 +168,7 @@ export function PanZoomDialog({
     if (fitOnMount) {
       fitView()
     } else {
+      // oxlint-disable-next-line react/react-compiler
       centerView(initialZoom)
     }
 

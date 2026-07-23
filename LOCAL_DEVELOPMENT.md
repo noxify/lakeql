@@ -60,12 +60,12 @@ Each seed run is a full reset: existing table and data are dropped and recreated
 
 ### Querying
 
-| Command                           | Description                                    |
-| --------------------------------- | ---------------------------------------------- |
-| `pnpm query "SELECT ..."`         | Execute SQL against local Trino (table output) |
-| `pnpm query "SELECT ..." -f json` | JSON output                                    |
-| `pnpm query "SELECT ..." -f csv`  | CSV output                                     |
-| `pnpm query "SELECT ..." -s test` | Use a default schema                           |
+| Command | Description |
+| --- | --- |
+| `pnpm query "SELECT ..."` | Execute SQL against local Trino (table output) |
+| `pnpm query "SELECT ..." -f json` | JSON output |
+| `pnpm query "SELECT ..." -f csv` | CSV output |
+| `pnpm query "SELECT ..." -s test` | Use a default schema |
 
 ### Generating test data (standalone)
 
@@ -111,15 +111,14 @@ To add a custom dataset, define `columns` and `generate` inline or in a new file
 
 ## Connection details
 
-| Service       | URL                                 | Credentials                 |
-| ------------- | ----------------------------------- | --------------------------- |
-| Trino         | `http://localhost:8080`             | user: `admin`, no password  |
-| Trino UI      | `https://localhost:8443/ui`         | `admin@minitrino.com`       |
-| MinIO Console | `http://localhost:9001`             | `access-key` / `secret-key` |
-| MinIO S3 API  | `http://localhost:9000` (via proxy) | `access-key` / `secret-key` |
+| Service | URL | Credentials |
+| --- | --- | --- |
+| Trino | `http://localhost:8080` | user: `admin`, no password |
+| Trino UI | `https://localhost:8443/ui` | `admin@minitrino.com` |
+| MinIO Console | `http://localhost:9001` | `access-key` / `secret-key` |
+| MinIO S3 API | `http://localhost:9000` (via proxy) | `access-key` / `secret-key` |
 
-> **Note**: The Trino UI requires `https://`, since we use oauth in our setup.
-> Make sure you're using a browser which allows you to by-pass the `net::ERR_CERT_AUTHORITY_INVALID` error
+> **Note**: The Trino UI requires `https://`, since we use oauth in our setup. Make sure you're using a browser which allows you to by-pass the `net::ERR_CERT_AUTHORITY_INVALID` error
 
 > **TIP**: To run queries locally, use `pnpm query "SELECT ..."`.
 

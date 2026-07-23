@@ -1,6 +1,7 @@
 import "server-only"
 import { getCommandConfig } from "@lakeql/cli"
 
+export { getCommandConfig } from "@lakeql/cli"
 export type {
   CommandConfig,
   CommandOptionMeta,
@@ -33,5 +34,3 @@ export function getCliCommandTocSections(commandName: string) {
     },
   ]
 }
-
-export { getCommandConfig }

@@ -83,15 +83,16 @@ function renderConfig(entries: GeneratedEntry[]): string {
       .map((l, i) => (i === 0 ? l : `    ${l}`))
       .join("\n")
 
-    lines.push(`  {`)
-    lines.push(`    catalog: ${JSON.stringify(entry.catalog)},`)
-    lines.push(`    schema: ${JSON.stringify(entry.schema)},`)
-    lines.push(`    tables: ${tablesJson},`)
-    lines.push(`  },`)
+    lines.push(
+      `  {`,
+      `    catalog: ${JSON.stringify(entry.catalog)},`,
+      `    schema: ${JSON.stringify(entry.schema)},`,
+      `    tables: ${tablesJson},`,
+      `  },`
+    )
   }
 
-  lines.push("]")
-  lines.push("")
+  lines.push("]", "")
   return lines.join("\n")
 }
 

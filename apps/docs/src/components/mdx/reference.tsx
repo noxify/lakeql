@@ -40,6 +40,7 @@ let currentSectionSlug = ""
 // Section - Collapsible wrapper for each export
 const Section: ReferenceComponents["Section"] = ({ id, children }) => {
   const slug = createSlug(id ?? "")
+  // oxlint-disable-next-line react/react-compiler
   currentSectionSlug = slug
   return (
     <Collapsible
@@ -137,9 +138,8 @@ const Table: ReferenceComponents["Table"] = ({ children }) => (
 )
 
 // Table Row Group - no wrapper element to avoid invalid HTML nesting
-const TableRowGroup: ReferenceComponents["TableRowGroup"] = ({ children }) => (
-  <>{children}</>
-)
+const TableRowGroup: ReferenceComponents["TableRowGroup"] = ({ children }) =>
+  children
 
 // Table Row
 const TableRow: ReferenceComponents["TableRow"] = ({ children }) => (
@@ -200,7 +200,7 @@ const TableData: ReferenceComponents["TableData"] = ({ index, children }) => {
   return (
     <TableCell
       id={id}
-      className={`max-w-[300px] font-mono text-xs break-all whitespace-normal ${index === 0 ? "text-foreground font-semibold" : "text-muted-foreground"}`}
+      className={`max-w-75 font-mono text-xs break-all whitespace-normal ${index === 0 ? "text-foreground font-semibold" : "text-muted-foreground"}`}
     >
       {children}
     </TableCell>

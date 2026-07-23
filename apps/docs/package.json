@@ -10,7 +10,7 @@
     "clean:dist": "git clean -xdf dist",
     "dev": "next typegen && renoun next dev",
     "generate:search-index": "tsx src/orama/generate.ts",
-    "preview": "tsx src/localserver.ts",
+    "preview": "npx serve out/",
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "typegen": "next typegen"
@@ -80,10 +80,8 @@
     "@types/node": "24.13.2",
     "@types/react": "19.2.17",
     "@types/react-dom": "19.2.3",
-    "@types/serve-handler": "6.1.4",
     "commander": "15.0.0",
     "postcss": "8.5.21",
-    "serve-handler": "6.1.7",
     "tailwindcss": "4.3.3",
     "tsx": "4.23.1",
     "typescript": "6.0.3"

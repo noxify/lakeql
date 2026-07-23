@@ -80,6 +80,7 @@ export function MermaidDiagram({
 
   React.useEffect(() => {
     if (theme === "light" || theme === "dark") {
+      // oxlint-disable-next-line react/react-compiler
       setResolvedTheme(theme)
       return
     }
@@ -127,6 +128,7 @@ export function MermaidDiagram({
 
   const previewSvg = svg
 
+  // oxlint-disable-next-line react-hooks/rules-of-hooks
   const inlineAspectRatio = React.useMemo(() => {
     const rawRatio = parseMermaidAspectRatio(previewSvg)
 
@@ -134,6 +136,7 @@ export function MermaidDiagram({
     return Math.min(4, Math.max(0.85, rawRatio))
   }, [previewSvg])
 
+  // oxlint-disable-next-line react-hooks/rules-of-hooks
   const inlineDimensions = React.useMemo(
     () => parseMermaidDimensions(previewSvg),
     [previewSvg]
@@ -156,6 +159,7 @@ export function MermaidDiagram({
       >
         <div
           className="inline-block"
+          // oxlint-disable-next-line react/no-danger
           dangerouslySetInnerHTML={{ __html: previewSvg }}
         />
       </PanZoomDialog>
@@ -187,6 +191,7 @@ export function MermaidDiagram({
       >
         <div
           className="inline-block [&_svg]:h-auto [&_svg]:max-h-full [&_svg]:w-auto [&_svg]:max-w-full"
+          // oxlint-disable-next-line react/no-danger
           dangerouslySetInnerHTML={{ __html: previewSvg }}
         />
       </PanZoomControl>

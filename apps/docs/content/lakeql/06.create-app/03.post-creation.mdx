@@ -117,9 +117,9 @@ Set up user-level read/write permissions for production. See [Authentication](/d
 
 ## Troubleshooting
 
-| Issue                                  | Solution                                                                                |
-| -------------------------------------- | --------------------------------------------------------------------------------------- |
-| `pull` fails with connection error     | Verify `HIVE_HOST` and `HIVE_PORT` in `.env`. Check Trino is running.                   |
-| Server starts but no queries available | Run `pnpm cli pull` first. Check that `schemaPath` points to the correct directory.     |
-| Auth errors in GraphiQL                | Set `AUTH_MOCK=true` and include the `Authorization` header matching `AUTH_MOCK_TOKEN`. |
-| Generated types have wrong fields      | Re-run `pull` to sync with current Trino table structure.                               |
+| Issue | Solution |
+| --- | --- |
+| `pull` fails with connection error | Verify `HIVE_HOST` and `HIVE_PORT` in `.env`. Check Trino is running. |
+| Server starts but no queries available | Run `pnpm cli pull` first. Check that `schemaPath` points to the correct directory. |
+| Auth errors in GraphiQL | Set `AUTH_MOCK=true` and include the `Authorization` header matching `AUTH_MOCK_TOKEN`. |
+| Generated types have wrong fields | Re-run `pull` to sync with current Trino table structure. |
