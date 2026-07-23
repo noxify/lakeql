@@ -54,10 +54,10 @@
     "@lakeql/tsconfig": "workspace:*",
     "@types/node": "24.13.2",
     "@valibot/to-json-schema": "1.7.1",
-    "tsdown": "0.22.3",
-    "tsx": "4.22.4",
+    "tsdown": "0.22.13",
+    "tsx": "4.23.1",
     "typescript": "6.0.3",
     "valibot": "1.4.2",
-    "vitest": "4.1.9"
+    "vitest": "4.1.10"
   }
 }

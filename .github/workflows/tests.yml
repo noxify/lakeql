@@ -7,7 +7,7 @@ on:
       - "packages/**"
       - "pnpm-lock.yaml"
   push:
-    branches: ["main", "changesets/release"]
+    branches: ["main", "tegami/version-packages"]
     paths:
       - "packages/**"
       - "pnpm-lock.yaml"
@@ -42,10 +42,10 @@ jobs:
         node-version: [22, 24]
     name: Test (Node.js ${{ matrix.node-version }})
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Setup Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node-version }}
 

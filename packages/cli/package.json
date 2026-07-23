@@ -69,13 +69,13 @@
     "@lakeql/schema-generator": "workspace:*",
     "@lakeql/trino-client": "workspace:*",
     "@t3-oss/env-core": "0.13.11",
-    "@topcli/prompts": "3.1.0",
+    "@topcli/prompts": "4.0.0",
     "c12": "4.0.0-beta.5",
     "climt": "0.2.0",
     "commander": "15.0.0",
-    "globby": "16.2.0",
+    "globby": "16.2.2",
     "handlebars": "4.7.9",
-    "listr2": "10.2.2",
+    "listr2": "11.0.0",
     "lodash-es": "4.18.1",
     "read-pkg": "10.1.0",
     "zod": "4.4.3"
@@ -84,11 +84,11 @@
     "@lakeql/tsconfig": "workspace:*",
     "@types/lodash-es": "4.17.12",
     "@types/node": "24.13.2",
-    "fast-check": "^4.8.0",
-    "memfs": "^4.57.8",
-    "tsdown": "0.22.3",
-    "tsx": "4.22.4",
+    "fast-check": "^4.9.0",
+    "memfs": "^4.64.0",
+    "tsdown": "0.22.13",
+    "tsx": "4.23.1",
     "typescript": "6.0.3",
-    "vitest": "4.1.9"
+    "vitest": "4.1.10"
   }
 }
