@@ -65,7 +65,7 @@
   "devDependencies": {
     "@lakeql/tsconfig": "workspace:*",
     "@types/fast-redact": "3.0.4",
-    "@types/node": "24.13.2",
+    "@types/node": "24.13.3",
     "globby": "16.2.2",
     "tsdown": "0.22.13",
     "typescript": "6.0.3"

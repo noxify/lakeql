@@ -55,10 +55,10 @@ export default async function Siblings({ entry }: { entry: EntryType }) {
             title={`Go to previous page: ${previousItem.title}`}
           >
             <div className="group flex shrink-0 items-center gap-x-4">
-              <ChevronLeftIcon className="h-5 w-5 flex-none text-gray-500 transition-colors duration-200 group-hover:text-indigo-400 dark:text-gray-400 dark:group-hover:text-white" />
+              <ChevronLeftIcon className="group-hover:text-foreground h-5 w-5 flex-none text-gray-500 transition-colors duration-200 dark:text-gray-400 dark:group-hover:text-white" />
               <div className="flex flex-col items-start">
                 <p className="text-xs leading-5 text-gray-500">Previous page</p>
-                <p className="text-sm leading-5 font-medium text-gray-500 transition-colors duration-200 group-hover:text-indigo-400 dark:text-gray-400 dark:group-hover:text-white">
+                <p className="group-hover:text-foreground text-sm leading-5 text-gray-500 transition-colors duration-200 dark:text-gray-400 dark:group-hover:text-white">
                   {previousItem.title}
                 </p>
               </div>

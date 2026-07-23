@@ -55,7 +55,7 @@
   "devDependencies": {
     "@lakeql/tsconfig": "workspace:*",
     "@pothos/core": "4.13.1",
-    "@types/node": "24.13.2",
+    "@types/node": "24.13.3",
     "graphql": "16.14.2",
     "tsdown": "0.22.13",
     "typescript": "6.0.3",

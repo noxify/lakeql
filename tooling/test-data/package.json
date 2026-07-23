@@ -20,7 +20,7 @@
     "@faker-js/faker": "10.5.0",
     "@lakeql/trino-client": "workspace:*",
     "@lakeql/tsconfig": "workspace:*",
-    "@types/node": "24.13.2",
+    "@types/node": "24.13.3",
     "cleye": "2.6.0",
     "files-sdk": "2.2.0",
     "hyparquet-writer": "0.16.1",
