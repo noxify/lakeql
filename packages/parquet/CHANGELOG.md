@@ -1,3 +1,13 @@
+## @lakeql/parquet@0.2.5
+
+### Migrate release tooling from Changesets to Tegami
+
+Replaced Changesets with Tegami for versioning and publishing.
+
+### Update dependencies
+
+Updated all dependencies to their latest versions.
+
 # @lakeql/parquet
 
 ## 0.2.4

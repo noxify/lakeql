@@ -1,3 +1,25 @@
+## @lakeql/file-generator@0.2.0
+
+### Migrate release tooling from Changesets to Tegami
+
+Replaced Changesets with Tegami for versioning and publishing.
+
+### Update dependencies
+
+Updated all dependencies to their latest versions.
+
+### Refactor `getSelectFields` to use props interface
+
+`getSelectFields` now accepts a single `GetSelectFieldProps` object instead of positional arguments. The generated code from the file-generator is updated accordingly.
+
+```ts
+// Before
+getSelectFields(info, true)
+
+// After
+getSelectFields({ graphqlInfo: info, withNodes: true })
+```
+
 # @lakeql/file-generator
 
 ## 0.1.12

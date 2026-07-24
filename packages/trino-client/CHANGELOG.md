@@ -1,3 +1,21 @@
+## @lakeql/trino-client@0.5.0
+
+### Migrate release tooling from Changesets to Tegami
+
+Replaced Changesets with Tegami for versioning and publishing.
+
+### Update dependencies
+
+Updated all dependencies to their latest versions.
+
+### Rename generic type parameter `<T>` to `<TRow>`
+
+Renamed the generic type parameter across `TrinoClient` methods, `QueryResult`, and `QueryProps` from `<T>` to `<TRow>` for clarity.
+
+### Add JSDoc documentation to error classes
+
+All error classes (`TrinoClientError`, `TrinoQueryError`, `TrinoTimeoutError`, `TrinoCancellationError`) now have documented constructor parameters.
+
 # @lakeql/trino-client
 
 ## 0.4.1
