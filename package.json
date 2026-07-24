@@ -63,14 +63,13 @@
     "oxlint": "^1.75.0",
     "sherif": "1.13.0",
     "tegami": "^1.2.6",
-    "turbo": "2.10.5",
+    "turbo": "2.10.6",
     "typescript": "6.0.3",
     "ultracite": "7.9.4",
-    "vite": "7.3.5",
     "vitest": "4.1.10"
   },
   "engines": {
     "node": ">=22"
   },
-  "packageManager": "pnpm@11.15.1"
+  "packageManager": "pnpm@11.17.0"
 }
