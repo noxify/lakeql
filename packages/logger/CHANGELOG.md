@@ -1,3 +1,13 @@
+## @lakeql/logger@0.2.3
+
+### Migrate release tooling from Changesets to Tegami
+
+Replaced Changesets with Tegami for versioning and publishing.
+
+### Update dependencies
+
+Updated all dependencies to their latest versions.
+
 # @lakeql/logger
 
 ## 0.2.2

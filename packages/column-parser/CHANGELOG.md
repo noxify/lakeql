@@ -1,3 +1,13 @@
+## @lakeql/column-parser@0.1.6
+
+### Migrate release tooling from Changesets to Tegami
+
+Replaced Changesets with Tegami for versioning and publishing.
+
+### Update dependencies
+
+Updated all dependencies to their latest versions.
+
 # @lakeql/column-parser
 
 ## 0.1.5

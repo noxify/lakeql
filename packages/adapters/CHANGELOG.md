@@ -1,3 +1,13 @@
+## @lakeql/adapters@0.6.2
+
+### Migrate release tooling from Changesets to Tegami
+
+Replaced Changesets with Tegami for versioning and publishing.
+
+### Update dependencies
+
+Updated all dependencies to their latest versions.
+
 # @lakeql/adapters
 
 ## 0.6.1
