@@ -62,7 +62,7 @@ describe(getSelectFields, () => {
     ]
 
     const info = createMockInfo(selections)
-    const result = getSelectFields(info)
+    const result = getSelectFields({ graphqlInfo: info })
 
     expect(result).toStrictEqual(["field1", "field2"])
   })
@@ -80,7 +80,7 @@ describe(getSelectFields, () => {
     ]
 
     const info = createMockInfo(selections, true)
-    const result = getSelectFields(info, true)
+    const result = getSelectFields({ graphqlInfo: info, withNodes: true })
 
     expect(result).toStrictEqual(["field1", "field2"])
   })
@@ -105,8 +105,12 @@ describe(getSelectFields, () => {
       ],
     } as unknown as GraphQLResolveInfo
 
-    expect(() => getSelectFields(info, true)).toThrow(GraphQLError)
-    expect(() => getSelectFields(info, true)).toThrow(
+    expect(() =>
+      getSelectFields({ graphqlInfo: info, withNodes: true })
+    ).toThrow(GraphQLError)
+    expect(() =>
+      getSelectFields({ graphqlInfo: info, withNodes: true })
+    ).toThrow(
       "No fields to return defined. Please specify at least one field inside `nodes`."
     )
   })
@@ -125,7 +129,7 @@ describe(getSelectFields, () => {
       ],
     } as unknown as GraphQLResolveInfo
 
-    const result = getSelectFields(info)
+    const result = getSelectFields({ graphqlInfo: info })
     expect(result).toStrictEqual([])
   })
 
@@ -161,7 +165,7 @@ describe(getSelectFields, () => {
       ],
     } as unknown as GraphQLResolveInfo
 
-    const result = getSelectFields(info)
+    const result = getSelectFields({ graphqlInfo: info })
     expect(result).toStrictEqual(["subField1", "subField2"])
   })
 })
@@ -188,8 +192,12 @@ describe("getSelectFields - additional cases", () => {
       ],
     } as unknown as GraphQLResolveInfo
 
-    expect(() => getSelectFields(info, true)).toThrow(GraphQLError)
-    expect(() => getSelectFields(info, true)).toThrow(
+    expect(() =>
+      getSelectFields({ graphqlInfo: info, withNodes: true })
+    ).toThrow(GraphQLError)
+    expect(() =>
+      getSelectFields({ graphqlInfo: info, withNodes: true })
+    ).toThrow(
       "No fields to return defined. Please specify at least one field inside `nodes`."
     )
   })
@@ -209,7 +217,7 @@ describe("getSelectFields - additional cases", () => {
       ],
     } as unknown as GraphQLResolveInfo
 
-    const result = getSelectFields(info)
+    const result = getSelectFields({ graphqlInfo: info })
     expect(result).toStrictEqual([])
   })
 
@@ -225,7 +233,7 @@ describe("getSelectFields - additional cases", () => {
       ],
     } as unknown as GraphQLResolveInfo
 
-    const result = getSelectFields(info)
+    const result = getSelectFields({ graphqlInfo: info })
     expect(result).toStrictEqual([])
   })
 
@@ -253,7 +261,7 @@ describe("getSelectFields - additional cases", () => {
       ],
     } as unknown as GraphQLResolveInfo
 
-    const result = getSelectFields(info, true)
+    const result = getSelectFields({ graphqlInfo: info, withNodes: true })
     expect(result).toStrictEqual([])
   })
 
@@ -278,7 +286,7 @@ describe("getSelectFields - additional cases", () => {
       ],
     } as unknown as GraphQLResolveInfo
 
-    const result = getSelectFields(info, true)
+    const result = getSelectFields({ graphqlInfo: info, withNodes: true })
     expect(result).toStrictEqual([])
   })
 })

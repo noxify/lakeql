@@ -53,9 +53,3 @@ export function createDirectories() {
 export const AllDocumentation = new Collection({
   entries: createDirectories(),
 })
-
-export const PackagesDirectory = new Directory({
-  fileSystem,
-  filter: "**/*.ts",
-  path: "../../packages",
-})

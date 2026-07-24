@@ -135,18 +135,18 @@ export class TrinoClient {
    * Executes a SQL statement and collects all result pages into a single array.
    * Automatically follows `nextUri` pagination until the result set is complete.
    */
-  async query<T>({
+  async query<TRow>({
     sql,
     impersonateAs,
     signal,
     transform,
-  }: QueryProps<T>): Promise<T[]> {
-    const result = await this.runStatement<T>(sql, impersonateAs, signal)
+  }: QueryProps<TRow>): Promise<TRow[]> {
+    const result = await this.runStatement<TRow>(sql, impersonateAs, signal)
     this.activeQueries.add(result.id)
 
     try {
       const columns = result.columns ?? []
-      const allData: T[] = transform
+      const allData: TRow[] = transform
         ? (result.data ?? []).map((row) => transform(row as unknown[], columns))
         : (result.data ?? [])
 
@@ -154,7 +154,7 @@ export class TrinoClient {
       while (nextUri) {
         TrinoClient.checkAborted(signal, result.id)
         // eslint-disable-next-line no-await-in-loop
-        const next = await this.fetchNext<T>(nextUri, signal)
+        const next = await this.fetchNext<TRow>(nextUri, signal)
         if (next.data) {
           if (transform) {
             allData.push(
@@ -179,15 +179,15 @@ export class TrinoClient {
    * Executes a SQL statement and returns an async generator that yields rows
    * one at a time as pages are fetched.
    */
-  async stream<T>({
+  async stream<TRow>({
     sql,
     impersonateAs,
     signal,
     transform,
-  }: QueryProps<T>): Promise<AsyncGenerator<T>> {
-    const result = await this.runStatement<T>(sql, impersonateAs, signal)
+  }: QueryProps<TRow>): Promise<AsyncGenerator<TRow>> {
+    const result = await this.runStatement<TRow>(sql, impersonateAs, signal)
     const columns = result.columns ?? []
-    const initialData: T[] = transform
+    const initialData: TRow[] = transform
       ? (result.data ?? []).map((row) => transform(row as unknown[], columns))
       : (result.data ?? [])
     let { nextUri } = result
@@ -203,7 +203,7 @@ export class TrinoClient {
       while (nextUri) {
         TrinoClient.checkAborted(signal, queryId)
         // eslint-disable-next-line no-await-in-loop
-        const next = await fetchNext<T>(nextUri, signal)
+        const next = await fetchNext<TRow>(nextUri, signal)
         const nextColumns = next.columns ?? columns
         if (next.data) {
           for (const row of next.data) {
@@ -365,11 +365,11 @@ export class TrinoClient {
 
   // ─── Private ─────────────────────────────────────────────────────────────
 
-  private async runStatement<T>(
+  private async runStatement<TRow>(
     sql: string,
     impersonateAs?: string,
     signal?: AbortSignal
-  ): Promise<QueryResult<T>> {
+  ): Promise<QueryResult<TRow>> {
     TrinoClient.checkAborted(signal)
 
     return withRetry(async () => {
@@ -399,7 +399,7 @@ export class TrinoClient {
         )
       }
 
-      const data = (await response.json()) as QueryResult<T>
+      const data = (await response.json()) as QueryResult<TRow>
 
       if (data.error) {
         throw new TrinoQueryError(
@@ -415,10 +415,10 @@ export class TrinoClient {
     }, this.retryConfig)
   }
 
-  private async fetchNext<T>(
+  private async fetchNext<TRow>(
     nextUri: string,
     signal?: AbortSignal
-  ): Promise<QueryResult<T>> {
+  ): Promise<QueryResult<TRow>> {
     return withRetry(async () => {
       let response: Response
       try {
@@ -442,7 +442,7 @@ export class TrinoClient {
         )
       }
 
-      const data = (await response.json()) as QueryResult<T>
+      const data = (await response.json()) as QueryResult<TRow>
 
       if (data.error) {
         throw new TrinoQueryError(

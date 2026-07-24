@@ -1,13 +1,14 @@
 import path from "node:path"
 
 import { cache } from "react"
-import type { ModuleExport } from "renoun/file-system"
+import { createSlug } from "renoun"
 import { isDirectory, isFile } from "renoun/file-system"
 import type { z } from "zod"
 
 import { cachePromise } from "@/lib/cache-promise"
+import { analyzeSyntacticExports } from "@/lib/ts-morph-analysis"
 
-import { AllDocumentation, PackagesDirectory } from "./collections"
+import { AllDocumentation } from "./collections"
 import type { frontmatterSchema } from "./validations"
 
 export interface LlmsTreeItem {
@@ -661,35 +662,37 @@ export const getApiReferenceExports = cache(
       references.map((ref) =>
         cachePromise(_apiReferenceCache, ref.file, async () => {
           try {
-            const sourceFile = await PackagesDirectory.getFile(ref.file, "ts")
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const fileExports = await (sourceFile as any).getExports()
-            const exports = await Promise.all(
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              (fileExports as ModuleExport<any>[]).map(async (e) => {
-                const typeInfo = await e.getType()
-                const methods =
-                  typeInfo?.kind === "Class" && typeInfo.methods
-                    ? typeInfo.methods
-                        .filter(
-                          (m: { name?: string; scope?: string }) =>
-                            m.name && m.scope !== "static"
-                        )
-                        .map((m: { name?: string }) => ({
-                          slug: `${(e.slug ?? e.name).toLowerCase().replaceAll(/[^a-z0-9]+/gu, "-")}-${(m.name ?? "unknown").toLowerCase().replaceAll(/[^a-z0-9]+/gu, "-")}`,
-                          name: m.name ?? "unknown",
-                          title: m.name ?? "unknown",
-                        }))
-                    : undefined
-                return {
-                  slug: e.slug ?? e.name,
-                  name: e.name,
-                  title: e.name,
-                  kind: typeInfo?.kind ? kindToLabel(typeInfo.kind) : null,
-                  methods,
-                }
-              })
+            const filePath = path.resolve(
+              process.cwd(),
+              "../../packages",
+              `${ref.file}.ts`
             )
+
+            // Use lightweight syntactic analysis instead of full type resolution
+            const syntacticExports = await analyzeSyntacticExports(filePath)
+
+            // Build export metadata purely from ts-morph analysis (no renoun getExports)
+            const exports = syntacticExports.map((info) => {
+              const slug = createSlug(info.name)
+
+              const methods =
+                info.kind === "Class" && info.methods
+                  ? info.methods.map((methodName) => ({
+                      slug: `${slug}-${createSlug(methodName)}`,
+                      name: methodName,
+                      title: methodName,
+                    }))
+                  : undefined
+
+              return {
+                slug,
+                name: info.name,
+                title: info.name,
+                kind: info.kind ? kindToLabel(info.kind) : null,
+                methods,
+              }
+            })
+
             return { name: ref.name, exports }
           } catch {
             return null

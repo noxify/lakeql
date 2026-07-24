@@ -7,7 +7,11 @@ import type { JWTPayload } from "jose"
  * The GraphQL context object available in every resolver.
  */
 export interface Context {
-  /** Authenticated user payload from JWT verification, or `null` for unauthenticated requests. */
+  /**
+   * Authenticated user payload from JWT verification, or `null` for unauthenticated requests.
+   *
+   * @see {@link https://github.com/panva/jose/blob/main/docs/types/interfaces/JWTPayload.md | jose - JWTPayload}
+   */
   currentUser: JWTPayload | null
   /** Configured permission rules for technical users. */
   permissions: Permission[]
@@ -59,6 +63,11 @@ export interface ErrorMessage {
   errorCode?: number
   message?: string
   code?: string
+  /**
+   * Validation issues from schema validation or custom error details.
+   *
+   * @see {@link https://standardschema.dev | Standard Schema Spec}
+   */
   additionalInformation?:
     | readonly StandardSchemaV1.Issue[]
     | Record<string, unknown>[]
@@ -111,6 +120,11 @@ export type WritePermissionResolver = (
   } & PermissionFields
 ) => boolean | Promise<boolean>
 
+/**
+ * Subset of GraphQL Yoga's `createYoga` options, excluding `schema` and `context` which are managed internally.
+ *
+ * @see {@link https://the-guild.dev/graphql/yoga-server/docs | GraphQL Yoga Docs}
+ */
 export type YogaConfigOverrides = Omit<
   NonNullable<Parameters<typeof createYoga>[0]>,
   "schema" | "context"

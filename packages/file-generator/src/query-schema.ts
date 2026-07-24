@@ -490,7 +490,18 @@ function createSelectFieldsStatement(): ts.VariableStatement {
       ts.factory.createCallExpression(
         id("getSelectFields"),
         [typeRef("TableDefinition")],
-        [id("info"), bool(true)]
+        [
+          ts.factory.createObjectLiteralExpression(
+            [
+              ts.factory.createPropertyAssignment(
+                id("graphqlInfo"),
+                id("info")
+              ),
+              ts.factory.createPropertyAssignment(id("withNodes"), bool(true)),
+            ],
+            false
+          ),
+        ]
       )
     ),
   ])

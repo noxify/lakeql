@@ -7,6 +7,10 @@ export class TrinoClientError extends Error {
   /** HTTP status code if available. */
   readonly statusCode?: number
 
+  /**
+   * @param message - Human-readable error message.
+   * @param statusCode - HTTP status code from the Trino response.
+   */
   constructor(message: string, statusCode?: number) {
     super(message)
     this.name = "TrinoClientError"
@@ -27,6 +31,13 @@ export class TrinoQueryError extends Error {
   /** Trino error type (e.g. "USER_ERROR", "INTERNAL_ERROR"). */
   readonly errorType: string
 
+  /**
+   * @param message - Human-readable error message from Trino.
+   * @param queryId - The Trino query ID that produced the error.
+   * @param errorCode - Numeric Trino error code.
+   * @param errorName - Trino error name (e.g. "TABLE_NOT_FOUND").
+   * @param errorType - Trino error type (e.g. "USER_ERROR", "INTERNAL_ERROR").
+   */
   constructor(
     message: string,
     queryId: string,
@@ -50,6 +61,10 @@ export class TrinoTimeoutError extends Error {
   /** The query ID that timed out, if available. */
   readonly queryId?: string
 
+  /**
+   * @param message - Human-readable timeout error message.
+   * @param queryId - The query ID that timed out, if known.
+   */
   constructor(message: string, queryId?: string) {
     super(message)
     this.name = "TrinoTimeoutError"
@@ -64,6 +79,10 @@ export class TrinoCancellationError extends Error {
   /** The query ID that was cancelled. */
   readonly queryId?: string
 
+  /**
+   * @param message - Human-readable cancellation message.
+   * @param queryId - The query ID that was cancelled, if known.
+   */
   constructor(message: string, queryId?: string) {
     super(message)
     this.name = "TrinoCancellationError"

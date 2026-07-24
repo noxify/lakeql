@@ -1,8 +1,9 @@
+import path from "node:path"
+
 import type { Metadata } from "next"
 import { Space_Grotesk } from "next/font/google"
 import { notFound } from "next/navigation"
 import { isDirectory, isFile, MDX } from "renoun"
-import type { ModuleExport } from "renoun"
 
 import {
   getFileContent,
@@ -15,11 +16,12 @@ import {
   getEntryFrontmatter,
 } from "@/collection-helpers"
 import type { EntryType } from "@/collection-helpers"
-import { PackagesDirectory } from "@/collections"
 import { DocsPageActions } from "@/components/docs-page-actions"
-import { References } from "@/components/mdx/reference"
+import { ReferenceSection } from "@/components/mdx/api-reference"
 import SectionGrid from "@/components/section-grid"
 import Siblings from "@/components/siblings"
+import { resolveFileExports } from "@/lib/ts-morph-analysis"
+import type { ResolvedExport } from "@/lib/ts-morph-analysis"
 import { cn } from "@/lib/utils"
 import { toRawHref } from "@/shared/doc-paths"
 
@@ -221,7 +223,7 @@ export default async function DocsPage({
   ])
 
   // Load API reference exports if configured in frontmatter
-  let apiReferenceExports: ModuleExport<unknown>[] | null = null
+  let apiReferenceExports: ResolvedExport[] | null = null
   if (
     frontmatter?.apiReference &&
     Array.isArray(frontmatter.apiReference) &&
@@ -231,9 +233,12 @@ export default async function DocsPage({
       frontmatter.apiReference.map(
         async (ref: { name: string; file: string }) => {
           try {
-            const sourceFile = await PackagesDirectory.getFile(ref.file, "ts")
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            return (sourceFile as any).getExports()
+            const filePath = path.resolve(
+              process.cwd(),
+              "../../packages",
+              `${ref.file}.ts`
+            )
+            return resolveFileExports(filePath)
           } catch {
             return []
           }
@@ -335,8 +340,10 @@ export default async function DocsPage({
           {Content ? <Content /> : <div>No content</div>}
 
           {apiReferenceExports && apiReferenceExports.length > 0 && (
-            <div className="mt-12">
-              <References fileExports={apiReferenceExports} />
+            <div className="not-prose mt-12 flex flex-col">
+              {apiReferenceExports.map((exp) => (
+                <ReferenceSection key={exp.name} source={exp} />
+              ))}
             </div>
           )}
 

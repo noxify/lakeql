@@ -203,7 +203,7 @@ export interface Stats {
 /**
  * Main query results response from Trino.
  */
-export interface QueryResult<T = unknown> {
+export interface QueryResult<TRow = unknown> {
   /** The unique query ID. */
   id: string
   /** URI for the query info page. */
@@ -215,7 +215,7 @@ export interface QueryResult<T = unknown> {
   /** Column definitions for the result set. */
   columns?: Column[]
   /** Result data rows. */
-  data?: T[]
+  data?: TRow[]
   /** Statistics about query execution. */
   stats: Stats
   /** Error information if query failed. */
@@ -260,7 +260,7 @@ export interface TrinoClientProps {
 /**
  * Parameters for executing a SQL query or stream.
  */
-export interface QueryProps<T = unknown> {
+export interface QueryProps<TRow = unknown> {
   /** The SQL statement to execute. */
   sql: string
   /** Optional Trino user to impersonate via `X-Trino-User`. */
@@ -268,7 +268,7 @@ export interface QueryProps<T = unknown> {
   /** Abort signal for cancelling the query. */
   signal?: AbortSignal
   /** Optional transform function to map raw row arrays to typed objects. */
-  transform?: (row: unknown[], columns: Column[]) => T
+  transform?: (row: unknown[], columns: Column[]) => TRow
 }
 
 /**

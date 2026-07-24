@@ -5,6 +5,7 @@ import { CodeBlock, Toolbar } from "renoun/components"
 import type { MDXComponents } from "renoun/mdx"
 import { createSlug } from "renoun/mdx"
 
+import { ApiReference } from "@/components/mdx/api-reference"
 import { CliCommandDetails } from "@/components/mdx/cli-command-details"
 import { CommandWrapper as Command } from "@/components/mdx/command"
 import { Heading } from "@/components/mdx/heading"
@@ -12,12 +13,9 @@ import {
   ImageHandler,
   MarkdownImageHandler,
 } from "@/components/mdx/image-handler"
-import { InlineReference } from "@/components/mdx/inline-reference"
-import { InterfaceReference } from "@/components/mdx/interface-reference"
 import { LinkHandler } from "@/components/mdx/link-handler"
 import { MermaidDiagram } from "@/components/mdx/mermaid"
 import { RailroadDiagram } from "@/components/mdx/railroad"
-import { References } from "@/components/mdx/reference"
 import {
   StepperComponent,
   StepperItemComponent,
@@ -309,8 +307,6 @@ export function useMDXComponents() {
 
     Command,
     CliCommandDetails,
-    InlineReference,
-    InterfaceReference,
-    References,
+    ApiReference,
   } satisfies MDXComponents
 }
