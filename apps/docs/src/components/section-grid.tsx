@@ -95,7 +95,7 @@ export default async function SectionGrid(props: SectionGridProps) {
   const inputItems = "items" in props ? props.items : undefined
 
   if (isEmptyInput(sections, inputItems)) {
-    return <></>
+    return null
   }
 
   const elements: GridElement[] = []

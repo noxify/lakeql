@@ -38,11 +38,11 @@ s3a://<bucket>/<basePath>/latest.parquet/
 
 Depending on the [load strategy](/docs/adapters/write-pipeline/load-strategies), different tables are managed:
 
-| Strategy           | Tables created                                                               |
-| ------------------ | ---------------------------------------------------------------------------- |
-| `full_load`        | `<tableName>` → `latest.parquet/`                                            |
+| Strategy | Tables created |
+| --- | --- |
+| `full_load` | `<tableName>` → `latest.parquet/` |
 | `full_load_append` | `<tableName>_latest` → `latest.parquet/`, `<tableName>_all` → `all.parquet/` |
-| `append`           | `<tableName>` → `all.parquet/`                                               |
+| `append` | `<tableName>` → `all.parquet/` |
 
 For `full_load_append`, both tables are managed atomically — if creating one fails, the manager attempts a best-effort rollback by dropping both.
 
@@ -106,16 +106,16 @@ WITH (
 
 ## Configuration
 
-<InterfaceReference
+<ApiReference
+  variant="table"
   file="adapters/src/hive-table-manager"
   name="HiveTableManagerConfig"
-  mode="declaration"
 />
 
 ## Table definition
 
-<InterfaceReference
+<ApiReference
+  variant="table"
   file="adapters/src/hive-table-manager"
   name="HiveTableDefinition"
-  mode="declaration"
 />

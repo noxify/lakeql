@@ -54,16 +54,20 @@ export interface FieldOptions {
 /**
  * Defines the sort order for a query result.
  *
- * @template TableDefinition - The table type used to constrain the `field` to valid column names.
+ * @template TableDefinition - The table type used to constrain the `field` to valid column names. See [Introduction](/docs/query-builder/overview/introduction) for details.
  */
 export interface SortInput<TableDefinition> {
-  /** Column name to sort by. Constrained to valid column names from the table type. */
+  /**
+   * Column name to sort by. Constrained to valid column names from the table type.
+   *
+   * @see {@link https://kysely-org.github.io/kysely-apidoc/types/SelectExpression.html | Kysely API Docs - SelectExpression}
+   */
   field: SelectExpression<
     KyselyDatabase<TableDefinition>,
     keyof KyselyDatabase<TableDefinition>
   >
-  /** Sort direction — `"asc"` for ascending, `"desc"` for descending. */
-  direction: string
+  /** Sort direction */
+  direction: "asc" | "desc"
 }
 
 /**
@@ -102,7 +106,7 @@ interface KyselyDatabase<TableDefinition> {
 /**
  * Parameters for generating a Trino-compatible SQL query from GraphQL resolve info.
  *
- * @template TableDefinition - The table type definition used by Kysely for type-safe column references.
+ * @template TableDefinition - The table type definition used by Kysely for type-safe column references. See [Introduction](/docs/query-builder/overview/introduction) for details.
  */
 export interface GenerateQueryProps<TableDefinition> {
   /** The Trino catalog name (e.g. "hive"). */
@@ -111,7 +115,11 @@ export interface GenerateQueryProps<TableDefinition> {
   schema: string
   /** The table name to query. */
   table: string
-  /** The columns to select, derived from GraphQL field selections. */
+  /**
+   * The columns to select, derived from GraphQL field selections.
+   *
+   * @see {@link https://kysely-org.github.io/kysely-apidoc/types/SelectExpression.html | Kysely API Docs - SelectExpression}
+   */
   selectFields: SelectExpression<
     KyselyDatabase<TableDefinition>,
     keyof KyselyDatabase<TableDefinition>
@@ -143,9 +151,16 @@ const operatorMap: Record<string, BinaryOperator> = {
 
 /**
  * Parameters for building a single field comparison expression.
+ *
+ * @template TableDefinition - The table type definition. See [Introduction](/docs/query-builder/overview/introduction) for details.
  */
 export interface GetFieldQueryProps<TableDefinition> {
-  /** The Kysely expression builder for constructing SQL expressions. */
+  /**
+   * The Kysely expression builder for constructing SQL expressions.
+   *
+   * @see {@link https://kysely.dev/docs/recipes/expressions | Kysely Docs - Expressions}
+   * @see {@link https://kysely-org.github.io/kysely-apidoc/interfaces/ExpressionBuilder.html | Kysely API Docs - ExpressionBuilder}
+   */
   eb: ExpressionBuilder<KyselyDatabase<TableDefinition>, "tablename">
   /** The column name to filter on. */
   fieldName: string
@@ -159,7 +174,7 @@ export interface GetFieldQueryProps<TableDefinition> {
  * Builds a single field comparison expression for use in WHERE clauses.
  *
  * @param props - The field query parameters.
- * @returns A Kysely expression wrapper representing the comparison.
+ * @returns A Kysely [ExpressionWrapper](https://kysely-org.github.io/kysely-apidoc/classes/ExpressionWrapper.html) representing the comparison.
  */
 export function getFieldQuery<TableDefinition>({
   eb,
@@ -264,6 +279,7 @@ function conditionBuilder<TableDefinition>({
     SqlBool
   >[] = []
 
+  // oxlint-disable-next-line no-unreachable-loop
   for (const [key, definition] of Object.entries(query)) {
     switch (key.toLowerCase()) {
       case "and": {
@@ -459,14 +475,13 @@ export function normalizeUserQuery(userQuery: Where): Where {
 /**
  * Generates a compiled SQL query with pagination metadata for Trino.
  *
- * Returns a Kysely `CompiledQuery` containing the generated SQL and parameters.
  * The query uses two CTEs internally:
  * - `total_count` — provides `total_records` (total matching rows before paging)
  * - `records` — the actual rows based on `selectFields`, filtering, sorting, and paging
  *
  * The compiled query is executed by the Trino client which returns the row data.
  *
- * @returns A compiled SQL query ready for execution via the Trino client.
+ * @returns A [CompiledQuery](https://kysely-org.github.io/kysely-apidoc/interfaces/CompiledQuery.html) ready for execution via the Trino client.
  */
 export function generateQuery<TableDefinition>({
   catalog,
@@ -605,7 +620,11 @@ export function generateQuery<TableDefinition>({
  * Parameters for formatting a compiled SQL query.
  */
 export interface FormatQueryProps<T> {
-  /** The compiled Kysely query to format. */
+  /**
+   * The compiled Kysely query to format.
+   *
+   * @see {@link https://kysely-org.github.io/kysely-apidoc/interfaces/CompiledQuery.html | Kysely API Docs - CompiledQuery}
+   */
   query: CompiledQuery<T>
 }
 
@@ -638,17 +657,30 @@ export function formatQuery<T>({ query }: FormatQueryProps<T>) {
   })
 }
 
+export interface GetSelectFieldProps {
+  /**
+   * The GraphQL resolve info from the resolver.
+   *
+   * @see {@link https://the-guild.dev/graphql/tools/docs/api/utils/src/interfaces/graphqlresolveinfo | GraphQL Tools - GraphQLResolveInfo}
+   */
+  graphqlInfo: GraphQLResolveInfo
+
+  /**
+   * When true, looks inside the `nodes` selection (for Connection types).
+   * @default false
+   */
+  withNodes?: boolean
+}
+
 /**
  * Extracts selected field names from a GraphQL resolve info object.
  *
- * @param graphqlInfo - The GraphQL resolve info from the resolver.
- * @param withNodes - When true, looks inside the `nodes` selection (for Connection types).
  * @returns An array of field names to use as SELECT columns.
  */
-export function getSelectFields<T>(
-  graphqlInfo: GraphQLResolveInfo,
-  withNodes = false
-) {
+export function getSelectFields<T>({
+  graphqlInfo,
+  withNodes = false,
+}: GetSelectFieldProps) {
   return graphqlInfo.fieldNodes.flatMap((fieldNode) => {
     const baseSelections = fieldNode.selectionSet?.selections as SelectionNode[]
 

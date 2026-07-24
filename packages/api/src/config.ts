@@ -35,7 +35,11 @@ export interface ApiRuntimeConfig {
    * @default 2000
    */
   maxRecordsPerPage?: number
-  /** Override GraphQL Yoga options. */
+  /**
+   * Override GraphQL Yoga options.
+   *
+   * @see {@link https://the-guild.dev/graphql/yoga-server/docs | GraphQL Yoga Docs}
+   */
   yogaConfig?: YogaConfigOverrides
   /**
    * Permission rules for technical users.

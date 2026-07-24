@@ -51,11 +51,11 @@
   },
   "devDependencies": {
     "@lakeql/tsconfig": "workspace:*",
-    "@types/node": "24.13.2",
-    "fast-check": "^4.8.0",
-    "hyparquet": "1.26.1",
-    "tsdown": "0.22.3",
+    "@types/node": "24.13.3",
+    "fast-check": "^4.9.0",
+    "hyparquet": "1.26.2",
+    "tsdown": "0.22.13",
     "typescript": "6.0.3",
-    "vitest": "4.1.9"
+    "vitest": "4.1.10"
   }
 }

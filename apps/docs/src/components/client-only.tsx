@@ -8,7 +8,7 @@ export const useClientOnly = () => {
   const [hasMounted, setHasMounted] = useState(false)
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+    // eslint-disable-next-line react-hooks/set-state-in-effect react/react-compiler
     setHasMounted(true)
   }, [])
 
@@ -22,5 +22,5 @@ export const ClientOnly = ({ children }: { children: ReactNode }) => {
     return null
   }
 
-  return <>{children}</>
+  return children
 }

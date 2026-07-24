@@ -75,17 +75,18 @@ This produces a `mutation-schema.ts` with a fully wired resolver that invokes th
 
 The `loadStrategy` field controls how data is persisted. Choose based on your use case:
 
-| Strategy           | Best for                           | Behavior                                     |
-| ------------------ | ---------------------------------- | -------------------------------------------- |
-| `full_load`        | Dimension tables, reference data   | Replaces all data on every write             |
+| Strategy | Best for | Behavior |
+| --- | --- | --- |
+| `full_load` | Dimension tables, reference data | Replaces all data on every write |
 | `full_load_append` | Datasets needing current + history | Maintains latest snapshot and historical log |
-| `append`           | Event streams, audit logs          | Only adds data, never replaces               |
+| `append` | Event streams, audit logs | Only adds data, never replaces |
 
 See the [Load Strategies](/lakeql/guides/load-strategies) guide for detailed explanations and file layout diagrams.
 
 ## Mutation Configuration Reference
 
-<InterfaceReference
+<ApiReference
+  variant="table"
   file="schema-generator/src/endpoint-schema"
   name="MutationConfig"
 />
@@ -208,15 +209,15 @@ all.parquet/
 
 Each segment is either a plain field name or a field with a date component:
 
-| Segment            | Behavior                                                  |
-| ------------------ | --------------------------------------------------------- |
-| `customer_id`      | Extracts the raw field value → `customer_id=<value>`      |
-| `event_date:year`  | Parses the field as ISO date, extracts year → `year=2024` |
-| `event_date:month` | Extracts month (zero-padded) → `month=06`                 |
-| `event_date:day`   | Extracts day (zero-padded) → `day=15`                     |
-| `ts:hour`          | Extracts hour (zero-padded) → `hour=08`                   |
-| `ts:minute`        | Extracts minute (zero-padded) → `minute=30`               |
-| `ts:second`        | Extracts second (zero-padded) → `second=07`               |
+| Segment | Behavior |
+| --- | --- |
+| `customer_id` | Extracts the raw field value → `customer_id=<value>` |
+| `event_date:year` | Parses the field as ISO date, extracts year → `year=2024` |
+| `event_date:month` | Extracts month (zero-padded) → `month=06` |
+| `event_date:day` | Extracts day (zero-padded) → `day=15` |
+| `ts:hour` | Extracts hour (zero-padded) → `hour=08` |
+| `ts:minute` | Extracts minute (zero-padded) → `minute=30` |
+| `ts:second` | Extracts second (zero-padded) → `second=07` |
 
 Supported date components: `year`, `month`, `day`, `hour`, `minute`, `second`.
 
@@ -444,12 +445,12 @@ When `useSystemUser: true` is set for a permission entry, the Trino client uses 
 
 The mutation pipeline uses fail-fast error propagation:
 
-| Failure point      | Behavior                                                        |
-| ------------------ | --------------------------------------------------------------- |
-| Zod validation     | Returns field errors to GraphQL, no data written                |
-| Parquet conversion | Error propagated, no S3 or DDL operations attempted             |
-| S3 upload          | Error propagated, no DDL operations attempted                   |
-| Hive DDL           | Error propagated (with rollback attempt for `full_load_append`) |
+| Failure point | Behavior |
+| --- | --- |
+| Zod validation | Returns field errors to GraphQL, no data written |
+| Parquet conversion | Error propagated, no S3 or DDL operations attempted |
+| S3 upload | Error propagated, no DDL operations attempted |
+| Hive DDL | Error propagated (with rollback attempt for `full_load_append`) |
 
 For `full_load_append`, if one of the two Hive table creations fails, the system attempts a best-effort rollback of both tables before propagating the original error.
 

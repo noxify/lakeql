@@ -14,7 +14,7 @@ function buildEnv() {
       HIVE_HOST: string(),
       HIVE_PASSWORD: string().min(1),
       HIVE_PORT: string()
-        .transform((s) => Number.parseInt(s, 10))
+        .transform((s) => Math.trunc(Number(s)))
         .pipe(number()),
       HIVE_SOURCE: string().optional(),
       HIVE_USERNAME: string().min(1),

@@ -59,14 +59,14 @@ This means your GraphQL schema always reflects the actual state of your lakehous
 
 From introspected metadata, LakeQL generates four artifacts per table:
 
-| File                 | Purpose                                                           |
-| -------------------- | ----------------------------------------------------------------- |
-| `config.ts`          | Table metadata — catalog, schema, table name, column mappings     |
-| `interface.ts`       | TypeScript interface matching the table's column types            |
-| `query-schema.ts`    | Pothos query schema with filtering, sorting, and pagination       |
-| `mutation-schema.ts` | Pothos mutation schema with input types and resolver stub         |
-| `json-schema.json`   | JSON Schema used by the response transformer at runtime           |
-| `endpoint.json`      | Endpoint definition for re-generation via CLI or Endpoint Builder |
+| File | Purpose |
+| --- | --- |
+| `config.ts` | Table metadata — catalog, schema, table name, column mappings |
+| `interface.ts` | TypeScript interface matching the table's column types |
+| `query-schema.ts` | Pothos query schema with filtering, sorting, and pagination |
+| `mutation-schema.ts` | Pothos mutation schema with input types and resolver stub |
+| `json-schema.json` | JSON Schema used by the response transformer at runtime |
+| `endpoint.json` | Endpoint definition for re-generation via CLI or Endpoint Builder |
 
 These files are committed to your repository and imported by the API server at startup. When your table schema changes, re-run `pull` to regenerate them.
 

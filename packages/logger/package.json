@@ -52,12 +52,12 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@loglayer/plugin-redaction": "4.0.0",
-    "@loglayer/transport-winston": "3.2.0",
+    "@loglayer/plugin-redaction": "4.1.0",
+    "@loglayer/transport-winston": "3.3.0",
     "@t3-oss/env-core": "0.13.11",
     "fast-redact": "3.5.0",
     "kleur": "4.1.5",
-    "loglayer": "9.3.0",
+    "loglayer": "9.4.0",
     "serialize-error": "13.0.1",
     "winston": "3.19.0",
     "zod": "4.4.3"
@@ -65,9 +65,9 @@
   "devDependencies": {
     "@lakeql/tsconfig": "workspace:*",
     "@types/fast-redact": "3.0.4",
-    "@types/node": "24.13.2",
-    "globby": "16.2.0",
-    "tsdown": "0.22.3",
+    "@types/node": "24.13.3",
+    "globby": "16.2.2",
+    "tsdown": "0.22.13",
     "typescript": "6.0.3"
   }
 }

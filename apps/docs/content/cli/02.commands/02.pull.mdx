@@ -28,8 +28,7 @@ lakeql-cli pull --catalog hive --schema myschema --table users
 
 The registry is generated once after all selected items are processed.
 
-When more than 10 tables are selected in non-bulk mode, `pull` switches to a compact live progress view (`Completed X/Y | Active A/B`) with active load preview, instead of rendering one task line per table.
-Use `--concurrency <count>` to override the default limit of `8` concurrent pull operations.
+When more than 10 tables are selected in non-bulk mode, `pull` switches to a compact live progress view (`Completed X/Y | Active A/B`) with active load preview, instead of rendering one task line per table. Use `--concurrency <count>` to override the default limit of `8` concurrent pull operations.
 
 ## Bulk mode
 
@@ -90,8 +89,7 @@ Each entry in the array has the following shape:
 | `tables`  | `string[]` | No       | Non-empty list of tables to pull |
 | `views`   | `string[]` | No       | Non-empty list of views to pull  |
 
-At least one non-empty list (`tables` or `views`) must be provided per entry.
-Entries with both lists missing or empty fail validation before execution.
+At least one non-empty list (`tables` or `views`) must be provided per entry. Entries with both lists missing or empty fail validation before execution.
 
 ### Catalog precedence
 
@@ -184,8 +182,7 @@ For each selected table, the following files are created under `schemas/generate
 
 `pull` generates query-only endpoints, so `mutation-schema.ts` is not created for pulled tables.
 
-Field names from source schemas are normalized to valid identifier names during generation (for example, spaces become underscores).
-If two source fields normalize to the same generated name, generation fails with a clear collision error instead of producing ambiguous output.
+Field names from source schemas are normalized to valid identifier names during generation (for example, spaces become underscores). If two source fields normalize to the same generated name, generation fails with a clear collision error instead of producing ambiguous output.
 
 ## Options
 

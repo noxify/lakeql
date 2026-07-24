@@ -450,6 +450,7 @@ export function SearchCommandProvider({
       return
     }
 
+    // oxlint-disable-next-line react/react-compiler
     setSearchResults(filterItemsByCollection(items, selectedCollection))
   }, [items, searchValue, selectedCollection])
 
@@ -699,6 +700,7 @@ export function SearchCommandProvider({
   }
 
   return (
+    // oxlint-disable-next-line react/jsx-no-constructed-context-values
     <SearchCommandContext.Provider value={{ open, setOpen }}>
       {children}
 
@@ -844,6 +846,7 @@ export function SearchCommandProvider({
 export function SearchCommand({ children }: SearchCommandProps) {
   const { open, setOpen } = useSearchCommand()
 
+  // oxlint-disable-next-line react/no-react-children
   const childArray = React.Children.toArray(children)
   const onlyChild = childArray.length === 1 ? childArray[0] : null
 
@@ -859,6 +862,7 @@ export function SearchCommand({ children }: SearchCommandProps) {
 
   const childOnClick = triggerChild.props.onClick
 
+  // oxlint-disable-next-line react/no-clone-element
   return React.cloneElement(triggerChild, {
     "aria-expanded": open,
     "aria-haspopup": "dialog",

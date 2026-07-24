@@ -26,10 +26,10 @@ For environments that use token-based authentication (e.g. OAuth2 access tokens)
 
 ## Host and Port
 
-| Variable    | Description                                  | Example                                           |
-| ----------- | -------------------------------------------- | ------------------------------------------------- |
+| Variable | Description | Example |
+| --- | --- | --- |
 | `HIVE_HOST` | Protocol + hostname of the Trino coordinator | `http://localhost`, `https://trino.prod.internal` |
-| `HIVE_PORT` | HTTP port Trino listens on                   | `8080` (default HTTP), `8446` (typical HTTPS)     |
+| `HIVE_PORT` | HTTP port Trino listens on | `8080` (default HTTP), `8446` (typical HTTPS) |
 
 The full Trino endpoint is constructed as `${HIVE_HOST}:${HIVE_PORT}/v1/statement`.
 
@@ -96,10 +96,10 @@ When the API server submits a query to Trino:
 
 ## Troubleshooting
 
-| Symptom                  | Likely Cause                                                 |
-| ------------------------ | ------------------------------------------------------------ |
-| `ECONNREFUSED`           | Trino is not running or `HIVE_HOST`/`HIVE_PORT` is wrong     |
-| `401 Unauthorized`       | Invalid `HIVE_USERNAME` or `HIVE_PASSWORD`                   |
-| `Catalog does not exist` | `HIVE_CATALOG` doesn't match a configured Trino catalog      |
-| `Schema does not exist`  | The target schema hasn't been created in Trino yet           |
-| Query timeout            | Trino cluster is overloaded or the query scans too much data |
+| Symptom | Likely Cause |
+| --- | --- |
+| `ECONNREFUSED` | Trino is not running or `HIVE_HOST`/`HIVE_PORT` is wrong |
+| `401 Unauthorized` | Invalid `HIVE_USERNAME` or `HIVE_PASSWORD` |
+| `Catalog does not exist` | `HIVE_CATALOG` doesn't match a configured Trino catalog |
+| `Schema does not exist` | The target schema hasn't been created in Trino yet |
+| Query timeout | Trino cluster is overloaded or the query scans too much data |

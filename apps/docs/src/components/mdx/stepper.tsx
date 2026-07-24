@@ -15,6 +15,7 @@ import {
 } from "@/components/reui/stepper"
 
 export function StepperComponent({ children }: PropsWithChildren) {
+  // oxlint-disable-next-line react/no-react-children
   const length = Children.count(children)
 
   return (
@@ -25,6 +26,7 @@ export function StepperComponent({ children }: PropsWithChildren) {
         defaultValue={0}
       >
         <StepperNav>
+          {/* oxlint-disable-next-line react/no-react-children */}
           {Children.map(children, (step, index) => (
             <StepperItem
               key={index}

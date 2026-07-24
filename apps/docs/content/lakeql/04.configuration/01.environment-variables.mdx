@@ -9,20 +9,20 @@ LakeQL validates environment variables at startup using `@t3-oss/env-core` with 
 
 ## Complete Reference
 
-| Variable                   | Package  | Type      | Required | Default       | Description                                                  |
-| -------------------------- | -------- | --------- | -------- | ------------- | ------------------------------------------------------------ |
-| `HIVE_HOST`                | api, cli | `string`  | Yes      | —             | Trino host URL (e.g. `http://localhost`)                     |
-| `HIVE_PORT`                | api, cli | `number`  | Yes      | —             | Trino HTTP port (e.g. `8080`)                                |
-| `HIVE_USERNAME`            | api, cli | `string`  | Yes      | —             | Trino authentication username                                |
-| `HIVE_PASSWORD`            | api, cli | `string`  | Yes      | —             | Trino authentication password                                |
-| `HIVE_CATALOG`             | api, cli | `string`  | Yes      | —             | Default Trino catalog (e.g. `hive`)                          |
-| `HIVE_SOURCE`              | api, cli | `string`  | No       | —             | Value for `X-Trino-Source` header                            |
-| `API_PORT`                 | api      | `number`  | No       | `4000`        | GraphQL API server port                                      |
-| `API_LOGGER`               | api      | `enum`    | No       | `warn`        | Log level: `silent`, `debug`, `info`, `warn`, `error`        |
-| `API_MAX_RECORDS_PER_PAGE` | api      | `number`  | No       | `2000`        | Maximum records per paginated response                       |
-| `AUTH_MOCK`                | api      | `boolean` | No       | `false`       | Enable mock authentication                                   |
-| `AUTH_MOCK_TOKEN`          | api      | `string`  | No       | —             | Token for mock auth (checked against `Authorization` header) |
-| `NODE_ENV`                 | api      | `enum`    | No       | `development` | Environment: `development`, `production`, `test`             |
+| Variable | Package | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- | --- |
+| `HIVE_HOST` | api, cli | `string` | Yes | — | Trino host URL (e.g. `http://localhost`) |
+| `HIVE_PORT` | api, cli | `number` | Yes | — | Trino HTTP port (e.g. `8080`) |
+| `HIVE_USERNAME` | api, cli | `string` | Yes | — | Trino authentication username |
+| `HIVE_PASSWORD` | api, cli | `string` | Yes | — | Trino authentication password |
+| `HIVE_CATALOG` | api, cli | `string` | Yes | — | Default Trino catalog (e.g. `hive`) |
+| `HIVE_SOURCE` | api, cli | `string` | No | — | Value for `X-Trino-Source` header |
+| `API_PORT` | api | `number` | No | `4000` | GraphQL API server port |
+| `API_LOGGER` | api | `enum` | No | `warn` | Log level: `silent`, `debug`, `info`, `warn`, `error` |
+| `API_MAX_RECORDS_PER_PAGE` | api | `number` | No | `2000` | Maximum records per paginated response |
+| `AUTH_MOCK` | api | `boolean` | No | `false` | Enable mock authentication |
+| `AUTH_MOCK_TOKEN` | api | `string` | No | — | Token for mock auth (checked against `Authorization` header) |
+| `NODE_ENV` | api | `enum` | No | `development` | Environment: `development`, `production`, `test` |
 
 ## Validation Skip Conditions
 

@@ -15,12 +15,12 @@ Partitioning controls how data is organized within the `all.parquet/` directory 
 
 The `partitioning` config value determines the mode:
 
-| Value                   | Mode      | Description                                               |
-| ----------------------- | --------- | --------------------------------------------------------- |
-| `true` (default)        | Timestamp | Partitions by write timestamp                             |
-| `false`                 | Disabled  | Flat file layout (UUID-only paths)                        |
-| `"fieldName"`           | Field     | Partitions by a record field's date value                 |
-| `"field:component/..."` | Custom    | Multi-segment partitioning with date component extraction |
+| Value | Mode | Description |
+| --- | --- | --- |
+| `true` (default) | Timestamp | Partitions by write timestamp |
+| `false` | Disabled | Flat file layout (UUID-only paths) |
+| `"fieldName"` | Field | Partitions by a record field's date value |
+| `"field:component/..."` | Custom | Multi-segment partitioning with date component extraction |
 
 ## Timestamp mode
 
@@ -95,13 +95,13 @@ all.parquet/region=eu-west-1/year=2025/month=03/<uuid>.parquet
 
 ## Related types
 
-<InterfaceReference
+<ApiReference
+  variant="table"
   file="adapters/src/write-pipeline"
   name="ResolvedPartitioning"
-  mode="declaration"
 />
 
-<InlineReference
+<ApiReference
   file="adapters/src/write-pipeline"
   include={["PartitionMode", "PartitionSegment", "PartitionFieldError"]}
 />

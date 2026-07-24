@@ -2,7 +2,7 @@ import { defineConfig } from "tsdown"
 
 export default defineConfig({
   deps: {
-    skipNodeModulesBundle: true,
+    neverBundle: true,
   },
   entry: ["src/**/*.ts"],
   minify: true,

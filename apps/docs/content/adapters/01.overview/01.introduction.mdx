@@ -37,9 +37,9 @@ The `executeWritePipeline` function orchestrates the full flow. It accepts recor
 
 The adapters support two storage backends:
 
-| Type    | Description                 | Credentials                                      |
-| ------- | --------------------------- | ------------------------------------------------ |
-| `s3`    | AWS S3                      | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`     |
+| Type | Description | Credentials |
+| --- | --- | --- |
+| `s3` | AWS S3 | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` |
 | `minio` | S3-compatible (MinIO, etc.) | `MINIO_ACCESS_KEY_ID`, `MINIO_SECRET_ACCESS_KEY` |
 
 Both use the same S3 protocol under the hood. The `minio` type requires an explicit `endpoint` configuration.

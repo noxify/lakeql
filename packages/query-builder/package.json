@@ -49,16 +49,16 @@
   },
   "dependencies": {
     "date-fns": "4.4.0",
-    "kysely": "0.29.2",
+    "kysely": "0.29.4",
     "sql-formatter": "15.8.2"
   },
   "devDependencies": {
     "@lakeql/tsconfig": "workspace:*",
-    "@pothos/core": "4.13.0",
-    "@types/node": "24.13.2",
+    "@pothos/core": "4.13.1",
+    "@types/node": "24.13.3",
     "graphql": "16.14.2",
-    "tsdown": "0.22.3",
+    "tsdown": "0.22.13",
     "typescript": "6.0.3",
-    "vitest": "4.1.9"
+    "vitest": "4.1.10"
   }
 }

@@ -60,13 +60,13 @@
   "dependencies": {
     "@ianvs/prettier-plugin-sort-imports": "^4.7.1",
     "dot-path-value": "0.0.12",
-    "prettier": "3.9.4"
+    "prettier": "3.9.6"
   },
   "devDependencies": {
     "@lakeql/tsconfig": "workspace:*",
-    "@types/node": "24.13.2",
-    "tsdown": "0.22.3",
+    "@types/node": "24.13.3",
+    "tsdown": "0.22.13",
     "typescript": "6.0.3",
-    "vitest": "4.1.9"
+    "vitest": "4.1.10"
   }
 }

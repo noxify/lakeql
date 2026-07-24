@@ -49,35 +49,35 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@hono/node-server": "2.0.6",
+    "@hono/node-server": "2.0.11",
     "@lakeql/helpers": "workspace:*",
     "@lakeql/logger": "workspace:*",
     "@lakeql/query-builder": "workspace:*",
     "@lakeql/response-transformer": "workspace:*",
     "@lakeql/trino-client": "workspace:*",
-    "@pothos/core": "4.13.0",
-    "@pothos/plugin-scope-auth": "4.1.6",
-    "@pothos/plugin-validation": "4.3.0",
+    "@pothos/core": "4.13.1",
+    "@pothos/plugin-scope-auth": "4.1.7",
+    "@pothos/plugin-validation": "4.3.1",
     "@t3-oss/env-core": "0.13.11",
     "dedent": "1.7.2",
-    "globby": "16.2.0",
+    "globby": "16.2.2",
     "graphql": "16.14.2",
     "graphql-scalars": "1.25.0",
     "graphql-yoga": "5.21.2",
-    "hono": "4.12.27",
-    "jose": "6.2.3",
+    "hono": "4.12.31",
+    "jose": "6.2.4",
     "zod": "4.4.3"
   },
   "devDependencies": {
     "@lakeql/tsconfig": "workspace:*",
     "@standard-schema/spec": "1.1.0",
     "@types/json-schema": "7.0.15",
-    "@types/node": "24.13.2",
+    "@types/node": "24.13.3",
     "dotenv-cli": "11.0.0",
-    "tsdown": "0.22.3",
-    "tsx": "4.22.4",
-    "type-fest": "5.7.0",
+    "tsdown": "0.22.13",
+    "tsx": "4.23.1",
+    "type-fest": "5.8.0",
     "typescript": "6.0.3",
-    "vitest": "4.1.9"
+    "vitest": "4.1.10"
   }
 }

@@ -25,20 +25,20 @@ const storage = createStorageOperations({
 
 ## Configuration
 
-<InterfaceReference
+<ApiReference
+  variant="table"
   file="adapters/src/storage-operations"
   name="StorageConfig"
-  mode="declaration"
 />
 
 ## Operations
 
 The returned object provides these methods:
 
-| Method                 | Description                                           |
-| ---------------------- | ----------------------------------------------------- |
+| Method | Description |
+| --- | --- |
 | `upload(buffer, path)` | Upload a `Uint8Array` to the given path in the bucket |
-| `deletePrefix(prefix)` | Delete all objects under the given prefix             |
+| `deletePrefix(prefix)` | Delete all objects under the given prefix |
 
 ## Environment variables
 
@@ -80,7 +80,7 @@ try {
 }
 ```
 
-<InlineReference
+<ApiReference
   file="adapters/src/storage-operations"
   include={["StorageError"]}
 />

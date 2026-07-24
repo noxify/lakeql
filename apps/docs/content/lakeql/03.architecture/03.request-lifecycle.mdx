@@ -90,7 +90,7 @@ The resolver extracts the requested fields from GraphQL's `resolveInfo` object. 
 ```ts
 // If the client requests { nodes { id, name } }
 // selectFields becomes ["id", "name"]
-const selectFields = getSelectFields(info, true)
+const selectFields = getSelectFields({ graphqlInfo: info, withNodes: true })
 ```
 
 ### 6. Query Builder

@@ -100,7 +100,6 @@ export function PanZoomControl({
     }
 
     centerView(initialZoom)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [centerOnMount, fitOnMount, initialZoom, maxZoom, centerView])
 
   const [isPanning, setIsPanning] = React.useState(false)

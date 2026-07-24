@@ -7,24 +7,24 @@ description: All supported filter operators and their SQL translations.
 
 The query builder supports a comprehensive set of comparison and pattern-matching operators. Each operator in `FieldOptions` maps to a specific SQL expression.
 
-| Operator        | SQL Output           | Description                               |
-| --------------- | -------------------- | ----------------------------------------- |
-| `eq`            | `= value`            | Equals                                    |
-| `neq`           | `!= value`           | Not equals                                |
-| `in`            | `IN (values)`        | Matches any value in the list             |
-| `notIn`         | `NOT IN (values)`    | Does not match any value in the list      |
-| `lt`            | `< value`            | Less than                                 |
-| `lte`           | `<= value`           | Less than or equal                        |
-| `gt`            | `> value`            | Greater than                              |
-| `gte`           | `>= value`           | Greater than or equal                     |
-| `like`          | `LIKE '%value%'`     | Contains (wraps value with wildcards)     |
-| `notLike`       | `NOT LIKE '%value%'` | Does not contain                          |
-| `startsWith`    | `LIKE 'value%'`      | Starts with the given prefix              |
-| `notStartsWith` | `NOT LIKE 'value%'`  | Does not start with the given prefix      |
-| `endsWith`      | `LIKE '%value'`      | Ends with the given suffix                |
-| `notEndsWith`   | `NOT LIKE '%value'`  | Does not end with the given suffix        |
-| `is`            | `= value`            | Equality check (typically for booleans)   |
-| `isNot`         | `!= value`           | Inequality check (typically for booleans) |
+| Operator | SQL Output | Description |
+| --- | --- | --- |
+| `eq` | `= value` | Equals |
+| `neq` | `!= value` | Not equals |
+| `in` | `IN (values)` | Matches any value in the list |
+| `notIn` | `NOT IN (values)` | Does not match any value in the list |
+| `lt` | `< value` | Less than |
+| `lte` | `<= value` | Less than or equal |
+| `gt` | `> value` | Greater than |
+| `gte` | `>= value` | Greater than or equal |
+| `like` | `LIKE '%value%'` | Contains (wraps value with wildcards) |
+| `notLike` | `NOT LIKE '%value%'` | Does not contain |
+| `startsWith` | `LIKE 'value%'` | Starts with the given prefix |
+| `notStartsWith` | `NOT LIKE 'value%'` | Does not start with the given prefix |
+| `endsWith` | `LIKE '%value'` | Ends with the given suffix |
+| `notEndsWith` | `NOT LIKE '%value'` | Does not end with the given suffix |
+| `is` | `= value` | Equality check (typically for booleans) |
+| `isNot` | `!= value` | Inequality check (typically for booleans) |
 
 ## Pattern Matching Examples
 

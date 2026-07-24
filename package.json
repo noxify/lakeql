@@ -37,14 +37,13 @@
     "typecheck": "turbo typecheck",
     "deps:check": "pnpm outdated -r",
     "deps:update": "pnpm update -i -L -r",
+    "gh:update": "actions-up --style preserve",
     "audit": "pnpm audit --prod",
     "audit:ci": "pnpm audit --prod --ignore GHSA-qx2v-qp2m-jg93 --ignore-unfixable",
     "test": "vitest",
     "test:ui": "vitest --ui",
     "prune": "turbo prune --docker",
-    "cs": "changeset",
-    "ci:publish": "pnpm build:pkg && pnpm publish -r --access public --publish-branch main --provenance && pnpm changeset tag",
-    "ci:version": "pnpm changeset version && pnpm install --no-frozen-lockfile && pnpm format:fix && git add .",
+    "tegami": "node scripts/tegami.mts",
     "with-env": "dotenv -e ./.env --",
     "mt:start": "uv run minitrino -v --env LIB_PATH=.minitrino/lib provision -m hive -m minio -m ldap -m oauth2 && docker compose -f docker-compose.minitrino-override.yaml up -d",
     "mt:restart": "uv run minitrino --env LIB_PATH=.minitrino/lib restart && docker compose -f docker-compose.minitrino-override.yaml up -d",
@@ -56,21 +55,21 @@
     "seed": "pnpm -F test-data seed"
   },
   "devDependencies": {
-    "@changesets/cli": "2.31.0",
-    "@vitest/coverage-v8": "4.1.9",
-    "@vitest/ui": "4.1.9",
+    "@vitest/coverage-v8": "4.1.10",
+    "@vitest/ui": "4.1.10",
+    "actions-up": "1.16.0",
     "dotenv-cli": "11.0.0",
-    "oxfmt": "^0.57.0",
-    "oxlint": "^1.72.0",
-    "sherif": "1.12.0",
-    "turbo": "2.10.2",
+    "oxfmt": "^0.60.0",
+    "oxlint": "^1.75.0",
+    "sherif": "1.13.0",
+    "tegami": "^1.2.6",
+    "turbo": "2.10.6",
     "typescript": "6.0.3",
-    "ultracite": "7.8.3",
-    "vite": "7.3.5",
-    "vitest": "4.1.9"
+    "ultracite": "7.9.4",
+    "vitest": "4.1.10"
   },
   "engines": {
     "node": ">=22"
   },
-  "packageManager": "pnpm@11.8.0"
+  "packageManager": "pnpm@11.17.0"
 }

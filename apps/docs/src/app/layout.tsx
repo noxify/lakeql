@@ -93,6 +93,7 @@ export default function RootLayout({
         <body>
           <script
             type="application/ld+json"
+            // oxlint-disable-next-line react/no-danger
             dangerouslySetInnerHTML={{ __html: toJsonLd(websiteJsonLd) }}
           />
           <Analytics />

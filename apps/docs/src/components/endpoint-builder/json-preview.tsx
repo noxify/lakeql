@@ -113,6 +113,7 @@ function JSONHighlight({ json }: { json: string }) {
 
   return (
     <code
+      // oxlint-disable-next-line react/no-danger
       dangerouslySetInnerHTML={{ __html: highlighted }}
       className="block whitespace-pre"
     />

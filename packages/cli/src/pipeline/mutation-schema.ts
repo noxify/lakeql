@@ -384,6 +384,7 @@ function generateRealMutationFields(
   resolverStatements.push(ts.factory.createExpressionStatement(pipelineCall))
 
   // return true
+  // oxlint-disable-next-line unicorn/prefer-single-call
   resolverStatements.push(
     ts.factory.createReturnStatement(ts.factory.createTrue())
   )

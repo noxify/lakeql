@@ -5,7 +5,7 @@ import { getInvocationCwd } from "@/path-utils"
 export const DEFAULT_PULL_CONCURRENCY = 8
 
 function parsePositiveInteger(value: string) {
-  const parsed = Number.parseInt(value, 10)
+  const parsed = Math.trunc(Number(value))
 
   if (!Number.isInteger(parsed) || parsed < 1) {
     throw new InvalidArgumentError("must be a positive integer")

@@ -9,6 +9,7 @@ export default defineConfig({
   ignorePatterns: [
     "apps/docs/src/components/beautiful-mermaid/**",
     "templates/stackblitz/**",
+    ".tegami/publish-lock.yaml",
   ],
 
   overrides: [

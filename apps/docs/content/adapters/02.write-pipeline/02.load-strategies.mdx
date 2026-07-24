@@ -20,10 +20,7 @@ The default strategy. Replaces all existing data with the new records on every w
 
 **Use when:** You always want the table to reflect the most recent payload. No history is kept.
 
-**Table structure:**
-| Table | Location |
-|-------|----------|
-| `<tableName>` | `s3a://<bucket>/<basePath>/latest.parquet/` |
+**Table structure:** | Table | Location | |-------|----------| | `<tableName>` | `s3a://<bucket>/<basePath>/latest.parquet/` |
 
 ### full_load_append
 
@@ -37,11 +34,7 @@ Combines `full_load` with historical archiving. The latest data is always querya
 
 **Use when:** You need both a "current state" view and a historical log of all writes.
 
-**Table structure:**
-| Table | Location |
-|-------|----------|
-| `<tableName>_latest` | `s3a://<bucket>/<basePath>/latest.parquet/` |
-| `<tableName>_all` | `s3a://<bucket>/<basePath>/all.parquet/` |
+**Table structure:** | Table | Location | |-------|----------| | `<tableName>_latest` | `s3a://<bucket>/<basePath>/latest.parquet/` | | `<tableName>_all` | `s3a://<bucket>/<basePath>/all.parquet/` |
 
 ### append
 
@@ -54,10 +47,7 @@ Only appends data. No "latest" snapshot is maintained.
 
 **Use when:** You're building a log or event stream where every write adds to the history.
 
-**Table structure:**
-| Table | Location |
-|-------|----------|
-| `<tableName>` | `s3a://<bucket>/<basePath>/all.parquet/` |
+**Table structure:** | Table | Location | |-------|----------| | `<tableName>` | `s3a://<bucket>/<basePath>/all.parquet/` |
 
 ## Partitioning interaction
 

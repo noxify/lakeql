@@ -13,6 +13,7 @@ export function useIsMobile(breakpoint?: number) {
       setIsMobile(window.innerWidth < (breakpoint ?? MOBILE_BREAKPOINT))
     }
     mql.addEventListener("change", onChange)
+    // oxlint-disable-next-line react/react-compiler
     setIsMobile(window.innerWidth < (breakpoint ?? MOBILE_BREAKPOINT))
     return () => mql.removeEventListener("change", onChange)
   }, [breakpoint])

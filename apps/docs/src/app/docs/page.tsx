@@ -121,6 +121,7 @@ export default async function DocsIndexPage() {
                       {link.title}
                     </h3>
                     <div className="text-muted-foreground text-sm">
+                      {/* oxlint-disable-next-line react/jsx-pascal-case */}
                       <MDX
                         components={{
                           code: (props) => (

@@ -21,6 +21,7 @@ class RailroadErrorBoundary extends React.Component<
   },
   { error: Error | null }
 > {
+  // oxlint-disable-next-line react/state-in-constructor
   public state: { error: Error | null } = { error: null }
 
   static getDerivedStateFromError(error: unknown): { error: Error } {

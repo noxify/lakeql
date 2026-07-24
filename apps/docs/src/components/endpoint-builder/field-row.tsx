@@ -189,6 +189,7 @@ export function FieldRow({
       <div className="flex flex-wrap items-center gap-2 p-3">
         {/* Drag handle */}
         <button
+          type="button"
           {...attributes}
           {...listeners}
           className="text-muted-foreground hover:text-foreground cursor-grab touch-none active:cursor-grabbing"
@@ -200,6 +201,7 @@ export function FieldRow({
         {/* Expand/collapse for nested */}
         {hasChildren ? (
           <button
+            type="button"
             onClick={() => setExpanded((e) => !e)}
             className="text-muted-foreground hover:text-foreground"
             aria-label={expanded ? "Collapse" : "Expand"}

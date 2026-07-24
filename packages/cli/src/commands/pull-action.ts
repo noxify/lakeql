@@ -37,6 +37,7 @@ export async function executePull(params: PullActionParams): Promise<void> {
     onItemFinish,
   } = params
 
+  // oxlint-disable-next-line no-unreachable-loop
   for (const table of tables) {
     let succeeded = false
     onItemStart?.(table)

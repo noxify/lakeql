@@ -16,13 +16,13 @@ type YogaConfigOverrides = Omit<
 
 ## Available overrides
 
-| Option                | Type                  | Default                   | Description                              |
-| --------------------- | --------------------- | ------------------------- | ---------------------------------------- |
-| `healthCheckEndpoint` | `string`              | `"/live"`                 | Path for the health check endpoint       |
-| `graphiql`            | `boolean \| object`   | `true` in development     | Enable/configure GraphiQL IDE            |
-| `logging`             | `boolean \| LogLevel` | Based on `API_LOGGER` env | Control Yoga's internal logging          |
-| `maskedErrors`        | `boolean`             | `true`                    | Hide internal error details from clients |
-| `landingPage`         | `boolean`             | `false`                   | Show Yoga's default landing page         |
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `healthCheckEndpoint` | `string` | `"/live"` | Path for the health check endpoint |
+| `graphiql` | `boolean \| object` | `true` in development | Enable/configure GraphiQL IDE |
+| `logging` | `boolean \| LogLevel` | Based on `API_LOGGER` env | Control Yoga's internal logging |
+| `maskedErrors` | `boolean` | `true` | Hide internal error details from clients |
+| `landingPage` | `boolean` | `false` | Show Yoga's default landing page |
 
 ## Default behavior
 

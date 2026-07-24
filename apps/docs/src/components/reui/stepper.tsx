@@ -131,6 +131,7 @@ function Stepper({
   const contextValue = useMemo<StepperContextValue>(
     () => ({
       activeStep: currentStep,
+      // oxlint-disable-next-line react/react-compiler
       focusFirst,
       focusLast,
       focusNext,
@@ -139,6 +140,7 @@ function Stepper({
       orientation,
       registerTrigger,
       setActiveStep: handleSetActiveStep,
+      // oxlint-disable-next-line react/no-react-children
       stepsCount: Children.toArray(children).filter(
         (child): child is ReactElement =>
           isValidElement(child) &&
@@ -202,6 +204,7 @@ function StepperItem({
 
   return (
     <StepItemContext.Provider
+      // oxlint-disable-next-line react/jsx-no-constructed-context-values
       value={{ isDisabled: disabled, isLoading, state, step }}
     >
       <div
@@ -259,6 +262,7 @@ function StepperTrigger({
 
   // Find our index among triggers for navigation
   const myIdx = useMemo(
+    // oxlint-disable-next-line react/react-compiler
     () => triggerNodes.indexOf(btnRef.current as HTMLButtonElement),
     [triggerNodes]
   )
@@ -321,6 +325,7 @@ function StepperTrigger({
 
   return (
     <button
+      type="button"
       ref={btnRef}
       role="tab"
       id={id}

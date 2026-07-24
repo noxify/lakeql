@@ -123,7 +123,8 @@ The JSON definition file must conform to the `EndpointDefinitionFormat` schema:
 
 The optional `mutation` field controls whether a write pipeline is generated for this endpoint. Set it to `false` (or omit it) for query-only endpoints. Set it to a configuration object to enable the mutation pipeline.
 
-<InterfaceReference
+<ApiReference
+  variant="table"
   file="schema-generator/src/endpoint-schema"
   name="MutationConfig"
 />
@@ -163,7 +164,8 @@ See the [Load Strategies](/lakeql/guides/load-strategies) guide for details on w
 
 Each field can include an optional `options` object to control mutation input behavior:
 
-<InterfaceReference
+<ApiReference
+  variant="table"
   file="schema-generator/src/endpoint-schema"
   name="FieldOptions"
 />
@@ -179,14 +181,14 @@ Each field can include an optional `options` object to control mutation input be
 
 #### Available validations
 
-| Validation | Applies to     | Description                     | Example                                    |
-| ---------- | -------------- | ------------------------------- | ------------------------------------------ |
-| `email`    | String         | Must be a valid email address   | `{ "type": "email" }`                      |
-| `url`      | String         | Must be a valid URL             | `{ "type": "url" }`                        |
-| `uuid`     | String         | Must be a valid UUID            | `{ "type": "uuid" }`                       |
-| `min`      | Integer, Float | Minimum numeric value           | `{ "type": "min", "value": 0 }`            |
-| `max`      | Integer, Float | Maximum numeric value           | `{ "type": "max", "value": 150 }`          |
-| `regex`    | String         | Must match a regular expression | `{ "type": "regex", "pattern": "^[A-Z]" }` |
+| Validation | Applies to | Description | Example |
+| --- | --- | --- | --- |
+| `email` | String | Must be a valid email address | `{ "type": "email" }` |
+| `url` | String | Must be a valid URL | `{ "type": "url" }` |
+| `uuid` | String | Must be a valid UUID | `{ "type": "uuid" }` |
+| `min` | Integer, Float | Minimum numeric value | `{ "type": "min", "value": 0 }` |
+| `max` | Integer, Float | Maximum numeric value | `{ "type": "max", "value": 150 }` |
+| `regex` | String | Must match a regular expression | `{ "type": "regex", "pattern": "^[A-Z]" }` |
 
 ### Validation rules
 

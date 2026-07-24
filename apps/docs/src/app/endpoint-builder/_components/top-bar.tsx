@@ -42,7 +42,10 @@ export function TopBar() {
           <Popover>
             <PopoverTrigger
               render={
-                <button className="mr-2 flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-1 text-xs text-amber-600 transition-colors hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/30" />
+                <button
+                  type="button"
+                  className="mr-2 flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-1 text-xs text-amber-600 transition-colors hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/30"
+                />
               }
             >
               <AlertTriangle className="size-3.5" />

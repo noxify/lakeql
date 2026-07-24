@@ -19,11 +19,19 @@ const generateUrl = (url: string, info: AddressInfo) =>
  * The API server instance returned by `createApiServer`.
  */
 export interface ApiServer {
-  /** The Hono application instance with all routes mounted. */
+  /**
+   * The Hono application instance with all routes mounted.
+   *
+   * @see {@link https://hono.dev/docs/api/hono | Hono API Docs}
+   */
   app: Hono
   /** Configured logger instance from `@lakeql/logger`. */
   logger: ReturnType<typeof createLogger>
-  /** The GraphQL Yoga server handling `/graphql` requests. */
+  /**
+   * The GraphQL Yoga server handling `/graphql` requests.
+   *
+   * @see {@link https://the-guild.dev/graphql/yoga-server/docs | GraphQL Yoga Docs}
+   */
   yoga: Awaited<ReturnType<typeof createYogaServer>>
 }
 
