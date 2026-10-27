@@ -37,7 +37,7 @@ You may ONLY use the following components. Do NOT invent or import other compone
 
 ```mdx
 <Warning title="Breaking Change">
-  The `connectionString` option was removed in v2.0. Use `host` and `port`
+  The `connectionString` option was removed in 1.0. Use `host` and `port`
   separately.
 </Warning>
 ```
@@ -168,32 +168,37 @@ The `file` path is always relative to the monorepo `packages/` directory, withou
 />
 ```
 
-### Stepper
+### Steps
 
-- `<Stepper>` wraps `<StepperItem>` children
-- `<StepperItem title="Step title">` — each step
-- Content inside StepperItem supports full markdown, code blocks, and other components
+- `<Steps>` wraps `<Step>` children; it renders a numbered, vertical sequence.
+- `<Step>Step title</Step>` — the step heading (renders as a numbered `<h3>`). The step's content follows as normal MDX blocks **after** the `<Step>` line, until the next `<Step>` (or the closing `</Steps>`).
+- Content between steps supports full markdown, code blocks, and other components.
+
+> There is no `<Stepper>`/`<StepperItem>` — that was an older button-based component that produced invalid nested-`<button>` markup. Use `<Steps>` / `<Step>` only.
 
 **Example:**
 
 ````mdx
-<Stepper>
-  <StepperItem title="Install dependencies">
-    <Command variant="install">@lakeql/api</Command>
-  </StepperItem>
-  <StepperItem title="Configure your data source">
-    Create a `.env` file with your connection details:
+<Steps>
 
-    ```bash
-    TRINO_HOST=localhost
-    TRINO_PORT=8080
-    ```
+<Step>Install dependencies</Step>
 
-  </StepperItem>
-  <StepperItem title="Start the server">
-    <Command variant="run">dev</Command>
-  </StepperItem>
-</Stepper>
+<Command variant="install">@lakeql/api</Command>
+
+<Step>Configure your data source</Step>
+
+Create a `.env` file with your connection details:
+
+```bash
+TRINO_HOST=localhost
+TRINO_PORT=8080
+```
+
+<Step>Start the server</Step>
+
+<Command variant="run">dev</Command>
+
+</Steps>
 ````
 
 ### Tabs
@@ -428,6 +433,46 @@ Diagram(
 ```
 ````
 
+## Documentation Patterns
+
+These are not components — they are standard shapes built from the components above. Reuse them verbatim so the same concept always looks the same across pages.
+
+### Capability block (per adapter)
+
+Every adapter's index page (`.../trino/index.mdx`, `.../fabric/index.mdx`, and any future adapter) opens with a `## Capabilities` section: a plain markdown table with the fixed rows below, in this order. This replaces scattered "this adapter is read-only" warnings — a reader sees at a glance what an adapter can and cannot do, and the shape is identical for every adapter.
+
+Fixed rows: **Reads**, **Writes**, **DDL**, **Metadata introspection**. The Support cell is `Yes`/`No`, optionally followed by a short qualifier.
+
+**Example — a write-capable adapter (Trino):**
+
+```mdx
+## Capabilities
+
+| Capability                 | Support                                      |
+| -------------------------- | -------------------------------------------- |
+| Reads                      | Yes                                          |
+| Writes                     | Yes — INSERT and external-storage strategies |
+| DDL (create / drop tables) | Yes                                          |
+| Metadata introspection     | Yes                                          |
+
+For how writing works across adapters, see [Writing](/docs/data-sources/writing).
+```
+
+**Example — a read-only adapter (Fabric):**
+
+```mdx
+## Capabilities
+
+| Capability             | Support                |
+| ---------------------- | ---------------------- |
+| Reads                  | Yes                    |
+| Writes                 | No — read-only adapter |
+| DDL                    | No                     |
+| Metadata introspection | Yes                    |
+```
+
+A read-only adapter states "No" in the Writes/DDL rows here; it does NOT get a dedicated "Writes" page. Keep the capability fact in this table, not in a `<Warning>` buried on another page.
+
 ## Frontmatter Requirements
 
 Every page MUST include:
@@ -501,3 +546,30 @@ separator: true
 - When multiple packages are used together for a task, write a combined guide
 - Internal packages (`@lakeql/helpers`, `@lakeql/logger`, `@lakeql/column-parser`, `@lakeql/parquet`, `@lakeql/file-generator`, `@lakeql/response-transformer`, `@lakeql/config`, `@lakeql/schema-generator`) do NOT get dedicated pages — reference inline only
 - Section `index.mdx` files typically only contain frontmatter (title, description, separator)
+
+## Terminology
+
+Use these terms consistently; do not mix synonyms across pages.
+
+- **Reads** — not "Queries". A page about reading data is "Reads". ("Query builder" stays, as it is a product name.)
+- **Writing** / **Write strategy** — the mechanism for persisting data (external-storage vs INSERT). **Load strategy** — how a write combines with existing data (`append` / `full_load` / `full_load_append`). These are two distinct axes; never conflate "write strategy" and "load strategy".
+- **Adapter** — a data-source backend (Trino, Fabric). **Capability** — a thing an adapter supports (Reads / Writes / DDL / Metadata introspection), shown via the capability block.
+- **Data source** — a configured instance of an adapter in a user's config.
+
+## Writing Style — explain, don't paraphrase the code
+
+The API reference is generated from source (`ApiReference`, `CliCommandDetails`). Hand-written prose must add what generated reference cannot: the _why_, the _when_, and the _what-goes-wrong_. A page that only restates type signatures or option names in sentences has no reason to exist — link to the generated reference instead.
+
+Follow a light Diátaxis split; know which mode a page is in:
+
+- **Explanation** — concepts, the two write/load axes, trade-offs, decision guidance ("use INSERT when …, external-storage when …"), and failure modes (staging failures, partial writes, retries/idempotency, batch-size limits). This is where most hand-written value lives.
+- **How-to** — task-focused, example-first. Lead with a realistic, runnable snippet, then explain. Cite the generated reference rather than repeating it.
+- **Reference** — generated (`ApiReference` / `CliCommandDetails`). Do not hand-maintain API tables that the generator already produces.
+- **Tutorial** — the getting-started / quickstart path; one happy path, end to end.
+
+Concrete rules:
+
+- Prefer a **decision table / "when to use which"** over a flat feature list whenever two options exist (e.g. write strategies, load strategies).
+- Document at least one **failure or edge case** per mechanism page, not only the happy path.
+- Put adapter-neutral mechanics in ONE place (the concept section) and have adapter pages link to it; do not re-explain the mechanics per adapter. When an adapter-specific config shape is needed next to the neutral explanation, use `<Tabs>` (one tab per adapter) rather than duplicating the page.
+- A page should answer at most ~2 core questions. Split rather than combine.
