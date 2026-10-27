@@ -1,262 +1,131 @@
 import { execFileSync } from "node:child_process"
-import {
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-  symlinkSync,
-  writeFileSync,
-} from "node:fs"
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest"
-
-import { applyFeature } from "../src/apply-feature"
-import { fabricOboTemplate } from "../src/features/fabric-obo"
-import type { FeatureContext } from "../src/features/types"
-import { buildPlan, expr, materializeFiles } from "../src/index"
-import type { Op } from "../src/ops"
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest"
 
 /**
- * End-to-end check for `fabric-obo` against a scaffolded Fabric project.
+ * End-to-end check for `fabric-obo`, mirroring the real user flow:
+ * `create-lakeql-app` scaffolds a Fabric project, then `lakeql-cli add
+ * fabric-obo` applies the feature — the exact binaries a user runs, invoked
+ * as real subprocesses against the `dist/` output CI builds before running
+ * tests (`.github/workflows/tests.yml` runs `pnpm --filter "./packages/*"
+ * build` before `pnpm test`).
  *
- * The flow mirrors the real command: scaffold a Fabric project with the shared
- * greenfield materializer, run the template's `build` + `applyFeature`, then
- * apply the printed guidance (the two user-authored TypeScript files) by hand
- * and type-check the project. The type-check proves the guidance is correct and
- * complete; a final re-run proves idempotency.
+ * This file intentionally never type-checks the generated project: doing so
+ * needs the project's dependency types installed (`@azure/identity`, `zod`,
+ * `@t3-oss/env-core`, `@lakeql/config`), which no CI job installs and never
+ * will (see `.kiro/skills/fabric-obo-typecheck/SKILL.md` for that manual
+ * check).
  *
- * The project type-checks against the real dependency types by borrowing the
- * `examples/fabric-only` install (`@azure/identity`, `zod`, `@t3-oss/env-core`,
- * `@lakeql/config`) via a `node_modules` symlink — no isolated install needed.
+ * Subprocess output is captured with `NO_COLOR=1` so assertions never have
+ * to deal with ANSI escape codes: the CLI's output formatting
+ * (`highlightTsLine`/`colors` in `packages/cli/src/output-format.ts` and
+ * `packages/logger/src/console.ts`) uses `kleur`, which disables color
+ * whenever `NO_COLOR` is set — overriding the Tests workflow's `FORCE_COLOR:
+ * 3`, which would otherwise leak escape codes into piped output and break
+ * substring assertions.
  */
 
-const EXAMPLE_DIR = fileURLToPath(
-  new URL("../../../examples/fabric-only", import.meta.url)
+const CREATE_APP_BIN = fileURLToPath(
+  new URL("../../create-app/dist/index.mjs", import.meta.url)
 )
-const EXAMPLE_NODE_MODULES = path.join(EXAMPLE_DIR, "node_modules")
-const TSC_BIN = path.join(EXAMPLE_NODE_MODULES, ".bin", "tsc")
+const CLI_BIN = fileURLToPath(
+  new URL("../../cli/dist/cli.mjs", import.meta.url)
+)
+const LOCAL_TEMPLATE_DIR = fileURLToPath(
+  new URL("../../../templates/app", import.meta.url)
+)
 
-/** The ops create-app emits for a Fabric-only project (greenfield scaffold). */
-const fabricScaffoldOps: Op[] = [
-  {
-    type: "addAdapter",
-    package: "@lakeql/adapter-fabric",
-    definitionExport: "fabricAdapterDefinition",
-  },
-  {
-    type: "addEnvVars",
-    group: "Microsoft Fabric data source",
-    vars: {
-      FABRIC_CATALOG: "my_lakehouse",
-      FABRIC_CLIENT_ID: '"your-fabric-client-id"',
-      FABRIC_CLIENT_SECRET: '"your-fabric-client-secret"',
-      FABRIC_HOST: '"your-workspace.datawarehouse.fabric.microsoft.com"',
-      FABRIC_PORT: "1433",
-      FABRIC_TENANT_ID: '"YOUR_TENANT_ID"',
-    },
-  },
-  {
-    type: "addEnvSchema",
-    schema: {
-      FABRIC_CATALOG: "string().min(1)",
-      FABRIC_CLIENT_ID: "string().min(1)",
-      FABRIC_CLIENT_SECRET: "string().min(1)",
-      FABRIC_HOST: "string().min(1)",
-      FABRIC_PORT: "coerce.number().default(1433)",
-      FABRIC_TENANT_ID: "string().min(1)",
-    },
-  },
-  {
-    type: "addDataSource",
-    name: "fabric",
-    adapter: "fabric",
-    config: {
-      connection: {
-        auth: {
-          clientId: expr("env.FABRIC_CLIENT_ID"),
-          clientSecret: expr("env.FABRIC_CLIENT_SECRET"),
-          tenantId: expr("env.FABRIC_TENANT_ID"),
-          type: "oauth2",
-        },
-        catalog: expr("env.FABRIC_CATALOG"),
-        host: expr("env.FABRIC_HOST"),
-        port: expr("env.FABRIC_PORT"),
-      },
-    },
-  },
-]
+/**
+ * Deterministic, colorless env for every subprocess, with `INIT_CWD`
+ * stripped. `INIT_CWD` is a package-manager runtime variable (npm/pnpm) that
+ * both `create-app` (`invocationCwd()`) and the CLI (`getInvocationCwd()`)
+ * prefer over `process.cwd()` when resolving relative paths and the `add`
+ * command's project directory. Running under `pnpm test`/`pnpm --filter`
+ * sets `INIT_CWD` on *this* process to the pnpm invocation directory (e.g.
+ * the repo root), and that value would otherwise leak into every subprocess
+ * via the `...process.env` spread below — making the CLI resolve the
+ * project directory as the inherited `INIT_CWD` instead of the `cwd` option
+ * passed to `execFileSync`, so `lakeql-cli add` would fail with "No
+ * package.json found" in the wrong directory. Removing it makes each
+ * subprocess fall back to its own `process.cwd()`, i.e. the `cwd` option
+ * below — confirmed against a live repro.
+ */
+// oxlint-disable-next-line no-restricted-properties
+const { INIT_CWD: _initCwd, ...ENV_WITHOUT_INIT_CWD } = process.env
+const SUBPROCESS_ENV = { ...ENV_WITHOUT_INIT_CWD, NO_COLOR: "1" }
 
-/** A `tsconfig.json` matching the fabric-only example's strictness. */
-const PROJECT_TSCONFIG = `${JSON.stringify(
-  {
-    compilerOptions: {
-      target: "ES2022",
-      lib: ["ES2022"],
-      module: "Preserve",
-      moduleResolution: "Bundler",
-      strict: true,
-      skipLibCheck: true,
-      noEmit: true,
-      esModuleInterop: true,
-      resolveJsonModule: true,
-      types: ["node"],
-    },
-    include: ["src", "lakeql.config.ts"],
-  },
-  null,
-  2
-)}\n`
-
-/** Build the context the template consumes from the scaffolded project. */
-function fabricContext(projectDir: string): FeatureContext {
-  const packageJson = JSON.parse(
-    readFileSync(path.join(projectDir, "package.json"), "utf-8")
-  ) as FeatureContext["packageJson"]
-
-  return {
-    projectDir,
-    packageJson,
-    inputs: {},
+/**
+ * Turn a missing-dist `ENOENT` into an actionable message. CI always builds
+ * every package before running tests; running this file in isolation
+ * without that build step is the only way to hit this.
+ */
+function assertBuilt(bin: string, label: string): void {
+  if (!existsSync(bin)) {
+    throw new Error(
+      `${label} is not built (${bin} missing). Run \`pnpm --filter "./packages/*" build\` first.`
+    )
   }
 }
 
-/**
- * Apply the printed env-schema guidance into `src/env.ts` by inserting the
- * `OBO_*` lines inside the `server: { … }` object, simulating the user
- * following the next steps.
- */
-function applyEnvSchemaGuidance(projectDir: string, guidance: string[]): void {
-  const schemaLines = guidance
-    .flatMap((entry) => entry.split("\n"))
-    .filter((line) => /^ {4}OBO_\w+:/u.test(line))
-  expect(schemaLines.length).toBeGreaterThan(0)
-
-  const envPath = path.join(projectDir, "src", "env.ts")
-  const content = readFileSync(envPath, "utf-8")
-  const marker = "server: {\n"
-  const index = content.indexOf(marker)
-  expect(index).toBeGreaterThanOrEqual(0)
-
-  const insertAt = index + marker.length
-  const insertion = `${schemaLines.join("\n")}\n`
-  writeFileSync(
-    envPath,
-    content.slice(0, insertAt) + insertion + content.slice(insertAt),
-    "utf-8"
-  )
-}
-
-/**
- * Apply the printed config-wiring guidance into `lakeql.config.ts`: add the
- * resolver import and attach `impersonationResolver` to the Fabric source.
- */
-function applyConfigGuidance(projectDir: string, guidance: string[]): void {
-  const importLine = guidance
-    .flatMap((line) => line.split("\n"))
-    .map((line) => line.trim())
-    .find((line) => line.startsWith("import { fabricImpersonationResolver }"))
-  expect(importLine).toBeDefined()
-
-  const configPath = path.join(projectDir, "lakeql.config.ts")
-  const content = readFileSync(configPath, "utf-8")
-
-  // Add the import after the existing `env` import.
-  const envImport = 'import { env } from "./src/env"\n'
-  const withImport = content.replace(
-    envImport,
-    `${envImport}${importLine as string}\n`
-  )
-
-  // Attach the resolver inside the "fabric" data source object.
-  const dsMarker = '    fabric: {\n      adapter: "fabric",\n'
-  expect(withImport.includes(dsMarker)).toBeTruthy()
-  const wired = withImport.replace(
-    dsMarker,
-    `${dsMarker}      impersonationResolver: fabricImpersonationResolver,\n`
-  )
-
-  writeFileSync(configPath, wired, "utf-8")
-}
-
-function typecheck(projectDir: string): void {
-  execFileSync(
-    TSC_BIN,
-    ["--noEmit", "-p", path.join(projectDir, "tsconfig.json")],
-    {
-      cwd: projectDir,
-      stdio: "pipe",
-    }
-  )
+/** Run `lakeql-cli add fabric-obo` against `projectDir`, as a user would. */
+function addFabricObo(projectDir: string): string {
+  return execFileSync(process.execPath, [CLI_BIN, "add", "fabric-obo"], {
+    cwd: projectDir,
+    env: SUBPROCESS_ENV,
+    stdio: "pipe",
+  }).toString("utf-8")
 }
 
 describe("fabric-obo end-to-end", () => {
+  let parentDir: string
   let projectDir: string
 
-  beforeEach(() => {
-    projectDir = mkdtempSync(path.join(tmpdir(), "fabric-obo-e2e-"))
-
-    // Scaffold a Fabric project the same way create-app does: a greenfield
-    // plan materialized by the shared engine, plus the package.json create-app
-    // writes separately. create-app's template ships an existing `src/`, so
-    // create it before materializing (the materializer does not mkdir).
-    mkdirSync(path.join(projectDir, "src"), { recursive: true })
-    const plan = buildPlan(fabricScaffoldOps)
-    materializeFiles(projectDir, plan, "write")
-
-    writeFileSync(
-      path.join(projectDir, "package.json"),
-      `${JSON.stringify(
-        {
-          name: "fabric-e2e",
-          type: "module",
-          dependencies: {
-            "@lakeql/adapter-fabric": "workspace:*",
-            "@lakeql/config": "workspace:*",
-            "@t3-oss/env-core": "0.13.11",
-            zod: "4.6.5",
-          },
-        },
-        null,
-        2
-      )}\n`,
-      "utf-8"
-    )
-    writeFileSync(
-      path.join(projectDir, "tsconfig.json"),
-      PROJECT_TSCONFIG,
-      "utf-8"
-    )
-
-    // Resolve the real dependency types from the example install.
-    symlinkSync(
-      EXAMPLE_NODE_MODULES,
-      path.join(projectDir, "node_modules"),
-      "dir"
-    )
+  beforeAll(() => {
+    assertBuilt(CREATE_APP_BIN, "@lakeql/create-app")
+    assertBuilt(CLI_BIN, "@lakeql/cli")
   })
+
+  beforeEach(() => {
+    parentDir = mkdtempSync(path.join(tmpdir(), "fabric-obo-e2e-"))
+    projectDir = path.join(parentDir, "fabric-e2e")
+
+    // Scaffold exactly like a user running `create-lakeql-app` with the
+    // Fabric adapter. `--local` (absolute path) keeps `workspace:*`
+    // dependency versions and copies the real starter template;
+    // `--no-install` skips the install (nothing here needs node_modules).
+    // `--ds-names`/`--auth` avoid interactive prompts.
+    execFileSync(
+      process.execPath,
+      [
+        CREATE_APP_BIN,
+        "fabric-e2e",
+        "--adapters",
+        "fabric",
+        "--ds-names",
+        "fabric",
+        "--auth",
+        "mock",
+        "--target-dir",
+        parentDir,
+        "--local",
+        LOCAL_TEMPLATE_DIR,
+        "--no-install",
+        "--quiet",
+      ],
+      { cwd: parentDir, env: SUBPROCESS_ENV, stdio: "pipe" }
+    )
+  }, 30_000)
 
   afterEach(() => {
-    rmSync(projectDir, { recursive: true, force: true })
+    rmSync(parentDir, { recursive: true, force: true })
   })
 
-  it("requires the example install to be present", () => {
-    // The type-check borrows the example's installed dependency types; without
-    // them the assertion below would silently pass a weaker test.
-    expect(existsSync(TSC_BIN)).toBeTruthy()
-    expect(
-      existsSync(path.join(EXAMPLE_NODE_MODULES, "@azure", "identity"))
-    ).toBeTruthy()
-  })
-
-  it("applies fabric-obo, follows the guidance, and type-checks", () => {
-    const ctx = fabricContext(projectDir)
-    fabricOboTemplate.checkPreconditions(ctx)
-    const result = fabricOboTemplate.build(ctx)
-    const outcome = applyFeature(result, { projectDir })
+  it("applies fabric-obo and prints the guidance to wire it up", () => {
+    const stdout = addFabricObo(projectDir)
 
     // Auto-applied: resolver file, dependency, and .env.example keys.
     expect(
@@ -283,23 +152,23 @@ describe("fabric-obo end-to-end", () => {
       expect(envExample).toContain(`${key}=`)
     }
 
-    // Before applying the guidance the resolver references undeclared
-    // `OBO_*` env keys, so the project does not type-check yet.
-    expect(() => typecheck(projectDir)).toThrow(/Command failed/u)
-
-    // Follow the printed guidance for the two user-authored TypeScript files.
-    applyEnvSchemaGuidance(projectDir, outcome.guidance)
-    applyConfigGuidance(projectDir, outcome.guidance)
-
-    // The guidance is correct and complete iff the project now type-checks.
-    expect(() => typecheck(projectDir)).not.toThrow()
-  }, 60_000)
+    // Guidance-only: the printed "Next steps" tell the user exactly what
+    // to add to the two user-authored files this feature never writes to
+    // directly.
+    for (const guidanceLine of [
+      "OBO_CLIENT_ID: string().min(1),",
+      "OBO_CLIENT_SECRET: string().min(1),",
+      'OBO_FABRIC_SCOPE: string().default("https://database.windows.net/.default"),',
+      "OBO_TENANT_ID: string().min(1),",
+      'import { fabricImpersonationResolver } from "./src/fabric-impersonation-resolver"',
+    ]) {
+      expect(stdout).toContain(guidanceLine)
+    }
+  }, 30_000)
 
   it("is a no-op when the command is run a second time", () => {
-    const ctx = fabricContext(projectDir)
-    const result = fabricOboTemplate.build(ctx)
+    addFabricObo(projectDir)
 
-    applyFeature(result, { projectDir })
     const pkgAfterFirst = readFileSync(
       path.join(projectDir, "package.json"),
       "utf-8"
@@ -313,11 +182,11 @@ describe("fabric-obo end-to-end", () => {
       "utf-8"
     )
 
-    const second = applyFeature(result, { projectDir })
+    const stdout = addFabricObo(projectDir)
 
-    expect(second.applied).toStrictEqual([
-      "skipped file src/fabric-impersonation-resolver.ts (already exists)",
-    ])
+    expect(stdout).toContain(
+      "skipped file src/fabric-impersonation-resolver.ts (already exists)"
+    )
     expect(readFileSync(path.join(projectDir, "package.json"), "utf-8")).toBe(
       pkgAfterFirst
     )
@@ -330,5 +199,5 @@ describe("fabric-obo end-to-end", () => {
         "utf-8"
       )
     ).toBe(resolverAfterFirst)
-  })
+  }, 30_000)
 })
