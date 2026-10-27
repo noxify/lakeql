@@ -1,0 +1,12 @@
+---
+title: API Reference
+navTitle: API Reference
+description: Complete reference for the @lakeql/datasource contract package.
+apiReference:
+  - name: "@lakeql/datasource"
+    file: "datasource/src/index"
+---
+
+The complete public API of `@lakeql/datasource`, generated from the package's TypeScript source. This is the adapter-neutral contract package — the interfaces every adapter implements.
+
+The core contracts are [`DataSource`](#data-source), [`DataSourceReadStrategy`](#data-source-read-strategy), [`DataSourceWriteStrategy`](#data-source-write-strategy), and [`AdapterFactory`](#adapter-factory). The error classes (rooted at [`DataSourceError`](#data-source-error)) are the normalized errors adapters throw, which the API layer maps to GraphQL responses.

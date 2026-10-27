@@ -1,96 +1,41 @@
 ---
 title: Quickstart
-description: Scaffold a new LakeQL project and run your first GraphQL query in under 5 minutes.
+navTitle: Quickstart
+description: Scaffold a LakeQL project and get it running.
 ---
 
-## Create a new project
+The fastest way to a working project is the scaffolding tool. It creates the config, the server entry point, and the project structure for you.
 
-Use `@lakeql/create-app` to bootstrap a project with all dependencies pre-configured:
+<Command variant="create">@lakeql/app my-api</Command>
 
-<Command variant="create">@lakeql/create-app@latest my-api</Command>
+It prompts for the adapters, data source names, and authentication strategy, then generates the project. See [create-app](/docs/lakeql/create-app) for the full list of options and what gets generated.
 
-Follow the interactive prompts to select your package manager and install dependencies.
+## The Generated Project
 
-## Configure environment variables
+<FileTree
+  files={[
+    { path: "lakeql.config.ts", description: "Adapters and data sources" },
+    { path: "src/index.ts", description: "Composes and starts the server" },
+    { path: "src/auth.ts", description: "Token resolver" },
+    { path: "src/permissions.ts", description: "Permission rules" },
+    { path: ".env.example", description: "Copy to .env and fill in" },
+  ]}
+/>
 
-Navigate into your project and create a `.env` file from the template:
+## Next Steps
 
-```bash
-cd my-api
-cp .env.example .env
-```
+<Steps>
 
-Edit `.env` with your Trino connection details:
+<Step>Configure the environment</Step>
 
-```bash
-HIVE_HOST="http://localhost"
-HIVE_PORT=8080
-HIVE_CATALOG=hive
-HIVE_USERNAME="trino"
-HIVE_PASSWORD="your-password"
+Fill in your data source connection details. See [environment configuration](/docs/lakeql/getting-started/environment-configuration).
 
-AUTH_MOCK=true
-AUTH_MOCK_TOKEN="1234"
+<Step>Generate an endpoint</Step>
 
-API_PORT=4000
-API_LOGGER="info"
-```
+Introspect a table and generate its typed files with [`pull`](/docs/cli/commands/pull).
 
-## Pull schemas from Trino
+<Step>Start the server</Step>
 
-Generate TypeScript schemas from your Trino tables using the built-in CLI alias:
+Run the server and make your [first request](/docs/lakeql/getting-started/first-run).
 
-<Command variant="run">cli pull --catalog hive --schema myschema</Command>
-
-This introspects the selected tables in `hive.myschema` and generates typed config, interface, and query-schema files under `src/schemas/generated/`.
-
-## Start the API server
-
-Launch the GraphQL server:
-
-<Command variant="run">dev</Command>
-
-You should see output like:
-
-```
-* Server URL: http://localhost:4000/
-* GraphQL Endpoint: http://localhost:4000/graphql
-```
-
-## Run your first query
-
-Open [http://localhost:4000/graphql](http://localhost:4000/graphql) in your browser to access GraphiQL.
-
-Set the authorization header in the headers panel:
-
-```json
-{
-  "Authorization": "1234"
-}
-```
-
-Run a query against one of your generated schemas:
-
-```graphql
-query {
-  users(paging: { page: 1, perPage: 5 }) {
-    totalCount
-    pageInfo {
-      hasNext
-      currentPage
-      maxPages
-    }
-    nodes {
-      id
-      name
-      email
-    }
-  }
-}
-```
-
-## What's next
-
-- Learn about [environment configuration](/docs/lakeql/getting-started/environment-configuration) for all available options
-- Understand the [generated files](/docs/lakeql/getting-started/first-run) in detail
-- Explore the [architecture](/docs/lakeql/architecture/system-overview) to see how the pieces fit together
+</Steps>

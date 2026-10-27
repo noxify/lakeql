@@ -15,13 +15,13 @@ import ThemeToggle from "./theme-toggle"
 
 const spaceGrotesk = Space_Grotesk({ subsets: ["latin"] })
 
-export function SiteHeader({
+export const SiteHeader = ({
   fullWidth = false,
   bordered = false,
 }: {
   fullWidth?: boolean
   bordered?: boolean
-}) {
+}) => {
   const { hasScrolled: isScrolled } = useScrollVisibility({
     hideAfterScrollY: 0,
   })
@@ -69,14 +69,6 @@ export function SiteHeader({
               className="text-muted-foreground hover:text-foreground rounded-md px-3 py-1.5 text-sm transition-colors"
             >
               Docs
-            </Link>
-
-            <Link
-              href="/endpoint-builder"
-              prefetch={false}
-              className="text-muted-foreground hover:text-foreground rounded-md px-3 py-1.5 text-sm transition-colors"
-            >
-              Endpoint Builder
             </Link>
           </nav>
         </div>

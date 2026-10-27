@@ -1,0 +1,72 @@
+{
+  "name": "@lakeql/adapter-trino",
+  "version": "0.1.0",
+  "description": "Trino adapter for LakeQL",
+  "keywords": [
+    "adapter",
+    "lakeql",
+    "trino"
+  ],
+  "homepage": "https://lakeql.dev",
+  "license": "Apache-2.0",
+  "author": {
+    "name": "Marcus Reinhardt",
+    "url": "https://github.com/noxify"
+  },
+  "contributors": [
+    {
+      "name": "Marcus Reinhardt",
+      "url": "https://github.com/noxify"
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/noxify/lakeql",
+    "directory": "packages/adapter-trino"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs"
+    }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "clean": "git clean -xdf .cache .turbo dist node_modules dist",
+    "clean:cache": "git clean -xdf .cache .turbo",
+    "clean:dist": "git clean -xdf dist",
+    "dev": "tsdown --watch",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@lakeql/datasource": "workspace:*",
+    "@lakeql/parquet": "workspace:*",
+    "@lakeql/query-builder": "workspace:*",
+    "@lakeql/response-transformer": "workspace:*",
+    "@lakeql/schema-generator": "workspace:*",
+    "@lakeql/sql-read-strategy": "workspace:*",
+    "@lakeql/storage": "workspace:*",
+    "@lakeql/trino-client": "workspace:*",
+    "kysely": "0.29.7"
+  },
+  "devDependencies": {
+    "@lakeql/tsconfig": "workspace:*",
+    "@lakeql/vitest-config": "workspace:*",
+    "@types/node": "24.19.2",
+    "fast-check": "4.10.2",
+    "files-sdk": "3.1.2",
+    "msw": "3.0.3",
+    "tsdown": "0.23.2",
+    "typescript": "6.0.3",
+    "vitest": "5.0.5"
+  },
+  "peerDependencies": {
+    "files-sdk": "2.6.0"
+  }
+}

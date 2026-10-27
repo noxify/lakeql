@@ -1,0 +1,33 @@
+---
+title: Executing Queries
+navTitle: Executing Queries
+description: Run T-SQL statements and handle cancellation and on-behalf-of auth.
+---
+
+[`query`](/docs/packages/fabric-client/api-reference#fabric-client-query) executes a T-SQL statement and returns the result rows as keyed records.
+
+```ts
+const rows = await client.query<{ id: number; status: string }>({
+  sql: "SELECT id, status FROM dbo.orders",
+})
+```
+
+## On-Behalf-Of
+
+Pass a `bearerToken` per query to run it as another identity (OBO flow). The client uses a short-lived connection for that query instead of the shared pool:
+
+```ts
+await client.query({ sql: "SELECT 1", bearerToken: userAccessToken })
+```
+
+## Cancellation
+
+Pass an `AbortSignal` to cancel an in-flight query:
+
+```ts
+const controller = new AbortController()
+const promise = client.query({ sql: longRunningSql, signal: controller.signal })
+controller.abort()
+```
+
+An aborted query throws a `FabricCancellationError`. Server-rejected statements throw a `FabricQueryError`; connection and other client failures throw a `FabricClientError`.

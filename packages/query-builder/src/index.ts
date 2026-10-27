@@ -9,7 +9,6 @@ import type { FieldNode, GraphQLResolveInfo, SelectionNode } from "graphql"
 import { GraphQLError } from "graphql"
 import type {
   BinaryOperator,
-  CompiledQuery,
   ExpressionBuilder,
   ExpressionWrapper,
   Selectable,
@@ -17,9 +16,9 @@ import type {
   SqlBool,
 } from "kysely"
 import { sql } from "kysely"
-import { format } from "sql-formatter"
 
 import { initDb } from "./db"
+import type { QueryDialect } from "./dialect"
 
 /**
  * Logical operators for combining filter conditions.
@@ -54,7 +53,7 @@ export interface FieldOptions {
 /**
  * Defines the sort order for a query result.
  *
- * @template TableDefinition - The table type used to constrain the `field` to valid column names. See [Introduction](/docs/query-builder/overview/introduction) for details.
+ * @template TableDefinition - The table type used to constrain the `field` to valid column names. See [query-builder](/docs/packages/query-builder) for details.
  */
 export interface SortInput<TableDefinition> {
   /**
@@ -104,26 +103,26 @@ interface KyselyDatabase<TableDefinition> {
 }
 
 /**
- * Parameters for generating a Trino-compatible SQL query from GraphQL resolve info.
+ * Parameters for generating an adapter-aware SQL query from GraphQL resolve info.
  *
- * @template TableDefinition - The table type definition used by Kysely for type-safe column references. See [Introduction](/docs/query-builder/overview/introduction) for details.
+ * @template TableDefinition - The table type definition used by Kysely for type-safe column references. See [query-builder](/docs/packages/query-builder) for details.
  */
 export interface GenerateQueryProps<TableDefinition> {
-  /** The Trino catalog name (e.g. "hive"). */
+  /** The query dialect providing adapter-specific SQL generation. */
+  dialect: QueryDialect
+  /** The catalog name (e.g. "hive"). */
   catalog: string
-  /** The Trino schema name (e.g. "sales"). */
+  /** The schema name (e.g. "sales"). */
   schema: string
   /** The table name to query. */
   table: string
   /**
-   * The columns to select, derived from GraphQL field selections.
+   * The column names to select, derived from GraphQL field selections.
    *
-   * @see {@link https://kysely-org.github.io/kysely-apidoc/types/SelectExpression.html | Kysely API Docs - SelectExpression}
+   * These are plain field-name strings (as returned by {@link getSelectFields});
+   * they are resolved against the table definition when the query is built.
    */
-  selectFields: SelectExpression<
-    KyselyDatabase<TableDefinition>,
-    keyof KyselyDatabase<TableDefinition>
-  >[]
+  selectFields: readonly string[]
   /** The user-provided filter query (WHERE clause). */
   userQuery: Where
   /** Pagination parameters (limit and offset). */
@@ -132,7 +131,7 @@ export interface GenerateQueryProps<TableDefinition> {
   sorting: SortInput<TableDefinition>[]
   /** Maps GraphQL field names to database column names. */
   transformFields?: Record<string, string>
-  /** Fields that should be wrapped in `to_unixtime()` for date conversion. */
+  /** Fields that should be wrapped in adapter-specific timestamp conversion. */
   dateFields?: string[]
 }
 
@@ -152,7 +151,7 @@ const operatorMap: Record<string, BinaryOperator> = {
 /**
  * Parameters for building a single field comparison expression.
  *
- * @template TableDefinition - The table type definition. See [Introduction](/docs/query-builder/overview/introduction) for details.
+ * @template TableDefinition - The table type definition. See [query-builder](/docs/packages/query-builder) for details.
  */
 export interface GetFieldQueryProps<TableDefinition> {
   /**
@@ -473,17 +472,25 @@ export function normalizeUserQuery(userQuery: Where): Where {
 }
 
 /**
- * Generates a compiled SQL query with pagination metadata for Trino.
+ * Alias of the sentinel column selected by the `records` CTE. The response
+ * normalizer reads it back to tell real data rows (`true`) from the synthetic
+ * count-only row (`null`) produced by the FULL JOIN when `records` is empty.
+ */
+const RECORD_PRESENT_KEY = "__lakeql_record_present"
+
+/**
+ * Generates a compiled SQL query with pagination metadata using the injected dialect.
  *
  * The query uses two CTEs internally:
  * - `total_count` — provides `total_records` (total matching rows before paging)
  * - `records` — the actual rows based on `selectFields`, filtering, sorting, and paging
  *
- * The compiled query is executed by the Trino client which returns the row data.
+ * The compiled query is executed by the DataSource adapter which returns the row data.
  *
- * @returns A [CompiledQuery](https://kysely-org.github.io/kysely-apidoc/interfaces/CompiledQuery.html) ready for execution via the Trino client.
+ * @returns A [CompiledQuery](https://kysely-org.github.io/kysely-apidoc/interfaces/CompiledQuery.html) ready for execution via the DataSource adapter.
  */
 export function generateQuery<TableDefinition>({
+  dialect,
   catalog,
   schema,
   table,
@@ -494,8 +501,17 @@ export function generateQuery<TableDefinition>({
   transformFields,
   dateFields = [],
 }: GenerateQueryProps<TableDefinition>) {
-  // init a kysely instance
-  const db = initDb<KyselyDatabase<TableDefinition>>()
+  // init a kysely instance with the adapter's dialect
+  const db = initDb<KyselyDatabase<TableDefinition>>(dialect)
+
+  // Get the qualified table name from the dialect
+  const tableName = dialect.qualifiedTable({
+    dataSource: "",
+    adapter: dialect.adapterName,
+    catalog,
+    schema,
+    tableName: table,
+  })
 
   // eslint-disable-next-line @typescript-eslint/unbound-method
   const { ref } = db.dynamic
@@ -504,7 +520,7 @@ export function generateQuery<TableDefinition>({
     // the `total_records` will be used later in the graphql `pageInfo`
     .with("total_count", (withDb) =>
       withDb
-        .selectFrom(sql.id(catalog, schema, table) as unknown as "tablename")
+        .selectFrom(sql.raw(tableName) as unknown as "tablename")
         .select(({ fn }) => fn.countAll<number>().as("total_records"))
         .$if(Object.keys(userQuery).length > 0, (qb) =>
           qb.where((eb) => {
@@ -524,24 +540,21 @@ export function generateQuery<TableDefinition>({
     )
     .with("records", (withDb) => {
       let query = withDb
-        .selectFrom(sql.id(catalog, schema, table) as unknown as "tablename")
+        .selectFrom(sql.raw(tableName) as unknown as "tablename")
         .select(
           selectFields.map((field) => {
             if (dateFields.includes(field as unknown as string)) {
               if (transformFields?.[field as unknown as string]) {
-                return sql
-                  .raw(
-                    `to_unixtime(${transformFields[field as unknown as string]})`
-                  )
-                  .as(
-                    transformFields[
-                      field as unknown as string
-                    ] as unknown as string
-                  )
+                const transformedName = transformFields[
+                  field as unknown as string
+                ] as string
+                return dialect
+                  .toUnixTimestamp(transformedName)
+                  .as(transformedName as unknown as string)
               }
 
-              return sql
-                .raw(`to_unixtime(${field as unknown as string})`)
+              return dialect
+                .toUnixTimestamp(field as unknown as string)
                 .as(field as unknown as string)
             }
             // use the transformed name, if there is one for the current field
@@ -567,6 +580,11 @@ export function generateQuery<TableDefinition>({
             return field
           })
         )
+        // Sentinel column read back by the response normalizer: after the FULL
+        // JOIN with total_count it is truthy on real data rows and `null` on the
+        // synthetic count-only row produced when `records` is empty. The literal
+        // is dialect-specific (Trino `TRUE`, T-SQL `1`).
+        .select(dialect.trueLiteral().as(RECORD_PRESENT_KEY))
         .$if(Object.keys(userQuery).length > 0, (qb) =>
           qb.where((eb) => {
             const normalizedQuery = normalizeFilter(
@@ -596,65 +614,22 @@ export function generateQuery<TableDefinition>({
         )
       }
 
-      // add paging
-      // reference: https://trino.io/blog/2020/02/03/beyond-limit-presto-meets-offset-and-ties.html
+      // add paging using dialect-specific pagination
+      const limit = paging?.limit ?? 100
+      const offset = paging?.offset
+
       query =
-        !paging?.offset || paging.offset <= 0
-          ? query.modifyEnd(
-              sql.raw(`FETCH FIRST ${paging?.limit ?? 100} ROWS ONLY`)
-            )
-          : query
-              .offset(paging.offset ?? 100)
-              .modifyEnd(sql.raw(`FETCH NEXT ${paging.limit ?? 100} ROWS ONLY`))
+        !offset || offset <= 0
+          ? query.modifyEnd(dialect.pagination(limit))
+          : query.offset(offset).modifyEnd(dialect.pagination(limit, offset))
 
       return query
     })
     .selectFrom("total_count")
     .selectAll()
-    .fullJoin("records", (join) => join.onTrue())
+    .fullJoin("records", (join) => join.on(sql<SqlBool>`1=1`))
 
   return withStatement.compile()
-}
-
-/**
- * Parameters for formatting a compiled SQL query.
- */
-export interface FormatQueryProps<T> {
-  /**
-   * The compiled Kysely query to format.
-   *
-   * @see {@link https://kysely-org.github.io/kysely-apidoc/interfaces/CompiledQuery.html | Kysely API Docs - CompiledQuery}
-   */
-  query: CompiledQuery<T>
-}
-
-/**
- * Formats a compiled SQL query for readability.
- *
- * Applies uppercase keywords, PostgreSQL dialect, and interpolates parameters.
- *
- * @param props - The format query parameters.
- * @returns The formatted SQL string with interpolated parameters.
- */
-export function formatQuery<T>({ query }: FormatQueryProps<T>) {
-  const paramsObject: Record<number, string> = {}
-
-  // we get the query parameters as `["param1", "param2"]`
-  // but we need `{1:"param1", 2: "param2"}`, otherwise
-  // the formatted query wouldn't include the params
-  /* c8 ignore next 9 */
-  for (const [index, param] of query.parameters.entries()) {
-    paramsObject[index + 1] =
-      typeof param === "string" ? String(`'${param}'`) : String(param)
-  }
-
-  return format(query.sql, {
-    keywordCase: "upper",
-    language: "postgresql",
-    params: paramsObject,
-    tabWidth: 0,
-    useTabs: false,
-  })
 }
 
 export interface GetSelectFieldProps {
@@ -677,10 +652,10 @@ export interface GetSelectFieldProps {
  *
  * @returns An array of field names to use as SELECT columns.
  */
-export function getSelectFields<T>({
+export function getSelectFields({
   graphqlInfo,
   withNodes = false,
-}: GetSelectFieldProps) {
+}: GetSelectFieldProps): string[] {
   return graphqlInfo.fieldNodes.flatMap((fieldNode) => {
     const baseSelections = fieldNode.selectionSet?.selections as SelectionNode[]
 
@@ -706,5 +681,8 @@ export function getSelectFields<T>({
     return selections.flatMap(
       (selection) => (selection as FieldNode).name.value
     )
-  }) as GenerateQueryProps<T>["selectFields"]
+  })
 }
+
+// Re-export dialect interface for adapter implementations
+export type { QueryDialect } from "./dialect"

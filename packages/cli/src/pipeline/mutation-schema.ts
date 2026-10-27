@@ -1,10 +1,3 @@
-import type {
-  FieldDefinition,
-  MutationConfig,
-} from "@lakeql/schema-generator/endpoint-schema"
-import type { ModelResponse } from "@lakeql/schema-generator/graphql-schema"
-import ts from "typescript"
-
 import {
   access,
   arrowFunction,
@@ -21,7 +14,13 @@ import {
   parameter,
   property,
   stringLiteral,
-} from "./ast-helpers"
+} from "@lakeql/file-generator/ast-builders"
+import type {
+  FieldDefinition,
+  MutationConfig,
+} from "@lakeql/schema-generator/endpoint-schema"
+import type { ModelResponse } from "@lakeql/schema-generator/graphql-schema"
+import ts from "typescript"
 
 /**
  * Parameters for generateMutationSchema.
@@ -83,7 +82,12 @@ export function generateMutationSchema({
       generateInputType(model, models, requiredMap, excludedSet)
     ),
     generateInputType(rootModel, models, requiredMap, excludedSet),
-    generateRealMutationFields(mutationName, rootModel, hasValidations),
+    generateRealMutationFields(
+      mutationName,
+      rootModel,
+      mutationConfig,
+      hasValidations
+    ),
   ]
 }
 
@@ -131,11 +135,8 @@ function generateRealResolverImports(
   hasValidations?: boolean
 ): ts.ImportDeclaration[] {
   const imports: ts.ImportDeclaration[] = [
-    importNames("@lakeql/adapters", ["executeWritePipeline"]),
-    importNames("@lakeql/trino-client", ["TrinoClient"]),
     importNames("@lakeql/api/builder", ["builder"]),
-    importNames("~/env", ["env"]),
-    importNames("./config", ["hiveConfig", "storageConfig"]),
+    importNames("./config", ["sourceConfig", "storageConfig"]),
     importDefault("./json-schema.json", "jsonSchema"),
   ]
 
@@ -292,6 +293,7 @@ function getPrimitiveListMethod(innerType: string): string | undefined {
 function generateRealMutationFields(
   mutationName: string,
   rootModel: ModelResponse,
+  mutationConfig: MutationConfig,
   hasValidations?: boolean
 ): ts.Node {
   const rootInputTypeName = `${rootModel.modelName}Input`
@@ -299,44 +301,33 @@ function generateRealMutationFields(
   // Build resolver body statements
   const resolverStatements: ts.Statement[] = []
 
-  // If validations exist, add: validationSchema.parse(input)
+  // If validations exist, validate each record in the batch:
+  // input.forEach((record) => validationSchema.parse(record))
   if (hasValidations) {
     resolverStatements.push(
       ts.factory.createExpressionStatement(
-        methodCall("validationSchema", "parse", [id("input")])
+        methodCall("input", "forEach", [
+          arrowFunction(
+            [parameter("record")],
+            methodCall("validationSchema", "parse", [id("record")])
+          ),
+        ])
       )
     )
   }
 
-  // Create TrinoClient instance:
-  // const trinoClient = new TrinoClient({ host: env.HIVE_HOST, port: env.HIVE_PORT, auth: {...}, catalog: env.HIVE_CATALOG, source: env.HIVE_SOURCE })
+  // const writeStrategy = context.getWriteStrategy(sourceConfig.dataSource)
   resolverStatements.push(
     ts.factory.createVariableStatement(
       undefined,
       ts.factory.createVariableDeclarationList(
         [
           ts.factory.createVariableDeclaration(
-            id("trinoClient"),
+            id("writeStrategy"),
             undefined,
             undefined,
-            ts.factory.createNewExpression(id("TrinoClient"), undefined, [
-              objectLiteral([
-                property("host", access("env", "HIVE_HOST")),
-                property("port", access("env", "HIVE_PORT")),
-                property(
-                  "auth",
-                  objectLiteral(
-                    [
-                      property("type", stringLiteral("basic")),
-                      property("username", access("env", "HIVE_USERNAME")),
-                      property("password", access("env", "HIVE_PASSWORD")),
-                    ],
-                    false
-                  )
-                ),
-                property("catalog", access("env", "HIVE_CATALOG")),
-                property("source", access("env", "HIVE_SOURCE")),
-              ]),
+            call(access(id("context"), "getWriteStrategy"), [
+              access("sourceConfig", "dataSource"),
             ])
           ),
         ],
@@ -345,43 +336,51 @@ function generateRealMutationFields(
     )
   )
 
-  // await executeWritePipeline({ records: input, jsonSchema, config: { ... } })
-  const pipelineCall = ts.factory.createAwaitExpression(
-    call(id("executeWritePipeline"), [
+  // config: { table: {...}, loadStrategy, basePath, partitioning?, partitioningFormat? }
+  const configProperties: ts.PropertyAssignment[] = [
+    property(
+      "table",
+      objectLiteral(
+        [
+          property("catalog", access("sourceConfig", "catalog")),
+          property("schema", access("sourceConfig", "schema")),
+          property("tableName", access("sourceConfig", "tableName")),
+        ],
+        false
+      )
+    ),
+    property("loadStrategy", access("storageConfig", "loadStrategy")),
+    property("basePath", access("storageConfig", "basePath")),
+  ]
+
+  // Mirror the storageConfig shape emitted by generateConfig: only reference
+  // partitioning keys that were actually written to storageConfig.
+  if (mutationConfig.partitioning !== undefined) {
+    configProperties.push(
+      property("partitioning", access("storageConfig", "partitioning"))
+    )
+  }
+  if (mutationConfig.partitioningFormat) {
+    configProperties.push(
+      property(
+        "partitioningFormat",
+        access("storageConfig", "partitioningFormat")
+      )
+    )
+  }
+
+  // await writeStrategy.write({ records: input, schema: jsonSchema, config: {...} })
+  const writeCall = ts.factory.createAwaitExpression(
+    methodCall("writeStrategy", "write", [
       objectLiteral([
         property("records", id("input")),
-        property(
-          "jsonSchema",
-          ts.factory.createAsExpression(
-            id("jsonSchema"),
-            ts.factory.createKeywordTypeNode(ts.SyntaxKind.AnyKeyword)
-          )
-        ),
-        property(
-          "config",
-          objectLiteral([
-            property("loadStrategy", access("storageConfig", "loadStrategy")),
-            property("bucket", access("storageConfig", "bucket")),
-            property("basePath", access("storageConfig", "basePath")),
-            property(
-              "table",
-              objectLiteral(
-                [
-                  property("catalog", access("hiveConfig", "catalog")),
-                  property("schema", access("hiveConfig", "schema")),
-                  property("tableName", access("hiveConfig", "tableName")),
-                ],
-                false
-              )
-            ),
-            property("trinoClient", id("trinoClient")),
-          ])
-        ),
+        property("schema", id("jsonSchema")),
+        property("config", objectLiteral(configProperties)),
       ]),
     ])
   )
 
-  resolverStatements.push(ts.factory.createExpressionStatement(pipelineCall))
+  resolverStatements.push(ts.factory.createExpressionStatement(writeCall))
 
   // return true
   // oxlint-disable-next-line unicorn/prefer-single-call
@@ -405,6 +404,7 @@ function generateRealMutationFields(
           ),
         ])
       ),
+      parameter("context"),
     ],
     resolverBody,
     { async: true }
@@ -413,7 +413,10 @@ function generateRealMutationFields(
   const inputArg = methodCall("t", "arg", [
     objectLiteral(
       [
-        property("type", id(rootInputTypeName)),
+        property(
+          "type",
+          ts.factory.createArrayLiteralExpression([id(rootInputTypeName)])
+        ),
         property("required", bool(true)),
       ],
       false

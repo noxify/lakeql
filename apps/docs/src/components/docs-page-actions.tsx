@@ -56,7 +56,7 @@ const AI_PROVIDERS = [
 
 type CopyState = "idle" | "copied" | "failed"
 
-export function DocsPageActions({
+export const DocsPageActions = ({
   rawContent,
   rawHref,
   sourceHref,
@@ -64,7 +64,7 @@ export function DocsPageActions({
   rawContent: string
   rawHref: string
   sourceHref: string
-}) {
+}) => {
   const [copyState, setCopyState] = React.useState<CopyState>("idle")
   const resetTimeoutRef = React.useRef<number | null>(null)
   const buttonVariant =

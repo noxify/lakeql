@@ -1,0 +1,15 @@
+---
+title: config
+navTitle: config
+description: Load configuration and compose a runtime with @lakeql/config.
+---
+
+`@lakeql/config` is the composition layer. It loads your `lakeql.config.ts`, validates the data-source definitions against the registered adapters, and composes a runtime that owns the live data-source instances.
+
+Three functions span the lifecycle:
+
+- [`defineConfig`](/docs/packages/config/api-reference#define-config) — author the config file with full type inference.
+- [`loadConfig`](/docs/packages/config/api-reference#load-config) — load it and resolve it into a neutral project object (per-source validation runs in `defineConfig` and the adapter factory, not here).
+- [`createLakeQLRuntime`](/docs/packages/config/api-reference#create-lake-ql-runtime) — compose the runtime from the loaded config, the adapter factories, and an auth resolver.
+
+This section covers the [runtime config contract](/docs/packages/config/runtime-config) and the full [API reference](/docs/packages/config/api-reference).

@@ -1,0 +1,22 @@
+---
+title: Queries
+navTitle: Queries
+description: How reads run through the Fabric adapter.
+---
+
+The Fabric adapter executes the SQL that the [query builder](/docs/packages/query-builder) produces, rendering it in the T-SQL dialect and running it over TDS. As with the Trino adapter, you do not call it directly in normal operation — the generated query schemas and the API server drive it.
+
+## Reads
+
+A read goes through the adapter's read strategy: the query builder constructs the query from the GraphQL selection, filter, sorting, and paging; the Fabric dialect renders it as T-SQL; the adapter runs it and normalizes the response into keyed records. See [data flow](/docs/lakeql/architecture/data-flow).
+
+## Per-Request Identity
+
+The Fabric client supports an on-behalf-of flow: a per-query bearer token runs a statement as the calling identity rather than the service credential. A Fabric data source wires this through its `impersonationResolver`. See [authentication](/docs/api/authentication).
+
+<Warning>
+  The Fabric adapter is read-only. It reports no write capabilities and no DDL
+  support: requesting a write strategy returns an unsupported-write strategy,
+  and table create/drop throw `UnsupportedOperationError`. For writes, use the
+  Trino adapter — see the [write pipeline](/docs/data-sources/write-pipeline).
+</Warning>

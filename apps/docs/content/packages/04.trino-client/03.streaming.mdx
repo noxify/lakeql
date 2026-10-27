@@ -1,0 +1,19 @@
+---
+title: Streaming
+navTitle: Streaming
+description: Stream large result sets one row at a time.
+---
+
+For large result sets, [`stream`](/docs/packages/trino-client/api-reference#trino-client-stream) returns an async generator that yields rows one at a time as pages are fetched, rather than buffering the whole result in memory.
+
+```ts
+const rows = await client.stream<{ id: number }>({
+  sql: "SELECT id FROM hive.sales.orders",
+})
+
+for await (const row of rows) {
+  process(row)
+}
+```
+
+`stream` accepts the same options as [`query`](/docs/packages/trino-client/executing-queries) — `transform`, `impersonateAs`, and `signal`. Aborting the signal stops the generator and throws a `TrinoCancellationError` on the next pull.

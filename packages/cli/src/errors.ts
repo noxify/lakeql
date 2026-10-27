@@ -54,14 +54,14 @@ export function isPromptAbortError(error: unknown): boolean {
   )
 }
 
-export function createTrinoConnectionError(
+export function createDataSourceConnectionError(
   action: string,
   context: string,
   cause: unknown
 ): CliError {
   return new CliError(`Failed to ${action}.`, {
-    code: "TRINO_REQUEST_FAILED",
-    hint: "Verify HIVE_HOST/HIVE_PORT, credentials and network reachability to Trino.",
+    code: "DATASOURCE_REQUEST_FAILED",
+    hint: "Verify data source connection settings in lakeql.config and that the endpoint is reachable.",
     details: [`Context: ${context}`],
     cause,
   })

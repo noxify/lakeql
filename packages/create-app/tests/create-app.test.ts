@@ -1,45 +1,45 @@
-import { beforeEach, describe, expect, test, vi } from "vitest"
+import { beforeEach, describe, expect, vi, it } from "vitest"
 
 // Test the project name validation regex pattern
 // (replicated from src/index.ts since it's not exported and the module auto-executes main())
 describe("Project Name Validation", () => {
   const PROJECT_NAME_REGEX = /^[a-z0-9-_]+$/u
 
-  test("accepts lowercase letters", () => {
+  it("accepts lowercase letters", () => {
     expect(PROJECT_NAME_REGEX.test("myproject")).toBeTruthy()
   })
 
-  test("accepts numbers", () => {
+  it("accepts numbers", () => {
     expect(PROJECT_NAME_REGEX.test("project123")).toBeTruthy()
   })
 
-  test("accepts hyphens", () => {
+  it("accepts hyphens", () => {
     expect(PROJECT_NAME_REGEX.test("my-project")).toBeTruthy()
   })
 
-  test("accepts underscores", () => {
+  it("accepts underscores", () => {
     expect(PROJECT_NAME_REGEX.test("my_project")).toBeTruthy()
   })
 
-  test("accepts combination", () => {
+  it("accepts combination", () => {
     expect(PROJECT_NAME_REGEX.test("my-lakeql-app_2")).toBeTruthy()
   })
 
-  test("rejects uppercase letters", () => {
+  it("rejects uppercase letters", () => {
     expect(PROJECT_NAME_REGEX.test("MyProject")).toBeFalsy()
   })
 
-  test("rejects spaces", () => {
+  it("rejects spaces", () => {
     expect(PROJECT_NAME_REGEX.test("my project")).toBeFalsy()
   })
 
-  test("rejects special characters", () => {
+  it("rejects special characters", () => {
     expect(PROJECT_NAME_REGEX.test("my@project")).toBeFalsy()
     expect(PROJECT_NAME_REGEX.test("my.project")).toBeFalsy()
     expect(PROJECT_NAME_REGEX.test("my/project")).toBeFalsy()
   })
 
-  test("rejects empty string", () => {
+  it("rejects empty string", () => {
     expect(PROJECT_NAME_REGEX.test("")).toBeFalsy()
   })
 })
@@ -52,7 +52,7 @@ describe("getLatestVersion", () => {
     vi.restoreAllMocks()
   })
 
-  test("returns formatted version on successful fetch", async () => {
+  it("returns formatted version on successful fetch", async () => {
     const mockFetch =
       vi.fn<(input: string | URL | Request) => Promise<Response>>()
     mockFetch.mockResolvedValue({
@@ -73,7 +73,7 @@ describe("getLatestVersion", () => {
     )
   })
 
-  test("returns * on fetch failure", async () => {
+  it("returns * on fetch failure", async () => {
     const mockFetch =
       vi.fn<(input: string | URL | Request) => Promise<Response>>()
     mockFetch.mockResolvedValue({
@@ -92,7 +92,7 @@ describe("getLatestVersion", () => {
     expect(result).toBe("*")
   })
 
-  test("returns * on network error", async () => {
+  it("returns * on network error", async () => {
     const mockFetch =
       vi.fn<(input: string | URL | Request) => Promise<Response>>()
     mockFetch.mockRejectedValue(new Error("Network error"))
@@ -113,19 +113,19 @@ describe("getLatestVersion", () => {
 describe("VALID_PACKAGE_MANAGERS", () => {
   const VALID_PACKAGE_MANAGERS = ["npm", "pnpm", "yarn", "bun"]
 
-  test("includes npm", () => {
+  it("includes npm", () => {
     expect(VALID_PACKAGE_MANAGERS).toContain("npm")
   })
 
-  test("includes pnpm", () => {
+  it("includes pnpm", () => {
     expect(VALID_PACKAGE_MANAGERS).toContain("pnpm")
   })
 
-  test("includes yarn", () => {
+  it("includes yarn", () => {
     expect(VALID_PACKAGE_MANAGERS).toContain("yarn")
   })
 
-  test("includes bun", () => {
+  it("includes bun", () => {
     expect(VALID_PACKAGE_MANAGERS).toContain("bun")
   })
 })

@@ -70,14 +70,14 @@ function getHintForError(error: unknown): string | undefined {
     code === "ENOTFOUND" ||
     code === "ETIMEDOUT"
   ) {
-    return "Could not reach Trino. Verify HIVE_HOST/HIVE_PORT and that the Trino endpoint is reachable from your network."
+    return "Could not reach the data source. Verify connection settings in lakeql.config and that the endpoint is reachable from your network."
   }
 
   if (
     rootMessage.includes("invalid environment variables") ||
     rootMessage.includes("required")
   ) {
-    return "Missing or invalid environment variables. Set HIVE_HOST, HIVE_PORT, HIVE_USERNAME, HIVE_PASSWORD and HIVE_CATALOG."
+    return "Missing or invalid configuration. Check lakeql.config.ts for correct data source settings."
   }
 
   return undefined

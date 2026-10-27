@@ -1,121 +1,29 @@
 ---
 title: Comparison Types
-description: Pre-built GraphQL input types for filtering queries with typed comparison operators.
+navTitle: Comparison Types
+description: The per-type filter input types used in queries.
 ---
 
-LakeQL provides seven comparison input types that power the generated `Where` filter inputs. Each type exposes operators appropriate for its scalar type.
+For each scalar, the builder generates a comparison input type that defines the operators available when filtering a field of that type. Generated query schemas use these as the field types inside a filter argument.
 
-## Available comparison types
+| Comparison type           | Applies to         |
+| ------------------------- | ------------------ |
+| `StringFieldComparison`   | `String` columns   |
+| `IntFieldComparison`      | `Int` columns      |
+| `FloatFieldComparison`    | `Float` columns    |
+| `BooleanFieldComparison`  | `Boolean` columns  |
+| `DateFieldComparison`     | `Date` columns     |
+| `DateTimeFieldComparison` | `DateTime` columns |
+| `IDFieldComparison`       | `ID` columns       |
 
-### StringFieldComparison
+Each comparison type exposes only the operators that make sense for its scalar:
 
-| Operator  | Type       | Description                |
-| --------- | ---------- | -------------------------- |
-| `eq`      | `String`   | Equal to                   |
-| `neq`     | `String`   | Not equal to               |
-| `like`    | `String`   | SQL LIKE pattern match     |
-| `notLike` | `String`   | SQL NOT LIKE pattern match |
-| `in`      | `[String]` | Value in list              |
-| `notIn`   | `[String]` | Value not in list          |
+| Scalar             | Operators                                               |
+| ------------------ | ------------------------------------------------------- |
+| `String`           | `eq`, `neq`, `like`, `notLike`, `in`, `notIn`           |
+| `Int`, `Float`     | `eq`, `neq`, `lt`, `lte`, `gt`, `gte`, `in`, `notIn`    |
+| `ID`               | `eq`, `neq`, `in`, `notIn`                              |
+| `Date`, `DateTime` | `eq`, `neq`, `lt`, `lte`, `gt`, `gte` (no `in`/`notIn`) |
+| `Boolean`          | `is`, `isNot` only                                      |
 
-### IntFieldComparison
-
-| Operator | Type    | Description           |
-| -------- | ------- | --------------------- |
-| `eq`     | `Int`   | Equal to              |
-| `neq`    | `Int`   | Not equal to          |
-| `lt`     | `Int`   | Less than             |
-| `lte`    | `Int`   | Less than or equal    |
-| `gt`     | `Int`   | Greater than          |
-| `gte`    | `Int`   | Greater than or equal |
-| `in`     | `[Int]` | Value in list         |
-| `notIn`  | `[Int]` | Value not in list     |
-
-### FloatFieldComparison
-
-| Operator | Type      | Description           |
-| -------- | --------- | --------------------- |
-| `eq`     | `Float`   | Equal to              |
-| `neq`    | `Float`   | Not equal to          |
-| `lt`     | `Float`   | Less than             |
-| `lte`    | `Float`   | Less than or equal    |
-| `gt`     | `Float`   | Greater than          |
-| `gte`    | `Float`   | Greater than or equal |
-| `in`     | `[Float]` | Value in list         |
-| `notIn`  | `[Float]` | Value not in list     |
-
-### BooleanFieldComparison
-
-| Operator | Type      | Description |
-| -------- | --------- | ----------- |
-| `is`     | `Boolean` | Is true     |
-| `isNot`  | `Boolean` | Is false    |
-
-### DateFieldComparison
-
-| Operator | Type   | Description           |
-| -------- | ------ | --------------------- |
-| `eq`     | `Date` | Equal to              |
-| `neq`    | `Date` | Not equal to          |
-| `lt`     | `Date` | Less than             |
-| `lte`    | `Date` | Less than or equal    |
-| `gt`     | `Date` | Greater than          |
-| `gte`    | `Date` | Greater than or equal |
-
-### DateTimeFieldComparison
-
-| Operator | Type       | Description           |
-| -------- | ---------- | --------------------- |
-| `eq`     | `DateTime` | Equal to              |
-| `neq`    | `DateTime` | Not equal to          |
-| `lt`     | `DateTime` | Less than             |
-| `lte`    | `DateTime` | Less than or equal    |
-| `gt`     | `DateTime` | Greater than          |
-| `gte`    | `DateTime` | Greater than or equal |
-
-### IDFieldComparison
-
-| Operator | Type   | Description       |
-| -------- | ------ | ----------------- |
-| `eq`     | `ID`   | Equal to          |
-| `neq`    | `ID`   | Not equal to      |
-| `in`     | `[ID]` | Value in list     |
-| `notIn`  | `[ID]` | Value not in list |
-
-## Usage in GraphQL queries
-
-These comparison types appear in generated `Where` input types for each table. Use them to filter query results:
-
-```graphql
-query FilteredUsers {
-  users(
-    where: {
-      age: { gte: 18, lt: 65 }
-      email: { like: "%@example.com" }
-      status: { in: ["active", "pending"] }
-    }
-  ) {
-    nodes {
-      id
-      name
-      email
-    }
-  }
-}
-```
-
-## Importing comparison types
-
-If you need to reference these types in custom schemas:
-
-```ts
-import {
-  StringFieldComparison,
-  IntFieldComparison,
-  FloatFieldComparison,
-  BooleanFieldComparison,
-  DateFieldComparison,
-  DateTimeFieldComparison,
-  IDFieldComparison,
-} from "@lakeql/api/builder"
-```
+So a `Date` filter has no `in`, and a `Boolean` filter uses `is`/`isNot` rather than `eq`/`neq`. The operators map to the [query-builder](/docs/packages/query-builder/filtering) field operators that become the SQL `WHERE` clause.

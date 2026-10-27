@@ -2,11 +2,13 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import path from "node:path"
 import { cwd, env } from "node:process"
 
-import { create, insertMultiple } from "@orama/orama"
-import { persist } from "@orama/plugin-data-persistence"
-import type { NextRequest } from "next/server"
+import { persist } from "@zbsearch/plugin-data-persistence"
+import { create, insertMultiple } from "zbsearch"
 
-import { buildSearchDocuments, getAllSearchableEntries } from "@/orama/builder"
+import {
+  buildSearchDocuments,
+  getAllSearchableEntries,
+} from "@/zbsearch/builder"
 
 export const dynamic = "force-static"
 export const runtime = "nodejs"
@@ -18,6 +20,16 @@ const DEV_INDEX_CACHE_FILE = path.join(
   "cache",
   "search-index.json"
 )
+
+function loadDevIndexCache(): string | null {
+  if (!existsSync(DEV_INDEX_CACHE_FILE)) {
+    return null
+  }
+
+  return readFileSync(DEV_INDEX_CACHE_FILE, "utf-8")
+}
+
+let devIndexCache = loadDevIndexCache()
 
 async function buildPersistedSearchIndexJson(): Promise<string> {
   const entries = await getAllSearchableEntries()
@@ -40,24 +52,21 @@ async function buildPersistedSearchIndexJson(): Promise<string> {
   return typeof snapshot === "string" ? snapshot : JSON.stringify(snapshot)
 }
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   const isDev = env.NODE_ENV === "development"
-  const forceUpdate = request.nextUrl.searchParams.get("update") === "true"
 
-  if (isDev && !forceUpdate && existsSync(DEV_INDEX_CACHE_FILE)) {
-    const cached = readFileSync(DEV_INDEX_CACHE_FILE, "utf-8")
-    return new Response(cached, {
+  if (isDev && devIndexCache) {
+    return new Response(devIndexCache, {
       headers: { "Content-Type": "application/json; charset=utf-8" },
     })
   }
 
   const snapshotJson = await buildPersistedSearchIndexJson()
 
-  // Nur in dev als lokale Cache-Datei schreiben.
-  // Production/export erzeugt sein eigenes statisches Artefakt ohne dev-Datei.
   if (isDev) {
     mkdirSync(path.dirname(DEV_INDEX_CACHE_FILE), { recursive: true })
     writeFileSync(DEV_INDEX_CACHE_FILE, snapshotJson)
+    devIndexCache = snapshotJson
   }
 
   return new Response(snapshotJson, {

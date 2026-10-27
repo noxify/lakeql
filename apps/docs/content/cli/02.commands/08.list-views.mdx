@@ -1,0 +1,14 @@
+---
+title: list-views
+navTitle: list-views
+description: List the views available in a schema.
+cliCommand: list-views
+---
+
+`list-views` prints the views available in a schema, through a configured data source. Views can be introspected and served the same way as tables.
+
+<Command variant="exec">
+  lakeql-cli list-views --source warehouse --schema sales
+</Command>
+
+<CliCommandDetails command="list-views" />

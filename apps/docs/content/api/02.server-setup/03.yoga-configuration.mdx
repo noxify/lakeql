@@ -1,80 +1,29 @@
 ---
 title: Yoga Configuration
-description: Customize GraphQL Yoga options like GraphiQL, error masking, logging, and landing page.
+navTitle: Yoga Configuration
+description: Override GraphQL Yoga options and add plugins.
 ---
 
-The `yogaConfig` option in `defineConfig` (or `createApiServer`) lets you override GraphQL Yoga's built-in behavior. It accepts all Yoga options except `schema` and `context`, which are managed internally.
-
-## Type
+LakeQL's server is built on [GraphQL Yoga](https://the-guild.dev/graphql/yoga-server). The `yogaConfig` option passes overrides and plugins straight through, so you can tune the underlying Yoga instance without the API package depending on your additions.
 
 ```ts
-type YogaConfigOverrides = Omit<
-  NonNullable<Parameters<typeof createYoga>[0]>,
-  "schema" | "context"
->
-```
-
-## Available overrides
-
-| Option | Type | Default | Description |
-| --- | --- | --- | --- |
-| `healthCheckEndpoint` | `string` | `"/live"` | Path for the health check endpoint |
-| `graphiql` | `boolean \| object` | `true` in development | Enable/configure GraphiQL IDE |
-| `logging` | `boolean \| LogLevel` | Based on `API_LOGGER` env | Control Yoga's internal logging |
-| `maskedErrors` | `boolean` | `true` | Hide internal error details from clients |
-| `landingPage` | `boolean` | `false` | Show Yoga's default landing page |
-
-## Default behavior
-
-Without any overrides, the server applies these defaults:
-
-- **GraphiQL** is enabled when `NODE_ENV=development`
-- **maskedErrors** is `true` — internal errors are replaced with generic messages
-- **Logging** level is controlled by the `API_LOGGER` environment variable (default: `warn`). Set to `silent` to disable Yoga logging entirely.
-- **Landing page** is disabled
-
-## Usage
-
-```ts path="src/config.ts"
-import { defineConfig } from "@lakeql/api/config"
-
-import { getUser } from "./auth"
-import { allConfigs } from "./config-registry"
-import { permissions } from "./permissions"
-
-const baseDir = import.meta.dirname
-
-export const config = defineConfig({
-  allConfigs,
-  baseDir,
-  getUser,
-  permissions,
-  port: 4000,
-  schemaPath: "./schemas",
+const server = defineApiConfig({
+  runtime,
+  tokenResolver,
   yogaConfig: {
-    graphiql: {
-      title: "LakeQL Explorer",
-      defaultQuery: "{ __typename }",
-    },
-    maskedErrors: false, // expose full errors in development
-    healthCheckEndpoint: "/healthz",
+    // Yoga options and plugins
+    plugins: [myPlugin],
   },
 })
 ```
 
-## Logging configuration
+Use this for Yoga-level concerns — additional envelope plugins, GraphiQL settings, and so on. CORS is **not** configured here; it is a dedicated [`cors`](/docs/api/customization/cors-configuration) option applied by the Hono layer. For forwarding execution errors to telemetry, prefer the dedicated [`onError`](/docs/api/customization/error-handling) hook over a plugin.
 
-The `API_LOGGER` environment variable accepts these values:
+<Note>
+  `yogaConfig` is applied on top of LakeQL's own Yoga setup. Plugins you add run
+  alongside the built-in ones, including the error-logging plugin.
+</Note>
 
-| Value    | Effect                        |
-| -------- | ----------------------------- |
-| `debug`  | All messages                  |
-| `info`   | Info, warnings, and errors    |
-| `warn`   | Warnings and errors (default) |
-| `error`  | Errors only                   |
-| `silent` | No Yoga logging output        |
+## Built-In Defaults
 
-```bash
-# .env
-API_LOGGER=debug
-```
+A few Yoga defaults are worth knowing: GraphQL errors are masked (`maskedErrors: true`), and GraphiQL is served only when `NODE_ENV` is `development`. Both can be overridden through `yogaConfig`.

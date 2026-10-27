@@ -370,9 +370,9 @@ function mixedNestingSchemaArb(): fc.Arbitrary<JsonSchema> {
     })
 }
 
-// --- Property Tests ---
+// --- Tests ---
 
-describe("Property 1: Primitive Type Mapping Correctness", () => {
+describe("Primitive Type Mapping Correctness", () => {
   it("maps primitive JSON Schema types to the correct Parquet type and converted_type", () => {
     fc.assert(
       fc.property(flatPrimitiveSchemaArb, ({ schema, fields }) => {
@@ -396,7 +396,7 @@ describe("Property 1: Primitive Type Mapping Correctness", () => {
   })
 })
 
-describe("Property 2: Repetition Type Correctness", () => {
+describe("Repetition Type Correctness", () => {
   it("sets REQUIRED when field is in parent required array, OPTIONAL otherwise", () => {
     fc.assert(
       fc.property(schemaWithRequiredArb, ({ schema, fieldRequired }) => {
@@ -450,7 +450,7 @@ describe("Property 2: Repetition Type Correctness", () => {
   })
 })
 
-describe("Property 3: Structural Conversion Correctness", () => {
+describe("Structural Conversion Correctness", () => {
   it("produces group elements with correct num_children for nested objects", () => {
     fc.assert(
       fc.property(nestedObjectSchemaArb(), ({ schema, nestedFields }) => {
@@ -507,7 +507,7 @@ describe("Property 3: Structural Conversion Correctness", () => {
   })
 })
 
-describe("Property 4: Invalid Schema Error Signaling", () => {
+describe("Invalid Schema Error Signaling", () => {
   it("throws error for non-object top-level types", () => {
     const nonObjectTypeArb = fc.constantFrom(
       "string",
@@ -556,7 +556,7 @@ describe("Property 4: Invalid Schema Error Signaling", () => {
   })
 })
 
-describe("Property 6: Schema Conversion Type Consistency", () => {
+describe("Schema Conversion Type Consistency", () => {
   it("same type fields in different schemas produce identical Parquet type mappings", () => {
     // Generate two different schemas that share the same field type/format
     const consistencyArb = fc
@@ -593,7 +593,7 @@ describe("Property 6: Schema Conversion Type Consistency", () => {
   })
 })
 
-describe("Property 7: Leaf Element Count Invariant", () => {
+describe("Leaf Element Count Invariant", () => {
   it("leaf element count equals the number of primitive fields in the JSON Schema", () => {
     fc.assert(
       fc.property(mixedNestingSchemaArb(), (schema) => {

@@ -1,0 +1,37 @@
+---
+title: Custom Resolvers
+navTitle: Custom Resolvers
+description: Add your own queries and mutations to the schema.
+---
+
+The generated endpoints cover table reads and writes, but you will often need fields that are not a direct table query — an aggregate, a computed value, or a call to another service. You add these on the shared schema builder.
+
+```ts
+import { builder } from "@lakeql/api/builder"
+
+builder.queryField("orderCount", (t) =>
+  t.int({
+    resolve: async (_root, _args, context) => {
+      // reach data via the context accessors: getReadStrategy / getWriteStrategy
+      const strategy = context.getReadStrategy("warehouse")
+      // ...
+      return count
+    },
+  })
+)
+```
+
+Because it is the same [`builder`](/docs/api/schema-builder/builder-configuration) the generated endpoints use, your custom fields get the same auth scopes, input validation, and scalar types.
+
+<Note>
+  Two prerequisites apply: import the module that registers your fields before
+  `startServer()`, and note that the `Mutation` root type exists only when the
+  project has a generated mutation. See [custom queries &
+  mutations](/docs/api/customization/custom-queries-mutations#two-prerequisites).
+</Note>
+
+## Authorization and Validation
+
+Declare required scopes through the field's `authScopes` option (see [scope authorization](/docs/api/authentication/scope-authorization)), and validate arguments with a Zod schema via `validate` (see [input validation](/docs/api/schema-builder/input-validation)).
+
+For the full details and the mutation case, see [custom queries and mutations](/docs/api/customization/custom-queries-mutations).

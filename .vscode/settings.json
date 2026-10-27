@@ -33,9 +33,6 @@
   "[graphql]": {
     "editor.defaultFormatter": "oxc.oxc-vscode"
   },
-  "[handlebars]": {
-    "editor.defaultFormatter": "oxc.oxc-vscode"
-  },
   "[html]": {
     "editor.defaultFormatter": "oxc.oxc-vscode"
   },

@@ -70,10 +70,18 @@ function resolvePackageManager(
     : defaultPackageManager
 }
 
-export function CommandTabsClient({
+const onValueChange = (value: string) => {
+  if (!isPackageManager(value)) {
+    return
+  }
+
+  window.setPackageManager?.(value)
+}
+
+export const CommandTabsClient = ({
   commands,
   defaultPackageManager = "npm",
-}: CommandTabsClientProps) {
+}: CommandTabsClientProps) => {
   const [selected, setSelected] = useState<PackageManager>(
     defaultPackageManager
   )
@@ -120,14 +128,6 @@ export function CommandTabsClient({
       window.removeEventListener(SYNC_EVENT, onSync)
     }
   }, [defaultPackageManager])
-
-  const onValueChange = (value: string) => {
-    if (!isPackageManager(value)) {
-      return
-    }
-
-    window.setPackageManager?.(value)
-  }
 
   return (
     <Tabs value={selected} onValueChange={onValueChange}>

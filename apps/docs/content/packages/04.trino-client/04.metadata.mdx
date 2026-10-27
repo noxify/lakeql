@@ -1,0 +1,35 @@
+---
+title: Metadata
+navTitle: Metadata
+description: Inspect catalogs, schemas, tables, and columns.
+---
+
+The client exposes metadata helpers that wrap the relevant Trino queries and return parsed results.
+
+```ts
+const schemas = await client.schemas({ catalog: "hive" })
+const tables = await client.tables({ catalog: "hive", schema: "sales" })
+const views = await client.views({ catalog: "hive", schema: "sales" })
+```
+
+See [`schemas`](/docs/packages/trino-client/api-reference#trino-client-schemas), [`tables`](/docs/packages/trino-client/api-reference#trino-client-tables), and [`views`](/docs/packages/trino-client/api-reference#trino-client-views).
+
+## Columns
+
+[`columns`](/docs/packages/trino-client/api-reference#trino-client-columns) returns a table's columns. Pass `asObject: true` for typed `ColumnInfo` objects, or omit it for raw `[name, type, extra, description]` tuples:
+
+```ts
+const columns = await client.columns({
+  catalog: "hive",
+  schema: "sales",
+  table: "orders",
+  asObject: true,
+})
+// → [{ name, type, extra, description }, ...]
+```
+
+<Note>
+  The client also exposes `createTable` and `dropTable` for managing external
+  tables. See the [API
+  reference](/docs/packages/trino-client/api-reference#trino-client-create-table).
+</Note>

@@ -1,50 +1,39 @@
 ---
 title: Config File
-description: Reference for the lakeql config file.
+navTitle: Config File
+description: How the CLI reads lakeql.config.ts.
 ---
 
-The lakeql config file controls where the CLI places generated code. It is created by running `lakeql-cli init`.
+The CLI reads the project's `lakeql.config.ts` — the same config the server uses — through [`@lakeql/config`](/docs/packages/config). There is no CLI-specific config file; the data sources, adapters, and source path all come from `lakeql.config.ts`.
 
-## Supported formats
+```ts
+import { defineConfig } from "@lakeql/config"
+import { trinoAdapterDefinition } from "@lakeql/adapter-trino"
 
-The CLI supports multiple config file formats, loaded in the following precedence order (first match wins):
-
-1. `lakeql.config.mjs` (recommended)
-2. `lakeql.config.ts`
-3. `lakeql.config.js`
-4. `lakeql.config.json`
-
-Config loading is powered by [c12](https://github.com/unjs/c12).
-
-## Configuration
-
-<ApiReference variant="table" file="cli/src/config" name="LakeQLConfig" />
-
-## Path resolution
-
-- Relative paths are resolved from the directory where the config file lives.
-- If `src/` is detected during `lakeql-cli init`, `sourcePath` is set to `"src"` automatically.
-- The CLI `--source-path` flag overrides the config value for that invocation.
-
-## Examples
-
-### MJS (recommended)
-
-```javascript
-// lakeql.config.mjs
-
-/** @type {import('@lakeql/cli').LakeQLConfig} */
-export default {
+export default defineConfig({
   sourcePath: "src",
-}
+  adapters: [trinoAdapterDefinition],
+  dataSources: {
+    warehouse: {
+      adapter: "trino",
+      connection: {/* ... */},
+    },
+  },
+})
 ```
 
-### JSON
+## What the CLI Uses
 
-```json
-{
-  "sourcePath": "src"
-}
-```
+- **`dataSources`** — introspection and generation commands target a source by name (the `--source` option), or prompt you to pick one.
+- **`sourcePath`** — the base path under which generated files are written; commands can override it with `--source-path`.
 
-With either config, running `lakeql-cli pull` places generated files under `src/schemas/generated/{catalog}/{schema}/{table}/`.
+## Loading Order
+
+The CLI loads any [`--env`](/docs/cli/configuration/environment-variables) file first, then reads `lakeql.config.ts`, so a config that reads `env.*` sees the loaded values. The loaded config is cached for the duration of a command.
+
+<Note>
+  Create the config file with [`init`](/docs/cli/commands/init), or get one
+  pre-populated by scaffolding with [create-app](/docs/lakeql/create-app). See
+  [Configuration](/docs/lakeql/configuration) for the full config file
+  reference.
+</Note>

@@ -1,7 +1,10 @@
 import { notFound } from "next/navigation"
 import type { NextRequest } from "next/server"
 
+import { getMetadata } from "@/collection-helpers"
 import { AllDocumentation } from "@/collections"
+import { mdxToMarkdown } from "@/lib/raw-markdown"
+import type { ApiReferenceFrontmatterEntry } from "@/lib/raw-markdown"
 import {
   getRawRouteParams,
   normalizeRawSlugParts,
@@ -43,6 +46,21 @@ export async function GET(
     notFound()
   }
 
-  const md = await file.getText()
-  return textResponse(md)
+  const source = await file.getText()
+
+  // Unlike page.tsx (which reads frontmatter unguarded in a Promise.all), the
+  // raw route degrades to "no append" if the frontmatter read throws rather
+  // than failing the whole route.
+  const frontmatter = await getMetadata(file).catch(() => null)
+
+  const apiReferenceEntries: ApiReferenceFrontmatterEntry[] =
+    frontmatter?.apiReference && Array.isArray(frontmatter.apiReference)
+      ? (frontmatter.apiReference as ApiReferenceFrontmatterEntry[])
+      : []
+
+  const markdown = await mdxToMarkdown(source, {
+    appendApiReferences: apiReferenceEntries,
+  })
+
+  return textResponse(markdown)
 }

@@ -1,6 +1,6 @@
-import { http, HttpResponse } from "msw"
+import { http, HttpResponse } from "msw/http"
 import { setupServer } from "msw/node"
-import { afterAll, afterEach, beforeAll, describe, expect, test } from "vitest"
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest"
 
 import type { Column, QueryResult } from "../src"
 import {
@@ -14,12 +14,12 @@ import {
 const server = setupServer(...singlePageHandlers())
 
 describe("transform option", () => {
-  beforeAll(() => server.listen({ onUnhandledRequest: "error" }))
+  beforeAll(() => server.listen({ onUnhandledFrame: "error" }))
   afterEach(() => server.resetHandlers())
 
   afterAll(() => server.close())
 
-  test("query() applies transform to each row", async () => {
+  it("query() applies transform to each row", async () => {
     server.use(
       ...singlePageHandlers([
         ["alice", 30],
@@ -42,7 +42,7 @@ describe("transform option", () => {
     ])
   })
 
-  test("stream() applies transform to each yielded row", async () => {
+  it("stream() applies transform to each yielded row", async () => {
     server.use(...singlePageHandlers([["x"], ["y"]]))
 
     const client = createClient()
@@ -59,7 +59,7 @@ describe("transform option", () => {
     expect(results).toStrictEqual([{ value: "x" }, { value: "y" }])
   })
 
-  test("transform receives columns as second argument", async () => {
+  it("transform receives columns as second argument", async () => {
     const receivedColumns: Column[][] = []
 
     server.use(
@@ -122,7 +122,7 @@ describe("transform option", () => {
     ])
   })
 
-  test("works without transform (returns raw arrays)", async () => {
+  it("works without transform (returns raw arrays)", async () => {
     server.use(...singlePageHandlers([["raw1"], ["raw2"]]))
 
     const client = createClient()

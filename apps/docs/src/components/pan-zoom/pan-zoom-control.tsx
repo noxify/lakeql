@@ -24,7 +24,7 @@ interface Transform {
   scale: number
 }
 
-export function PanZoomControl({
+export const PanZoomControl = ({
   children,
   className,
   minZoom = 0.25,
@@ -34,7 +34,7 @@ export function PanZoomControl({
   showControls = true,
   fitOnMount = false,
   centerOnMount = false,
-}: PanZoomControlProps) {
+}: PanZoomControlProps) => {
   const containerRef = React.useRef<HTMLDivElement>(null)
   const contentRef = React.useRef<HTMLDivElement>(null)
 

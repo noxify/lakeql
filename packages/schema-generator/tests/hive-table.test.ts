@@ -1,5 +1,5 @@
 import type { JSONSchema7 } from "json-schema"
-import { beforeEach, describe, expect, test, vi } from "vitest"
+import { beforeEach, describe, expect, vi, it } from "vitest"
 
 import {
   generateCreateTableStatement,
@@ -12,7 +12,7 @@ describe(generateSqlSchema, () => {
     vi.clearAllMocks()
   })
 
-  test("should handle basic types", () => {
+  it("should handle basic types", () => {
     const definition = {
       active: { type: "boolean" },
       age: { type: "integer" },
@@ -30,7 +30,7 @@ describe(generateSqlSchema, () => {
     ])
   })
 
-  test("should handle date-time format", () => {
+  it("should handle date-time format", () => {
     const definition = {
       createdAt: { format: "date-time", type: "string" },
     }
@@ -40,7 +40,7 @@ describe(generateSqlSchema, () => {
     expect(result).toStrictEqual([["createdAt", "timestamp(3)"]])
   })
 
-  test("should handle arrays of primitives", () => {
+  it("should handle arrays of primitives", () => {
     const definition = {
       numbers: { items: { type: "integer" }, type: "array" },
       tags: { items: { type: "string" }, type: "array" },
@@ -54,7 +54,7 @@ describe(generateSqlSchema, () => {
     ])
   })
 
-  test("should handle objects", () => {
+  it("should handle objects", () => {
     const definition = {
       user: {
         properties: {
@@ -70,7 +70,7 @@ describe(generateSqlSchema, () => {
     expect(result).toStrictEqual([["user", "ROW(age bigint, name varchar)"]])
   })
 
-  test("should handle arrays of objects", () => {
+  it("should handle arrays of objects", () => {
     const definition = {
       users: {
         items: {
@@ -91,7 +91,7 @@ describe(generateSqlSchema, () => {
     ])
   })
 
-  test("should handle unknown types with warning", () => {
+  it("should handle unknown types with warning", () => {
     const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {
       /* noop */
     })
@@ -108,7 +108,7 @@ describe(generateSqlSchema, () => {
     )
   })
 
-  test("should throw error for array without items", () => {
+  it("should throw error for array without items", () => {
     const definition = {
       badArray: { type: "array" },
     }
@@ -118,7 +118,7 @@ describe(generateSqlSchema, () => {
     )
   })
 
-  test("should throw error for object without properties", () => {
+  it("should throw error for object without properties", () => {
     const definition = {
       badObject: { type: "object" },
     }
@@ -128,7 +128,7 @@ describe(generateSqlSchema, () => {
     )
   })
 
-  test("should throw error for array with empty items array", () => {
+  it("should throw error for array with empty items array", () => {
     const definition = {
       emptyArray: { items: [], type: "array" },
     }
@@ -140,7 +140,7 @@ describe(generateSqlSchema, () => {
 })
 
 describe(parquetTransformer, () => {
-  test("should handle primitive types", () => {
+  it("should handle primitive types", () => {
     const definition = {
       age: { type: "integer" },
       name: { type: "string" },
@@ -154,7 +154,7 @@ describe(parquetTransformer, () => {
     })
   })
 
-  test("should handle objects", () => {
+  it("should handle objects", () => {
     const definition = {
       user: {
         properties: {
@@ -172,7 +172,7 @@ describe(parquetTransformer, () => {
     })
   })
 
-  test("should handle arrays", () => {
+  it("should handle arrays", () => {
     const definition = {
       tags: {
         items: { type: "string" },
@@ -187,7 +187,7 @@ describe(parquetTransformer, () => {
     })
   })
 
-  test("should handle arrays of objects", () => {
+  it("should handle arrays of objects", () => {
     const definition = {
       users: {
         items: {
@@ -209,7 +209,7 @@ describe(parquetTransformer, () => {
 })
 
 describe(generateCreateTableStatement, () => {
-  test("should generate basic CREATE TABLE statement", () => {
+  it("should generate basic CREATE TABLE statement", () => {
     const definition = {
       age: { type: "integer" },
       name: { type: "string" },
@@ -232,7 +232,7 @@ describe(generateCreateTableStatement, () => {
     expect(result).toContain("external_location = 's3://my-bucket/data/table'")
   })
 
-  test("should handle complex schema", () => {
+  it("should handle complex schema", () => {
     const definition = {
       tags: { items: { type: "string" }, type: "array" },
       user: {
@@ -258,7 +258,7 @@ describe(generateCreateTableStatement, () => {
     expect(result).toContain("external_location = 's3://data-lake/users/2024'")
   })
 
-  test("should handle path joining correctly", () => {
+  it("should handle path joining correctly", () => {
     const definition = {
       id: { type: "string" },
     }

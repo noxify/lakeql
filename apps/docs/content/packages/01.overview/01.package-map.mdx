@@ -1,0 +1,33 @@
+---
+title: Package Map
+navTitle: Package Map
+description: Public vs. internal packages and how they relate.
+---
+
+LakeQL is a monorepo of focused packages. For the full dependency flow, see the [package map in the introduction](/docs/lakeql/introduction/package-map). This page focuses on what an application touches directly.
+
+## Imported Directly
+
+| Package | Role | Documented under |
+| --- | --- | --- |
+| `@lakeql/config` | Load config, compose the runtime | [packages/config](/docs/packages/config) |
+| `@lakeql/api` | GraphQL server runtime | [api](/docs/api) |
+| `@lakeql/adapter-trino` | Trino adapter | [data-sources/trino](/docs/data-sources/trino) |
+| `@lakeql/adapter-fabric` | Fabric adapter | [data-sources/fabric](/docs/data-sources/fabric) |
+| `@lakeql/query-builder` | Filters, sorting, paging → SQL | [packages/query-builder](/docs/packages/query-builder) |
+| `@lakeql/cli` | Introspection and generation (dev dependency) | [cli](/docs/cli) |
+
+## Standalone Clients
+
+Used below the data-source abstraction, or on their own:
+
+| Package | Role | Documented under |
+| --- | --- | --- |
+| `@lakeql/trino-client` | Trino REST client | [packages/trino-client](/docs/packages/trino-client) |
+| `@lakeql/fabric-client` | Fabric SQL client | [packages/fabric-client](/docs/packages/fabric-client) |
+
+## Internal
+
+These are dependencies of the packages above. You do not install them directly: `@lakeql/datasource` (the core contracts), `@lakeql/sql-read-strategy`, `@lakeql/response-transformer`, `@lakeql/schema-generator`, `@lakeql/file-generator`, `@lakeql/column-parser`, `@lakeql/storage`, `@lakeql/parquet`, `@lakeql/helpers`, and `@lakeql/logger`.
+
+`@lakeql/datasource` is the one internal package whose contracts you will see in type signatures — its reference lives under [data-sources](/docs/data-sources/overview/api-reference).

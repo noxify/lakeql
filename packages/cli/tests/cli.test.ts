@@ -1,5 +1,5 @@
 import { Command } from "@commander-js/extra-typings"
-import { afterEach, describe, expect, test, vi } from "vitest"
+import { afterEach, describe, expect, vi, it } from "vitest"
 
 const { runCli } = await import("../src/run-cli")
 
@@ -8,7 +8,7 @@ describe("CLI entrypoint", () => {
     vi.restoreAllMocks()
   })
 
-  test("exits successfully when invoked without arguments", async () => {
+  it("exits successfully when invoked without arguments", async () => {
     const outputHelpSpy = vi
       .spyOn(Command.prototype, "outputHelp")
       .mockImplementation(() => {})

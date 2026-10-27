@@ -1,115 +1,15 @@
 ---
 title: Input Validation
-description: Validate GraphQL input fields using Zod schemas via the Pothos ValidationPlugin.
+navTitle: Input Validation
+description: How argument values are validated before a query runs.
 ---
 
-LakeQL integrates Pothos's ValidationPlugin with Zod to validate input arguments before they reach your resolvers. Invalid inputs return a structured `VALIDATION_FAILED` error with detailed issues.
+The builder enables Pothos's validation plugin, so input arguments are validated with [Zod](https://zod.dev) schemas before a resolver runs. A failing validation is turned into a GraphQL error rather than reaching the data source.
 
-## How it works
+## Built-In Validation
 
-The ValidationPlugin is registered on the shared builder and uses Zod schemas to validate input field values. When validation fails, a custom error handler formats the response with error code `200` (VALIDATION_FAILED) and the list of Zod issues.
+The `perPage` paging argument is validated out of the box: it must be at least `1` and no more than the configured maximum. A request asking for more rows than allowed is rejected with a clear message instead of silently capping.
 
-## Error response format
+## Adding Validation
 
-When validation fails, the GraphQL error includes:
-
-```json
-{
-  "errors": [
-    {
-      "message": "Validation failed",
-      "extensions": {
-        "code": "VALIDATION_FAILED",
-        "http": { "status": 400 },
-        "additionalInformation": [
-          {
-            "message": "Value must be less than or equal to 2000",
-            "path": ["perPage"]
-          }
-        ]
-      }
-    }
-  ]
-}
-```
-
-## Built-in validation
-
-The `Paging` input type uses validation to enforce `perPage` limits:
-
-```ts
-import { z } from "zod"
-import { builder, getMaxRecordsPerPage } from "@lakeql/api/builder"
-
-const Paging = builder.inputType("Paging", {
-  fields: (t) => ({
-    page: t.int({ defaultValue: 1 }),
-    perPage: t.int({
-      defaultValue: 100,
-      validate: z
-        .number()
-        .min(1)
-        .refine((value) => value <= getMaxRecordsPerPage(), {
-          message: `Value must be less than or equal to ${getMaxRecordsPerPage()}`,
-        }),
-    }),
-  }),
-})
-```
-
-## Adding validation to custom inputs
-
-Use the `validate` option on any input field to attach a Zod schema:
-
-```ts
-import { z } from "zod"
-import { builder } from "@lakeql/api/builder"
-
-const CreateUserInput = builder.inputType("CreateUserInput", {
-  fields: (t) => ({
-    email: t.string({
-      required: true,
-      validate: z.string().email("Must be a valid email address"),
-    }),
-    name: t.string({
-      required: true,
-      validate: z.string().min(2).max(100),
-    }),
-    age: t.int({
-      validate: z.number().min(0).max(150),
-    }),
-  }),
-})
-```
-
-## Validation on query arguments
-
-You can also validate query-level arguments:
-
-```ts
-import { z } from "zod"
-import { builder } from "@lakeql/api/builder"
-
-builder.queryField("search", (t) =>
-  t.field({
-    type: ["String"],
-    args: {
-      query: t.arg.string({
-        required: true,
-        validate: z
-          .string()
-          .min(3, "Search query must be at least 3 characters"),
-      }),
-      limit: t.arg.int({
-        defaultValue: 10,
-        validate: z.number().min(1).max(100),
-      }),
-    },
-    resolve: (_parent, args) => {
-      // args.query is guaranteed to be at least 3 chars
-      // args.limit is guaranteed to be between 1 and 100
-      return [`Result for: ${args.query}`]
-    },
-  })
-)
-```
+When you define [custom queries or mutations](/docs/api/customization/custom-queries-mutations), attach a Zod schema to an argument through the field's `validate` option, the same way the built-in paging input does. Validation errors are collected and surfaced as a single GraphQL error through LakeQL's [error handling](/docs/api/customization/error-handling).

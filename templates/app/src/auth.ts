@@ -1,25 +1,29 @@
-import type { GetUserResolver } from "@lakeql/api/types"
+import type { TokenResolver } from "@lakeql/config"
 
 import { env } from "./env"
 
-export const getUser: GetUserResolver = async (request) => {
+/**
+ * Resolves the current user from an incoming request.
+ *
+ * This is a mock implementation for local development. Replace it with real
+ * token verification (e.g. validating a JWT and extracting the user) before
+ * deploying. The returned `userName` is used for permission checks and for
+ * impersonation against the configured data sources.
+ */
+export const tokenResolver: TokenResolver = (request) => {
   const authHeader = request.headers.get("authorization")
 
-  if (authHeader) {
-    // dummy implementation to test it locally without setting up a real authentication provider
-    // in a real implementation, you would verify the token and extract user information from it ;)
-    if (env.AUTH_MOCK && authHeader === env.AUTH_MOCK_TOKEN) {
-      return {
-        // maybe you have to change the username to a valid one
-        // The configured username will be used for the permission checks
-        // and also for the impersonation of the user in the data source connectors,
-        userName: "testuser",
-      }
-    }
-    // reject requests with invalid token or mock auth is disabled
+  if (!authHeader) {
+    // Reject unauthenticated requests.
     return null
   }
 
-  // reject unauthenticated requests
+  if (env.AUTH_MOCK && authHeader === env.AUTH_MOCK_TOKEN) {
+    return {
+      userName: "testuser",
+    }
+  }
+
+  // Reject invalid tokens (or when mock auth is disabled).
   return null
 }

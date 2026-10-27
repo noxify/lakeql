@@ -1,30 +1,14 @@
 ---
-title: "lakeql-cli create-registry"
-navTitle: "create-registry"
-description: Generates the config registry for type-safe permissions.
+title: create-registry
+navTitle: create-registry
+description: Regenerate the config registry that keeps createPermission type-safe.
+cliCommand: create-registry
 ---
 
-Scans your project for all `schemas/**/config.ts` files and generates a unified `config-registry.ts`. This registry enables type-safe usage of `createPermission` across your endpoints.
+`create-registry` regenerates the config registry — the aggregated list of every generated endpoint config in your project. The registry is what gives `createPermission` its type-safety: it knows the available data sources, adapters, and table names at compile time.
 
-## Syntax
+<Command variant="exec">lakeql-cli create-registry</Command>
 
-```bash
-lakeql-cli create-registry [options]
-```
-
-## Usage
-
-```bash
-lakeql-cli create-registry
-```
-
-```
-✔ Found 4 config files in schemas/
-✔ Generated config-registry.ts
-```
-
-The generated file imports all discovered config modules and re-exports them as a typed registry object.
-
-## Options
+You normally do not run this by hand — [`pull`](/docs/cli/commands/pull) updates the registry as it generates endpoints. Run `create-registry` when you pulled with `--skip-registry`, removed generated endpoints manually, or the registry has otherwise drifted from the files on disk.
 
 <CliCommandDetails command="create-registry" />

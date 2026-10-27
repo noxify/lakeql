@@ -1,12 +1,14 @@
 // oxlint-disable typescript/no-non-null-assertion import/no-named-as-default-member
-// Feature: custom-endpoint-cli, Property 10: Trino column conversion produces valid definitions
 
 import type { JSONType } from "@lakeql/column-parser"
 import fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
+import { columnsToDefinition } from "../../src/pipeline/columns-to-definition"
 import { endpointDefinitionSchema } from "../../src/pipeline/schema"
-import { trinoColumnsToDefinition } from "../../src/pipeline/trino-to-definition"
+import { trinoLikeTypeMapper } from "../pipeline/fixtures/type-mapper"
+
+const typeMapper = trinoLikeTypeMapper()
 
 // --- Type mapping reference ---
 
@@ -167,8 +169,8 @@ function countColumns(parsedColumns: Record<string, JSONType>): number {
 
 // --- Tests ---
 
-describe("Property 10: Trino column conversion produces valid definitions", () => {
-  it("trinoColumnsToDefinition output passes endpointDefinitionSchema validation", () => {
+describe("Trino column conversion produces valid definitions", () => {
+  it("columnsToDefinition output passes endpointDefinitionSchema validation", () => {
     fc.assert(
       fc.property(
         metadataNameArb,
@@ -176,7 +178,8 @@ describe("Property 10: Trino column conversion produces valid definitions", () =
         metadataNameArb,
         parsedColumnsArb,
         (tableName, catalog, schema, parsedColumns) => {
-          const result = trinoColumnsToDefinition({
+          const result = columnsToDefinition({
+            typeMapper,
             tableName,
             catalog,
             schema,
@@ -199,7 +202,8 @@ describe("Property 10: Trino column conversion produces valid definitions", () =
         metadataNameArb,
         parsedColumnsArb,
         (tableName, catalog, schema, parsedColumns) => {
-          const result = trinoColumnsToDefinition({
+          const result = columnsToDefinition({
+            typeMapper,
             tableName,
             catalog,
             schema,
@@ -221,7 +225,8 @@ describe("Property 10: Trino column conversion produces valid definitions", () =
         metadataNameArb,
         parsedColumnsArb,
         (tableName, catalog, schema, parsedColumns) => {
-          const result = trinoColumnsToDefinition({
+          const result = columnsToDefinition({
+            typeMapper,
             tableName,
             catalog,
             schema,
@@ -264,7 +269,8 @@ describe("Property 10: Trino column conversion produces valid definitions", () =
         metadataNameArb,
         primitiveColumnsArb,
         (tableName, catalog, schema, parsedColumns) => {
-          const result = trinoColumnsToDefinition({
+          const result = columnsToDefinition({
+            typeMapper,
             tableName,
             catalog,
             schema,
@@ -308,7 +314,8 @@ describe("Property 10: Trino column conversion produces valid definitions", () =
         metadataNameArb,
         arrayColumnsArb,
         (tableName, catalog, schema, parsedColumns) => {
-          const result = trinoColumnsToDefinition({
+          const result = columnsToDefinition({
+            typeMapper,
             tableName,
             catalog,
             schema,
@@ -371,7 +378,8 @@ describe("Property 10: Trino column conversion produces valid definitions", () =
         metadataNameArb,
         objectColumnsArb,
         (tableName, catalog, schema, parsedColumns) => {
-          const result = trinoColumnsToDefinition({
+          const result = columnsToDefinition({
+            typeMapper,
             tableName,
             catalog,
             schema,
@@ -412,7 +420,8 @@ describe("Property 10: Trino column conversion produces valid definitions", () =
         metadataNameArb,
         parsedColumnsArb,
         (tableName, catalog, schema, parsedColumns) => {
-          const result = trinoColumnsToDefinition({
+          const result = columnsToDefinition({
+            typeMapper,
             tableName,
             catalog,
             schema,

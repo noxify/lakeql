@@ -2,10 +2,10 @@ import { useId } from "react"
 
 import { cn } from "@/lib/utils"
 
-export function LakeqlLogo({
+export const LakeqlLogo = ({
   className,
   ...props
-}: React.ComponentProps<"svg">) {
+}: React.ComponentProps<"svg">) => {
   const rawId = useId()
   const idPrefix = rawId.replaceAll(":", "")
 

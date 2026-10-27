@@ -1,0 +1,54 @@
+---
+title: Environment Variables
+navTitle: Environment Variables
+description: How environment values feed the config.
+---
+
+LakeQL does not impose a fixed set of environment variable names. Your `lakeql.config.ts` decides which variables it reads — typically through a typed `env` object — and those values are read directly when the config module is evaluated at load time.
+
+```ts
+// lakeql.config.ts — reads from a typed env module (e.g. @t3-oss/env-core + zod)
+import { env } from "./src/env"
+
+export default defineConfig({
+  dataSources: {
+    warehouse: {
+      adapter: "trino",
+      connection: { host: env.TRINO_HOST, port: env.TRINO_PORT /* ... */ },
+    },
+  },
+})
+```
+
+A scaffolded project ships an `env` module and a `.env.example` file with the variables its chosen adapters need; copy it to `.env` and fill it in. Validating the env with a schema means a missing or malformed value fails fast at load time, with a clear message, rather than surfacing as a connection error later.
+
+## Loading the Env File
+
+- **Server** — the generated dev/start scripts pass the env file to Node, so it is loaded before the config.
+- **CLI** — pass [`--env`](/docs/cli/configuration/environment-variables) to load an env file before the config is read.
+
+## Server Runtime Variables
+
+Beyond your connection variables, the API server reads its own environment variables, all optional with defaults:
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `API_LOGGER` | `warn` | Server log level. |
+| `API_MAX_RECORDS_PER_PAGE` | `2000` | Max rows per paginated response. |
+| `API_PORT` | `4000` | Server port. |
+| `NODE_ENV` | `development` | Gates GraphiQL (enabled only in `development`). |
+| `AUTH_MOCK` | `false` | Enables the development mock token resolver. |
+| `AUTH_MOCK_TOKEN` | — | Token the mock resolver accepts when `AUTH_MOCK=true`. |
+
+The CLI reads `LOG_LEVEL` (default `warn`) for its own verbosity.
+
+<Warning>
+  `AUTH_MOCK=true` disables real authentication and accepts any request bearing
+  `AUTH_MOCK_TOKEN`. Use it only in local development, never in a deployed
+  environment.
+</Warning>
+
+<Warning>
+  Treat the env file as secret — it holds credentials. Keep it out of version
+  control.
+</Warning>

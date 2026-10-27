@@ -1,10 +1,10 @@
-import { describe, expect, test } from "vitest"
+import { describe, expect, it } from "vitest"
 
 import { formatFieldTree } from "../../src/commands/create-endpoint"
 import type { FieldDefinition } from "../../src/pipeline/schema"
 
 describe(formatFieldTree, () => {
-  test("formats primitive fields with correct indentation", () => {
+  it("formats primitive fields with correct indentation", () => {
     const fields: FieldDefinition[] = [
       { name: "event_id", type: "String" },
       { name: "timestamp", type: "DateTime" },
@@ -21,7 +21,7 @@ describe(formatFieldTree, () => {
     )
   })
 
-  test("formats Object fields with nested children", () => {
+  it("formats Object fields with nested children", () => {
     const fields: FieldDefinition[] = [
       {
         name: "metadata",
@@ -41,7 +41,7 @@ describe(formatFieldTree, () => {
     )
   })
 
-  test("formats Array fields with primitive items", () => {
+  it("formats Array fields with primitive items", () => {
     const fields: FieldDefinition[] = [
       { name: "tags", type: "Array", items: { type: "String" } },
     ]
@@ -50,7 +50,7 @@ describe(formatFieldTree, () => {
     expect(result).toBe("  tags: Array<String>")
   })
 
-  test("formats Array fields with Object items", () => {
+  it("formats Array fields with Object items", () => {
     const fields: FieldDefinition[] = [
       {
         name: "dimensions",
@@ -75,7 +75,7 @@ describe(formatFieldTree, () => {
     )
   })
 
-  test("formats a complete mixed definition", () => {
+  it("formats a complete mixed definition", () => {
     const fields: FieldDefinition[] = [
       { name: "event_id", type: "String" },
       { name: "timestamp", type: "DateTime" },
@@ -119,7 +119,7 @@ describe(formatFieldTree, () => {
     )
   })
 
-  test("formats deeply nested structures", () => {
+  it("formats deeply nested structures", () => {
     const fields: FieldDefinition[] = [
       {
         name: "level1",
@@ -142,7 +142,7 @@ describe(formatFieldTree, () => {
     )
   })
 
-  test("handles empty fields array", () => {
+  it("handles empty fields array", () => {
     const result = formatFieldTree([])
     expect(result).toBe("")
   })

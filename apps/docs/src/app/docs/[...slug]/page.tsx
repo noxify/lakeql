@@ -1,5 +1,3 @@
-import path from "node:path"
-
 import type { Metadata } from "next"
 import { Space_Grotesk } from "next/font/google"
 import { notFound } from "next/navigation"
@@ -17,11 +15,9 @@ import {
 } from "@/collection-helpers"
 import type { EntryType } from "@/collection-helpers"
 import { DocsPageActions } from "@/components/docs-page-actions"
-import { ReferenceSection } from "@/components/mdx/api-reference"
+import { ApiReference } from "@/components/mdx/api-reference"
 import SectionGrid from "@/components/section-grid"
 import Siblings from "@/components/siblings"
-import { resolveFileExports } from "@/lib/ts-morph-analysis"
-import type { ResolvedExport } from "@/lib/ts-morph-analysis"
 import { cn } from "@/lib/utils"
 import { toRawHref } from "@/shared/doc-paths"
 
@@ -34,12 +30,14 @@ function toJsonLd(value: unknown) {
 
 export async function generateStaticParams() {
   const routes = await staticRoutes()
-  return routes.map((slug) => ({ slug }))
+
+  return [...routes].map((slug) => ({ slug }))
 }
 export async function generateMetadata(
   params: PageProps<"/docs/[...slug]">
 ): Promise<Metadata> {
   const { slug } = await params.params
+
   const [collection] = slug
 
   let entry: EntryType | null = null
@@ -65,11 +63,11 @@ export async function generateMetadata(
   }
 
   return {
-    title: `${titles.join(" - ")}`,
-    description: metadata?.description ?? "",
     alternates: {
       types: alternateTypes,
     },
+    description: metadata?.description ?? "",
+    title: `${titles.join(" - ")}`,
   }
 }
 export default async function DocsPage({
@@ -77,6 +75,7 @@ export default async function DocsPage({
 }: PageProps<"/docs/[...slug]">) {
   const { slug } = await params
   const normalizedSlug = slug.filter((segment) => segment !== "index")
+
   const docsPath =
     normalizedSlug.length > 0 ? `/docs/${normalizedSlug.join("/")}` : "/docs"
   const pageUrl = `${SITE_URL}${docsPath}`
@@ -90,6 +89,7 @@ export default async function DocsPage({
   }
 
   const sections = await getSections(entry)
+  // oxlint-disable-next-line react-doctor/server-sequential-independent-await -- acceptable for readability
   const breadcrumbItems = await getBreadcrumbItems(slug)
   const breadcrumbJsonLd = {
     "@context": "https://schema.org",
@@ -124,17 +124,15 @@ export default async function DocsPage({
 
     return (
       <div>
+        {/* oxlint-disable react/no-danger -- rendered HTML content from trusted source */}
         <script
           type="application/ld+json"
-          // oxlint-disable-next-line react/no-danger
           dangerouslySetInnerHTML={{ __html: toJsonLd(breadcrumbJsonLd) }}
         />
         <script
           type="application/ld+json"
-          // oxlint-disable-next-line react/no-danger
           dangerouslySetInnerHTML={{ __html: toJsonLd(pageJsonLd) }}
         />
-
         {/* oxlint-disable-next-line react/jsx-pascal-case */}
         <MDX
           components={{
@@ -222,31 +220,11 @@ export default async function DocsPage({
     entry.getSourceUrl(),
   ])
 
-  // Load API reference exports if configured in frontmatter
-  let apiReferenceExports: ResolvedExport[] | null = null
-  if (
-    frontmatter?.apiReference &&
-    Array.isArray(frontmatter.apiReference) &&
-    frontmatter.apiReference.length > 0
-  ) {
-    const allExports = await Promise.all(
-      frontmatter.apiReference.map(
-        async (ref: { name: string; file: string }) => {
-          try {
-            const filePath = path.resolve(
-              process.cwd(),
-              "../../packages",
-              `${ref.file}.ts`
-            )
-            return resolveFileExports(filePath)
-          } catch {
-            return []
-          }
-        }
-      )
-    )
-    apiReferenceExports = allExports.flat()
-  }
+  // Collect apiReference entries from frontmatter for rendering below content
+  const apiReferenceEntries =
+    frontmatter?.apiReference && Array.isArray(frontmatter.apiReference)
+      ? (frontmatter.apiReference as { name: string; file: string }[])
+      : []
 
   const rawHref = toRawHref(slug)
   const articleJsonLd = {
@@ -264,16 +242,16 @@ export default async function DocsPage({
 
   return (
     <div>
+      {/* oxlint-disable react/no-danger -- rendered HTML content from trusted source */}
       <script
         type="application/ld+json"
-        // oxlint-disable-next-line react/no-danger
         dangerouslySetInnerHTML={{ __html: toJsonLd(breadcrumbJsonLd) }}
       />
       <script
         type="application/ld+json"
-        // oxlint-disable-next-line react/no-danger
         dangerouslySetInnerHTML={{ __html: toJsonLd(articleJsonLd) }}
       />
+      {/* oxlint-enable react/no-danger */}
       <h1
         className="no-prose mt-20 mb-2 scroll-m-20 text-3xl font-light tracking-tight sm:text-4xl md:mt-0 md:text-5xl"
         style={{ fontFamily: spaceGrotesk.style.fontFamily }}
@@ -339,10 +317,10 @@ export default async function DocsPage({
         >
           {Content ? <Content /> : <div>No content</div>}
 
-          {apiReferenceExports && apiReferenceExports.length > 0 && (
+          {apiReferenceEntries.length > 0 && (
             <div className="not-prose mt-12 flex flex-col">
-              {apiReferenceExports.map((exp) => (
-                <ReferenceSection key={exp.name} source={exp} />
+              {apiReferenceEntries.map((ref) => (
+                <ApiReference key={ref.file} file={ref.file} />
               ))}
             </div>
           )}

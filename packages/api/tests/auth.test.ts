@@ -9,15 +9,34 @@ vi.mock("../src/env", () => ({
   },
 }))
 
-import { getUser, hasReadPermission, hasWritePermission } from "../src/auth"
-import type { Context, Permission } from "../src/types"
+import type { Permission, ResolvedIdentity } from "@lakeql/config"
+
+import {
+  hasReadPermission,
+  hasWritePermission,
+  tokenResolver,
+} from "../src/auth"
+import type { Context } from "../src/types"
 
 const createContext = (overrides: Partial<Context> = {}): Context => ({
   currentUser: { userName: "testuser" },
+  identity: null,
   permissions: [],
   ...overrides,
 })
 
+const createIdentity = (
+  overrides: Partial<ResolvedIdentity> = {}
+): ResolvedIdentity => ({
+  userName: "testuser",
+  isServicePrincipal: false,
+  ...overrides,
+})
+
+/**
+ * Builds a Permission entry with the current nested
+ * `{ dataSource, rules }` shape for Query and Mutation.
+ */
 const createPermission = (
   name: string,
   query: Permission["permissions"]["Query"] = [],
@@ -31,13 +50,13 @@ const createPermission = (
   },
 })
 
-describe(getUser, () => {
+describe(tokenResolver, () => {
   it("returns null when no authorization header is present", async () => {
     const req = new Request("http://localhost", {
       headers: {},
     })
 
-    const result = await getUser(req)
+    const result = await tokenResolver(req)
     expect(result).toBeNull()
   })
 
@@ -49,7 +68,7 @@ describe(getUser, () => {
       },
     })
 
-    const result = await getUser(req)
+    const result = await tokenResolver(req)
     expect(result).toStrictEqual({ userName: "mock-user" })
   })
 
@@ -60,7 +79,7 @@ describe(getUser, () => {
       },
     })
 
-    const result = await getUser(req)
+    const result = await tokenResolver(req)
     expect(result).toStrictEqual({ userName: "###FALLBACK_MOCK_USER###" })
   })
 
@@ -72,7 +91,7 @@ describe(getUser, () => {
       },
     })
 
-    const result = await getUser(req)
+    const result = await tokenResolver(req)
     expect(result).toBeNull()
   })
 })
@@ -83,6 +102,7 @@ describe(hasReadPermission, () => {
 
     const result = hasReadPermission({
       context,
+      dataSource: "warehouse",
       catalog: "my_catalog",
       schema: "my_schema",
       tableName: "my_table",
@@ -91,17 +111,21 @@ describe(hasReadPermission, () => {
     expect(result).toBeFalsy()
   })
 
-  it("returns true when no permissions entry matches the user", () => {
+  it("returns true for a human user when no permission entry matches", () => {
     const context = createContext({
       permissions: [
         createPermission("other-user", [
-          { catalog: "cat", schema: "sch", tables: ["tbl"] },
+          {
+            dataSource: "warehouse",
+            rules: [{ catalog: "cat", schema: "sch", tables: ["tbl"] }],
+          },
         ]),
       ],
     })
 
     const result = hasReadPermission({
       context,
+      dataSource: "warehouse",
       catalog: "my_catalog",
       schema: "my_schema",
       tableName: "my_table",
@@ -110,51 +134,92 @@ describe(hasReadPermission, () => {
     expect(result).toBeTruthy()
   })
 
-  it("returns true when user has empty Query array", () => {
+  it("returns false for a service principal when no permission entry matches", () => {
     const context = createContext({
-      permissions: [createPermission("testuser", [])],
+      identity: createIdentity({ isServicePrincipal: true }),
+      permissions: [],
     })
 
     const result = hasReadPermission({
       context,
+      dataSource: "warehouse",
       catalog: "my_catalog",
       schema: "my_schema",
       tableName: "my_table",
     })
 
-    expect(result).toBeTruthy()
+    expect(result).toBeFalsy()
   })
 
-  it("returns true when matching catalog/schema/table rule exists", () => {
-    const context = createContext({
-      permissions: [
-        createPermission("testuser", [
-          { catalog: "my_catalog", schema: "my_schema", tables: ["my_table"] },
-        ]),
-      ],
-    })
-
-    const result = hasReadPermission({
-      context,
-      catalog: "my_catalog",
-      schema: "my_schema",
-      tableName: "my_table",
-    })
-
-    expect(result).toBeTruthy()
-  })
-
-  it("returns true when wildcard '*' table rule exists", () => {
+  it("returns true for a human user when no Query rules target the data source", () => {
     const context = createContext({
       permissions: [
         createPermission("testuser", [
-          { catalog: "my_catalog", schema: "my_schema", tables: ["*"] },
+          {
+            dataSource: "other-source",
+            rules: [{ catalog: "cat", schema: "sch", tables: ["tbl"] }],
+          },
         ]),
       ],
     })
 
     const result = hasReadPermission({
       context,
+      dataSource: "warehouse",
+      catalog: "my_catalog",
+      schema: "my_schema",
+      tableName: "my_table",
+    })
+
+    expect(result).toBeTruthy()
+  })
+
+  it("returns true when a matching catalog/schema/table rule exists", () => {
+    const context = createContext({
+      permissions: [
+        createPermission("testuser", [
+          {
+            dataSource: "warehouse",
+            rules: [
+              {
+                catalog: "my_catalog",
+                schema: "my_schema",
+                tables: ["my_table"],
+              },
+            ],
+          },
+        ]),
+      ],
+    })
+
+    const result = hasReadPermission({
+      context,
+      dataSource: "warehouse",
+      catalog: "my_catalog",
+      schema: "my_schema",
+      tableName: "my_table",
+    })
+
+    expect(result).toBeTruthy()
+  })
+
+  it("returns true when a wildcard '*' table rule exists", () => {
+    const context = createContext({
+      permissions: [
+        createPermission("testuser", [
+          {
+            dataSource: "warehouse",
+            rules: [
+              { catalog: "my_catalog", schema: "my_schema", tables: ["*"] },
+            ],
+          },
+        ]),
+      ],
+    })
+
+    const result = hasReadPermission({
+      context,
+      dataSource: "warehouse",
       catalog: "my_catalog",
       schema: "my_schema",
       tableName: "any_table",
@@ -163,14 +228,19 @@ describe(hasReadPermission, () => {
     expect(result).toBeTruthy()
   })
 
-  it("returns false when no matching rule for the requested table", () => {
+  it("returns false when rules exist for the data source but none match the table", () => {
     const context = createContext({
       permissions: [
         createPermission("testuser", [
           {
-            catalog: "my_catalog",
-            schema: "my_schema",
-            tables: ["other_table"],
+            dataSource: "warehouse",
+            rules: [
+              {
+                catalog: "my_catalog",
+                schema: "my_schema",
+                tables: ["other_table"],
+              },
+            ],
           },
         ]),
       ],
@@ -178,8 +248,66 @@ describe(hasReadPermission, () => {
 
     const result = hasReadPermission({
       context,
+      dataSource: "warehouse",
       catalog: "my_catalog",
       schema: "my_schema",
+      tableName: "my_table",
+    })
+
+    expect(result).toBeFalsy()
+  })
+
+  it("does not let a catalog-scoped rule match a target without a catalog", () => {
+    const context = createContext({
+      permissions: [
+        createPermission("testuser", [
+          {
+            dataSource: "warehouse",
+            rules: [
+              {
+                catalog: "my_catalog",
+                schema: "my_schema",
+                tables: ["my_table"],
+              },
+            ],
+          },
+        ]),
+      ],
+    })
+
+    // Target omits catalog and schema. A rule scoped to my_catalog/my_schema
+    // must not authorize it — otherwise the rule's scope is silently ignored.
+    const result = hasReadPermission({
+      context,
+      dataSource: "warehouse",
+      tableName: "my_table",
+    })
+
+    expect(result).toBeFalsy()
+  })
+
+  it("does not let a schema-scoped rule match a target without a schema", () => {
+    const context = createContext({
+      permissions: [
+        createPermission("testuser", [
+          {
+            dataSource: "warehouse",
+            rules: [
+              {
+                catalog: "my_catalog",
+                schema: "my_schema",
+                tables: ["my_table"],
+              },
+            ],
+          },
+        ]),
+      ],
+    })
+
+    const result = hasReadPermission({
+      context,
+      dataSource: "warehouse",
+      catalog: "my_catalog",
       tableName: "my_table",
     })
 
@@ -193,6 +321,7 @@ describe(hasWritePermission, () => {
 
     const result = hasWritePermission({
       context,
+      dataSource: "warehouse",
       catalog: "my_catalog",
       schema: "my_schema",
       tableName: "my_table",
@@ -201,95 +330,16 @@ describe(hasWritePermission, () => {
     expect(result).toBeFalsy()
   })
 
-  it("returns false when no permissions entry for user", () => {
+  it("returns false when no permission entry for the user", () => {
     const context = createContext({
       permissions: [
         createPermission(
           "other-user",
           [],
-          [{ catalog: "cat", schema: "sch", tables: ["tbl"] }]
-        ),
-      ],
-    })
-
-    const result = hasWritePermission({
-      context,
-      catalog: "my_catalog",
-      schema: "my_schema",
-      tableName: "my_table",
-    })
-
-    expect(result).toBeFalsy()
-  })
-
-  it("returns false when user has empty Mutation array", () => {
-    const context = createContext({
-      permissions: [createPermission("testuser", [], [])],
-    })
-
-    const result = hasWritePermission({
-      context,
-      catalog: "my_catalog",
-      schema: "my_schema",
-      tableName: "my_table",
-    })
-
-    expect(result).toBeFalsy()
-  })
-
-  it("returns true when matching catalog/schema/table rule exists", () => {
-    const context = createContext({
-      permissions: [
-        createPermission(
-          "testuser",
-          [],
-          [{ catalog: "my_catalog", schema: "my_schema", tables: ["my_table"] }]
-        ),
-      ],
-    })
-
-    const result = hasWritePermission({
-      context,
-      catalog: "my_catalog",
-      schema: "my_schema",
-      tableName: "my_table",
-    })
-
-    expect(result).toBeTruthy()
-  })
-
-  it("returns true when wildcard '*' table rule exists", () => {
-    const context = createContext({
-      permissions: [
-        createPermission(
-          "testuser",
-          [],
-          [{ catalog: "my_catalog", schema: "my_schema", tables: ["*"] }]
-        ),
-      ],
-    })
-
-    const result = hasWritePermission({
-      context,
-      catalog: "my_catalog",
-      schema: "my_schema",
-      tableName: "any_table",
-    })
-
-    expect(result).toBeTruthy()
-  })
-
-  it("returns false when no matching rule for the requested table", () => {
-    const context = createContext({
-      permissions: [
-        createPermission(
-          "testuser",
-          [],
           [
             {
-              catalog: "my_catalog",
-              schema: "my_schema",
-              tables: ["other_table"],
+              dataSource: "warehouse",
+              rules: [{ catalog: "cat", schema: "sch", tables: ["tbl"] }],
             },
           ]
         ),
@@ -298,8 +348,162 @@ describe(hasWritePermission, () => {
 
     const result = hasWritePermission({
       context,
+      dataSource: "warehouse",
       catalog: "my_catalog",
       schema: "my_schema",
+      tableName: "my_table",
+    })
+
+    expect(result).toBeFalsy()
+  })
+
+  it("returns false when no Mutation rules target the data source", () => {
+    const context = createContext({
+      permissions: [
+        createPermission(
+          "testuser",
+          [],
+          [
+            {
+              dataSource: "other-source",
+              rules: [{ catalog: "cat", schema: "sch", tables: ["tbl"] }],
+            },
+          ]
+        ),
+      ],
+    })
+
+    const result = hasWritePermission({
+      context,
+      dataSource: "warehouse",
+      catalog: "my_catalog",
+      schema: "my_schema",
+      tableName: "my_table",
+    })
+
+    expect(result).toBeFalsy()
+  })
+
+  it("returns true when a matching catalog/schema/table rule exists", () => {
+    const context = createContext({
+      permissions: [
+        createPermission(
+          "testuser",
+          [],
+          [
+            {
+              dataSource: "warehouse",
+              rules: [
+                {
+                  catalog: "my_catalog",
+                  schema: "my_schema",
+                  tables: ["my_table"],
+                },
+              ],
+            },
+          ]
+        ),
+      ],
+    })
+
+    const result = hasWritePermission({
+      context,
+      dataSource: "warehouse",
+      catalog: "my_catalog",
+      schema: "my_schema",
+      tableName: "my_table",
+    })
+
+    expect(result).toBeTruthy()
+  })
+
+  it("returns true when a wildcard '*' table rule exists", () => {
+    const context = createContext({
+      permissions: [
+        createPermission(
+          "testuser",
+          [],
+          [
+            {
+              dataSource: "warehouse",
+              rules: [
+                { catalog: "my_catalog", schema: "my_schema", tables: ["*"] },
+              ],
+            },
+          ]
+        ),
+      ],
+    })
+
+    const result = hasWritePermission({
+      context,
+      dataSource: "warehouse",
+      catalog: "my_catalog",
+      schema: "my_schema",
+      tableName: "any_table",
+    })
+
+    expect(result).toBeTruthy()
+  })
+
+  it("returns false when rules exist for the data source but none match the table", () => {
+    const context = createContext({
+      permissions: [
+        createPermission(
+          "testuser",
+          [],
+          [
+            {
+              dataSource: "warehouse",
+              rules: [
+                {
+                  catalog: "my_catalog",
+                  schema: "my_schema",
+                  tables: ["other_table"],
+                },
+              ],
+            },
+          ]
+        ),
+      ],
+    })
+
+    const result = hasWritePermission({
+      context,
+      dataSource: "warehouse",
+      catalog: "my_catalog",
+      schema: "my_schema",
+      tableName: "my_table",
+    })
+
+    expect(result).toBeFalsy()
+  })
+
+  it("does not let a catalog/schema-scoped rule match a target without catalog/schema", () => {
+    const context = createContext({
+      permissions: [
+        createPermission(
+          "testuser",
+          [],
+          [
+            {
+              dataSource: "warehouse",
+              rules: [
+                {
+                  catalog: "my_catalog",
+                  schema: "my_schema",
+                  tables: ["my_table"],
+                },
+              ],
+            },
+          ]
+        ),
+      ],
+    })
+
+    const result = hasWritePermission({
+      context,
+      dataSource: "warehouse",
       tableName: "my_table",
     })
 

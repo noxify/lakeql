@@ -4,14 +4,14 @@ import type {
   VariableStatement,
 } from "typescript"
 import ts from "typescript"
-import { describe, expect, test } from "vitest"
+import { describe, expect, it } from "vitest"
 
-import { generateConfigReqistry } from "../src/config-registry"
+import { generateConfigRegistry } from "../src/config-registry"
 
 describe("Config Registry Generator", () => {
-  test("generates import declarations for config paths", () => {
+  it("generates import declarations for config paths", () => {
     const configPaths = ["path/to/config1", "path/to/config2"]
-    const result = generateConfigReqistry({ configPaths })
+    const result = generateConfigRegistry({ configPaths })
 
     // Check if we have the correct number of nodes
     expect(result).toHaveLength(7)
@@ -29,9 +29,9 @@ describe("Config Registry Generator", () => {
     ).toBeTruthy()
   })
 
-  test("generates correct import paths", () => {
+  it("generates correct import paths", () => {
     const configPaths = ["path/to/config1", "path/to/config2"]
-    const result = generateConfigReqistry({ configPaths })
+    const result = generateConfigRegistry({ configPaths })
 
     const importPath1 = (result[0] as ts.ImportDeclaration).moduleSpecifier
     const importPath2 = (result[1] as ts.ImportDeclaration).moduleSpecifier
@@ -40,9 +40,9 @@ describe("Config Registry Generator", () => {
     expect((importPath2 as ts.StringLiteral).text).toBe("./path/to/config2")
   })
 
-  test("generates allConfigs variable declaration", () => {
+  it("generates allConfigs variable declaration", () => {
     const configPaths = ["path/to/config1", "path/to/config2"]
-    const result = generateConfigReqistry({ configPaths })
+    const result = generateConfigRegistry({ configPaths })
 
     // Check if the third node is a variable statement (allConfigs)
     const allConfigsNode = result.at(2)
@@ -63,9 +63,9 @@ describe("Config Registry Generator", () => {
     expect((declaration.name as Identifier).text).toBe("allConfigs")
   })
 
-  test("generates type aliases for catalogs, schemas, and tables", () => {
+  it("generates type aliases for catalogs, schemas, and tables", () => {
     const configPaths = ["path/to/config"]
-    const result = generateConfigReqistry({ configPaths })
+    const result = generateConfigRegistry({ configPaths })
 
     // Check type aliases
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion, @typescript-eslint/no-non-null-assertion
@@ -74,34 +74,34 @@ describe("Config Registry Generator", () => {
     )!
     expect(typeAliases).toHaveLength(4)
 
-    // Check type alias names
-    expect(typeAliases[0]?.name.text).toBe("AvailableCatalogs")
-    expect(typeAliases[1]?.name.text).toBe("AvailableSchemas")
+    // Check type alias names — the registry is data-source-centric,
+    // not catalog/schema-centric.
+    expect(typeAliases[0]?.name.text).toBe("AvailableDataSources")
+    expect(typeAliases[1]?.name.text).toBe("AvailableAdapters")
     expect(typeAliases[2]?.name.text).toBe("AvailableTables")
   })
 
-  test("generates TablesForCatalogAndSchema type with type parameters", () => {
+  it("generates TablesForDataSource type with a data-source type parameter", () => {
     const configPaths = ["path/to/config"]
-    const result = generateConfigReqistry({ configPaths })
+    const result = generateConfigRegistry({ configPaths })
 
-    // Find the TablesForCatalogAndSchema type
+    // Find the TablesForDataSource type
     const tablesTypeNode = result.find(
       (node) =>
         ts.isTypeAliasDeclaration(node) &&
-        node.name.text === "TablesForCatalogAndSchema"
+        node.name.text === "TablesForDataSource"
     ) as ts.TypeAliasDeclaration
 
     expect(tablesTypeNode).toBeDefined()
 
     // Check type parameters
-    expect(tablesTypeNode.typeParameters?.length).toBe(2)
-    expect(tablesTypeNode.typeParameters?.[0]?.name.text).toBe("C")
-    expect(tablesTypeNode.typeParameters?.[1]?.name.text).toBe("S")
+    expect(tablesTypeNode.typeParameters?.length).toBe(1)
+    expect(tablesTypeNode.typeParameters?.[0]?.name.text).toBe("DS")
   })
 
-  test("handles empty config paths array", () => {
+  it("handles empty config paths array", () => {
     const configPaths: string[] = []
-    const result = generateConfigReqistry({ configPaths })
+    const result = generateConfigRegistry({ configPaths })
 
     // Should still generate the structure but with no imports
     expect(result).toHaveLength(5)

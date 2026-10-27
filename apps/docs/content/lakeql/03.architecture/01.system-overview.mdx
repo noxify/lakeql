@@ -1,82 +1,35 @@
 ---
 title: System Overview
-description: Package dependency diagram and the two main operational flows in LakeQL.
+navTitle: System Overview
+description: The layers of LakeQL and what each is responsible for.
 ---
 
-## Package Architecture
+LakeQL is organized into layers. Each depends only on the layer below, and the core contracts depend on nothing engine-specific.
 
-LakeQL's packages are organized around two distinct operational flows: the **CLI flow** for introspection and code generation, and the **API flow** for serving GraphQL queries at runtime.
-
-## Package Dependency Diagram
-
-```mermaid preview
-graph LR
-    subgraph CLI Flow
-        cli["@lakeql/cli"]
-        tc1["@lakeql/trino-client"]
-        cp["@lakeql/column-parser"]
-        sg["@lakeql/schema-generator"]
-        fg["@lakeql/file-generator"]
-
-        cli --> tc1
-        tc1 --> cp
-        cp --> sg
-        sg --> fg
-        cli --> fg
-    end
-
-    subgraph API Flow
-        api["@lakeql/api"]
-        qb["@lakeql/query-builder"]
-        tc2["@lakeql/trino-client"]
-        rt["@lakeql/response-transformer"]
-
-        api --> qb
-        qb --> tc2
-        tc2 --> rt
-        api --> rt
-    end
-
-    subgraph Shared
-        helpers["@lakeql/helpers"]
-        logger["@lakeql/logger"]
-    end
-
-    cli --> helpers
-    cli --> logger
-    api --> helpers
-    api --> logger
+```text
+Application layer
+  API / CLI / create-app / code generator
+        │
+Composition layer
+  config / runtime / adapter registry
+        │
+Adapter layer
+  adapter-trino / adapter-fabric / future adapters
+        │
+Core contracts
+  datasource / query contracts
+        │
+Infrastructure
+  storage / parquet / fabric-client / trino-client
 ```
 
-## CLI Flow — Introspection and Generation
+## Responsibilities
 
-The CLI flow runs at development time. Its job is to connect to Trino, discover table structures, and write TypeScript source files.
+- **Core contracts** ([`@lakeql/datasource`](/docs/data-sources/overview/datasource-contract)) define neutral interfaces for data sources, strategies, auth, and errors. They import nothing from Trino, Fabric, GraphQL, or Kysely.
+- **Adapters** ([Trino](/docs/data-sources/trino), [Fabric](/docs/data-sources/fabric)) own every engine-specific decision: connection, SQL dialect, strategies, and error mapping.
+- **Composition** ([`@lakeql/config`](/docs/packages/config)) loads configuration, registers adapter factories, and composes a runtime — without knowing SQL or storage details.
+- **Application** ([api](/docs/api), [cli](/docs/cli)) consumes only the runtime and the core contracts. It does not import adapter packages for normal runtime decisions.
 
-| Step | Package | Action |
-| --- | --- | --- |
-| 1 | `@lakeql/cli` | Parses CLI arguments, orchestrates the pipeline |
-| 2 | `@lakeql/trino-client` | Executes `SHOW COLUMNS` against Trino |
-| 3 | `@lakeql/column-parser` | Parses raw type strings into structured definitions |
-| 4 | `@lakeql/schema-generator` | Generates GraphQL models, JSON schemas, type definitions |
-| 5 | `@lakeql/file-generator` | Writes TypeScript files to disk |
+## Why It's Layered This Way
 
-The output of this flow is committed to your repository and consumed by the API flow at runtime.
-
-## API Flow — Serving and Querying
-
-The API flow runs at production time. It serves a GraphQL endpoint and translates queries into Trino SQL.
-
-| Step | Package | Action |
-| --- | --- | --- |
-| 1 | `@lakeql/api` | Receives HTTP requests, runs auth, loads Pothos schemas |
-| 2 | `@lakeql/query-builder` | Translates GraphQL resolve info into Kysely SQL |
-| 3 | `@lakeql/trino-client` | Submits SQL to Trino and polls for results |
-| 4 | `@lakeql/response-transformer` | Converts array responses to typed objects |
-| 5 | `@lakeql/helpers` | Calculates pagination metadata |
-
-## Design Principles
-
-- **Single responsibility** — Each package does one thing well
-- **Shared nothing** — Packages communicate through well-defined interfaces, not shared state
-- **Generated over hand-written** — Prefer code generation over manual resolver authoring
-- **Type safety everywhere** — TypeScript types flow from Trino metadata through to GraphQL responses
+A new adapter provides its own connection, read, write, SQL, and response logic without changing any core package. The registration is explicit — adapters are passed into `defineConfig`, never discovered implicitly and never augmenting the config package through module augmentation. See the [package map](/docs/lakeql/introduction/package-map) for how the packages map onto these layers.

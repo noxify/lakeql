@@ -1,5 +1,6 @@
 ---
 services:
+
   minitrino:
     volumes:
       - ./modules/catalog/test/resources/cluster/bootstrap-before-after.sh:/mnt/bootstrap/test/bootstrap-before-after.sh:ro

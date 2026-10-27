@@ -1,9 +1,9 @@
 import ts from "typescript"
 
 /**
- * Parameters for generateConfigReqistry.
+ * Parameters for generateConfigRegistry.
  */
-export interface GenerateConfigReqistryProps {
+export interface GenerateConfigRegistryProps {
   /** Relative paths to individual table config modules. */
   configPaths: string[]
 }
@@ -11,9 +11,9 @@ export interface GenerateConfigReqistryProps {
 /**
  * Generates the config registry aggregating all table configs.
  */
-export function generateConfigReqistry({
+export function generateConfigRegistry({
   configPaths,
-}: GenerateConfigReqistryProps) {
+}: GenerateConfigRegistryProps) {
   const { factory } = ts
   return [
     ...configPaths.map((path, index) =>
@@ -25,7 +25,7 @@ export function generateConfigReqistry({
           factory.createNamedImports([
             factory.createImportSpecifier(
               false,
-              factory.createIdentifier("hiveConfig"),
+              factory.createIdentifier("sourceConfig"),
               factory.createIdentifier(`config_${index}`)
             ),
           ])
@@ -58,7 +58,7 @@ export function generateConfigReqistry({
     ),
     factory.createTypeAliasDeclaration(
       [factory.createToken(ts.SyntaxKind.ExportKeyword)],
-      factory.createIdentifier("AvailableCatalogs"),
+      factory.createIdentifier("AvailableDataSources"),
       undefined,
       factory.createIndexedAccessTypeNode(
         factory.createIndexedAccessTypeNode(
@@ -67,12 +67,12 @@ export function generateConfigReqistry({
           ),
           factory.createKeywordTypeNode(ts.SyntaxKind.NumberKeyword)
         ),
-        factory.createLiteralTypeNode(factory.createStringLiteral("catalog"))
+        factory.createLiteralTypeNode(factory.createStringLiteral("dataSource"))
       )
     ),
     factory.createTypeAliasDeclaration(
       [factory.createToken(ts.SyntaxKind.ExportKeyword)],
-      factory.createIdentifier("AvailableSchemas"),
+      factory.createIdentifier("AvailableAdapters"),
       undefined,
       factory.createIndexedAccessTypeNode(
         factory.createIndexedAccessTypeNode(
@@ -81,7 +81,7 @@ export function generateConfigReqistry({
           ),
           factory.createKeywordTypeNode(ts.SyntaxKind.NumberKeyword)
         ),
-        factory.createLiteralTypeNode(factory.createStringLiteral("schema"))
+        factory.createLiteralTypeNode(factory.createStringLiteral("adapter"))
       )
     ),
     factory.createTypeAliasDeclaration(
@@ -100,20 +100,13 @@ export function generateConfigReqistry({
     ),
     factory.createTypeAliasDeclaration(
       [factory.createToken(ts.SyntaxKind.ExportKeyword)],
-      factory.createIdentifier("TablesForCatalogAndSchema"),
+      factory.createIdentifier("TablesForDataSource"),
       [
         factory.createTypeParameterDeclaration(
           undefined,
-          factory.createIdentifier("C"),
+          factory.createIdentifier("DS"),
           factory.createTypeReferenceNode(
-            factory.createIdentifier("AvailableCatalogs")
-          )
-        ),
-        factory.createTypeParameterDeclaration(
-          undefined,
-          factory.createIdentifier("S"),
-          factory.createTypeReferenceNode(
-            factory.createIdentifier("AvailableSchemas")
+            factory.createIdentifier("AvailableDataSources")
           )
         ),
       ],
@@ -130,15 +123,9 @@ export function generateConfigReqistry({
           factory.createTypeLiteralNode([
             factory.createPropertySignature(
               undefined,
-              factory.createIdentifier("catalog"),
+              factory.createIdentifier("dataSource"),
               undefined,
-              factory.createTypeReferenceNode(factory.createIdentifier("C"))
-            ),
-            factory.createPropertySignature(
-              undefined,
-              factory.createIdentifier("schema"),
-              undefined,
-              factory.createTypeReferenceNode(factory.createIdentifier("S"))
+              factory.createTypeReferenceNode(factory.createIdentifier("DS"))
             ),
           ]),
         ]),

@@ -1,5 +1,5 @@
 import ts from "typescript"
-import { describe, expect, test } from "vitest"
+import { describe, expect, it } from "vitest"
 
 import {
   access,
@@ -38,43 +38,43 @@ import {
 
 describe("ast-builders", () => {
   describe("Literals & identifiers", () => {
-    test("id creates an identifier node", () => {
+    it("id creates an identifier node", () => {
       const node = id("myVar")
       expect(ts.isIdentifier(node)).toBeTruthy()
       expect(node.text).toBe("myVar")
     })
 
-    test("stringLiteral creates a string literal node", () => {
+    it("stringLiteral creates a string literal node", () => {
       const node = stringLiteral("hello")
       expect(ts.isStringLiteral(node)).toBeTruthy()
       expect(node.text).toBe("hello")
     })
 
-    test("bool(true) creates a TrueKeyword", () => {
+    it("bool(true) creates a TrueKeyword", () => {
       const node = bool(true)
       expect(node.kind).toBe(ts.SyntaxKind.TrueKeyword)
     })
 
-    test("bool(false) creates a FalseKeyword", () => {
+    it("bool(false) creates a FalseKeyword", () => {
       const node = bool(false)
       expect(node.kind).toBe(ts.SyntaxKind.FalseKeyword)
     })
 
-    test("nullLiteral creates a NullLiteral node", () => {
+    it("nullLiteral creates a NullLiteral node", () => {
       const node = nullLiteral()
       expect(node.kind).toBe(ts.SyntaxKind.NullKeyword)
     })
   })
 
   describe("Type nodes", () => {
-    test("typeRef creates a type reference node without type arguments", () => {
+    it("typeRef creates a type reference node without type arguments", () => {
       const node = typeRef("MyType")
       expect(ts.isTypeReferenceNode(node)).toBeTruthy()
       expect((node.typeName as ts.Identifier).text).toBe("MyType")
       expect(node.typeArguments).toBeUndefined()
     })
 
-    test("typeRef creates a type reference node with type arguments", () => {
+    it("typeRef creates a type reference node with type arguments", () => {
       const node = typeRef("Array", [typeRef("string")])
       expect(ts.isTypeReferenceNode(node)).toBeTruthy()
       expect((node.typeName as ts.Identifier).text).toBe("Array")
@@ -83,7 +83,7 @@ describe("ast-builders", () => {
   })
 
   describe("Object-related", () => {
-    test("property creates a property assignment", () => {
+    it("property creates a property assignment", () => {
       const node = property("key", stringLiteral("value"))
       expect(ts.isPropertyAssignment(node)).toBeTruthy()
       expect((node.name as ts.Identifier).text).toBe("key")
@@ -91,13 +91,13 @@ describe("ast-builders", () => {
       expect((node.initializer as ts.StringLiteral).text).toBe("value")
     })
 
-    test("shorthand creates a shorthand property assignment", () => {
+    it("shorthand creates a shorthand property assignment", () => {
       const node = shorthand("name")
       expect(ts.isShorthandPropertyAssignment(node)).toBeTruthy()
       expect(node.name.text).toBe("name")
     })
 
-    test("objectLiteral creates an object literal with multiline true by default", () => {
+    it("objectLiteral creates an object literal with multiline true by default", () => {
       const props = [property("a", stringLiteral("1"))]
       const node = objectLiteral(props)
       expect(ts.isObjectLiteralExpression(node)).toBeTruthy()
@@ -106,14 +106,14 @@ describe("ast-builders", () => {
       expect((node as unknown as { multiLine: boolean }).multiLine).toBeTruthy()
     })
 
-    test("objectLiteral creates an object literal with multiline false", () => {
+    it("objectLiteral creates an object literal with multiline false", () => {
       const props = [property("a", stringLiteral("1"))]
       const node = objectLiteral(props, false)
       expect(ts.isObjectLiteralExpression(node)).toBeTruthy()
       expect((node as unknown as { multiLine: boolean }).multiLine).toBeFalsy()
     })
 
-    test("arrayLiteral creates an array literal expression", () => {
+    it("arrayLiteral creates an array literal expression", () => {
       const elements = [stringLiteral("a"), stringLiteral("b")]
       const node = arrayLiteral(elements)
       expect(ts.isArrayLiteralExpression(node)).toBeTruthy()
@@ -122,7 +122,7 @@ describe("ast-builders", () => {
   })
 
   describe("Expressions", () => {
-    test("asConst wraps expression in an as-const assertion", () => {
+    it("asConst wraps expression in an as-const assertion", () => {
       const expr = arrayLiteral([])
       const node = asConst(expr)
       expect(ts.isAsExpression(node)).toBeTruthy()
@@ -133,7 +133,7 @@ describe("ast-builders", () => {
       ).toBe("const")
     })
 
-    test("access with string target creates property access expression", () => {
+    it("access with string target creates property access expression", () => {
       const node = access("obj", "prop")
       expect(ts.isPropertyAccessExpression(node)).toBeTruthy()
       expect(ts.isIdentifier(node.expression)).toBeTruthy()
@@ -141,7 +141,7 @@ describe("ast-builders", () => {
       expect(node.name.text).toBe("prop")
     })
 
-    test("access with Expression target creates property access expression", () => {
+    it("access with Expression target creates property access expression", () => {
       const target = id("myObj")
       const node = access(target, "method")
       expect(ts.isPropertyAccessExpression(node)).toBeTruthy()
@@ -150,7 +150,7 @@ describe("ast-builders", () => {
       expect(node.name.text).toBe("method")
     })
 
-    test("call creates a call expression", () => {
+    it("call creates a call expression", () => {
       const node = call(id("fn"), [stringLiteral("arg")])
       expect(ts.isCallExpression(node)).toBeTruthy()
       expect(ts.isIdentifier(node.expression)).toBeTruthy()
@@ -158,13 +158,13 @@ describe("ast-builders", () => {
       expect(node.arguments).toHaveLength(1)
     })
 
-    test("call with type arguments", () => {
+    it("call with type arguments", () => {
       const node = call(id("fn"), [], [typeRef("T")])
       expect(ts.isCallExpression(node)).toBeTruthy()
       expect(node.typeArguments).toHaveLength(1)
     })
 
-    test("methodCall creates a call on a property access", () => {
+    it("methodCall creates a call on a property access", () => {
       const node = methodCall("obj", "doSomething", [stringLiteral("x")])
       expect(ts.isCallExpression(node)).toBeTruthy()
       expect(ts.isPropertyAccessExpression(node.expression)).toBeTruthy()
@@ -174,14 +174,14 @@ describe("ast-builders", () => {
       )
     })
 
-    test("methodCall targets correct object", () => {
+    it("methodCall targets correct object", () => {
       const node = methodCall("obj", "doSomething", [stringLiteral("x")])
       const accessExpr = node.expression as ts.PropertyAccessExpression
       expect((accessExpr.expression as ts.Identifier).text).toBe("obj")
       expect(node.arguments).toHaveLength(1)
     })
 
-    test("parenthesized wraps expression in parentheses", () => {
+    it("parenthesized wraps expression in parentheses", () => {
       const expr = stringLiteral("inner")
       const node = parenthesized(expr)
       expect(ts.isParenthesizedExpression(node)).toBeTruthy()
@@ -190,13 +190,13 @@ describe("ast-builders", () => {
   })
 
   describe("Functions", () => {
-    test("parameter creates a parameter declaration", () => {
+    it("parameter creates a parameter declaration", () => {
       const node = parameter("arg")
       expect(node.kind).toBe(ts.SyntaxKind.Parameter)
       expect((node.name as ts.Identifier).text).toBe("arg")
     })
 
-    test("arrowFunction with string parameters", () => {
+    it("arrowFunction with string parameters", () => {
       const node = arrowFunction(["a", "b"], stringLiteral("body"))
       expect(ts.isArrowFunction(node)).toBeTruthy()
       expect(node.parameters).toHaveLength(2)
@@ -206,7 +206,7 @@ describe("ast-builders", () => {
       expect((secondParam.name as ts.Identifier).text).toBe("b")
     })
 
-    test("arrowFunction with ParameterDeclaration params", () => {
+    it("arrowFunction with ParameterDeclaration params", () => {
       const params = [parameter("x")]
       const node = arrowFunction(params, stringLiteral("body"))
       expect(ts.isArrowFunction(node)).toBeTruthy()
@@ -215,7 +215,7 @@ describe("ast-builders", () => {
       expect((firstParam.name as ts.Identifier).text).toBe("x")
     })
 
-    test("arrowFunction with async option", () => {
+    it("arrowFunction with async option", () => {
       const node = arrowFunction(["a"], stringLiteral("body"), { async: true })
       expect(ts.isArrowFunction(node)).toBeTruthy()
       const { modifiers } = node
@@ -223,7 +223,7 @@ describe("ast-builders", () => {
       expect(modifiers?.[0]?.kind).toBe(ts.SyntaxKind.AsyncKeyword)
     })
 
-    test("fieldsFunction creates an arrow function with 't' parameter", () => {
+    it("fieldsFunction creates an arrow function with 't' parameter", () => {
       const props = [property("name", stringLiteral("value"))]
       const node = fieldsFunction(props)
       expect(ts.isArrowFunction(node)).toBeTruthy()
@@ -232,7 +232,7 @@ describe("ast-builders", () => {
       expect((firstParam.name as ts.Identifier).text).toBe("t")
     })
 
-    test("fieldsFunction body is a parenthesized object literal", () => {
+    it("fieldsFunction body is a parenthesized object literal", () => {
       const props = [property("name", stringLiteral("value"))]
       const node = fieldsFunction(props)
       expect(ts.isParenthesizedExpression(node.body)).toBeTruthy()
@@ -242,14 +242,14 @@ describe("ast-builders", () => {
   })
 
   describe("Statements", () => {
-    test("expressionStatement wraps an expression in a statement", () => {
+    it("expressionStatement wraps an expression in a statement", () => {
       const expr = call(id("doStuff"), [])
       const node = expressionStatement(expr)
       expect(ts.isExpressionStatement(node)).toBeTruthy()
       expect(ts.isCallExpression(node.expression)).toBeTruthy()
     })
 
-    test("constStatement creates a const variable declaration", () => {
+    it("constStatement creates a const variable declaration", () => {
       const node = constStatement("myConst", stringLiteral("val"))
       expect(ts.isVariableStatement(node)).toBeTruthy()
       // oxlint-disable-next-line no-bitwise
@@ -260,12 +260,12 @@ describe("ast-builders", () => {
       expect(ts.isStringLiteral(decl.initializer as ts.Node)).toBeTruthy()
     })
 
-    test("constStatement has no export modifier", () => {
+    it("constStatement has no export modifier", () => {
       const node = constStatement("myConst", stringLiteral("val"))
       expect(node.modifiers).toBeUndefined()
     })
 
-    test("exportedConstStatement creates an exported const variable declaration", () => {
+    it("exportedConstStatement creates an exported const variable declaration", () => {
       const node = exportedConstStatement("exported", stringLiteral("val"))
       expect(ts.isVariableStatement(node)).toBeTruthy()
       // oxlint-disable-next-line no-bitwise
@@ -276,14 +276,14 @@ describe("ast-builders", () => {
       expect(node.modifiers).toBeDefined()
     })
 
-    test("exportedConstStatement has export modifier", () => {
+    it("exportedConstStatement has export modifier", () => {
       const node = exportedConstStatement("exported", stringLiteral("val"))
       expect(node.modifiers?.[0]?.kind).toBe(ts.SyntaxKind.ExportKeyword)
     })
   })
 
   describe("Builder helpers", () => {
-    test("implement calls .implement on target", () => {
+    it("implement calls .implement on target", () => {
       const props = [property("key", stringLiteral("val"))]
       const node = implement("myTarget", props)
       expect(ts.isCallExpression(node)).toBeTruthy()
@@ -293,7 +293,7 @@ describe("ast-builders", () => {
       expect(accessExpr.name.text).toBe("implement")
     })
 
-    test("implement passes object literal argument", () => {
+    it("implement passes object literal argument", () => {
       const props = [property("key", stringLiteral("val"))]
       const node = implement("myTarget", props)
       expect(node.arguments).toHaveLength(1)
@@ -302,7 +302,7 @@ describe("ast-builders", () => {
       ).toBeTruthy()
     })
 
-    test("builderCall calls a method on 'builder'", () => {
+    it("builderCall calls a method on 'builder'", () => {
       const node = builderCall("someMethod", [stringLiteral("arg")])
       expect(ts.isCallExpression(node)).toBeTruthy()
       const accessExpr = node.expression as ts.PropertyAccessExpression
@@ -310,13 +310,13 @@ describe("ast-builders", () => {
       expect(accessExpr.name.text).toBe("someMethod")
     })
 
-    test("builderCall with type arguments", () => {
+    it("builderCall with type arguments", () => {
       const node = builderCall("ref", [], [typeRef("MyType")])
       expect(ts.isCallExpression(node)).toBeTruthy()
       expect(node.typeArguments).toHaveLength(1)
     })
 
-    test("builderInputRef calls builder.inputRef with string arg", () => {
+    it("builderInputRef calls builder.inputRef with string arg", () => {
       const node = builderInputRef("InputName")
       expect(ts.isCallExpression(node)).toBeTruthy()
       const accessExpr = node.expression as ts.PropertyAccessExpression
@@ -324,13 +324,13 @@ describe("ast-builders", () => {
       expect(accessExpr.name.text).toBe("inputRef")
     })
 
-    test("builderInputRef passes correct argument", () => {
+    it("builderInputRef passes correct argument", () => {
       const node = builderInputRef("InputName")
       expect(node.arguments).toHaveLength(1)
       expect((node.arguments[0] as ts.StringLiteral).text).toBe("InputName")
     })
 
-    test("builderObjectRef calls builder.objectRef with string arg", () => {
+    it("builderObjectRef calls builder.objectRef with string arg", () => {
       const node = builderObjectRef("ObjName")
       expect(ts.isCallExpression(node)).toBeTruthy()
       const accessExpr = node.expression as ts.PropertyAccessExpression
@@ -338,19 +338,19 @@ describe("ast-builders", () => {
       expect(accessExpr.name.text).toBe("objectRef")
     })
 
-    test("builderObjectRef passes correct argument", () => {
+    it("builderObjectRef passes correct argument", () => {
       const node = builderObjectRef("ObjName")
       expect(node.arguments).toHaveLength(1)
       expect((node.arguments[0] as ts.StringLiteral).text).toBe("ObjName")
     })
 
-    test("builderObjectRef with type arguments", () => {
+    it("builderObjectRef with type arguments", () => {
       const node = builderObjectRef("ObjName", [typeRef("T")])
       expect(ts.isCallExpression(node)).toBeTruthy()
       expect(node.typeArguments).toHaveLength(1)
     })
 
-    test("tField calls t.field with object literal", () => {
+    it("tField calls t.field with object literal", () => {
       const props = [property("type", stringLiteral("String"))]
       const node = tField(props)
       expect(ts.isCallExpression(node)).toBeTruthy()
@@ -359,7 +359,7 @@ describe("ast-builders", () => {
       expect(accessExpr.name.text).toBe("field")
     })
 
-    test("tField passes object literal argument", () => {
+    it("tField passes object literal argument", () => {
       const props = [property("type", stringLiteral("String"))]
       const node = tField(props)
       expect(node.arguments).toHaveLength(1)
@@ -368,7 +368,7 @@ describe("ast-builders", () => {
       ).toBeTruthy()
     })
 
-    test("tArg calls t.arg with object literal", () => {
+    it("tArg calls t.arg with object literal", () => {
       const props = [property("type", stringLiteral("Int"))]
       const node = tArg(props)
       expect(ts.isCallExpression(node)).toBeTruthy()
@@ -377,7 +377,7 @@ describe("ast-builders", () => {
       expect(accessExpr.name.text).toBe("arg")
     })
 
-    test("tExpose calls t.expose with correct access", () => {
+    it("tExpose calls t.expose with correct access", () => {
       const props = [property("type", stringLiteral("Boolean"))]
       const node = tExpose("isActive", props)
       expect(ts.isCallExpression(node)).toBeTruthy()
@@ -386,7 +386,7 @@ describe("ast-builders", () => {
       expect(accessExpr.name.text).toBe("expose")
     })
 
-    test("tExpose passes name and object literal arguments", () => {
+    it("tExpose passes name and object literal arguments", () => {
       const props = [property("type", stringLiteral("Boolean"))]
       const node = tExpose("isActive", props)
       expect(node.arguments).toHaveLength(2)
@@ -398,7 +398,7 @@ describe("ast-builders", () => {
   })
 
   describe("Types/Interfaces", () => {
-    test("propertySignature creates a required property signature", () => {
+    it("propertySignature creates a required property signature", () => {
       const node = propertySignature("name", "string")
       expect(ts.isPropertySignature(node)).toBeTruthy()
       expect((node.name as ts.Identifier).text).toBe("name")
@@ -406,7 +406,7 @@ describe("ast-builders", () => {
       expect(ts.isTypeReferenceNode(node.type as ts.Node)).toBeTruthy()
     })
 
-    test("propertySignature creates an optional property signature", () => {
+    it("propertySignature creates an optional property signature", () => {
       const node = propertySignature("age", "number", { optional: true })
       expect(ts.isPropertySignature(node)).toBeTruthy()
       expect((node.name as ts.Identifier).text).toBe("age")
@@ -414,7 +414,7 @@ describe("ast-builders", () => {
       expect(node.questionToken?.kind).toBe(ts.SyntaxKind.QuestionToken)
     })
 
-    test("propertySignature accepts a TypeNode as type", () => {
+    it("propertySignature accepts a TypeNode as type", () => {
       const typeNode = typeRef("Array", [typeRef("string")])
       const node = propertySignature("items", typeNode)
       expect(ts.isPropertySignature(node)).toBeTruthy()
@@ -422,7 +422,7 @@ describe("ast-builders", () => {
       expect((node.type as ts.TypeReferenceNode).typeArguments).toHaveLength(1)
     })
 
-    test("exportedInterface creates an exported interface declaration", () => {
+    it("exportedInterface creates an exported interface declaration", () => {
       const members = [propertySignature("id", "string")]
       const node = exportedInterface("MyInterface", members)
       expect(ts.isInterfaceDeclaration(node)).toBeTruthy()
@@ -434,7 +434,7 @@ describe("ast-builders", () => {
   })
 
   describe("Imports", () => {
-    test("importNames creates a named import declaration", () => {
+    it("importNames creates a named import declaration", () => {
       const node = importNames("my-module", ["foo", "bar"])
       expect(ts.isImportDeclaration(node)).toBeTruthy()
       expect((node.moduleSpecifier as ts.StringLiteral).text).toBe("my-module")
@@ -443,7 +443,7 @@ describe("ast-builders", () => {
       expect(clause?.isTypeOnly).toBeFalsy()
     })
 
-    test("importNames has correct named bindings", () => {
+    it("importNames has correct named bindings", () => {
       const node = importNames("my-module", ["foo", "bar"])
       const clause = node.importClause
       const namedBindings = clause?.namedBindings as ts.NamedImports
@@ -455,7 +455,7 @@ describe("ast-builders", () => {
       expect(secondElement.name.text).toBe("bar")
     })
 
-    test("importNames with typeOnly creates a type-only import", () => {
+    it("importNames with typeOnly creates a type-only import", () => {
       const node = importNames("types-module", ["MyType"], { typeOnly: true })
       expect(ts.isImportDeclaration(node)).toBeTruthy()
       const clause = node.importClause
@@ -463,7 +463,7 @@ describe("ast-builders", () => {
       expect(clause?.isTypeOnly).toBeTruthy()
     })
 
-    test("importDefault creates a default import declaration", () => {
+    it("importDefault creates a default import declaration", () => {
       const node = importDefault("my-module", "myDefault")
       expect(ts.isImportDeclaration(node)).toBeTruthy()
       expect((node.moduleSpecifier as ts.StringLiteral).text).toBe("my-module")
@@ -472,7 +472,7 @@ describe("ast-builders", () => {
       expect(clause?.isTypeOnly).toBeFalsy()
     })
 
-    test("importDefault has correct default binding", () => {
+    it("importDefault has correct default binding", () => {
       const node = importDefault("my-module", "myDefault")
       const clause = node.importClause
       expect(ts.isIdentifier(clause?.name as ts.Node)).toBeTruthy()
@@ -480,7 +480,7 @@ describe("ast-builders", () => {
       expect(clause?.namedBindings).toBeUndefined()
     })
 
-    test("importDefault with typeOnly creates a type-only default import", () => {
+    it("importDefault with typeOnly creates a type-only default import", () => {
       const node = importDefault("types-module", "MyType", { typeOnly: true })
       expect(ts.isImportDeclaration(node)).toBeTruthy()
       const clause = node.importClause
@@ -488,7 +488,7 @@ describe("ast-builders", () => {
       expect(clause?.isTypeOnly).toBeTruthy()
     })
 
-    test("importDefaultAndNames creates an import with default and named bindings", () => {
+    it("importDefaultAndNames creates an import with default and named bindings", () => {
       const node = importDefaultAndNames("my-module", "def", ["a", "b"])
       expect(ts.isImportDeclaration(node)).toBeTruthy()
       expect((node.moduleSpecifier as ts.StringLiteral).text).toBe("my-module")
@@ -498,7 +498,7 @@ describe("ast-builders", () => {
       expect(clause?.name?.text).toBe("def")
     })
 
-    test("importDefaultAndNames has correct named bindings", () => {
+    it("importDefaultAndNames has correct named bindings", () => {
       const node = importDefaultAndNames("my-module", "def", ["a", "b"])
       const clause = node.importClause
       const namedBindings = clause?.namedBindings as ts.NamedImports
@@ -510,7 +510,7 @@ describe("ast-builders", () => {
       expect(secondElement.name.text).toBe("b")
     })
 
-    test("importDefaultAndNames without default name", () => {
+    it("importDefaultAndNames without default name", () => {
       const node = importDefaultAndNames("my-module", undefined, ["x"])
       expect(ts.isImportDeclaration(node)).toBeTruthy()
       const clause = node.importClause
@@ -520,7 +520,7 @@ describe("ast-builders", () => {
       expect(namedBindings.elements).toHaveLength(1)
     })
 
-    test("importDefaultAndNames without default has correct element", () => {
+    it("importDefaultAndNames without default has correct element", () => {
       const node = importDefaultAndNames("my-module", undefined, ["x"])
       const clause = node.importClause
       const namedBindings = clause?.namedBindings as ts.NamedImports
@@ -528,7 +528,7 @@ describe("ast-builders", () => {
       expect(firstElement.name.text).toBe("x")
     })
 
-    test("importDefaultAndNames with typeOnly", () => {
+    it("importDefaultAndNames with typeOnly", () => {
       const node = importDefaultAndNames("mod", "Def", ["Named"], {
         typeOnly: true,
       })

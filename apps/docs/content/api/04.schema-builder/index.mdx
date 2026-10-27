@@ -1,4 +1,9 @@
 ---
 title: Schema Builder
-description: Pothos schema builder configuration including scalars, comparison types, pagination, and validation.
+navTitle: Schema Builder
+description: How the GraphQL schema is generated — scalars, comparisons, pagination, validation.
 ---
+
+The schema is built with [Pothos](https://pothos-graphql.dev). LakeQL configures a shared `builder` with the scope-auth and validation plugins, registers the scalar and comparison types, and defines the pagination types. The generated query schema files attach to this builder, so every endpoint shares one consistent schema.
+
+The pages below cover the builder configuration, the scalar and comparison types, pagination, and input validation.

@@ -3,7 +3,7 @@ import { rm, writeFile } from "node:fs/promises"
 import path from "node:path"
 
 import { generateCode } from "@lakeql/file-generator"
-import { generateConfigReqistry } from "@lakeql/file-generator/config-registry"
+import { generateConfigRegistry } from "@lakeql/file-generator/config-registry"
 import { globby } from "globby"
 
 import { resolveSourcePath } from "@/config"
@@ -35,7 +35,7 @@ export async function runConfigRegistryGeneration(cliOverride?: string) {
   })
 
   // generate the query schema
-  const generatedConfigRegistry = generateConfigReqistry({
+  const generatedConfigRegistry = generateConfigRegistry({
     configPaths: configFiles.map((ele) => {
       const parsed = path.parse(ele)
       return path.join(parsed.dir, parsed.name)

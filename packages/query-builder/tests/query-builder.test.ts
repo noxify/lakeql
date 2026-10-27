@@ -1,6 +1,8 @@
-import { describe, expect, test } from "vitest"
+import type { CompiledQuery } from "kysely"
+import { describe, expect, it } from "vitest"
 
-import { formatQuery, generateQuery } from "../src"
+import { generateQuery } from "../src"
+import { testTrinoDialect } from "./test-dialect"
 
 interface DummyTableDefinition {
   stringField: string
@@ -8,9 +10,43 @@ interface DummyTableDefinition {
   boolField: boolean
 }
 
+/**
+ * Test-only SQL normalizer.
+ *
+ * Interpolates positional parameters (`$1`, `$2`, …) into the SQL and
+ * collapses all runs of whitespace to a single space so that the generated
+ * query can be compared against a hand-formatted expected string regardless
+ * of indentation. Replaces the former `formatQuery` export, which only ever
+ * existed to normalize SQL in this test.
+ */
+function normalizeSql<T>(query: Pick<CompiledQuery<T>, "sql" | "parameters">) {
+  const { parameters, sql: rawSql } = query
+  let sql = rawSql
+  for (const [index, param] of parameters.entries()) {
+    const value = typeof param === "string" ? `'${param}'` : String(param)
+    sql = sql.replaceAll(`$${index + 1}`, value)
+  }
+  return (
+    sql
+      // collapse all whitespace runs
+      .replaceAll(/\s+/gu, " ")
+      // normalize spacing around "=" (Kysely emits "1=1", fixtures use "1 = 1")
+      .replaceAll(/\s*=\s*/gu, " = ")
+      // normalize spacing just inside parentheses (sql-formatter padded them)
+      .replaceAll(/\(\s*/gu, "( ")
+      .replaceAll(/\s*\)/gu, " )")
+      .trim()
+      // Kysely lowercases keywords; the hand-formatted fixtures use uppercase.
+      // Lower-case both sides so the comparison is keyword-case-insensitive.
+      // Identifier casing is covered by the db/get-field-query tests.
+      .toLowerCase()
+  )
+}
+
 describe("Query Builder", () => {
-  test("select one field without filter", () => {
+  it("select one field without filter", () => {
     const query = generateQuery<DummyTableDefinition>({
+      dialect: testTrinoDialect,
       catalog: "hive",
       schema: "tier1_dummy_lake",
       selectFields: ["stringField"],
@@ -19,14 +55,11 @@ describe("Query Builder", () => {
       userQuery: {},
     })
 
-    const generatedQuery = formatQuery({ query })
+    const generatedQuery = normalizeSql(query)
 
-    const expectedQuery = formatQuery({
-      query: {
-        parameters: ["fieldValue"],
-        query: { kind: "RawNode", parameters: [], sqlFragments: [] },
-        queryId: { queryId: "query" },
-        sql: `
+    const expectedQuery = normalizeSql({
+      parameters: ["fieldValue"],
+      sql: `
         WITH
           "total_count" AS (
               SELECT
@@ -36,7 +69,8 @@ describe("Query Builder", () => {
           ),
           "records" AS (
             SELECT
-              "stringField"
+              "stringField",
+              TRUE AS "__lakeql_record_present"
             FROM
               "hive"."tier1_dummy_lake"."dummy_table"
             ORDER BY
@@ -48,16 +82,16 @@ describe("Query Builder", () => {
           *
         FROM
           "total_count"
-        FULL JOIN "records" ON TRUE
+        FULL JOIN "records" ON 1 = 1
         `,
-      },
     })
 
     expect(generatedQuery).toStrictEqual(expectedQuery)
   })
 
-  test("select one field with AND filter", () => {
+  it("select one field with AND filter", () => {
     const query = generateQuery<DummyTableDefinition>({
+      dialect: testTrinoDialect,
       catalog: "hive",
       schema: "tier1_dummy_lake",
       selectFields: ["stringField"],
@@ -68,14 +102,11 @@ describe("Query Builder", () => {
       },
     })
 
-    const generatedQuery = formatQuery({ query })
+    const generatedQuery = normalizeSql(query)
 
-    const expectedQuery = formatQuery({
-      query: {
-        parameters: ["fieldValue"],
-        query: { kind: "RawNode", parameters: [], sqlFragments: [] },
-        queryId: { queryId: "query" },
-        sql: `
+    const expectedQuery = normalizeSql({
+      parameters: ["fieldValue"],
+      sql: `
         WITH
           "total_count" AS (
               SELECT
@@ -87,7 +118,8 @@ describe("Query Builder", () => {
           ),
           "records" AS (
             SELECT
-              "stringField"
+              "stringField",
+              TRUE AS "__lakeql_record_present"
             FROM
               "hive"."tier1_dummy_lake"."dummy_table"
             WHERE
@@ -101,16 +133,16 @@ describe("Query Builder", () => {
           *
         FROM
           "total_count"
-        FULL JOIN "records" ON TRUE
+        FULL JOIN "records" ON 1 = 1
         `,
-      },
     })
 
     expect(generatedQuery).toStrictEqual(expectedQuery)
   })
 
-  test("select one field with multiple AND filters", () => {
+  it("select one field with multiple AND filters", () => {
     const query = generateQuery<DummyTableDefinition>({
+      dialect: testTrinoDialect,
       catalog: "hive",
       schema: "tier1_dummy_lake",
       selectFields: ["stringField"],
@@ -123,14 +155,11 @@ describe("Query Builder", () => {
         ],
       },
     })
-    const generatedQuery = formatQuery({ query })
+    const generatedQuery = normalizeSql(query)
 
-    const expectedQuery = formatQuery({
-      query: {
-        parameters: ["fieldValue", "fieldValue2"],
-        query: { kind: "RawNode", parameters: [], sqlFragments: [] },
-        queryId: { queryId: "query" },
-        sql: `
+    const expectedQuery = normalizeSql({
+      parameters: ["fieldValue", "fieldValue2"],
+      sql: `
         WITH
           "total_count" AS (
               SELECT
@@ -145,7 +174,8 @@ describe("Query Builder", () => {
           ),
           "records" AS (
             SELECT
-              "stringField"
+              "stringField",
+              TRUE AS "__lakeql_record_present"
             FROM
               "hive"."tier1_dummy_lake"."dummy_table"
             WHERE
@@ -162,16 +192,16 @@ describe("Query Builder", () => {
           *
         FROM
           "total_count"
-        FULL JOIN "records" ON TRUE
+        FULL JOIN "records" ON 1 = 1
         `,
-      },
     })
 
     expect(generatedQuery).toStrictEqual(expectedQuery)
   })
 
-  test("select one field with OR filter", () => {
+  it("select one field with OR filter", () => {
     const query = generateQuery<DummyTableDefinition>({
+      dialect: testTrinoDialect,
       catalog: "hive",
       schema: "tier1_dummy_lake",
       selectFields: ["stringField"],
@@ -185,14 +215,11 @@ describe("Query Builder", () => {
       },
     })
 
-    const generatedQuery = formatQuery({ query })
+    const generatedQuery = normalizeSql(query)
 
-    const expectedQuery = formatQuery({
-      query: {
-        parameters: ["fieldValue", "fieldValue2"],
-        query: { kind: "RawNode", parameters: [], sqlFragments: [] },
-        queryId: { queryId: "query" },
-        sql: `
+    const expectedQuery = normalizeSql({
+      parameters: ["fieldValue", "fieldValue2"],
+      sql: `
         WITH
           "total_count" AS (
               SELECT
@@ -207,7 +234,8 @@ describe("Query Builder", () => {
           ),
           "records" AS (
             SELECT
-              "stringField"
+              "stringField",
+              TRUE AS "__lakeql_record_present"
             FROM
               "hive"."tier1_dummy_lake"."dummy_table"
             WHERE
@@ -224,16 +252,16 @@ describe("Query Builder", () => {
           *
         FROM
           "total_count"
-        FULL JOIN "records" ON TRUE
+        FULL JOIN "records" ON 1 = 1
         `,
-      },
     })
 
     expect(generatedQuery).toStrictEqual(expectedQuery)
   })
 
-  test("select one field with complex filter", () => {
+  it("select one field with complex filter", () => {
     const query = generateQuery<DummyTableDefinition>({
+      dialect: testTrinoDialect,
       catalog: "hive",
       schema: "tier1_dummy_lake",
       selectFields: ["stringField"],
@@ -252,14 +280,11 @@ describe("Query Builder", () => {
       },
     })
 
-    const generatedQuery = formatQuery({ query })
+    const generatedQuery = normalizeSql(query)
 
-    const expectedQuery = formatQuery({
-      query: {
-        parameters: ["fieldValue", "fieldValue2", "fieldValue3"],
-        query: { kind: "RawNode", parameters: [], sqlFragments: [] },
-        queryId: { queryId: "query" },
-        sql: `
+    const expectedQuery = normalizeSql({
+      parameters: ["fieldValue", "fieldValue2", "fieldValue3"],
+      sql: `
         WITH
           "total_count" AS (
               SELECT
@@ -277,7 +302,8 @@ describe("Query Builder", () => {
           ),
           "records" AS (
             SELECT
-              "stringField"
+              "stringField",
+              TRUE AS "__lakeql_record_present"
             FROM
               "hive"."tier1_dummy_lake"."dummy_table"
             WHERE
@@ -297,16 +323,16 @@ describe("Query Builder", () => {
           *
         FROM
           "total_count"
-        FULL JOIN "records" ON TRUE
+        FULL JOIN "records" ON 1 = 1
         `,
-      },
     })
 
     expect(generatedQuery).toStrictEqual(expectedQuery)
   })
 
-  test("select multiple field without filter", () => {
+  it("select multiple field without filter", () => {
     const query = generateQuery<DummyTableDefinition>({
+      dialect: testTrinoDialect,
       catalog: "hive",
       schema: "tier1_dummy_lake",
       selectFields: ["stringField", "numberField"],
@@ -315,14 +341,11 @@ describe("Query Builder", () => {
       userQuery: {},
     })
 
-    const generatedQuery = formatQuery({ query })
+    const generatedQuery = normalizeSql(query)
 
-    const expectedQuery = formatQuery({
-      query: {
-        parameters: ["fieldValue", "fieldValue2", "fieldValue3"],
-        query: { kind: "RawNode", parameters: [], sqlFragments: [] },
-        queryId: { queryId: "query" },
-        sql: `
+    const expectedQuery = normalizeSql({
+      parameters: ["fieldValue", "fieldValue2", "fieldValue3"],
+      sql: `
         WITH
           "total_count" AS (
               SELECT
@@ -333,7 +356,8 @@ describe("Query Builder", () => {
           "records" AS (
             SELECT
               "stringField",
-              "numberField"
+              "numberField",
+              TRUE AS "__lakeql_record_present"
             FROM
               "hive"."tier1_dummy_lake"."dummy_table"
             ORDER BY
@@ -345,16 +369,16 @@ describe("Query Builder", () => {
           *
         FROM
           "total_count"
-        FULL JOIN "records" ON TRUE
+        FULL JOIN "records" ON 1 = 1
         `,
-      },
     })
 
     expect(generatedQuery).toStrictEqual(expectedQuery)
   })
 
-  test("select one field multiple sortings", () => {
+  it("select one field multiple sortings", () => {
     const query = generateQuery<DummyTableDefinition>({
+      dialect: testTrinoDialect,
       catalog: "hive",
       schema: "tier1_dummy_lake",
       selectFields: ["stringField"],
@@ -366,14 +390,11 @@ describe("Query Builder", () => {
       userQuery: {},
     })
 
-    const generatedQuery = formatQuery({ query })
+    const generatedQuery = normalizeSql(query)
 
-    const expectedQuery = formatQuery({
-      query: {
-        parameters: ["fieldValue"],
-        query: { kind: "RawNode", parameters: [], sqlFragments: [] },
-        queryId: { queryId: "query" },
-        sql: `
+    const expectedQuery = normalizeSql({
+      parameters: ["fieldValue"],
+      sql: `
         WITH
           "total_count" AS (
               SELECT
@@ -383,7 +404,8 @@ describe("Query Builder", () => {
           ),
           "records" AS (
             SELECT
-              "stringField"
+              "stringField",
+              TRUE AS "__lakeql_record_present"
             FROM
               "hive"."tier1_dummy_lake"."dummy_table"
             ORDER BY
@@ -396,16 +418,16 @@ describe("Query Builder", () => {
           *
         FROM
           "total_count"
-        FULL JOIN "records" ON TRUE
+        FULL JOIN "records" ON 1 = 1
         `,
-      },
     })
 
     expect(generatedQuery).toStrictEqual(expectedQuery)
   })
 
-  test("select one field with custom paging ( limit )", () => {
+  it("select one field with custom paging ( limit )", () => {
     const query = generateQuery<DummyTableDefinition>({
+      dialect: testTrinoDialect,
       catalog: "hive",
       paging: {
         limit: 250,
@@ -417,14 +439,11 @@ describe("Query Builder", () => {
       userQuery: {},
     })
 
-    const generatedQuery = formatQuery({ query })
+    const generatedQuery = normalizeSql(query)
 
-    const expectedQuery = formatQuery({
-      query: {
-        parameters: ["fieldValue"],
-        query: { kind: "RawNode", parameters: [], sqlFragments: [] },
-        queryId: { queryId: "query" },
-        sql: `
+    const expectedQuery = normalizeSql({
+      parameters: ["fieldValue"],
+      sql: `
         WITH
           "total_count" AS (
               SELECT
@@ -434,7 +453,8 @@ describe("Query Builder", () => {
           ),
           "records" AS (
             SELECT
-              "stringField"
+              "stringField",
+              TRUE AS "__lakeql_record_present"
             FROM
               "hive"."tier1_dummy_lake"."dummy_table"
             ORDER BY
@@ -446,16 +466,16 @@ describe("Query Builder", () => {
           *
         FROM
           "total_count"
-        FULL JOIN "records" ON TRUE
+        FULL JOIN "records" ON 1 = 1
         `,
-      },
     })
 
     expect(generatedQuery).toStrictEqual(expectedQuery)
   })
 
-  test("select one field with custom paging ( limit & offset )", () => {
+  it("select one field with custom paging ( limit & offset )", () => {
     const query = generateQuery<DummyTableDefinition>({
+      dialect: testTrinoDialect,
       catalog: "hive",
       paging: {
         limit: 250,
@@ -468,14 +488,11 @@ describe("Query Builder", () => {
       userQuery: {},
     })
 
-    const generatedQuery = formatQuery({ query })
+    const generatedQuery = normalizeSql(query)
 
-    const expectedQuery = formatQuery({
-      query: {
-        parameters: ["fieldValue"],
-        query: { kind: "RawNode", parameters: [], sqlFragments: [] },
-        queryId: { queryId: "query" },
-        sql: `
+    const expectedQuery = normalizeSql({
+      parameters: ["fieldValue"],
+      sql: `
         WITH
           "total_count" AS (
               SELECT
@@ -485,7 +502,8 @@ describe("Query Builder", () => {
           ),
           "records" AS (
             SELECT
-              "stringField"
+              "stringField",
+              TRUE AS "__lakeql_record_present"
             FROM
               "hive"."tier1_dummy_lake"."dummy_table"
             ORDER BY
@@ -498,16 +516,16 @@ describe("Query Builder", () => {
           *
         FROM
           "total_count"
-        FULL JOIN "records" ON TRUE
+        FULL JOIN "records" ON 1 = 1
         `,
-      },
     })
 
     expect(generatedQuery).toStrictEqual(expectedQuery)
   })
 
-  test("select one field with custom paging ( offset )", () => {
+  it("select one field with custom paging ( offset )", () => {
     const query = generateQuery<DummyTableDefinition>({
+      dialect: testTrinoDialect,
       catalog: "hive",
       paging: {
         offset: 200,
@@ -519,14 +537,11 @@ describe("Query Builder", () => {
       userQuery: {},
     })
 
-    const generatedQuery = formatQuery({ query })
+    const generatedQuery = normalizeSql(query)
 
-    const expectedQuery = formatQuery({
-      query: {
-        parameters: ["fieldValue"],
-        query: { kind: "RawNode", parameters: [], sqlFragments: [] },
-        queryId: { queryId: "query" },
-        sql: `
+    const expectedQuery = normalizeSql({
+      parameters: ["fieldValue"],
+      sql: `
         WITH
           "total_count" AS (
               SELECT
@@ -536,7 +551,8 @@ describe("Query Builder", () => {
           ),
           "records" AS (
             SELECT
-              "stringField"
+              "stringField",
+              TRUE AS "__lakeql_record_present"
             FROM
               "hive"."tier1_dummy_lake"."dummy_table"
             ORDER BY
@@ -549,16 +565,16 @@ describe("Query Builder", () => {
           *
         FROM
           "total_count"
-        FULL JOIN "records" ON TRUE
+        FULL JOIN "records" ON 1 = 1
         `,
-      },
     })
 
     expect(generatedQuery).toStrictEqual(expectedQuery)
   })
 
-  test("select with transformFields without filter", () => {
+  it("select with transformFields without filter", () => {
     const query = generateQuery<DummyTableDefinition>({
+      dialect: testTrinoDialect,
       catalog: "hive",
       schema: "tier1_dummy_lake",
       selectFields: ["stringField", "numberField"],
@@ -571,14 +587,11 @@ describe("Query Builder", () => {
       userQuery: {},
     })
 
-    const generatedQuery = formatQuery({ query })
+    const generatedQuery = normalizeSql(query)
 
-    const expectedQuery = formatQuery({
-      query: {
-        parameters: ["fieldValue"],
-        query: { kind: "RawNode", parameters: [], sqlFragments: [] },
-        queryId: { queryId: "query" },
-        sql: `
+    const expectedQuery = normalizeSql({
+      parameters: ["fieldValue"],
+      sql: `
         WITH
           "total_count" AS (
             SELECT
@@ -589,7 +602,8 @@ describe("Query Builder", () => {
           "records" AS (
             SELECT
               "string-field" as "string-field",
-              "nümber-field" as "nümber-field"
+              "nümber-field" as "nümber-field",
+              TRUE AS "__lakeql_record_present"
             FROM
               "hive"."tier1_dummy_lake"."dummy_table"
             ORDER BY
@@ -601,16 +615,16 @@ describe("Query Builder", () => {
           *
         FROM
           "total_count"
-        FULL JOIN "records" ON TRUE
+        FULL JOIN "records" ON 1 = 1
         `,
-      },
     })
 
     expect(generatedQuery).toStrictEqual(expectedQuery)
   })
 
-  test("select with transformFields with filter", () => {
+  it("select with transformFields with filter", () => {
     const query = generateQuery<DummyTableDefinition>({
+      dialect: testTrinoDialect,
       catalog: "hive",
       schema: "tier1_dummy_lake",
       selectFields: ["stringField", "numberField"],
@@ -631,14 +645,11 @@ describe("Query Builder", () => {
       },
     })
 
-    const generatedQuery = formatQuery({ query })
+    const generatedQuery = normalizeSql(query)
 
-    const expectedQuery = formatQuery({
-      query: {
-        parameters: ["fieldValue"],
-        query: { kind: "RawNode", parameters: [], sqlFragments: [] },
-        queryId: { queryId: "query" },
-        sql: `
+    const expectedQuery = normalizeSql({
+      parameters: ["fieldValue"],
+      sql: `
         WITH
           "total_count" AS (
             SELECT
@@ -651,7 +662,8 @@ describe("Query Builder", () => {
           "records" AS (
             SELECT
               "string-field" as "string-field",
-              "nümber-field" as "nümber-field"
+              "nümber-field" as "nümber-field",
+              TRUE AS "__lakeql_record_present"
             FROM
               "hive"."tier1_dummy_lake"."dummy_table"
             WHERE
@@ -665,9 +677,8 @@ describe("Query Builder", () => {
           *
         FROM
           "total_count"
-        FULL JOIN "records" ON TRUE
+        FULL JOIN "records" ON 1 = 1
         `,
-      },
     })
 
     expect(generatedQuery).toStrictEqual(expectedQuery)

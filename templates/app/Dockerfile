@@ -3,7 +3,7 @@ FROM node:24-alpine AS builder
 
 WORKDIR /app
 
-ARG PNPM_VERSION=11
+ARG PNPM_VERSION=12
 RUN npm i -g pnpm@${PNPM_VERSION} && \
     pnpm config set store-dir ~/.pnpm-store
 
@@ -16,6 +16,15 @@ COPY . .
 RUN pnpm run build
 
 # Production stage
+#
+# This uses the official node:24-alpine image as a sensible, debuggable base.
+# For a stricter security posture in production, consider a hardened/distroless
+# base such as `gcr.io/distroless/nodejs24-debian12` or a Chainguard Node image
+# — both shrink the attack surface, but drop the shell and package manager
+# (adjust the HEALTHCHECK, which relies on `wget`, accordingly).
+#
+# Whichever base you use, rebuild with `docker build --pull` regularly so the
+# base image picks up the latest security patches.
 FROM node:24-alpine AS runner
 
 WORKDIR /app

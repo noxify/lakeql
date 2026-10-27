@@ -1,22 +1,22 @@
-import { describe, expect, test } from "vitest"
+import { describe, expect, it } from "vitest"
 
 import type { Where } from "../src"
 import { normalizeFilter, normalizeUserQuery } from "../src"
 
 describe(normalizeFilter, () => {
-  test("should return filter as is if it's null or undefined", () => {
+  it("should return filter as is if it's null or undefined", () => {
     // @ts-expect-error - Testing null case
     expect(normalizeFilter(null)).toBeNull()
     // @ts-expect-error - Testing undefined case
     expect(normalizeFilter()).toBeUndefined()
   })
 
-  test("should handle empty filter", () => {
+  it("should handle empty filter", () => {
     const filter: Where = {}
     expect(normalizeFilter(filter)).toStrictEqual({})
   })
 
-  test("should normalize simple AND conditions", () => {
+  it("should normalize simple AND conditions", () => {
     const filter: Where = {
       and: [{ field1: { eq: "value1" }, field2: { eq: "value2" } }],
     }
@@ -28,7 +28,7 @@ describe(normalizeFilter, () => {
     expect(normalizeFilter(filter)).toStrictEqual(expected)
   })
 
-  test("should normalize simple OR conditions", () => {
+  it("should normalize simple OR conditions", () => {
     const filter: Where = {
       or: [{ field1: { eq: "value1" }, field2: { eq: "value2" } }],
     }
@@ -40,7 +40,7 @@ describe(normalizeFilter, () => {
     expect(normalizeFilter(filter)).toStrictEqual(expected)
   })
 
-  test("should handle mixed logical operators and fields", () => {
+  it("should handle mixed logical operators and fields", () => {
     const filter: Where = {
       and: [
         {
@@ -62,7 +62,7 @@ describe(normalizeFilter, () => {
     expect(normalizeFilter(filter)).toStrictEqual(expected)
   })
 
-  test("should handle nested logical operators", () => {
+  it("should handle nested logical operators", () => {
     const filter: Where = {
       and: [
         {
@@ -82,7 +82,7 @@ describe(normalizeFilter, () => {
     expect(normalizeFilter(filter)).toStrictEqual(expected)
   })
 
-  test("should handle complex nested structure", () => {
+  it("should handle complex nested structure", () => {
     const filter: Where = {
       and: [
         { field1: { eq: "value1" } },
@@ -117,7 +117,7 @@ describe(normalizeFilter, () => {
 })
 
 describe(normalizeUserQuery, () => {
-  test("should return query as is if it already has AND or OR at root", () => {
+  it("should return query as is if it already has AND or OR at root", () => {
     const query: Where = {
       and: [{ field1: { eq: "value1" } }],
     }
@@ -129,7 +129,7 @@ describe(normalizeUserQuery, () => {
     expect(normalizeUserQuery(orQuery)).toStrictEqual(orQuery)
   })
 
-  test("should wrap fields in AND when no logical operator at root", () => {
+  it("should wrap fields in AND when no logical operator at root", () => {
     const query = {
       field1: { eq: "value1" },
       field2: { eq: "value2" },
@@ -142,7 +142,7 @@ describe(normalizeUserQuery, () => {
     expect(normalizeUserQuery(query)).toStrictEqual(expected)
   })
 
-  test("should handle empty query", () => {
+  it("should handle empty query", () => {
     const query: Where = {}
     const expected: Where = {
       and: [],
@@ -152,7 +152,7 @@ describe(normalizeUserQuery, () => {
 })
 
 describe("normalizeFilter - additional cases", () => {
-  test("should handle null or undefined filter", () => {
+  it("should handle null or undefined filter", () => {
     // @ts-expect-error - Testing with null
     expect(normalizeFilter(null)).toBeNull()
 
@@ -160,7 +160,7 @@ describe("normalizeFilter - additional cases", () => {
     expect(normalizeFilter()).toBeUndefined()
   })
 
-  test("should handle single logical operator with single field", () => {
+  it("should handle single logical operator with single field", () => {
     const filter: Where = {
       and: [{ field1: { eq: "value1" } }],
     }
@@ -169,7 +169,7 @@ describe("normalizeFilter - additional cases", () => {
     expect(normalizeFilter(filter)).toStrictEqual(filter)
   })
 
-  test("should handle nested logical operators with single field", () => {
+  it("should handle nested logical operators with single field", () => {
     const filter: Where = {
       and: [
         {
@@ -182,7 +182,7 @@ describe("normalizeFilter - additional cases", () => {
     expect(normalizeFilter(filter)).toStrictEqual(filter)
   })
 
-  test("should handle logical operators with no fields", () => {
+  it("should handle logical operators with no fields", () => {
     const filter: Where = {
       and: [
         {
@@ -194,7 +194,7 @@ describe("normalizeFilter - additional cases", () => {
     expect(normalizeFilter(filter)).toStrictEqual(filter)
   })
 
-  test("should handle logical operators with only logical keys", () => {
+  it("should handle logical operators with only logical keys", () => {
     const filter: Where = {
       and: [
         {
@@ -216,7 +216,7 @@ describe("normalizeFilter - additional cases", () => {
     expect(normalizeFilter(filter)).toStrictEqual(expected)
   })
 
-  test("should handle empty arrays in logical operators", () => {
+  it("should handle empty arrays in logical operators", () => {
     const filter: Where = {
       and: [],
       or: [],

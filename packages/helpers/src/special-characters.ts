@@ -1,4 +1,4 @@
-export const defaultReplaceList = [
+const replaceList = [
   { replaceWith: "AE", searchFor: /[\u00C4\u00C6\u01FC\u01E2]/gu },
   { replaceWith: "OE", searchFor: /[\u00D6\u0152]/gu },
   { replaceWith: "UE", searchFor: /[\u00DC]/gu },
@@ -8,10 +8,7 @@ export const defaultReplaceList = [
   { replaceWith: "ss", searchFor: /[\u00DF]/gu },
 ]
 
-export default function replaceSpecialCharacters(
-  string: string,
-  replaceList: typeof defaultReplaceList = defaultReplaceList
-) {
+export default function replaceSpecialCharacters(string: string) {
   let value = string
 
   for (const replaceElement of replaceList) {

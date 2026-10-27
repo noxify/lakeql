@@ -215,9 +215,9 @@ const endpointDefinitionArb = fc
     return def
   })
 
-// --- Property Tests ---
+// --- Tests ---
 
-describe("Property 9: Extended Endpoint Definition Schema Validation", () => {
+describe("Extended Endpoint Definition Schema Validation", () => {
   it("parses valid endpoint definitions with mutation: false", () => {
     const endpointWithMutationFalseArb = fc
       .tuple(metadataNameArb, metadataNameArb, metadataNameArb, fieldsArb)

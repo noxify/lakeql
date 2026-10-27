@@ -17,88 +17,68 @@ vi.mock(import("../src/server"), () => ({
   startApiServer: mockStartApiServer,
 }))
 
-import { defineConfig } from "../src/config"
-import type { Permission } from "../src/types"
+import type { Permission } from "@lakeql/config"
 
-const configs = [
-  { catalog: "hive", schema: "tier1_lake", tableName: "users" },
-  { catalog: "hive", schema: "tier1_lake", tableName: "orders" },
-] as const
+import { defineApiConfig } from "../src/config"
 
-describe(defineConfig, () => {
-  describe("with array input", () => {
-    it("returns object with allConfigs equal to the input", () => {
-      const result = defineConfig(configs)
-      expect(result.allConfigs).toStrictEqual(configs)
-    })
-
-    it("has createYogaServer method", () => {
-      const result = defineConfig(configs)
+describe(defineApiConfig, () => {
+  describe("with minimal input", () => {
+    it("exposes a createYogaServer method", () => {
+      const result = defineApiConfig({})
       expect(result.createYogaServer).toBeTypeOf("function")
     })
 
-    it("has startServer method", () => {
-      const result = defineConfig(configs)
+    it("exposes a startServer method", () => {
+      const result = defineApiConfig({})
       expect(result.startServer).toBeTypeOf("function")
     })
 
-    it("does not include runtime config options", () => {
-      const result = defineConfig(configs)
-      expect(result.maxRecordsPerPage).toBeUndefined()
+    it("leaves unspecified runtime options undefined", () => {
+      const result = defineApiConfig({})
       expect(result.permissions).toBeUndefined()
       expect(result.baseDir).toBeUndefined()
       expect(result.port).toBeUndefined()
-      expect(result.getUser).toBeUndefined()
     })
   })
 
-  describe("with object input", () => {
+  describe("with full runtime config", () => {
     const permissions: Permission[] = [
       {
         name: "admin",
         useSystemUser: false,
         permissions: {
-          Query: [{ catalog: "hive", schema: "tier1_lake", tables: ["*"] }],
+          Query: [
+            {
+              dataSource: "warehouse",
+              rules: [{ catalog: "hive", schema: "tier1_lake", tables: ["*"] }],
+            },
+          ],
           Mutation: [],
         },
       },
     ]
 
-    const objectInput = {
-      allConfigs: configs,
-      maxRecordsPerPage: 500,
-      permissions,
-    }
-
-    it("returns object with allConfigs from input", () => {
-      const result = defineConfig(objectInput)
-      expect(result.allConfigs).toStrictEqual(configs)
-    })
-
-    it("returns object with maxRecordsPerPage", () => {
-      const result = defineConfig(objectInput)
-      expect(result.maxRecordsPerPage).toBe(500)
-    })
-
-    it("returns object with permissions array", () => {
-      const result = defineConfig(objectInput)
+    it("passes through the permissions array", () => {
+      const result = defineApiConfig({ permissions })
       expect(result.permissions).toStrictEqual(permissions)
     })
 
-    it("has createYogaServer method", () => {
-      const result = defineConfig(objectInput)
-      expect(result.createYogaServer).toBeTypeOf("function")
+    it("passes through port and schemaPath", () => {
+      const result = defineApiConfig({ port: 4000, schemaPath: "./schema" })
+      expect(result.port).toBe(4000)
+      expect(result.schemaPath).toBe("./schema")
     })
 
-    it("has startServer method", () => {
-      const result = defineConfig(objectInput)
-      expect(result.startServer).toBeTypeOf("function")
+    it("passes through the cors option", () => {
+      const cors = { origin: "https://app.example.com" }
+      const result = defineApiConfig({ cors })
+      expect(result.cors).toStrictEqual(cors)
     })
   })
 
   describe("createYogaServer factory method", () => {
     it("calls the mocked createYogaServer from ./yoga when invoked", async () => {
-      const result = defineConfig(configs)
+      const result = defineApiConfig({})
       const mockLogger = {
         info: vi.fn(),
         error: vi.fn(),
@@ -106,16 +86,14 @@ describe(defineConfig, () => {
 
       await result.createYogaServer(mockLogger)
 
-      expect(mockCreateYogaServer).toHaveBeenCalledWith(mockLogger, {})
+      expect(mockCreateYogaServer).toHaveBeenCalledWith(
+        mockLogger,
+        expect.any(Object)
+      )
     })
 
     it("passes runtime config to createYogaServer", async () => {
-      const objectInput = {
-        allConfigs: configs,
-        maxRecordsPerPage: 250,
-        port: 4000,
-      }
-      const result = defineConfig(objectInput)
+      const result = defineApiConfig({ port: 4000 })
       const mockLogger = {
         info: vi.fn(),
         error: vi.fn(),
@@ -126,7 +104,6 @@ describe(defineConfig, () => {
       expect(mockCreateYogaServer).toHaveBeenCalledWith(
         mockLogger,
         expect.objectContaining({
-          maxRecordsPerPage: 250,
           port: 4000,
         })
       )
@@ -135,28 +112,36 @@ describe(defineConfig, () => {
 
   describe("startServer method", () => {
     it("calls the mocked startApiServer from ./server when invoked", async () => {
-      const result = defineConfig(configs)
+      const result = defineApiConfig({})
 
       await result.startServer()
 
-      expect(mockStartApiServer).toHaveBeenCalledWith({})
+      expect(mockStartApiServer).toHaveBeenCalledWith(expect.any(Object))
     })
 
     it("passes runtime config to startApiServer", async () => {
-      const objectInput = {
-        allConfigs: configs,
-        maxRecordsPerPage: 100,
-        port: 3000,
-      }
-      const result = defineConfig(objectInput)
+      const result = defineApiConfig({ port: 3000 })
 
       await result.startServer()
 
       expect(mockStartApiServer).toHaveBeenCalledWith(
         expect.objectContaining({
-          maxRecordsPerPage: 100,
           port: 3000,
         })
+      )
+    })
+
+    it("passes the runtime through to startApiServer", async () => {
+      const runtime = { getReadStrategy: vi.fn() } as unknown as Parameters<
+        typeof defineApiConfig
+      >[0]["runtime"]
+
+      const result = defineApiConfig({ runtime })
+
+      await result.startServer()
+
+      expect(mockStartApiServer).toHaveBeenCalledWith(
+        expect.objectContaining({ runtime })
       )
     })
   })

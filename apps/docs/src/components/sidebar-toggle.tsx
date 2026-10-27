@@ -7,7 +7,7 @@ import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar"
 import { Button } from "./ui/button"
 import { Separator } from "./ui/separator"
 
-export function SidebarToggle() {
+export const SidebarToggle = () => {
   const { state, isMobile } = useSidebar()
 
   if (isMobile || state !== "collapsed") {

@@ -1,5 +1,4 @@
 import type { AddressInfo } from "node:net"
-import path from "node:path"
 
 import { serve } from "@hono/node-server"
 import { createLogger } from "@lakeql/logger"
@@ -47,18 +46,20 @@ export const createApiServer = async (
 
   const app = new Hono()
   const graphqlPath = options.graphqlPath ?? "/graphql"
+  const healthCheckEndpoint = options.healthCheckEndpoint ?? "/live"
 
   app.use("*", honoLogger(customLogger))
 
+  // Health check: a plain 200 so readiness/liveness probes reach it. Yoga's own
+  // healthCheckEndpoint lives behind the GraphQL route, which probes never hit.
+  app.get(healthCheckEndpoint, (c) => c.text("OK"))
+
+  const middlewares = options.cors ? [cors(options.cors)] : []
+
   app.on(
     ["POST", "GET", "OPTIONS"],
-    `${graphqlPath}/*`,
-    cors({
-      allowHeaders: ["content-type", "authorization"],
-      allowMethods: ["POST", "GET", "OPTIONS"],
-      credentials: true,
-      origin: "*",
-    }),
+    [graphqlPath, `${graphqlPath}/*`],
+    ...middlewares,
     serveYoga({ yoga })
   )
 
@@ -87,13 +88,4 @@ export const startApiServer = async (options: ApiRuntimeConfig = {}) => {
       )
     }
   )
-}
-
-const currentFilePath = import.meta.filename
-const executedFilePath = process.argv[1]
-  ? path.resolve(process.argv[1])
-  : undefined
-
-if (executedFilePath === currentFilePath) {
-  await startApiServer()
 }

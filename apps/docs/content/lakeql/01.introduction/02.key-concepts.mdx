@@ -1,84 +1,119 @@
 ---
 title: Key Concepts
-description: Core concepts behind LakeQL — data lakehouses, GraphQL-over-Trino, schema introspection, and code generation.
+navTitle: Key Concepts
+description: Data sources and adapters, schema generation, the runtime, and GraphQL-to-SQL translation.
 ---
+
+This page introduces the concepts that the rest of the documentation assumes. Each links to the section that covers it in depth.
 
 ## Data Lakehouse
 
-A data lakehouse combines the flexibility of data lakes with the structured query capabilities of data warehouses. In a typical LakeQL setup:
+A data lakehouse combines open storage with structured query capabilities. In a typical LakeQL deployment:
 
-- **Storage** — Data lives in object storage (S3, MinIO) in open formats like Parquet or ORC
-- **Metastore** — Apache Hive Metastore tracks table metadata (schemas, partitions, locations)
-- **Query Engine** — Trino provides SQL access across all catalogs and schemas
+- **Storage** — data lives in object storage (S3, MinIO, GCS, Azure, and the like) in open formats such as Parquet.
+- **Metastore** — a catalog service tracks table metadata, partitions, and file locations.
+- **Query engine** — Trino or Microsoft Fabric provides SQL access across catalogs and schemas.
 
-LakeQL sits on top of this stack, exposing lakehouse data through a GraphQL API without requiring you to build a separate application layer.
+LakeQL sits on top of this stack and exposes the data through GraphQL, without a separate hand-written application layer.
 
-## GraphQL-over-Trino
+## Data Sources and Adapters
 
-LakeQL translates incoming GraphQL queries into Trino SQL. This translation uses Kysely as a type-safe query builder:
+A **data source** is a named connection to a query engine, declared in `lakeql.config.ts`. An **adapter** is the package that teaches LakeQL how to talk to a particular engine — it owns connection handling, the SQL dialect, authentication forwarding, and response decoding.
+
+You register the adapters a project may use, then declare named data sources that pick one:
 
 ```ts
-// A GraphQL query like this:
+import { defineConfig } from "@lakeql/config"
+import { trinoAdapterDefinition } from "@lakeql/adapter-trino"
+import { fabricAdapterDefinition } from "@lakeql/adapter-fabric"
+
+export default defineConfig({
+  sourcePath: "src",
+  adapters: [trinoAdapterDefinition, fabricAdapterDefinition],
+  dataSources: {
+    warehouse: {
+      adapter: "trino",
+      connection: {
+        host: "trino.internal",
+        port: 8080,
+        catalog: "hive",
+        auth: { type: "basic", username: "svc", password: "..." },
+      },
+    },
+  },
+})
+```
+
+A single project can register multiple adapters and route each named data source to a different engine. Adapters are covered in [Data Sources](/docs/data-sources).
+
+## Schema Introspection and Generation
+
+LakeQL discovers table structures by querying the data source through its adapter. When you run the CLI introspection command, it reads each table's columns, types, and nullability, parses complex type strings (such as `array(row(...))`) into structured definitions, and writes typed files per table:
+
+<FileTree
+  files={[
+    "src/schemas/generated/warehouse/hive/sales/orders/config.ts",
+    "src/schemas/generated/warehouse/hive/sales/orders/interface.ts",
+    "src/schemas/generated/warehouse/hive/sales/orders/query-schema.ts",
+    "src/schemas/generated/warehouse/hive/sales/orders/mutation-schema.ts",
+    "src/schemas/generated/warehouse/hive/sales/orders/json-schema.json",
+    "src/schemas/generated/warehouse/hive/sales/orders/endpoint.json",
+  ]}
+/>
+
+`mutation-schema.ts` is generated only when the endpoint defines a mutation; its presence is what makes the API register a `Mutation` root type.
+
+Generated files are organized by data source, catalog, and schema (here `warehouse` is the configured data-source name) so that tables from different data sources never collide. They are committed to your repository and regenerated when a table changes. See the [CLI commands](/docs/cli/commands).
+
+## The Runtime
+
+LakeQL separates configuration from the live objects that use it. Loading the config never opens a connection on its own. Instead, an application composes a **runtime** explicitly:
+
+```ts
+import { createLakeQLRuntime, loadConfig } from "@lakeql/config"
+
+const project = await loadConfig()
+
+const runtime = await createLakeQLRuntime({
+  config: project.config,
+  adapters: project.adapters,
+  resolveAuth,
+})
+```
+
+The runtime owns the data-source instances and their read and write strategies, and it exposes a `close()` method for graceful shutdown. Because nothing is global, an application can create more than one runtime — useful for reloads and tests. This lifecycle is covered in [Runtime Lifecycle](/docs/lakeql/configuration/runtime-lifecycle).
+
+## GraphQL-to-SQL Translation
+
+The API server composes a GraphQL schema from the generated endpoint files. When a query arrives, LakeQL derives the SQL from the GraphQL resolve info — selected fields, filters, sorting, and pagination — and runs it through the data source's adapter.
+
+```graphql
 query {
-  orders(filter: { status: { eq: "shipped" } }, paging: { limit: 10 }) {
-    nodes { id, status, total }
-    pageInfo { hasNext, currentPage }
+  orders(
+    filter: { status: { eq: "shipped" } }
+    paging: { page: 1, perPage: 10 }
+  ) {
+    nodes {
+      id
+      status
+      total
+    }
+    pageInfo {
+      hasNext
+      currentPage
+    }
   }
 }
-
-// Becomes a Trino SQL query like this:
-WITH total_count AS (
-  SELECT COUNT(*) AS total_records
-  FROM hive.sales.orders
-  WHERE status = 'shipped'
-),
-records AS (
-  SELECT id, status, total
-  FROM hive.sales.orders
-  WHERE status = 'shipped'
-  ORDER BY id ASC
-  FETCH FIRST 10 ROWS ONLY
-)
-SELECT * FROM total_count FULL JOIN records ON TRUE
 ```
 
-The query builder handles field selection, WHERE clause generation, pagination (FETCH/OFFSET), and sorting — all derived from the GraphQL resolve info and input arguments.
+The query builder constructs the field selection, the `WHERE` clause, ordering, and pagination, then the adapter renders them in its own SQL dialect. See the [Schema Builder](/docs/api/schema-builder) and [query-builder](/docs/packages/query-builder).
 
-## Schema Introspection
+## Authentication and Permissions
 
-LakeQL discovers table structures by querying Trino metadata. When you run `lakeql-cli pull`, the CLI:
+The API server validates an incoming token, resolves the authenticated user, and checks per-table read and write permissions before any query runs. A data source can additionally forward the caller's identity to the engine — for example, Trino user impersonation. See [Authentication](/docs/api/authentication).
 
-1. Connects to your Trino instance via the REST API
-2. Executes `SHOW COLUMNS FROM catalog.schema.table` for each table
-3. Parses column type strings (including complex types like `array(row(...))`)
-4. Produces structured column definitions with names, types, and nullability
+## Where to Next
 
-This means your GraphQL schema always reflects the actual state of your lakehouse tables.
-
-## Code Generation
-
-From introspected metadata, LakeQL generates four artifacts per table:
-
-| File | Purpose |
-| --- | --- |
-| `config.ts` | Table metadata — catalog, schema, table name, column mappings |
-| `interface.ts` | TypeScript interface matching the table's column types |
-| `query-schema.ts` | Pothos query schema with filtering, sorting, and pagination |
-| `mutation-schema.ts` | Pothos mutation schema with input types and resolver stub |
-| `json-schema.json` | JSON Schema used by the response transformer at runtime |
-| `endpoint.json` | Endpoint definition for re-generation via CLI or Endpoint Builder |
-
-These files are committed to your repository and imported by the API server at startup. When your table schema changes, re-run `pull` to regenerate them.
-
-```bash
-# Generated file structure after pulling the "orders" table
-src/schemas/generated/
-└── sales/
-    └── orders/
-        ├── config.ts
-        ├── interface.ts
-        ├── query-schema.ts
-        ├── mutation-schema.ts
-        ├── json-schema.json
-        └── endpoint.json
-```
+<PageList
+  items={["lakeql/introduction/package-map", "lakeql/getting-started"]}
+/>

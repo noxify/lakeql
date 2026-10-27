@@ -1,6 +1,5 @@
 // oxlint-disable typescript/no-non-null-assertion
 // oxlint-disable import/no-named-as-default-member
-// Feature: custom-endpoint-cli, Property 8: Deterministic serialization format invariants
 
 import fc from "fast-check"
 import { describe, it, expect } from "vitest"
@@ -190,7 +189,7 @@ function validDefinitionArb(
 
 // --- Tests ---
 
-describe("Property 8: Deterministic serialization format invariants", () => {
+describe("Deterministic serialization format invariants", () => {
   it("serialized output uses LF line endings exclusively (no CRLF)", () => {
     fc.assert(
       fc.property(validDefinitionArb(4), (definition) => {

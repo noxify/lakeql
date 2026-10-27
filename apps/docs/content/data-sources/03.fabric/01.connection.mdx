@@ -1,0 +1,55 @@
+---
+title: Connection
+navTitle: Connection
+description: Configure the connection to a Microsoft Fabric SQL endpoint.
+---
+
+A Fabric data source's `connection` is a [`FabricConnectionConfig`](/docs/data-sources/fabric/api-reference#fabric-connection-config). It mirrors the standalone [fabric-client](/docs/packages/fabric-client) options.
+
+```ts
+dataSources: {
+  reporting: {
+    adapter: "fabric",
+    connection: {
+      host: "your-endpoint.datawarehouse.fabric.microsoft.com",
+      port: 1433,
+      catalog: "my_warehouse",
+      auth: {
+        type: "oauth2",
+        tenantId: "...",
+        clientId: "...",
+        clientSecret: "...",
+      },
+    },
+  },
+}
+```
+
+## Required Fields
+
+- `host` — the Fabric SQL endpoint hostname.
+- `port` — the endpoint port (typically `1433`).
+- `catalog` — default catalog (database) for queries.
+- `auth` — [`FabricAuth`](/docs/data-sources/fabric/api-reference#fabric-auth), see below.
+
+An optional `source` field sets a source identifier for diagnostics.
+
+## Authentication
+
+Both forms resolve to an Azure AD access token:
+
+```ts
+// OAuth2 client credentials
+auth: { type: "oauth2", tenantId: "...", clientId: "...", clientSecret: "..." }
+
+// Static bearer token
+auth: { type: "bearer", token: "..." }
+```
+
+<Note>
+  The config is validated at both the `defineConfig` boundary and when the data
+  source is created, using the same rules. Validation errors name the offending
+  field but never include secrets or tokens.
+</Note>
+
+The `oauth2` form accepts an optional `scope` field. It is validated but currently has no effect — the token is always acquired for the Fabric SQL scope (`https://database.windows.net/.default`).

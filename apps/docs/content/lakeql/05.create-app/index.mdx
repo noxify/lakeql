@@ -1,0 +1,17 @@
+---
+title: create-app
+navTitle: create-app
+description: Scaffold a new LakeQL project with create-app.
+---
+
+`@lakeql/create-app` scaffolds a ready-to-run LakeQL project — the config, the server entry point, auth and permission stubs, and the project structure — so you start from a working application rather than a blank directory.
+
+<Command variant="create">@lakeql/app my-api</Command>
+
+It prompts for the adapters, data source names, and authentication strategy, or you can pass them as flags. This section covers [usage](/docs/lakeql/create-app/usage), the [template structure](/docs/lakeql/create-app/template-structure) it generates, and what to do [after creation](/docs/lakeql/create-app/post-creation).
+
+<Note>
+  create-app is independent of the [CLI](/docs/cli). It is a one-time
+  scaffolding tool (binary `create-lakeql-app`); the CLI (`lakeql-cli`) is the
+  ongoing generation and introspection tool you use inside the project.
+</Note>

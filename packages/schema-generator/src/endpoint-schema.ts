@@ -1,3 +1,4 @@
+import type { LoadStrategy } from "@lakeql/datasource"
 import { z } from "zod"
 
 /**
@@ -20,13 +21,24 @@ export const loadStrategies = [
   "append",
 ] as const
 
-export type LoadStrategy = (typeof loadStrategies)[number]
-
 /**
- * Supported storage adapter types.
+ * Canonical load-strategy union, owned by `@lakeql/datasource` and re-exported
+ * here so the Zod `loadStrategies` enum and the datasource type cannot drift.
  */
-export const storageTypes = ["s3", "minio"] as const
-export type StorageType = (typeof storageTypes)[number]
+export type { LoadStrategy } from "@lakeql/datasource"
+
+// Compile-time assertion that the Zod const and the canonical datasource union
+// stay in lockstep. Either side drifting produces a type error here.
+type AssertSame<A, B> = [A] extends [B]
+  ? [B] extends [A]
+    ? true
+    : never
+  : never
+const _loadStrategyParity: AssertSame<
+  (typeof loadStrategies)[number],
+  LoadStrategy
+> = true
+void _loadStrategyParity
 
 /**
  * Supported partitioning format granularities.
@@ -115,19 +127,8 @@ export type PartitioningValue = boolean | string
 export interface MutationConfig {
   /** Load strategy for the write pipeline. */
   loadStrategy: LoadStrategy
-  /**
-   * Storage adapter type.
-   * @default "s3"
-   */
-  type: StorageType
-  /** S3/MinIO bucket name for endpoint data. */
-  bucket: string
   /** Base path for endpoint data. */
   basePath: string
-  /** Optional region override (falls back to AWS_DEFAULT_REGION env var for S3). */
-  region?: string
-  /** Optional custom endpoint. Required for MinIO, optional for S3. */
-  endpoint?: string
   /**
    * Partitioning mode. `true` partitions by write timestamp, `false` disables partitioning, or a string for field-based/custom partitioning.
    * @default true
@@ -146,25 +147,11 @@ export interface MutationConfig {
 export const mutationConfigSchema = z
   .object({
     loadStrategy: z.enum(loadStrategies),
-    type: z.enum(storageTypes).default("s3"),
-    bucket: z.string().min(1),
     basePath: z.string().min(1),
-    region: z.string().optional(),
-    endpoint: z.string().optional(),
     partitioning: z.union([z.boolean(), z.string().min(1)]).optional(),
     partitioningFormat: z.string().optional(),
   })
   .superRefine((data, ctx) => {
-    // Validate endpoint is provided for MinIO
-    if (data.type === "minio" && !data.endpoint) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["endpoint"],
-        message:
-          "Endpoint is required when storage type is 'minio'. Provide the MinIO server URL (e.g. http://minio:9000).",
-      })
-    }
-
     // Skip partitioning validation when partitioning is disabled
     if (data.partitioning === false) {
       return
@@ -356,6 +343,8 @@ export const endpointDefinitionSchema = z.object({
   tableName: z.string().regex(metadataFieldPattern),
   catalog: z.string().regex(metadataFieldPattern),
   schema: z.string().regex(metadataFieldPattern),
+  /** Name of the configured DataSource this endpoint targets. When omitted, generation uses `"default"`. */
+  dataSource: z.string().min(1).optional(),
   fields: z.array(fieldDefinitionSchema),
   mutation: mutationSchema.optional(),
 })

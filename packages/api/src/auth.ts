@@ -1,10 +1,16 @@
-import type { JWTPayload } from "jose"
+import type { JWTPayload, Permission } from "@lakeql/config"
 
 import { env } from "./env"
 import type { Context, PermissionFields } from "./types"
 
+/**
+ * Default token resolver — mock auth for development.
+ *
+ * In production, callers should supply their own `TokenResolver`
+ * through `ApiRuntimeConfig.tokenResolver`.
+ */
 // eslint-disable-next-line @typescript-eslint/require-await
-export async function getUser(
+export async function tokenResolver(
   req: Request
 ): Promise<JWTPayload | null | undefined> {
   const authHeader = req.headers.get("authorization")
@@ -28,165 +34,148 @@ export async function getUser(
 }
 
 /**
- * Checks whether the current user may read from a table.
+ * Tests whether any rule in `rules` matches the given permission target fields.
+ *
+ * Scope matching fails closed: a rule that names a `catalog` or a concrete
+ * `schema` only matches a target that carries the same value. A target that
+ * omits `catalog`/`schema` therefore does NOT match a rule scoped to one —
+ * the rule's scope is never silently ignored.
+ *
+ * A rule matches when:
+ * - `catalog` is omitted in the rule (matches any), or equal to the target catalog.
+ * - `schema` is `"*"` (matches any), or equal to the target schema.
+ * - `tables` contains the target table name, or `["*"]` for wildcard.
+ */
+function matchesRules(
+  rules: Permission["permissions"]["Query"][number]["rules"],
+  fields: PermissionFields
+): boolean {
+  return rules.some((rule) => {
+    // Catalog check: an omitted rule.catalog matches any; a named catalog must
+    // equal the target's (so a target without a catalog does not match).
+    if (rule.catalog && rule.catalog !== fields.catalog) {
+      return false
+    }
+
+    // Schema check: "*" matches any; a concrete schema must equal the target's
+    // (so a target without a schema does not match a schema-scoped rule).
+    if (rule.schema !== "*" && rule.schema !== fields.schema) {
+      return false
+    }
+
+    // Table check: ["*"] matches all tables, otherwise must include the table.
+    if (rule.tables.length > 0 && rule.tables[0] === "*") {
+      return true
+    }
+
+    return rule.tables.includes(fields.tableName)
+  })
+}
+
+/**
+ * Checks whether the current user may read from a data source table.
  *
  * Authorization model:
  * - Unauthenticated users are denied.
- * - If no user-specific `Query` rules exist, read access is allowed.
- * - If rules exist, at least one rule must match `catalog`, `schema`, and `tableName`.
- * - A `"*"` table entry matches all tables in the schema.
+ * - Service principals without an explicit permission entry are denied.
+ * - Human users without a permission entry are allowed (Trino/adapter enforces).
+ * - If rules exist, at least one `Query` rule for the data source must match.
  *
- * @param args Permission check input.
- * @param args.context Request context including authenticated user and configured permissions.
- * @param args.catalog Target catalog.
- * @param args.schema Target schema.
- * @param args.tableName Target table.
- * @returns {boolean} `true` if read access is allowed, otherwise `false`.
+ * @param args - Permission check input.
+ * @returns `true` if read access is allowed, otherwise `false`.
  */
 export function hasReadPermission({
   context,
+  dataSource,
+  tableName,
   catalog,
   schema,
-  tableName,
 }: { context: Context } & PermissionFields): boolean {
   const { permissions } = context
 
-  //Unauthorized Access
+  // Unauthenticated → deny
   if (!context.currentUser) {
     return false
   }
 
-  // find permissions for the current user
-  const userPermissions = permissions.find(
-    (ele) => ele.name === context.currentUser?.userName
-  )
+  const userName =
+    context.identity?.userName ?? context.currentUser.userName ?? ""
 
-  /**
-   * Decision model for read access:
-   * - If there is no user entry in `permissions`, or the user has no `Query` rules,
-   *   this function allows the read request.
-   *
-   * Why this default-allow can be valid:
-   * - Human users (OAuth2 Authorization Code Flow) typically exist in Trino.
-   *   In that case, Trino enforces schema/table permissions directly for that user,
-   *   so this wrapper does not need an additional allow list for every person.
-   *
-   * Why application-level rules are still needed:
-   * - Technical users (OAuth2 Client Credentials Flow) may not exist in Trino.
-   *   Requests are then often executed via an external system user that can access
-   *   many or all tables. For these clients, `permissions` acts as a service-side
-   *   allow list to enforce table-level restrictions.
-   *
-   * Practical effect:
-   * - Trino remains the primary authorization layer for human identities.
-   * - `permissions` adds explicit policy-as-code controls for technical clients.
-   */
-  if (!userPermissions || userPermissions.permissions.Query.length === 0) {
+  // Find the permission entry for this user
+  const userPermissions = permissions.find((p) => p.name === userName)
+
+  // No permission entry
+  if (!userPermissions) {
+    // Service principals need explicit rules — deny if none configured
+    if (context.identity?.isServicePrincipal) {
+      return false
+    }
+    // Human users: allow — the adapter layer enforces its own access control
     return true
   }
 
-  // if there is a query definition for the user, we check if it matches with the given catalog/schema/table
-  // ( includes also `*` for all tables inside a schema)
-  const foundQueryConfig = userPermissions.permissions.Query.find(
-    (ele) =>
-      ele.catalog === catalog &&
-      ele.schema === schema &&
-      (ele.tables.includes(tableName) ||
-        (ele.tables.length > 0 &&
-          ele.tables[0] === ("*" as (typeof ele.tables)[number])))
+  // Find Query rules that target this data source
+  const dataSourceRules = userPermissions.permissions.Query.filter(
+    (q) => q.dataSource === dataSource
   )
 
-  // the query definition doesn't match, we deny the access to the requested table
-  if (!foundQueryConfig) {
-    return false
+  // No Query rules for this data source → allow for humans, deny for SPs
+  if (dataSourceRules.length === 0) {
+    return !context.identity?.isServicePrincipal
   }
 
-  // seems that the user has the permission to perform the read operation
-  return true
+  // Check if any rule set matches the target fields
+  const fields: PermissionFields = { dataSource, tableName, catalog, schema }
+  return dataSourceRules.some((q) => matchesRules(q.rules, fields))
 }
 
 /**
- * Checks whether the current user may perform write operations on a table.
+ * Checks whether the current user may perform write operations on a data source table.
  *
  * Authorization model:
  * - Unauthenticated users are denied.
  * - If no user-specific `Mutation` rules exist, write access is denied.
- * - If rules exist, at least one rule must match `catalog`, `schema`, and `tableName`.
- * - A `"*"` table entry matches all tables in the schema.
+ * - If rules exist, at least one rule for the data source must match.
  *
- * Note: write statements may execute via a system user in Trino, so this
- * application-level check is the primary guardrail for table-level write access.
- *
- * @param args Permission check input.
- * @param args.context Request context including authenticated user and configured permissions.
- * @param args.catalog Target catalog.
- * @param args.schema Target schema.
- * @param args.tableName Target table.
- * @returns {boolean} `true` if write access is allowed, otherwise `false`.
+ * @param args - Permission check input.
+ * @returns `true` if write access is allowed, otherwise `false`.
  */
 export function hasWritePermission({
   context,
+  dataSource,
+  tableName,
   catalog,
   schema,
-  tableName,
 }: { context: Context } & PermissionFields): boolean {
   const { permissions } = context
 
-  //Unauthorized Access
+  // Unauthenticated → deny
   if (!context.currentUser) {
     return false
   }
 
-  // find permissions for the current user
-  const userPermissions = permissions.find(
-    (ele) => ele.name === context.currentUser?.userName
-  )
+  const userName =
+    context.identity?.userName ?? context.currentUser.userName ?? ""
 
-  /**
-   * Decision model for write access:
-   * - If there is no user entry in `permissions`, or the user has no `Mutation` rules,
-   *   this function denies the write request.
-   *
-   * Why this default-deny is intentional:
-   * - Write operations are more sensitive than reads and should require explicit
-   *   authorization at the application layer.
-   * - For write statements sent to Trino (for example `CREATE TABLE`), this service
-   *   uses a system user in the background. Therefore, the execution path is the
-   *   same for human users and technical users.
-   * - In many data platforms, each table has a defined source system as data owner.
-   *   Write access should usually be limited to that owning system to protect
-   *   data ownership boundaries.
-   * - Because Trino sees the system identity for these operations, `Mutation`
-   *   rules must enforce who is allowed to perform writes at table level.
-   *
-   * Practical effect:
-   * - Writes are only possible when a matching table rule exists in
-   *   `permissions.Mutation`.
-   * - This enforces least privilege and reduces the risk of unintended
-   *   cross-system data manipulation.
-   */
-  if (!userPermissions || userPermissions.permissions.Mutation.length === 0) {
+  // Find the permission entry for this user
+  const userPermissions = permissions.find((p) => p.name === userName)
+
+  // No permission entry → deny writes (writes require explicit authorization)
+  if (!userPermissions) {
     return false
   }
 
-  // maybe `*` is a bit risky for write permissions, but we support it for consistency with the read permissions
-  // This allows to define users that can write to all tables in a specific schema,
-  // which can be useful for technical users that are responsible for a whole data domain
-  // or in case you have to debug something and you're too lazy to add X tables to the allow list ;)
-  const foundMutationConfig = userPermissions.permissions.Mutation.find(
-    (ele) =>
-      ele.catalog === catalog &&
-      ele.schema === schema &&
-      (ele.tables.includes(tableName) ||
-        (ele.tables.length > 0 &&
-          ele.tables[0] === ("*" as (typeof ele.tables)[number])))
+  // Find Mutation rules that target this data source
+  const dataSourceRules = userPermissions.permissions.Mutation.filter(
+    (m) => m.dataSource === dataSource
   )
 
-  // the query definition doesn't match, we deny the access to the requested table
-  if (!foundMutationConfig) {
+  // No Mutation rules for this data source → deny
+  if (dataSourceRules.length === 0) {
     return false
   }
 
-  // seems that the user has the permission to perform the write operation
-  return true
+  // Check if any rule set matches the target fields
+  const fields: PermissionFields = { dataSource, tableName, catalog, schema }
+  return dataSourceRules.some((m) => matchesRules(m.rules, fields))
 }

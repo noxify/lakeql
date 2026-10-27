@@ -1,12 +1,12 @@
 "use client"
 
 import { Autocomplete } from "@base-ui/react/autocomplete"
-import { search as oramaSearch } from "@orama/orama"
-import { restore } from "@orama/plugin-data-persistence"
+import { restore } from "@zbsearch/plugin-data-persistence"
 import { FileIcon, HashIcon, Search, TextIcon } from "lucide-react"
 import { addBasePath } from "next/dist/client/add-base-path"
 import { useRouter } from "next/navigation"
 import * as React from "react"
+import { search as oramaSearch } from "zbsearch"
 
 import { normalizeInternalHref } from "@/lib/normalize-internal-href"
 
@@ -60,7 +60,7 @@ interface SearchCommandContextValue {
   setOpen: React.Dispatch<React.SetStateAction<boolean>>
 }
 
-interface OramaSearchDocument {
+interface ZBSearchDocument {
   id: string
   page_id: string
   type: "page" | "heading" | "text"
@@ -72,12 +72,12 @@ interface OramaSearchDocument {
   breadcrumb: string
 }
 
-interface OramaSearchHit {
+interface ZBSearchHit {
   score?: number
-  document?: Partial<OramaSearchDocument>
+  document?: Partial<ZBSearchDocument>
 }
 
-interface OramaSearchResult {
+interface ZBSearchResult {
   hits?: unknown
 }
 
@@ -169,17 +169,17 @@ function groupItems(items: SearchCommandItem[]): SearchCommandGroup[] {
       ? pageItems
       : [
           {
-            value: `doc-page-${pageId}`,
-            label: pageTitle,
-            href: pageHref,
+            documentType: "page" as const,
             group: "Documentation",
             hint: pageHint,
-            documentType: "page" as const,
-            pageId,
-            pageTitle,
+            href: pageHref,
+            label: pageTitle,
             pageHint,
             pageHref,
+            pageId,
+            pageTitle,
             resultOrder: Number.NEGATIVE_INFINITY,
+            value: `doc-page-${pageId}`,
           },
           ...pageItems,
         ]
@@ -197,10 +197,10 @@ function groupItems(items: SearchCommandItem[]): SearchCommandGroup[] {
     })
 
     return {
-      key: `page-${pageId}`,
-      value: pageTitle,
-      subtitle: pageHint,
       items: enrichedItems,
+      key: `page-${pageId}`,
+      subtitle: pageHint,
+      value: pageTitle,
     }
   })
 
@@ -225,9 +225,9 @@ function groupItems(items: SearchCommandItem[]): SearchCommandGroup[] {
 
   const otherGroups = [...groupedOther.entries()].map(
     ([value, groupedItems]) => ({
+      items: groupedItems,
       key: `group-${value}`,
       value,
-      items: groupedItems,
     })
   )
 
@@ -276,9 +276,7 @@ function filterItemsByCollection(
   return items.filter((item) => matchesCollection(item, selectedCollection))
 }
 
-function formatHint(
-  document: Partial<OramaSearchDocument>
-): string | undefined {
+function formatHint(document: Partial<ZBSearchDocument>): string | undefined {
   const parentBreadcrumb =
     typeof document.breadcrumb === "string"
       ? document.breadcrumb.split(" > ").slice(0, -1).join(" > ")
@@ -339,8 +337,8 @@ function filterCommandItems(
   })
 }
 
-function orderHitsByScore(hits: OramaSearchHit[]): OramaSearchHit[] {
-  const ordered: OramaSearchHit[] = []
+function orderHitsByScore(hits: ZBSearchHit[]): ZBSearchHit[] {
+  const ordered: ZBSearchHit[] = []
 
   for (const hit of hits) {
     const score = hit.score ?? 0
@@ -379,20 +377,24 @@ function useSearchCommand() {
   }
 }
 
-export function SearchCommandProvider({
+/* oxlint-disable react/no-object-type-as-default-prop, react-doctor/rerender-memo-with-default-value -- acceptable for this pattern */
+// oxlint-disable-next-line react-doctor/no-giant-component -- intentionally large component
+export const SearchCommandProvider = ({
   children,
   items = defaultItems,
-  // oxlint-disable-next-line react/no-object-type-as-default-prop
   availableCollections = [],
   placeholder = "Search...",
   emptyMessage = "Nothing found with this search params.",
   enableKeyboardShortcut = true,
-}: SearchCommandProviderProps) {
+}: SearchCommandProviderProps) => {
+  /* oxlint-enable react/no-object-type-as-default-prop, react-doctor/rerender-memo-with-default-value */
   const [open, setOpen] = React.useState(false)
   const [searchValue, setSearchValue] = React.useState("")
   const [selectedCollection, setSelectedCollection] = React.useState("all")
+  /* oxlint-disable react-doctor/no-derived-useState -- initial value from props is intentional */
   const [searchResults, setSearchResults] =
     React.useState<SearchCommandItem[]>(items)
+  /* oxlint-enable react-doctor/no-derived-useState */
   const [error, setError] = React.useState<string | null>(null)
   const [isPending, startTransition] = React.useTransition()
   const groupedItems = React.useMemo(
@@ -440,19 +442,22 @@ export function SearchCommandProvider({
 
     const sorted = [...optionMap.entries()]
       .toSorted(([, aLabel], [, bLabel]) => collator.compare(aLabel, bLabel))
-      .map(([value, label]) => ({ value, label }))
+      .map(([value, label]) => ({ label, value }))
 
-    return [{ value: "all", label: "All" }, ...sorted]
+    return [{ label: "All", value: "all" }, ...sorted]
   }, [availableCollections, items, searchResults, selectedCollection])
 
+  /* oxlint-disable react-doctor/no-derived-state -- syncing filtered results with prop/state changes */
   React.useEffect(() => {
     if (searchValue.length > 0) {
       return
     }
 
-    // oxlint-disable-next-line react/react-compiler
+    // Derive filtered results when items/collection change and no query is active.
+    // oxlint-disable-next-line react/react-compiler react/set-state-in-effect
     setSearchResults(filterItemsByCollection(items, selectedCollection))
   }, [items, searchValue, selectedCollection])
+  /* oxlint-enable react-doctor/no-derived-state */
 
   const loadSearchIndex = React.useCallback(async () => {
     if (indexRef.current) {
@@ -496,7 +501,7 @@ export function SearchCommandProvider({
               eq: "page",
             },
           },
-        }) as Promise<OramaSearchResult>,
+        }) as Promise<ZBSearchResult>,
         oramaSearch(index, {
           distinctOn: "url",
           limit: 10,
@@ -507,7 +512,7 @@ export function SearchCommandProvider({
               eq: "heading",
             },
           },
-        }) as Promise<OramaSearchResult>,
+        }) as Promise<ZBSearchResult>,
         oramaSearch(index, {
           distinctOn: "url",
           limit: 10,
@@ -518,21 +523,22 @@ export function SearchCommandProvider({
               eq: "text",
             },
           },
-        }) as Promise<OramaSearchResult>,
+        }) as Promise<ZBSearchResult>,
       ])
 
       const hits = orderHitsByScore([
         ...(Array.isArray(pageResult.hits)
-          ? (pageResult.hits as OramaSearchHit[])
+          ? (pageResult.hits as ZBSearchHit[])
           : []),
         ...(Array.isArray(headingResult.hits)
-          ? (headingResult.hits as OramaSearchHit[])
+          ? (headingResult.hits as ZBSearchHit[])
           : []),
         ...(Array.isArray(textResult.hits)
-          ? (textResult.hits as OramaSearchHit[])
+          ? (textResult.hits as ZBSearchHit[])
           : []),
       ])
 
+      // oxlint-disable-next-line react-doctor/js-combine-iterations -- readability over single-pass
       return hits
         .map((hit, indexPosition): SearchCommandItem | null => {
           const { document } = hit
@@ -564,29 +570,29 @@ export function SearchCommandProvider({
               : undefined
 
           return {
-            value: `doc-${document.id ?? indexPosition}`,
-            label: label ?? "",
-            href,
-            group: "Documentation",
-            hint: formatHint(document),
-            description,
-            documentType: document.type,
-            pageId:
-              typeof document.page_id === "string"
-                ? document.page_id
-                : undefined,
-            pageTitle: document.title,
-            pageHint: formatHint(document),
-            pageHref:
-              typeof document.page_id === "string"
-                ? normalizeHref(document.page_id)
-                : href,
-            resultOrder: indexPosition,
             collection:
               getCollectionFromHref(href) ??
               (typeof document.section === "string"
                 ? normalizeCollection(document.section)
                 : undefined),
+            description,
+            documentType: document.type,
+            group: "Documentation",
+            hint: formatHint(document),
+            href,
+            label: label ?? "",
+            pageHint: formatHint(document),
+            pageHref:
+              typeof document.page_id === "string"
+                ? normalizeHref(document.page_id)
+                : href,
+            pageId:
+              typeof document.page_id === "string"
+                ? document.page_id
+                : undefined,
+            pageTitle: document.title,
+            resultOrder: indexPosition,
+            value: `doc-${document.id ?? indexPosition}`,
           }
         })
         .filter((item): item is SearchCommandItem => item !== null)
@@ -607,10 +613,12 @@ export function SearchCommandProvider({
         return
       }
 
+      // oxlint-disable-next-line react-doctor/async-defer-await -- early return guard is clearer than reordering
       startTransition(async () => {
         setError(null)
 
         try {
+          // oxlint-disable-next-line react-doctor/async-defer-await -- awaiting before abort check is acceptable
           const [documentationMatches, commandMatches] = await Promise.all([
             runSearch(nextSearchValue, nextCollection),
             Promise.resolve(
@@ -700,7 +708,7 @@ export function SearchCommandProvider({
   }
 
   return (
-    // oxlint-disable-next-line react/jsx-no-constructed-context-values
+    // oxlint-disable-next-line react/jsx-no-constructed-context-values -- value changes trigger necessary re-renders
     <SearchCommandContext.Provider value={{ open, setOpen }}>
       {children}
 
@@ -843,10 +851,10 @@ export function SearchCommandProvider({
   )
 }
 
-export function SearchCommand({ children }: SearchCommandProps) {
+export const SearchCommand = ({ children }: SearchCommandProps) => {
   const { open, setOpen } = useSearchCommand()
 
-  // oxlint-disable-next-line react/no-react-children
+  // oxlint-disable-next-line react/no-react-children -- needed for dynamic child inspection
   const childArray = React.Children.toArray(children)
   const onlyChild = childArray.length === 1 ? childArray[0] : null
 
@@ -862,7 +870,7 @@ export function SearchCommand({ children }: SearchCommandProps) {
 
   const childOnClick = triggerChild.props.onClick
 
-  // oxlint-disable-next-line react/no-clone-element
+  // oxlint-disable-next-line react/no-clone-element -- needed to inject props into command items
   return React.cloneElement(triggerChild, {
     "aria-expanded": open,
     "aria-haspopup": "dialog",

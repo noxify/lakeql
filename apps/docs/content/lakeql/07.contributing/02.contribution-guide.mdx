@@ -1,0 +1,216 @@
+---
+title: Contribution Guide
+description: Guidelines for contributing to LakeQL — branching, testing, linting, and PR workflow.
+---
+
+## Getting Started
+
+<Steps>
+
+<Step>Fork and clone</Step>
+
+Fork the repository on GitHub, then clone your fork:
+
+```bash
+git clone https://github.com/<your-username>/lakeql.git
+cd lakeql
+```
+
+<Step>Set up the environment</Step>
+
+Follow the [Local Development](/docs/lakeql/contributing/local-development) guide to install dependencies and start the local Trino cluster.
+
+<Step>Create a feature branch</Step>
+
+Always branch from `main`:
+
+```bash
+git checkout -b feat/my-feature main
+```
+
+</Steps>
+
+## Project Structure
+
+```bash
+lakeql/
+├── apps/
+│   └── docs/              # Documentation site (Next.js)
+├── packages/
+│   ├── adapter-fabric/    # Fabric adapter
+│   ├── adapter-trino/     # Trino adapter
+│   ├── api/               # GraphQL API server (Pothos + Yoga)
+│   ├── cli/               # CLI tool
+│   ├── config/            # Shared configuration utilities
+│   ├── create-app/        # Project scaffolding tool
+│   ├── datasource/        # Data source abstraction
+│   ├── fabric-client/     # Microsoft Fabric client
+│   ├── query-builder/     # SQL query builder
+│   ├── storage/           # Storage write operations
+│   ├── trino-client/      # Trino REST API client
+│   └── ...                # Internal packages (helpers, logger, etc.)
+├── tooling/
+│   ├── test-data/         # Test data generation and seed tooling
+│   └── typescript/        # Shared TypeScript config
+├── templates/             # App scaffolding templates
+└── .minitrino/            # Local Trino cluster configuration
+```
+
+## Development Workflow
+
+### Building
+
+The monorepo uses [tsdown](https://tsdown.dev) for package builds and [Turbo](https://turbo.build) for task orchestration:
+
+```bash
+# Build all packages
+pnpm build:pkg
+
+# Build everything (packages + apps)
+pnpm build
+```
+
+### Running Tests
+
+Tests are written with [vitest](https://vitest.dev):
+
+```bash
+# Run all tests
+pnpm test
+
+# Run tests for a specific package
+pnpm -F @lakeql/trino-client test
+
+# Run with coverage
+pnpm test -- --coverage
+
+# Interactive UI
+pnpm test:ui
+```
+
+### Type Checking
+
+```bash
+pnpm typecheck
+```
+
+### Linting and Formatting
+
+The project uses [oxlint](https://oxc.rs/docs/guide/usage/linter) for linting and [oxfmt](https://oxc.rs/docs/guide/usage/formatter) for formatting. The shared rule presets come from [Ultracite](https://ultracite.ai):
+
+```bash
+# Lint all files
+pnpm lint
+
+# Lint and auto-fix
+pnpm lint:fix
+
+# Check formatting
+pnpm format
+
+# Format all files
+pnpm format:fix
+```
+
+<Note>
+  Run `pnpm lint` and `pnpm format` before committing to catch issues early.
+</Note>
+
+## Commits
+
+Use clear, descriptive commit messages. Conventional commit format is encouraged:
+
+```bash
+feat(api): add cursor-based pagination
+fix(trino-client): handle empty result sets
+docs: update quickstart guide
+```
+
+Keep each commit focused on a single logical change.
+
+## Changelogs
+
+LakeQL uses [Tegami](https://tegami.fuma-nama.dev) for versioning and changelogs. When your change affects a published `@lakeql/*` package, add a changelog file under `.tegami/`.
+
+The quickest way is the interactive TUI, which prompts you for the affected packages and bump level and writes the file for you:
+
+```bash
+pnpm tegami
+```
+
+If you prefer to write the file by hand, create it under `.tegami/` following the naming convention:
+
+```bash
+# File: .tegami/YYYY-MM-DD-<short-description>.md
+```
+
+Either way, the file uses YAML frontmatter to declare affected packages and a markdown body for user-facing release notes:
+
+```yaml
+---
+packages:
+  "npm:@lakeql/trino-client":
+    type: patch
+---
+### Fix empty result handling
+
+Return an empty array instead of throwing when Trino returns zero rows.
+```
+
+**When a changelog is needed:**
+
+- Any change to a published `@lakeql/*` package — including bug fixes, features, and refactors
+
+**When a changelog is not needed:**
+
+- Changes to `tooling/`, docs, or dev infrastructure
+- Changes to `private: true` packages
+
+<Warning title="Do not edit directly">
+  Never edit `.tegami/publish-lock.yaml` or `CHANGELOG.md` files in packages.
+  These are managed by Tegami during releases.
+</Warning>
+
+## Pull Requests
+
+### Workflow
+
+<Steps>
+
+<Step>Ensure all checks pass</Step>
+
+Before opening a PR, verify your changes locally:
+
+```bash
+pnpm typecheck
+pnpm lint
+pnpm format
+pnpm test
+```
+
+<Step>Push and open a PR</Step>
+
+Push your branch and open a pull request against `main`. Reference any related issues in the PR description.
+
+<Step>Address review feedback</Step>
+
+Respond to review comments and push additional commits. Avoid force-pushing unless asked — it makes review harder to follow.
+
+</Steps>
+
+### PR Guidelines
+
+- Keep PRs focused on a single feature or fix
+- Include a brief summary of what changed and why
+- Add a Tegami changelog file if the change affects published packages
+- Make sure CI passes before requesting review
+
+## Workspace Validation
+
+The project uses [sherif](https://github.com/nicolo-ribaudo/sherif) to validate workspace constraints (consistent dependency versions, proper workspace references):
+
+```bash
+pnpm lint:ws
+```
+
+Run this if you add or update dependencies to verify the workspace stays consistent.

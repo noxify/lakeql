@@ -1,9 +1,9 @@
-import { describe, expect, test } from "vitest"
+import { describe, expect, it } from "vitest"
 
 import { calculatePageInfo } from "../src/calculate-page-info"
 
 describe(calculatePageInfo, () => {
-  test("should calculate page info correctly with default page", () => {
+  it("should calculate page info correctly with default page", () => {
     const result = calculatePageInfo({
       perPage: 10,
       totalCount: 100,
@@ -22,7 +22,7 @@ describe(calculatePageInfo, () => {
     })
   })
 
-  test("should calculate page info correctly for first page", () => {
+  it("should calculate page info correctly for first page", () => {
     const result = calculatePageInfo({
       page: 1,
       perPage: 10,
@@ -42,7 +42,7 @@ describe(calculatePageInfo, () => {
     })
   })
 
-  test("should calculate page info correctly for middle page", () => {
+  it("should calculate page info correctly for middle page", () => {
     const result = calculatePageInfo({
       page: 5,
       perPage: 10,
@@ -62,7 +62,7 @@ describe(calculatePageInfo, () => {
     })
   })
 
-  test("should calculate page info correctly for last page", () => {
+  it("should calculate page info correctly for last page", () => {
     const result = calculatePageInfo({
       page: 10,
       perPage: 10,
@@ -82,7 +82,7 @@ describe(calculatePageInfo, () => {
     })
   })
 
-  test("should handle non-even division of pages", () => {
+  it("should handle non-even division of pages", () => {
     const result = calculatePageInfo({
       page: 10,
       perPage: 10,
@@ -102,7 +102,7 @@ describe(calculatePageInfo, () => {
     })
   })
 
-  test("should handle zero total count", () => {
+  it("should handle zero total count", () => {
     const result = calculatePageInfo({
       page: 1,
       perPage: 10,
@@ -122,7 +122,7 @@ describe(calculatePageInfo, () => {
     })
   })
 
-  test("should handle page number greater than max pages", () => {
+  it("should handle page number greater than max pages", () => {
     const result = calculatePageInfo({
       page: 5,
       perPage: 10,

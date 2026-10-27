@@ -53,7 +53,7 @@ function buildCommand(
   return `${prefix} ${subject}`.trim()
 }
 
-export function CommandWrapper({ children, variant }: CommandProps) {
+export const CommandWrapper = ({ children, variant }: CommandProps) => {
   const subject = getChildrenText(children)
 
   if (!variant) {

@@ -1,5 +1,5 @@
 import { setupServer } from "msw/node"
-import { afterAll, afterEach, beforeAll, describe, expect, test } from "vitest"
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest"
 
 import {
   createClient,
@@ -11,12 +11,12 @@ import {
 const server = setupServer(...singlePageHandlers())
 
 describe("stream()", () => {
-  beforeAll(() => server.listen({ onUnhandledRequest: "error" }))
+  beforeAll(() => server.listen({ onUnhandledFrame: "error" }))
   afterEach(() => server.resetHandlers())
 
   afterAll(() => server.close())
 
-  test("yields all rows from single-page result", async () => {
+  it("yields all rows from single-page result", async () => {
     server.use(...singlePageHandlers([["x"], ["y"]]))
 
     const client = createClient()
@@ -30,7 +30,7 @@ describe("stream()", () => {
     expect(results).toStrictEqual([["x"], ["y"]])
   })
 
-  test("yields all rows across multiple pages", async () => {
+  it("yields all rows across multiple pages", async () => {
     server.use(...multiPageHandlers())
 
     const client = createClient()
@@ -51,7 +51,7 @@ describe("stream()", () => {
     ])
   })
 
-  test("keeps initial statement data before following nextUri", async () => {
+  it("keeps initial statement data before following nextUri", async () => {
     server.use(...statementWithDataHandlers())
 
     const client = createClient()
@@ -70,7 +70,7 @@ describe("stream()", () => {
     ])
   })
 
-  test("yields transformed rows when transform is provided", async () => {
+  it("yields transformed rows when transform is provided", async () => {
     server.use(...singlePageHandlers([["alice"], ["bob"]]))
 
     const client = createClient()

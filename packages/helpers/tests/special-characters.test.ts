@@ -1,30 +1,33 @@
-import { describe, expect, test } from "vitest"
+import { describe, expect, it } from "vitest"
 
 import replaceSpecialCharacters from "../src/special-characters"
 
 describe("Replace special characters", () => {
-  test("Replace ä with ae", () => {
+  it("Replace ä with ae", () => {
     expect(replaceSpecialCharacters("ä")).toBe("ae")
   })
-  test("Replace Ä with AE", () => {
+
+  it("Replace Ä with AE", () => {
     expect(replaceSpecialCharacters("Ä")).toBe("AE")
   })
 
-  test("Replace ö with oe", () => {
+  it("Replace ö with oe", () => {
     expect(replaceSpecialCharacters("ä")).toBe("ae")
   })
-  test("Replace Ö with OE", () => {
+
+  it("Replace Ö with OE", () => {
     expect(replaceSpecialCharacters("Ö")).toBe("OE")
   })
 
-  test("Replace ü with ue", () => {
+  it("Replace ü with ue", () => {
     expect(replaceSpecialCharacters("ä")).toBe("ae")
   })
-  test("Replace Ü with UE", () => {
+
+  it("Replace Ü with UE", () => {
     expect(replaceSpecialCharacters("Ü")).toBe("UE")
   })
 
-  test("Replace ß with ss", () => {
+  it("Replace ß with ss", () => {
     expect(replaceSpecialCharacters("ß")).toBe("ss")
   })
 })

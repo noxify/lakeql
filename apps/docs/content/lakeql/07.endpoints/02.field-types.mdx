@@ -1,0 +1,115 @@
+---
+title: Field Types
+navTitle: Field Types
+description: The six primitive field types and field-level options.
+---
+
+Every entry in `fields` has a `name` (validated against the field name pattern from [Definition Format](/docs/lakeql/endpoints/definition-format)), a `type`, and an optional `options` object. This page covers the six primitive types; `Object` and `Array` are covered in [Nested Fields](/docs/lakeql/endpoints/nested-fields).
+
+## Primitive types
+
+| Type       | Description                                                 |
+| ---------- | ----------------------------------------------------------- |
+| `String`   | Text value.                                                 |
+| `Integer`  | Whole number.                                               |
+| `Float`    | Decimal number.                                             |
+| `Boolean`  | `true` or `false`.                                          |
+| `Date`     | Calendar date without a time component.                     |
+| `DateTime` | Date and time, with timezone handling owned by the adapter. |
+
+```json
+{ "name": "quantity", "type": "Integer" }
+```
+
+## Field options
+
+`options` controls how a field behaves in the generated mutation input and runtime validation. All keys are optional.
+
+| Key | Type | Default | Effect |
+| --- | --- | --- | --- |
+| `required` | `boolean` | `false` | Marks the field required in mutation input. |
+| `readOnly` | `boolean` | `false` | Field appears in the query schema and Hive DDL but is excluded from the mutation input type. |
+| `validations` | array of validation refinements | `[]` | Zod refinements applied at runtime, see below. |
+
+```json
+{
+  "name": "email",
+  "type": "String",
+  "options": { "required": true }
+}
+```
+
+```json
+{
+  "name": "internalId",
+  "type": "String",
+  "options": { "readOnly": true }
+}
+```
+
+### Validation refinements
+
+Each entry in `validations` is one of six kinds:
+
+| Kind | Shape | Use |
+| --- | --- | --- |
+| `email` | `{ "type": "email" }` | Validates an email address. |
+| `url` | `{ "type": "url" }` | Validates a URL. |
+| `uuid` | `{ "type": "uuid" }` | Validates a UUID. |
+| `min` | `{ "type": "min", "value": number }` | Minimum numeric value or length. |
+| `max` | `{ "type": "max", "value": number }` | Maximum numeric value or length. |
+| `regex` | `{ "type": "regex", "pattern": string }` | Validates against a custom pattern. |
+
+```json
+{
+  "name": "contactEmail",
+  "type": "String",
+  "options": {
+    "required": true,
+    "validations": [{ "type": "email" }]
+  }
+}
+```
+
+```json
+{
+  "name": "website",
+  "type": "String",
+  "options": {
+    "validations": [{ "type": "url" }]
+  }
+}
+```
+
+```json
+{
+  "name": "externalId",
+  "type": "String",
+  "options": {
+    "validations": [{ "type": "uuid" }]
+  }
+}
+```
+
+```json
+{
+  "name": "quantity",
+  "type": "Integer",
+  "options": {
+    "validations": [
+      { "type": "min", "value": 1 },
+      { "type": "max", "value": 1000 }
+    ]
+  }
+}
+```
+
+```json
+{
+  "name": "sku",
+  "type": "String",
+  "options": {
+    "validations": [{ "type": "regex", "pattern": "^[A-Z]{3}-[0-9]{4}$" }]
+  }
+}
+```

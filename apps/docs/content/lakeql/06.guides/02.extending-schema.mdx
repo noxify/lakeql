@@ -1,0 +1,19 @@
+---
+title: Extending the Schema
+navTitle: Extending the Schema
+description: Add fields to the generated types.
+---
+
+Beyond standalone resolvers, you can add fields to the generated object types — for example a computed `displayName` on an `Order`, or a related field that joins another source.
+
+```ts
+import { builder } from "@lakeql/api/builder"
+
+builder.objectField(OrderRef, "displayName", (t) =>
+  t.string({ resolve: (order) => `#${order.id} — ${order.status}` })
+)
+```
+
+Keep extensions in your own modules, not in the generated files — re-running [`pull`](/docs/cli/commands/pull) recursively deletes and recreates the endpoint's generated directory, so anything you put there is lost. Extensions are additive and share the schema's auth, validation, and scalars.
+
+See [extending core](/docs/api/customization/extending-core) for the full mechanics.

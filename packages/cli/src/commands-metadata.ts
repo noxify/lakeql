@@ -9,6 +9,7 @@
 import type { Argument, Option } from "@commander-js/extra-typings"
 
 import { buildInitCommandStructure } from "@/commands/init-metadata"
+import { buildAddCommandStructure } from "@/metadata/add-metadata"
 import { buildCreateEndpointCommandStructure } from "@/metadata/create-endpoint-metadata"
 import { buildCreateRegistryCommandStructure } from "@/metadata/create-registry-metadata"
 import { buildGenerateImportConfigCommandStructure } from "@/metadata/generate-import-config-metadata"
@@ -16,9 +17,11 @@ import { buildListColumnsCommandStructure } from "@/metadata/list-columns-metada
 import { buildListSchemasCommandStructure } from "@/metadata/list-schemas-metadata"
 import { buildListTablesCommandStructure } from "@/metadata/list-tables-metadata"
 import { buildListViewsCommandStructure } from "@/metadata/list-views-metadata"
+import { buildProgramStructure } from "@/metadata/program-metadata"
 import { buildPullCommandStructure } from "@/metadata/pull-metadata"
 
 type AvailableCommand =
+  | "add"
   | "create-registry"
   | "create-endpoint"
   | "generate-import-config"
@@ -48,6 +51,7 @@ export interface CommandOptionMeta {
   isBoolean: boolean
   long?: string
   short?: string
+  choices?: string[]
 }
 
 export interface CommandConfig {
@@ -98,11 +102,15 @@ function extractOptionMeta(option: Option): CommandOptionMeta {
   if (option.short) {
     meta.short = option.short
   }
+  if (option.argChoices?.length) {
+    meta.choices = option.argChoices
+  }
 
   return meta
 }
 
 const commandFactories: Record<string, () => unknown> = {
+  add: buildAddCommandStructure,
   "create-registry": buildCreateRegistryCommandStructure,
   "create-endpoint": buildCreateEndpointCommandStructure,
   "generate-import-config": buildGenerateImportConfigCommandStructure,
@@ -139,3 +147,24 @@ export function getCommandConfig(commandName: string): CommandConfig {
 export const availableCommands: AvailableCommand[] = Object.keys(
   commandFactories
 ) as AvailableCommand[]
+
+/**
+ * Returns the root program's metadata: its name, description, and global
+ * options (e.g. `--env`). Extracted the same way as per-command options so
+ * documentation can render global options in one place.
+ */
+export function getProgramConfig(): CommandConfig {
+  const program = buildProgramStructure() as unknown as {
+    name: () => string
+    description: () => string
+    registeredArguments: Argument[]
+    options: Option[]
+  }
+
+  return {
+    name: program.name(),
+    description: program.description(),
+    arguments: program.registeredArguments.map(extractArgumentMeta),
+    options: program.options.map(extractOptionMeta),
+  }
+}

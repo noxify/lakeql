@@ -50,11 +50,11 @@ function groupBreadcrumb(input: Item[]): (ElementItem | GroupItem)[] {
   ]
 }
 
-export function SiteBreadcrumb({
+export const SiteBreadcrumb = ({
   items,
 }: {
   items: { title: string; path: string[] }[]
-}) {
+}) => {
   const breadcrumbItems = groupBreadcrumb(items)
 
   return (

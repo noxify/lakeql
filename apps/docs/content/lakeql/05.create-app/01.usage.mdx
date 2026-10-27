@@ -1,0 +1,20 @@
+---
+title: Usage
+navTitle: Usage
+description: Run create-app interactively or with flags.
+cliCommand: create-app
+---
+
+Run the scaffolder through your package manager's create command:
+
+<Command variant="create">@lakeql/app my-api</Command>
+
+Run without answers, it prompts for the project name, the adapters to include, the data source names, and the authentication strategy. Every prompt has a corresponding flag, so you can run it non-interactively in scripts — for example:
+
+<Command variant="create">
+  @lakeql/app my-api --adapters trino,fabric --auth entra-id
+</Command>
+
+The arguments and options below are generated from create-app's own metadata, so they always match the installed version.
+
+<CliCommandDetails command="create-app" />

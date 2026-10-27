@@ -1,0 +1,47 @@
+---
+title: Endpoints
+navTitle: Endpoints
+description: How LakeQL endpoints are generated, from a live table or from a definition file.
+separator: true
+---
+
+An **endpoint** is the generated, typed surface for a single table: a query field (and optionally a mutation field) in the GraphQL schema, backed by a config, an interface, and a validated schema. You get there one of two ways, and both produce the exact same generated output.
+
+## Two paths, one output
+
+[`pull`](/docs/cli/commands/pull) introspects a live table through its data source — it reads the columns, types, and nullability from the query engine and derives the field definitions for you. It's the fastest path when the data source is reachable at generation time.
+
+[`create-endpoint --from-file <definition.json>`](/docs/cli/commands/create-endpoint) generates from a hand-written or committed JSON definition instead. Use it when you can't reach the data source at generation time, when you want an endpoint for data that isn't introspectable in the usual way, or when you want to keep the definition under version control and regenerate deterministically.
+
+Every table `pull` generates also writes an `endpoint.json` alongside its other files, so the two paths are fully interchangeable: you can recreate any pulled endpoint later with `create-endpoint --from-file`, and hand-write a definition that's indistinguishable from one `pull` would have produced. The pages in this section document that `endpoint.json` format.
+
+<Note>
+  This section covers the `endpoint.json` shape itself. For the CLI flags,
+  prompts, and registry behavior of each command, see the
+  [`pull`](/docs/cli/commands/pull) and
+  [`create-endpoint`](/docs/cli/commands/create-endpoint) command references.
+</Note>
+
+## What gets generated
+
+Both commands write the same set of files per table, under your configured source path, organized by data source, catalog, and schema:
+
+<FileTree
+  files={[
+    "config.ts",
+    "interface.ts",
+    "query-schema.ts",
+    "json-schema.json",
+    "endpoint.json",
+    "mutation-schema.ts",
+  ]}
+/>
+
+`mutation-schema.ts` is only written when the definition includes a `mutation` block — its presence is what makes the endpoint register a `Mutation` root field in addition to the query field. See [Key Concepts](/docs/lakeql/introduction/key-concepts) for how these files fit into the rest of the generated layout.
+
+## In this section
+
+- [Definition Format](/docs/lakeql/endpoints/definition-format) — the top-level shape of `endpoint.json`.
+- [Field Types](/docs/lakeql/endpoints/field-types) — the six primitive types and field-level options.
+- [Nested Fields](/docs/lakeql/endpoints/nested-fields) — `Object` and `Array` field types.
+- [Mutations](/docs/lakeql/endpoints/mutations) — the optional `mutation` block and load strategies.

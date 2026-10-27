@@ -1,0 +1,54 @@
+---
+title: Executing the Write Pipeline
+navTitle: Execute
+description: How a write strategy runs, for both storage and INSERT paths.
+---
+
+A write runs through the strategy configured for the data source. Each strategy takes the records to write plus a load strategy. The `write()` call resolves with no value — it either completes or throws.
+
+## External Storage
+
+```text
+records
+  → serializer        (records → a file format)
+  → storage upload    (write the file to object storage)
+  → table manager     (register/update the table via DDL)
+  → cleanup           (according to the load strategy)
+```
+
+This path requires a serializer, [storage operations](/docs/data-sources/storage), and a table manager. It suits engines backed by object storage with an external table catalog.
+
+For the Trino adapter, the storage strategy is wired with a `files-sdk` instance, a serializer, and the data source; each write also needs a `basePath`:
+
+```ts
+import { Files } from "files-sdk"
+import { s3 } from "files-sdk/s3"
+import { parquetSerializer } from "@lakeql/storage/serializer/parquet"
+import { createTrinoWriteStrategy } from "@lakeql/adapter-trino"
+
+const writeStrategy = createTrinoWriteStrategy({
+  files: new Files({
+    adapter: s3({ bucket: "my-datalake", region: "eu-central-1" }),
+  }),
+  dataSource: trinoDataSource,
+  serializer: parquetSerializer(),
+})
+```
+
+A write call without a `basePath` throws.
+
+## INSERT INTO
+
+```text
+records
+  → schema mapper
+  → batched statements
+  → data source query (INSERT INTO)
+  → optional staging + swap
+```
+
+This path runs entirely through SQL and does not depend on object storage. The Trino adapter's INSERT strategy supports batching, optional table creation, and a pending-table swap for full loads — see [Trino queries](/docs/data-sources/trino/queries).
+
+## Responsibility Boundaries
+
+Each part has a narrow job: the **data source** executes SQL and exposes DDL; the **write strategy** owns load-strategy semantics, batching, staging, and rollback; the **serializer** converts records to a format; **storage operations** handle upload, list, and delete without knowing load strategies; the **table manager** handles external-table DDL only for strategies that need it.

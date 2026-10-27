@@ -10,22 +10,55 @@ export interface SchemaLoadOptions {
   schemaPath?: string
 }
 
-const defaultSchemaDir = import.meta.dirname
+/**
+ * Thrown by {@link loadSchema} when no generated schema files are found under
+ * the resolved schema directory.
+ *
+ * This is an expected configuration state (for example, a freshly scaffolded
+ * project before the first pull), not an internal failure. Consumers can catch
+ * it to print a concise message instead of a stack trace.
+ */
+export class SchemaFilesNotFoundError extends Error {
+  override readonly name = "SchemaFilesNotFoundError"
+
+  /** The resolved absolute directory that was searched. */
+  readonly schemaDir: string
+
+  /**
+   * @param schemaDir - The resolved absolute directory that was searched.
+   */
+  constructor(schemaDir: string) {
+    super(
+      `No schema files found under '${schemaDir}'.\n` +
+        `Generate them from your data sources first by running the pull command ` +
+        `(e.g. \`lakeql pull\` / \`pnpm cli pull\`), then start the server again. ` +
+        `If your schemas live elsewhere, set 'schemaPath' in defineApiConfig to point at them.\n` +
+        `Checked patterns: schemas/**/{query,mutation}-schema.{ts,js,mjs} and **/{query,mutation}-schema.{ts,js,mjs}`
+    )
+    this.schemaDir = schemaDir
+  }
+}
+
 const schemaCache = new Map<
   string,
   Promise<ReturnType<typeof builder.toSchema>>
 >()
 
 function resolveSchemaDir({ baseDir, schemaPath }: SchemaLoadOptions = {}) {
+  const base = baseDir ?? process.cwd()
+
+  // No schemaPath → look in the consumer's base directory. (Never
+  // import.meta.dirname, which points inside the installed @lakeql/api
+  // package and can only ever yield SchemaFilesNotFoundError.)
   if (!schemaPath) {
-    return defaultSchemaDir
+    return base
   }
 
   if (path.isAbsolute(schemaPath)) {
     return schemaPath
   }
 
-  return path.resolve(baseDir ?? process.cwd(), schemaPath)
+  return path.resolve(base, schemaPath)
 }
 
 async function buildSchema(schemaDir: string) {
@@ -46,9 +79,7 @@ async function buildSchema(schemaDir: string) {
   const uniqueSchemaFiles = [...new Set(schemaFiles)]
 
   if (uniqueSchemaFiles.length === 0) {
-    throw new Error(
-      `No schema files found for schemaPath '${schemaDir}'. Checked patterns: schemas/**/{query,mutation}-schema.{ts,js,mjs} and **/{query,mutation}-schema.{ts,js,mjs}`
-    )
+    throw new SchemaFilesNotFoundError(schemaDir)
   }
 
   const hasMutationSchemas = uniqueSchemaFiles.some((f) =>

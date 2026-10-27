@@ -1,0 +1,19 @@
+---
+title: Metadata
+navTitle: Metadata
+description: How the Trino adapter exposes catalogs, schemas, tables, and columns.
+---
+
+The Trino adapter inspects the cluster's metadata to discover what can be served. The [CLI introspection commands](/docs/cli/commands) use this to list schemas, tables, views, and columns, and to generate typed endpoints with [`pull`](/docs/cli/commands/pull).
+
+<Command variant="exec">lakeql-cli list-schemas --source warehouse</Command>
+
+<Command variant="exec">
+  lakeql-cli list-tables --source warehouse --schema sales
+</Command>
+
+<Command variant="exec">
+  lakeql-cli list-columns --source warehouse --schema sales --table orders
+</Command>
+
+Under the hood this maps to the same metadata operations the standalone [trino-client](/docs/packages/trino-client/metadata) exposes — schemas, tables, views, and columns — with complex column types parsed into structured definitions that drive code generation. See [Key Concepts](/docs/lakeql/introduction/key-concepts) for how introspected metadata becomes generated files.

@@ -1,0 +1,12 @@
+---
+title: API Reference
+navTitle: API Reference
+description: Complete reference for the @lakeql/adapter-trino public API.
+apiReference:
+  - name: "@lakeql/adapter-trino"
+    file: "adapter-trino/src/index"
+---
+
+The complete public API of `@lakeql/adapter-trino`, generated from the package's TypeScript source.
+
+You register the adapter with [`trinoAdapterDefinition`](#trino-adapter-definition) in your config. The rest of the surface is the connection config ([`TrinoConnectionConfig`](#trino-connection-config), [`TrinoAuth`](#trino-auth)), the write strategies and their configs, the SQL dialect, the response normalizer, and the type mapper that the runtime wires together.

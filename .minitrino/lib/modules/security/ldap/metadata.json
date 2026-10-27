@@ -1,6 +1,8 @@
 {
   "description": "LDAP password authenticator module",
   "incompatibleModules": [],
-  "dependentModules": ["tls"],
+  "dependentModules": [
+    "tls"
+  ],
   "enterprise": false
 }

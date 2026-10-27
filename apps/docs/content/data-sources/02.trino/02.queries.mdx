@@ -1,0 +1,56 @@
+---
+title: Queries
+navTitle: Queries
+description: How reads and writes run through the Trino adapter.
+---
+
+The Trino adapter executes the SQL that the [query builder](/docs/packages/query-builder) produces, rendering it in the Trino SQL dialect and running it over the REST API. In normal operation you do not call the adapter directly — the generated query schemas and the API server drive it.
+
+## Reads
+
+A read goes through the adapter's read strategy: the query builder constructs the SQL from the GraphQL selection, filter, sorting, and paging; the Trino dialect renders it; the adapter runs it and decodes the positional response into keyed records. See [data flow](/docs/lakeql/architecture/data-flow).
+
+## Writes
+
+The Trino adapter offers two write strategies, selected by the data source's `writeConfig`:
+
+- **Storage** (default) — serializes records, uploads them to object storage, and registers them through Hive DDL. Selected when `strategy` is `"storage"` or omitted.
+- **INSERT** — writes via `INSERT INTO` with no object storage. Selected with `strategy: "insert"`, and supports batching (`batchSize`), optional `autoCreateTable`, and `tableProperties`.
+
+The INSERT strategy needs no object storage:
+
+```ts
+dataSources: {
+  warehouse: {
+    adapter: "trino",
+    connection: { /* ... */ },
+    writeConfig: { strategy: "insert", batchSize: 500 },
+  },
+}
+```
+
+The storage strategy writes Parquet to object storage, so its `writeConfig` carries a `files-sdk` instance (which owns the bucket, region, and credentials) and a serializer. These are live objects you construct in `lakeql.config.ts` — they are passed through to the write strategy as-is, not serialized:
+
+```ts
+import { Files } from "files-sdk"
+import { s3 } from "files-sdk/s3"
+import { parquetSerializer } from "@lakeql/storage/serializer/parquet"
+
+dataSources: {
+  warehouse: {
+    adapter: "trino",
+    connection: { /* ... */ },
+    writeConfig: {
+      // strategy defaults to "storage" when omitted
+      files: new Files({ adapter: s3({ bucket: "warehouse", region: "eu-central-1" }) }),
+      serializer: parquetSerializer(),
+      // externalLocationPrefix?: override the auto-derived s3a://<bucket> prefix
+      // keepShadowTables?: retain shadow tables after a successful swap
+    },
+  },
+}
+```
+
+The bucket and credentials live on the `files-sdk` adapter, not in any LakeQL-native field — the Trino adapter's config has no bucket/credential keys.
+
+See the [write pipeline](/docs/data-sources/write-pipeline) for load-strategy semantics and the storage wiring, and [`TrinoWriteConfig`](/docs/data-sources/trino/api-reference#trino-write-config) for the full option set.

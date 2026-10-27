@@ -8,5 +8,10 @@
 
 export { jsonSchemaToParquetSchema } from "./converter"
 export type { JsonSchema } from "./converter"
-export { writeParquet } from "./writer"
-export { recordsToColumnar } from "./columnar"
+export {
+  DEFAULT_ROW_GROUP_SIZE,
+  jsonSchemaToColumnDefs,
+  writeParquetStreaming,
+} from "./streaming"
+export type { ColumnDef, WriteParquetStreamingOptions } from "./streaming"
+export { transformRecord, transformRows } from "./row-transform"

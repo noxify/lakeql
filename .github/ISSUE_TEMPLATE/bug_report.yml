@@ -14,11 +14,15 @@ body:
       label: Package
       description: Which package is affected?
       options:
-        - adapters
+        - adapter-fabric
+        - adapter-trino
         - api
         - cli
         - column-parser
+        - config
         - create-app
+        - datasource
+        - fabric-client
         - file-generator
         - helpers
         - logger
@@ -26,9 +30,10 @@ body:
         - query-builder
         - response-transformer
         - schema-generator
+        - sql-read-strategy
+        - storage
         - trino-client
         - documentation
-        - endpoint-builder
         - other
     validations:
       required: true
@@ -42,35 +47,15 @@ body:
     validations:
       required: true
 
-  - type: markdown
-    attributes:
-      value: |
-        ### StackBlitz Reproduction Templates
-
-        If possible, please provide a minimal reproduction using one of our StackBlitz templates:
-
-        | Package | StackBlitz |
-        |---------|-----------|
-        | Generic (all packages) | [Open](https://stackblitz.com/fork/github/noxify/lakeql/tree/main/templates/stackblitz/generic) |
-        | column-parser | [Open](https://stackblitz.com/fork/github/noxify/lakeql/tree/main/templates/stackblitz/column-parser) |
-        | helpers | [Open](https://stackblitz.com/fork/github/noxify/lakeql/tree/main/templates/stackblitz/helpers) |
-        | logger | [Open](https://stackblitz.com/fork/github/noxify/lakeql/tree/main/templates/stackblitz/logger) |
-        | parquet | [Open](https://stackblitz.com/fork/github/noxify/lakeql/tree/main/templates/stackblitz/parquet) |
-        | query-builder | [Open](https://stackblitz.com/fork/github/noxify/lakeql/tree/main/templates/stackblitz/query-builder) |
-        | response-transformer | [Open](https://stackblitz.com/fork/github/noxify/lakeql/tree/main/templates/stackblitz/response-transformer) |
-        | schema-generator | [Open](https://stackblitz.com/fork/github/noxify/lakeql/tree/main/templates/stackblitz/schema-generator) |
-
   - type: textarea
     id: reproduction
     attributes:
       label: Steps to Reproduce
-      description: Steps to reproduce the behavior. If you created a StackBlitz reproduction, paste the URL here.
+      description: Steps to reproduce the behavior. A minimal, runnable reproduction (e.g. a small repository or gist) is very helpful.
       placeholder: |
         1. Install package...
         2. Run command...
         3. See error...
-
-        StackBlitz reproduction: https://stackblitz.com/...
     validations:
       required: true
 

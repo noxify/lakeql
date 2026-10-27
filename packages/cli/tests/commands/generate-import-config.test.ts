@@ -25,7 +25,10 @@ vi.mock(import("@/path-utils"), () => ({
 
 vi.mock(import("@/config"), () => ({
   resolveSourcePath: async (override?: string) => override ?? "/project",
-  loadConfig: async () => ({ sourcePath: "." }),
+  loadConfig: async () => ({
+    config: { dataSources: {}, sourcePath: "." },
+    adapters: [],
+  }),
 }))
 
 vi.mock(import("@lakeql/logger/console"), () => ({

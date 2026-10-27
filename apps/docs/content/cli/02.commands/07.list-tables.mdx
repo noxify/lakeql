@@ -1,0 +1,14 @@
+---
+title: list-tables
+navTitle: list-tables
+description: List the tables available in a schema.
+cliCommand: list-tables
+---
+
+`list-tables` prints the tables available in a schema, through a configured data source. Use it alongside [`list-schemas`](/docs/cli/commands/list-schemas) to find a table to introspect with [`pull`](/docs/cli/commands/pull).
+
+<Command variant="exec">
+  lakeql-cli list-tables --source warehouse --schema sales
+</Command>
+
+<CliCommandDetails command="list-tables" />

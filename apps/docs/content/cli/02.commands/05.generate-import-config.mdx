@@ -1,0 +1,14 @@
+---
+title: generate-import-config
+navTitle: generate-import-config
+description: Generate an import.config.mjs from already-pulled schemas.
+cliCommand: generate-import-config
+---
+
+`generate-import-config` writes an `import.config.mjs` from the schemas already generated under your source path. This file is a **bulk-pull config** for the CLI — it enumerates the generated endpoints so [`pull --bulk`](/docs/cli/commands/pull) can regenerate them in one run. It is not read by the API server, which discovers schemas by globbing the generated `query-schema`/`mutation-schema` files under its schema path.
+
+<Command variant="exec">lakeql-cli generate-import-config</Command>
+
+Run this after [`pull`](/docs/cli/commands/pull) has generated one or more endpoints. By default the file is written as `import.config.mjs` in the directory you run the command from; use `--output` to write elsewhere, or `--force` to overwrite an existing file.
+
+<CliCommandDetails command="generate-import-config" />

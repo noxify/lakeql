@@ -30,6 +30,10 @@ export interface GeneratePipelineOptions {
   skipRegistry?: boolean
   /** Optional source path override for config registry resolution. */
   sourcePathOverride?: string
+  /** The adapter type for this endpoint. Defaults to `"trino"`. */
+  adapter?: string
+  /** The DataSource name referencing a configured DataSource. Defaults to `"default"`. */
+  dataSourceName?: string
 }
 
 /**
@@ -60,7 +64,14 @@ export interface GeneratePipelineResult {
 export async function generateEndpoint(
   options: GeneratePipelineOptions
 ): Promise<GeneratePipelineResult> {
-  const { definition, outputDir, skipRegistry, sourcePathOverride } = options
+  const {
+    definition,
+    outputDir,
+    skipRegistry,
+    sourcePathOverride,
+    adapter = "trino",
+    dataSourceName = "default",
+  } = options
   const { catalog, schema, tableName, fields } = definition
 
   // 1. Derive names from schema and tableName
@@ -112,6 +123,8 @@ export async function generateEndpoint(
 
   // 5. Generate config.ts (with mutationName for mutation support)
   const generatedConfig = generateConfig({
+    adapter,
+    dataSourceName,
     catalog,
     queryName,
     schema,
@@ -120,11 +133,7 @@ export async function generateEndpoint(
     storageConfig: definition.mutation
       ? {
           loadStrategy: definition.mutation.loadStrategy,
-          type: definition.mutation.type,
-          bucket: definition.mutation.bucket,
           basePath: definition.mutation.basePath,
-          region: definition.mutation.region,
-          endpoint: definition.mutation.endpoint,
           partitioning:
             definition.mutation.loadStrategy === "full_load"
               ? undefined
