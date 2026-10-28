@@ -9,6 +9,9 @@ allowBuilds:
   msw: false
   sharp: false
 
+auditConfig:
+  ignoreGhsas:
+    - GHSA-gcqx-w48m-w2h4
 minimumReleaseAgeExclude:
   - hono@4.13.14
 overrides:

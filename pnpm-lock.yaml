@@ -252,9 +252,6 @@ importers:
       '@renoun/screenshot':
         specifier: 0.3.3
         version: 0.3.3
-      '@tailwindcss/typography':
-        specifier: 0.5.20
-        version: 0.5.20(tailwindcss@4.3.3)
       '@zbsearch/plugin-data-persistence':
         specifier: 4.0.1
         version: 4.0.1
@@ -348,9 +345,6 @@ importers:
       server-only:
         specifier: 0.0.1
         version: 0.0.1
-      shadcn:
-        specifier: 4.22.2
-        version: 4.22.2(supports-color@10.2.2)
       tailwind-merge:
         specifier: 3.7.0
         version: 3.7.0
@@ -363,9 +357,6 @@ importers:
       ts-morph:
         specifier: 28.0.0
         version: 28.0.0
-      tw-animate-css:
-        specifier: 1.4.0
-        version: 1.4.0
       unified:
         specifier: 11.0.5
         version: 11.0.5
@@ -409,6 +400,9 @@ importers:
       '@tailwindcss/postcss':
         specifier: 4.3.3
         version: 4.3.3
+      '@tailwindcss/typography':
+        specifier: 0.5.20
+        version: 0.5.20(tailwindcss@4.3.3)
       '@types/mdast':
         specifier: 4.0.4
         version: 4.0.4
@@ -433,12 +427,18 @@ importers:
       postcss:
         specifier: 8.5.32
         version: 8.5.32
+      shadcn:
+        specifier: 4.22.2
+        version: 4.22.2(supports-color@10.2.2)
       tailwindcss:
         specifier: 4.3.3
         version: 4.3.3
       tsx:
         specifier: 4.23.15
         version: 4.23.15
+      tw-animate-css:
+        specifier: 1.4.0
+        version: 1.4.0
       typescript:
         specifier: 6.0.3
         version: 6.0.3
