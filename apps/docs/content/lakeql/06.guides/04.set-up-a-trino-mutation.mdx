@@ -1,0 +1,139 @@
+---
+title: Set Up a Trino Mutation
+navTitle: Set Up a Trino Mutation
+description: Configure writeConfig, define a mutation endpoint, generate it, and grant write permission for a Trino data source, end to end.
+---
+
+This guide takes a configured Trino [data source](/docs/data-sources/trino/connection) all the way to a working, write-enabled endpoint: set `writeConfig`, author the endpoint definition, generate the files, and grant the matching permission.
+
+Writes are Trino-only today — the Fabric adapter's capability table lists Writes as "No — read-only adapter." See [Microsoft Fabric](/docs/data-sources/fabric) for its capability table.
+
+## Choose a Write Strategy
+
+The Trino adapter offers two write strategies, selected by the data source's `writeConfig`. Pick one before you define the endpoint:
+
+| Strategy | When to use it |
+| --- | --- |
+| **INSERT** | No object storage available, or small/transactional batches; writes via `INSERT INTO`. |
+| **Storage** | Large or append-heavy loads into object storage; serializes to Parquet and registers via DDL. |
+
+For the mechanics every write-capable adapter shares, see [Writing](/docs/data-sources/writing); for the full option list and the storage-strategy snippet, see [Write Config](/docs/data-sources/trino/write-config).
+
+This walkthrough uses **INSERT**, since it needs no object-storage infrastructure and keeps every step self-contained. Declare the data source the rest of this guide references by name, with an INSERT `writeConfig`:
+
+```ts
+import { defineConfig } from "@lakeql/config"
+import { trinoAdapterDefinition } from "@lakeql/adapter-trino"
+
+export default defineConfig({
+  sourcePath: "src",
+  adapters: [trinoAdapterDefinition],
+  dataSources: {
+    warehouse: {
+      adapter: "trino",
+      connection: {
+        host: "https://trino.example.com",
+        port: 8080,
+        catalog: "hive",
+        auth: { type: "basic", username: "svc", password: "..." },
+      },
+      writeConfig: { strategy: "insert", batchSize: 500 },
+    },
+  },
+})
+```
+
+For the storage strategy the shape is identical, just with `writeConfig` swapped for the object-storage form — see [Write Config](/docs/data-sources/trino/write-config) for that exact snippet and the full option list.
+
+## Author the Endpoint Definition
+
+Write an `endpoint.json` that sets `dataSource` explicitly and adds a `mutation` block. The schema requires both `loadStrategy` and `basePath`, even for the INSERT strategy — INSERT ignores `basePath`, but the definition will not validate without it.
+
+```json
+{
+  "version": "1.0",
+  "catalog": "hive",
+  "schema": "sales",
+  "tableName": "orders",
+  "dataSource": "warehouse",
+  "fields": [
+    { "name": "id", "type": "Integer", "options": { "required": true } },
+    { "name": "status", "type": "String", "options": { "required": true } }
+  ],
+  "mutation": {
+    "loadStrategy": "append",
+    "basePath": "sales/orders"
+  }
+}
+```
+
+See [Mutations](/docs/lakeql/endpoints/mutations) for the full `mutation` field table and load-strategy definitions.
+
+## Generate the Files
+
+Generate the endpoint from the definition with [`create-endpoint`](/docs/cli/commands/create-endpoint):
+
+<Command variant="exec">
+  lakeql-cli create-endpoint --from-file ./endpoint.json
+</Command>
+
+The generated files land under `schemas/custom/<catalog>/<schema>/<table>/` — here `schemas/custom/hive/sales/orders/`.
+
+## Grant a Mutation Permission
+
+Writes are denied by default, so add a positive `Mutation` rule scoped to the data source and table you just generated. It uses the same `createPermission`/`rule` builder as a `Query` rule, grouped under `Mutation`:
+
+```ts
+import { createPermission } from "@lakeql/api/helpers"
+import type { Permission } from "@lakeql/config"
+
+export const permissions: Permission[] = [
+  {
+    name: "ingestion-service",
+    useSystemUser: false,
+    permissions: {
+      Query: [],
+      Mutation: [
+        createPermission("warehouse", (rule) => [
+          rule({ schema: "sales", tables: ["orders"] }),
+        ]),
+      ],
+    },
+  },
+]
+```
+
+See [Granting Write Access](/docs/api/authentication/permissions#granting-write-access) for the shape and the deny-by-default default.
+
+## Replace a Pulled Endpoint with a Mutation-Enabled One
+
+If you already ran `pull` for this table, you have a read-only endpoint under `schemas/generated/<dataSource>/<catalog>/<schema>/<table>/`, and the steps above added a mutation-enabled custom one under `schemas/custom/<catalog>/<schema>/<table>/`. To avoid registering the same table twice:
+
+<Steps>
+
+<Step>Add the data source back to the pulled definition</Step>
+
+`pull` does not serialize the `dataSource` it used into `endpoint.json`, so add it back by hand before generating the custom endpoint. See the `<Warning>` on [Definition Format](/docs/lakeql/endpoints/definition-format).
+
+<Step>Remove the pulled directory</Step>
+
+After generating the custom endpoint, delete the old `schemas/generated/<dataSource>/<catalog>/<schema>/<table>/` directory (or avoid re-running `pull` for that table). The server imports every `query-schema.ts`/`mutation-schema.ts` under `schemas/**`, and the GraphQL field name is derived only from `schema` + `tableName` — identical for the pulled and custom versions of the same table, so leaving both in place registers the same field name twice.
+
+<Step>Rebuild the registry</Step>
+
+Re-run [`create-registry`](/docs/cli/commands/create-registry) (or let `create-endpoint` run it by default) so `config-registry.ts` reflects only the surviving custom entry.
+
+</Steps>
+
+## Where to Next
+
+<PageList
+  variant="list"
+  items={[
+    "data-sources/writing",
+    "data-sources/trino/write-config",
+    "lakeql/endpoints/mutations",
+    "lakeql/guides/mutations",
+    "api/authentication/permissions",
+  ]}
+/>

@@ -21,7 +21,21 @@ dataSources: {
 }
 ```
 
-The storage strategy writes Parquet to object storage, so its `writeConfig` carries a `files-sdk` instance (which owns the bucket, region, and credentials) and a serializer. These are live objects you construct in `lakeql.config.ts` — they are passed through to the write strategy as-is, not serialized:
+<DescriptionList>
+  <DescriptionListItem label="Object storage">
+    The storage strategy writes Parquet files to object storage you provide.
+  </DescriptionListItem>
+  <DescriptionListItem label="SDK ownership">
+    The bucket, region, and credentials live on a `files-sdk` instance, not on
+    any LakeQL-native field — the Trino adapter's config has no
+    bucket/credential keys.
+  </DescriptionListItem>
+  <DescriptionListItem label="Serialization">
+    A serializer converts records to the storage file format before upload.
+  </DescriptionListItem>
+</DescriptionList>
+
+Construct both as live objects in `lakeql.config.ts`; they are passed through to the write strategy as-is, not serialized:
 
 ```ts
 import { Files } from "files-sdk"
@@ -42,8 +56,6 @@ dataSources: {
   },
 }
 ```
-
-The bucket and credentials live on the `files-sdk` adapter, not in any LakeQL-native field — the Trino adapter's config has no bucket/credential keys.
 
 <Warning>
   A storage write call without a resolved `basePath` throws before any file is

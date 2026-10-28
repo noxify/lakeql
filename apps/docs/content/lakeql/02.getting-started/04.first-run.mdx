@@ -16,7 +16,13 @@ Run interactively, it prompts for the source, schema, and table; or pass them as
 
 ## Start the Server
 
-Run the project's dev script (the scaffolded project includes one). The server loads the generated schema and serves GraphQL at `/graphql`, with a health check at `/live`.
+Start the generated dev script:
+
+<Command variant="run">dev</Command>
+
+This runs the scaffolded `dev` script (`node --env-file=.env --import tsx ./src/index.ts`), which loads the generated schema and serves GraphQL at `/graphql`, with a health check at `/live`.
+
+Check that the server started — a request to `/live` is expected to succeed, and the query below is expected to run against your generated type. (Exact response bodies depend on your data and are not asserted here.)
 
 ## Run a Query
 

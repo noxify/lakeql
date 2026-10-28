@@ -18,7 +18,7 @@ LakeQL sits on top of this stack and exposes the data through GraphQL, without a
 
 ## Data Sources and Adapters
 
-A **data source** is a named connection to a query engine, declared in `lakeql.config.ts`. An **adapter** is the package that teaches LakeQL how to talk to a particular engine — it owns connection handling, the SQL dialect, authentication forwarding, and response decoding.
+A **data source** is a named connection to a query engine, declared in `lakeql.config.ts`. An **adapter** is the package that teaches LakeQL how to talk to a particular engine. It owns connection handling, the SQL dialect, authentication forwarding, and response decoding.
 
 You register the adapters a project may use, then declare named data sources that pick one:
 

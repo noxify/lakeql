@@ -50,6 +50,17 @@ auth: { type: "bearer", token: "..." }
   field but never include passwords or tokens.
 </Note>
 
+## Troubleshooting
+
+<Note title="Common setup issues">
+- **Coordinator unreachable** — check that `host` includes the protocol (`https://` or `http://`) and that `port` matches the coordinator's HTTP(S) port; a connection failure usually points to network/firewall reachability rather than a config typo.
+
+- **Authentication rejected** — check that `auth.type` matches what the coordinator expects (`basic` vs. `bearer`) and that the credentials have not expired or been rotated.
+
+- **Catalog or schema not visible** — check that the configured `catalog` (and `schema`, if set) exist on the coordinator and that the authenticated user has access to them.
+
+</Note>
+
 ## Per-Request Impersonation
 
 A Trino data source can run queries as the calling user by setting an `impersonationResolver` on the data source. See [Trino user impersonation](/docs/api/authentication/trino-user-impersonation).

@@ -50,6 +50,30 @@ Reads and writes default differently when no matching permission entry exists:
 
 So an empty `permissions` array lets human users read, but no one can write until you add `Mutation` rules.
 
+## Granting Write Access
+
+A positive `Mutation` rule un-denies writes for the tables it names. The shape is identical to `Query`'s — the same `createPermission`/`rule` builder, grouped under `Mutation` instead — and the data source, schema, and table matching rules (wildcards, strict scope matching) from [Building Rules](#building-rules) apply unchanged:
+
+```ts
+import { createPermission } from "@lakeql/api/helpers"
+import type { Permission } from "@lakeql/config"
+
+export const permissions: Permission[] = [
+  {
+    name: "ingestion-service",
+    useSystemUser: false,
+    permissions: {
+      Query: [],
+      Mutation: [
+        createPermission("warehouse", (rule) => [
+          rule({ schema: "sales", tables: ["orders"] }),
+        ]),
+      ],
+    },
+  },
+]
+```
+
 ## Custom Resolvers
 
 For logic beyond the declarative rules, provide `hasReadPermission` / `hasWritePermission` resolvers on the config. They override the built-in checks. See [`ReadPermissionResolver`](/docs/api/api-reference#read-permission-resolver) and [`WritePermissionResolver`](/docs/api/api-reference#write-permission-resolver).

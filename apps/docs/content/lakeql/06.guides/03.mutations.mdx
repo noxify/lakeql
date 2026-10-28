@@ -12,6 +12,8 @@ A write strategy is only available when the adapter reports the capabilities it 
 
 A data source configured without a `writeConfig` has no write strategy: `runtime.getWriteStrategy(name)` throws `WriteStrategyNotConfiguredError`.
 
+For the full step-by-step — `writeConfig`, endpoint definition, generation, and permission — see [Set Up a Trino Mutation](/docs/lakeql/guides/set-up-a-trino-mutation).
+
 ## Permissions
 
 Writes are authorized by the `writePermission` scope, backed by your [permission rules](/docs/api/authentication/permissions) under `Mutation`. A caller without write access to the target table is denied before the write runs.

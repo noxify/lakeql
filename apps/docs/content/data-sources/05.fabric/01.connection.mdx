@@ -54,6 +54,17 @@ auth: { type: "bearer", token: "..." }
 
 The `oauth2` form accepts an optional `scope` field. It is validated but currently has no effect — the token is always acquired for the Fabric SQL scope (`https://database.windows.net/.default`).
 
+## Troubleshooting
+
+<Note title="Common setup issues">
+- **App registration not recognized** — check that `tenantId` and `clientId` match an app registration that exists in the target tenant, and that `clientSecret` has not expired.
+
+- **SQL endpoint unreachable** — check that `host` is the workspace's Fabric SQL analytics endpoint (not the OneLake or Power BI endpoint) and that `port` is `1433`.
+
+- **Permission denied on the warehouse** — check that the app registration (or impersonated user) has been granted access to the target warehouse/lakehouse in Fabric's own workspace permissions, in addition to the Azure AD app registration existing.
+
+</Note>
+
 ## Per-Request Identity
 
 The Fabric client supports an on-behalf-of flow: a per-query bearer token runs a statement as the calling identity rather than the service credential. A Fabric data source wires this through its `impersonationResolver`. See [authentication](/docs/api/authentication).
