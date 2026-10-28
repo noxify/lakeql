@@ -152,7 +152,16 @@ jobs:
 
             if (otherPackages.length > 0) {
               const packageLines = otherPackages.map((pkg) => `- \`${pkg.name}\`: \`pnpm add ${pkg.url}\``);
-              sections.push(["### \ud83d\udce5 Packages", "", ...packageLines].join("\n"));
+              sections.push(
+                [
+                  "<details>",
+                  `<summary><b>\ud83d\udce5 Packages</b> (${otherPackages.length})</summary>`,
+                  "",
+                  ...packageLines,
+                  "",
+                  "</details>",
+                ].join("\n"),
+              );
             }
 
             if (templates.length > 0) {
