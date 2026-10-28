@@ -18,7 +18,7 @@ LakeQL sits on top of this stack and exposes the data through GraphQL, without a
 
 ## Data Sources and Adapters
 
-A **data source** is a named connection to a query engine, declared in `lakeql.config.ts`. An **adapter** is the package that teaches LakeQL how to talk to a particular engine. It owns connection handling, the SQL dialect, authentication forwarding, and response decoding.
+A **data source** is a named connection to a query engine, declared in `lakeql.config.ts`. An **adapter** is the package that teaches LakeQL how to talk to a particular engine. It owns connection handling, the SQL **[dialect](/docs/lakeql/glossary)**, authentication forwarding, and response decoding.
 
 You register the adapters a project may use, then declare named data sources that pick one:
 
@@ -110,10 +110,14 @@ The query builder constructs the field selection, the `WHERE` clause, ordering, 
 
 ## Authentication and Permissions
 
-The API server validates an incoming token, resolves the authenticated user, and checks per-table read and write permissions before any query runs. A data source can additionally forward the caller's identity to the engine — for example, Trino user impersonation. See [Authentication](/docs/api/authentication).
+The API server validates an incoming token, resolves the authenticated user, and checks per-table read and write permissions before any query runs. A data source can additionally forward the caller's identity to the engine — for example, Trino user **[impersonation](/docs/lakeql/glossary)**. See [Authentication](/docs/api/authentication).
 
 ## Where to Next
 
 <PageList
-  items={["lakeql/introduction/package-map", "lakeql/getting-started"]}
+  items={[
+    "lakeql/introduction/package-map",
+    "lakeql/glossary",
+    "lakeql/getting-started",
+  ]}
 />

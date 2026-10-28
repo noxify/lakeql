@@ -30,6 +30,12 @@ export const permissions: Permission[] = [
 
 [`createPermission`](/docs/api/api-reference#create-permission) builds a rule scoped to one data source. The callback receives a `rule` builder; each `rule({ schema, tables })` grants access to the listed tables within a schema. Group rules under `Query` (reads) and `Mutation` (writes).
 
+<ApiReference
+  variant="table"
+  file="config/src/auth-types"
+  name="PermissionRule"
+/>
+
 ### Wildcards and Scope Matching
 
 Rules support wildcards: `schema` accepts `"*"` to match any schema, `tables` accepts `["*"]` to match any table, and omitting `catalog` matches any catalog.

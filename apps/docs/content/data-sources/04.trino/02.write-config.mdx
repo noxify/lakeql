@@ -21,6 +21,14 @@ dataSources: {
 }
 ```
 
+<ApiReference
+  variant="table"
+  file="adapter-trino/src/config"
+  name="TrinoInsertWriteConfig"
+/>
+
+The storage strategy's fields are not LakeQL-native — the bucket, region, and credentials live on a `files-sdk` instance, so they are not part of the adapter's config type:
+
 <DescriptionList>
   <DescriptionListItem label="Object storage">
     The storage strategy writes Parquet files to object storage you provide.

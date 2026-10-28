@@ -6,12 +6,13 @@ description: The optional mutation block and its load strategies.
 
 Adding a `mutation` block to `endpoint.json` makes the endpoint writable. It's either `false` (explicitly disabled, same as omitting it) or a config object with a `loadStrategy` and a `basePath`.
 
-| Key | Required | Type | Notes |
-| --- | --- | --- | --- |
-| `loadStrategy` | yes | `"append"` \| `"full_load"` \| `"full_load_append"` | See below. |
-| `basePath` | yes | `string` | Required by the schema for every load strategy, even ones that don't use it (see note below). |
-| `partitioning` | no | `boolean` or `string` | `true` partitions by write timestamp (default), `false` disables partitioning, or a string names a field/custom format. |
-| `partitioningFormat` | no | `string` | Partition path granularity: `"year"`, `"year/month"`, or `"year/month/day"`. |
+<ApiReference
+  variant="table"
+  file="schema-generator/src/endpoint-schema"
+  name="MutationConfig"
+/>
+
+`loadStrategy` accepts one of three values — `full_load`, `full_load_append`, or `append` — defined under [Load strategies](#load-strategies) below. `basePath` is required for every one of them, even those that don't use it (see the note below).
 
 ### Where the data goes
 
