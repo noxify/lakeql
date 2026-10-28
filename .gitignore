@@ -71,3 +71,8 @@ examples/*
 
 # Workflow/agent scratch artifacts (investigations, designs, reviews).
 .agents/
+
+# Local feature specs (requirements/design/tasks). Planning artifacts, kept
+# out of version control like .agents/. Note: only .kiro/specs/ is ignored —
+# .kiro/steering/, .kiro/hooks/, and .kiro/workflows/ remain tracked.
+.kiro/specs/
