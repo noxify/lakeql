@@ -17,8 +17,6 @@ allowBuilds:
 auditConfig:
   ignoreGhsas:
     - GHSA-gcqx-w48m-w2h4
-minimumReleaseAgeExclude:
-  - hono@4.13.14
 overrides:
   # Security fixes for transitive dependencies. Only the entries still
   # load-bearing are kept — verified with `pnpm dlx pnpm-override-prune`, which
