@@ -20,8 +20,7 @@ jobs:
   dependabot:
     runs-on: ubuntu-latest
     if: >-
-      github.event.pull_request.user.login == 'dependabot[bot]'
-      && github.event.pull_request.head.repo.full_name == github.repository
+      github.event.pull_request.user.login == 'dependabot[bot]' && github.event.pull_request.head.repo.full_name == github.repository
     steps:
       - name: Fetch Dependabot metadata
         id: metadata
@@ -31,8 +30,7 @@ jobs:
 
       - name: Enable auto-merge for minor/patch updates
         if: >-
-          steps.metadata.outputs.update-type == 'version-update:semver-minor'
-          || steps.metadata.outputs.update-type == 'version-update:semver-patch'
+          steps.metadata.outputs.update-type == 'version-update:semver-minor' || steps.metadata.outputs.update-type == 'version-update:semver-patch'
         run: gh pr merge --auto --squash "$PR_URL"
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
