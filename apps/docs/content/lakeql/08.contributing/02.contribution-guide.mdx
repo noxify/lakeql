@@ -184,6 +184,19 @@ When a pull request touches `packages/**`, CI publishes a [pkg.pr.new](https://p
 
 This behavior is CI-only infrastructure, driven by build-time environment variables the pipeline sets; the released `create-lakeql-app` is unaffected and keeps resolving the template from `main` and dependencies from npm `latest`.
 
+### Running a preview build
+
+The PR comment from pkg.pr.new lists an install URL for each package. To scaffold with the `create-app` preview, run its URL as a one-off (use `pnpm dlx` or `npx` with the full URL — not `pnpm create`, which expects a package specifier rather than a URL):
+
+```bash
+pnpm dlx --config.block-exotic-subdeps=false \
+  https://pkg.pr.new/noxify/lakeql/@lakeql/create-app@<sha> my-app
+```
+
+The `--config.block-exotic-subdeps=false` flag is required with pnpm: the preview build of `create-app` carries its own `@lakeql/scaffold` dependency as a pkg.pr.new URL, and recent pnpm versions block URL dependencies nested inside a package by default (`ERR_PNPM_EXOTIC_SUBDEP`). `npx` does not need the flag.
+
+To confirm the self-consistency, check the generated project's `package.json`: every `@lakeql/*` dependency should point at `https://pkg.pr.new/noxify/lakeql/<package>@<sha>` (the same commit), while non-`@lakeql/*` dependencies keep their normal npm versions.
+
 ## Pull Requests
 
 ### Workflow
