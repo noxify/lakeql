@@ -126,10 +126,8 @@ jobs:
             }
 
             const packages = Array.isArray(output.packages) ? output.packages : [];
-            const templates = Array.isArray(output.templates) ? output.templates : [];
 
             const createAppPackage = packages.find((pkg) => pkg.name === "@lakeql/create-app");
-            const otherPackages = packages.filter((pkg) => pkg.name !== "@lakeql/create-app");
 
             const identifier = "<!-- lakeql-pkg-pr-new-comment -->";
 
@@ -150,23 +148,29 @@ jobs:
               sections.push(createAppLines.join("\n"));
             }
 
-            if (otherPackages.length > 0) {
-              const packageLines = otherPackages.map((pkg) => `- \`${pkg.name}\`: \`pnpm add ${pkg.url}\``);
-              sections.push(
+            if (packages.length > 0) {
+              const packageBlocks = packages.map((pkg) =>
                 [
                   "<details>",
-                  `<summary><b>\ud83d\udce5 Packages</b> (${otherPackages.length})</summary>`,
+                  `<summary><b>${pkg.name}</b></summary>`,
                   "",
-                  ...packageLines,
+                  "```sh",
+                  `pnpm add ${pkg.url}`,
+                  "```",
                   "",
                   "</details>",
                 ].join("\n"),
               );
+              sections.push(["### \ud83d\udce5 Packages", "", ...packageBlocks].join("\n"));
             }
 
-            if (templates.length > 0) {
-              const templateLines = templates.map((tpl) => `- [${tpl.name}](${tpl.url})`);
-              sections.push(["### \ud83e\uddea Templates", "", ...templateLines].join("\n"));
+            const headSha =
+              (context.payload.pull_request && context.payload.pull_request.head.sha) ||
+              context.sha;
+            const shortSha = headSha ? headSha.slice(0, 7) : "";
+            if (headSha) {
+              const commitUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/commit/${headSha}`;
+              sections.push(`_commit: [\`${shortSha}\`](${commitUrl})_`);
             }
 
             const body = sections.join("\n\n");
