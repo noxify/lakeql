@@ -158,6 +158,8 @@ export interface NavigationGroup {
   label: string
   separator: boolean
   items: TreeItem[]
+  url?: string
+  external?: boolean
 }
 
 export function flattenNavigationItems(items: TreeItem[]): TreeItem[] {
@@ -229,6 +231,8 @@ export const getCollectionNavigation = cache(
             label: child.title,
             separator: child.separator ?? false,
             items: child.children,
+            url: child.url,
+            external: child.external,
           })
         }
       }

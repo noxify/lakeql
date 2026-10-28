@@ -175,9 +175,32 @@ export const DocsSidebar = ({
             <SidebarGroup key={group.label + groupIdx} className="px-0">
               {group.separator && <SidebarSeparator className="my-2" />}
 
-              {group.label && (
-                <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
-              )}
+              {group.label &&
+                (group.url ? (
+                  group.external ? (
+                    <SidebarGroupLabel
+                      className="hover:text-foreground transition-colors"
+                      render={
+                        <a
+                          href={group.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        />
+                      }
+                    >
+                      {group.label}
+                    </SidebarGroupLabel>
+                  ) : (
+                    <SidebarGroupLabel
+                      className="hover:text-foreground transition-colors"
+                      render={<Link href={group.url} prefetch={false} />}
+                    >
+                      {group.label}
+                    </SidebarGroupLabel>
+                  )
+                ) : (
+                  <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+                ))}
               <SidebarGroupContent>
                 <SidebarMenu>
                   {group.items.map((item) => (
