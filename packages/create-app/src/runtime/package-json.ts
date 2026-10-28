@@ -1,8 +1,20 @@
 import { readFileSync, writeFileSync } from "node:fs"
 import path from "node:path"
 
+import { getBuildEnv } from "./build-env"
+
 interface NpmPackageData {
   version: string
+}
+
+const { previewSha } = getBuildEnv()
+
+/**
+ * Returns the `https://pkg.pr.new` preview install URL for a `@lakeql/*`
+ * package at the build-time preview SHA.
+ */
+function previewVersion(packageName: string): string {
+  return `https://pkg.pr.new/noxify/lakeql/${packageName}@${previewSha}`
 }
 
 async function getLatestVersion(packageName: string): Promise<string> {
@@ -65,8 +77,18 @@ export async function updatePackageJson(
         .map(([name]) => ({ name, target: "devDependencies" as const })),
     ]
 
+    // During a pkg.pr.new preview build (previewSha non-empty), resolve
+    // `@lakeql/*` deps to this same build's preview URL so the scaffolded
+    // project is self-consistent with the feature branch under test.
+    // Non-`@lakeql/*` deps always resolve via npm `latest`, and the whole
+    // branch falls back to today's npm-only behavior when previewSha is
+    // empty (the released build).
     const versions = await Promise.all(
-      workspaceDeps.map(({ name }) => getLatestVersion(name))
+      workspaceDeps.map(({ name }) =>
+        previewSha && name.startsWith("@lakeql/")
+          ? Promise.resolve(previewVersion(name))
+          : getLatestVersion(name)
+      )
     )
 
     for (const [i, { name, target }] of workspaceDeps.entries()) {

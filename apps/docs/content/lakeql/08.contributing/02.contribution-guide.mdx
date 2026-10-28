@@ -171,6 +171,19 @@ Return an empty array instead of throwing when Trino returns zero rows.
   These are managed by Tegami during releases.
 </Warning>
 
+## Testing create-app on a Feature Branch
+
+When a pull request touches `packages/**`, CI publishes a [pkg.pr.new](https://pkg.pr.new) preview build of every package, including `@lakeql/create-app`. That preview build of `create-app` is self-consistent: it downloads the starter template from the PR's own branch and resolves `@lakeql/*` dependencies to that same commit's pkg.pr.new preview versions, instead of the `main` template and npm `latest` packages.
+
+<Note>
+  This means a maintainer can e2e-test `create-app` end to end against a feature
+  branch — scaffold a project with the preview build and it will pull in the
+  branch's own template and packages — rather than only being able to test
+  against `main` + npm `latest`.
+</Note>
+
+This behavior is CI-only infrastructure, driven by build-time environment variables the pipeline sets; the released `create-lakeql-app` is unaffected and keeps resolving the template from `main` and dependencies from npm `latest`.
+
 ## Pull Requests
 
 ### Workflow

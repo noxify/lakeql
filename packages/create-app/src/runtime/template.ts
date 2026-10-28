@@ -4,7 +4,12 @@ import path from "node:path"
 
 import { downloadTemplate as download } from "giget"
 
+import { getBuildEnv } from "./build-env"
+
 const TEMPLATE_PATH = "templates/app"
+const TEMPLATE_REPO = "github:noxify/lakeql"
+
+const { templateRef } = getBuildEnv()
 
 /** Directory/file names never copied from a local template. */
 const LOCAL_COPY_EXCLUDES = new Set([
@@ -34,9 +39,17 @@ export async function downloadTemplate(
     return
   }
 
-  await download(`github:noxify/lakeql/${TEMPLATE_PATH}`, {
+  const source = templateRef
+    ? `${TEMPLATE_REPO}/${TEMPLATE_PATH}#${templateRef}`
+    : `${TEMPLATE_REPO}/${TEMPLATE_PATH}`
+
+  await download(source, {
     dir: targetDir,
     offline: false,
+    // Bypass giget's on-disk cache when a ref is pinned so a branch ref
+    // always pulls its latest commit rather than a stale cached tarball.
+    // The default (release) path keeps giget's normal caching behavior.
+    force: templateRef !== "",
   })
 }
 

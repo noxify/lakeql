@@ -98,6 +98,9 @@ jobs:
         uses: ./.github/setup
 
       - name: Build
+        env:
+          LAKEQL_TEMPLATE_REF: ${{ github.event.pull_request.head.ref }}
+          LAKEQL_PKG_SHA: ${{ github.event.pull_request.head.sha }}
         run: pnpm build:pkg
 
       - run: pnpx pkg-pr-new publish --commentWithSha --packageManager=pnpm ./packages/*
