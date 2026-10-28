@@ -54,3 +54,12 @@ A read-only endpoint with three flat fields and no mutation:
 ```
 
 Run it through [`create-endpoint`](/docs/cli/commands/create-endpoint) to generate the same `config.ts`, `interface.ts`, `query-schema.ts`, `json-schema.json`, and `endpoint.json` that [`pull`](/docs/cli/commands/pull) would have produced for an equivalent live table. Because there's no `mutation` block, no `mutation-schema.ts` is written.
+
+<Warning>
+  `pull` does not write the `dataSource` it used into the generated
+  `endpoint.json` — the field only flows into `config.ts`. If you recreate a
+  pulled endpoint from its `endpoint.json` with `create-endpoint --from-file`
+  (for example, re-running it for a Fabric data source), add the `dataSource`
+  field back by hand first. Without it, generation falls back to the `"default"`
+  data source and the Trino adapter.
+</Warning>

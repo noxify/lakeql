@@ -18,6 +18,13 @@ To run non-interactively, provide the target directly:
 
 Generated files are written under your configured source path, organized by data source, catalog, and schema. See [Key Concepts](/docs/lakeql/introduction/key-concepts) for the generated-file layout. For generating many endpoints at once, use `--bulk` with a bulk config.
 
+<Note>
+  `pull` always generates a read-only endpoint (`mutation: false`): it does not
+  add a `Mutation` root field or otherwise make the endpoint writable. To enable
+  writes, add a `mutation` block to the generated `endpoint.json` and regenerate
+  — see [Mutations](/docs/lakeql/endpoints/mutations).
+</Note>
+
 <Warning>
   `pull` recreates the endpoint's output directory: it recursively deletes the
   target table's generated folder before writing. Do not keep hand-edited files

@@ -5,15 +5,15 @@ description: How LakeQL endpoints are generated, from a live table or from a def
 separator: true
 ---
 
-An **endpoint** is the generated, typed surface for a single table: a query field (and optionally a mutation field) in the GraphQL schema, backed by a config, an interface, and a validated schema. You get there one of two ways, and both produce the exact same generated output.
+An **endpoint** is the generated, typed surface for a single table: a query field (and optionally a mutation field) in the GraphQL schema, backed by a config, an interface, and a validated schema. You get there one of two ways, and both produce the same per-table file set and format — but not to the same place, and not fully interchangeably.
 
-## Two paths, one output
+## Two paths, same file set, different directories
 
 [`pull`](/docs/cli/commands/pull) introspects a live table through its data source — it reads the columns, types, and nullability from the query engine and derives the field definitions for you. It's the fastest path when the data source is reachable at generation time.
 
 [`create-endpoint --from-file <definition.json>`](/docs/cli/commands/create-endpoint) generates from a hand-written or committed JSON definition instead. Use it when you can't reach the data source at generation time, when you want an endpoint for data that isn't introspectable in the usual way, or when you want to keep the definition under version control and regenerate deterministically.
 
-Every table `pull` generates also writes an `endpoint.json` alongside its other files, so the two paths are fully interchangeable: you can recreate any pulled endpoint later with `create-endpoint --from-file`, and hand-write a definition that's indistinguishable from one `pull` would have produced. The pages in this section document that `endpoint.json` format.
+Every table `pull` generates also writes an `endpoint.json` alongside its other files, using the same format `create-endpoint --from-file` consumes. That doesn't make the two paths interchangeable without care, though: `pull` does not serialize the `dataSource` it used into `endpoint.json`, so recreating a pulled endpoint later with `create-endpoint --from-file` needs the `dataSource` field added back by hand — otherwise generation falls back to the `default` data source. The pages in this section document that `endpoint.json` format.
 
 <Note>
   This section covers the `endpoint.json` shape itself. For the CLI flags,
@@ -24,7 +24,7 @@ Every table `pull` generates also writes an `endpoint.json` alongside its other 
 
 ## What gets generated
 
-Both commands write the same set of files per table, under your configured source path, organized by data source, catalog, and schema:
+Both commands write the same set of files per table, under your configured source path. `pull` organizes them by data source, catalog, and schema (`schemas/generated/<dataSource>/<catalog>/<schema>/<table>/`); `create-endpoint` writes to a data-source-independent path instead (`schemas/custom/<catalog>/<schema>/<table>/`):
 
 <FileTree
   files={[
