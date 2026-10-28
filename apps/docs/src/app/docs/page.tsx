@@ -140,15 +140,21 @@ export default async function DocsIndexPage() {
                 )
 
                 if (link.href) {
+                  // These hrefs are route handlers that return a plain-text
+                  // file (`/llms.txt`, `/llms-full.txt`), not client-navigable
+                  // pages. They must be plain anchors, not `next/link`: with
+                  // `trailingSlash: true` the client router appends a slash
+                  // (`/llms-full.txt/`), which the host answers with a 308
+                  // redirect, so a `<Link>` navigation bounces instead of
+                  // fetching the file directly.
                   return (
-                    <Link
+                    <a
                       key={link.title}
                       href={link.href}
-                      prefetch={false}
                       className={cardClasses}
                     >
                       {content}
-                    </Link>
+                    </a>
                   )
                 }
 
