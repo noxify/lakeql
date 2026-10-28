@@ -1,0 +1,42 @@
+---
+title: Trino
+navTitle: Trino
+description: The Trino adapter — connection, write config, metadata, and capabilities.
+---
+
+## Capabilities
+
+| Capability                 | Support                                      |
+| -------------------------- | -------------------------------------------- |
+| Reads                      | Yes                                          |
+| Writes                     | Yes — INSERT and external-storage strategies |
+| DDL (create / drop tables) | Yes                                          |
+| Metadata introspection     | Yes                                          |
+
+For how writing works across adapters, see [Writing](/docs/data-sources/writing).
+
+`@lakeql/adapter-trino` connects LakeQL to a Trino coordinator. It implements the datasource contract over the Trino REST API and provides the Trino SQL dialect.
+
+Register it in your config:
+
+```ts
+import { defineConfig } from "@lakeql/config"
+import { trinoAdapterDefinition } from "@lakeql/adapter-trino"
+
+export default defineConfig({
+  adapters: [trinoAdapterDefinition],
+  dataSources: {
+    warehouse: {
+      adapter: "trino",
+      connection: {
+        host: "https://trino.example.com",
+        port: 8080,
+        catalog: "hive",
+        auth: { type: "basic", username: "svc", password: "..." },
+      },
+    },
+  },
+})
+```
+
+This section covers the [connection](/docs/data-sources/trino/connection), [write config](/docs/data-sources/trino/write-config), and [metadata](/docs/data-sources/trino/metadata), with the full [API reference](/docs/data-sources/trino/api-reference) at the end. For how a read executes end to end, see [data flow](/docs/lakeql/architecture/data-flow).

@@ -53,3 +53,7 @@ auth: { type: "bearer", token: "..." }
 </Note>
 
 The `oauth2` form accepts an optional `scope` field. It is validated but currently has no effect — the token is always acquired for the Fabric SQL scope (`https://database.windows.net/.default`).
+
+## Per-Request Identity
+
+The Fabric client supports an on-behalf-of flow: a per-query bearer token runs a statement as the calling identity rather than the service credential. A Fabric data source wires this through its `impersonationResolver`. See [authentication](/docs/api/authentication).

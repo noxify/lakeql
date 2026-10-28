@@ -17,7 +17,7 @@ Adding a `mutation` block to `endpoint.json` makes the endpoint writable. It's e
 
 `basePath`, `partitioning`, and `partitioningFormat` describe _where inside the configured object store_ this endpoint's data lands and how it is laid out — they do **not** configure the store itself. The bucket, region, and credentials come from the `files-sdk` instance on the data source's `writeConfig`, not from the endpoint. For example, with `basePath: "sales/orders"` and timestamp partitioning, an `append` write lands at `sales/orders/all.parquet/year=2026/month=08/day=29/<uuid>.parquet` in whatever bucket the data source is wired to.
 
-See [Writing data](/docs/data-sources/write-pipeline) for how the storage write strategy is configured and [Partitioning](/docs/data-sources/write-pipeline/partitioning) for the full path layout.
+See [Writing data](/docs/data-sources/writing) for how the storage write strategy is configured and [Partitioning](/docs/data-sources/writing/partitioning) for the full path layout.
 
 ## Load strategies
 

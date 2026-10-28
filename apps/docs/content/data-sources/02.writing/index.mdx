@@ -1,6 +1,6 @@
 ---
-title: Write Pipeline
-navTitle: Write Pipeline
+title: Writing
+navTitle: Writing
 description: How LakeQL persists data — the two choices that define a write.
 ---
 
@@ -20,7 +20,7 @@ You configure this once, on the data source's `writeConfig`.
 | **External storage** (default) | You back your tables with object storage (a data lake — S3/MinIO/GCS/Azure) and register them through an external table catalog. | Serializes records to a file format, uploads the files, and registers them via table DDL. Needs a `files-sdk` instance, a serializer, and a `basePath`. |
 | **INSERT INTO** | You want rows written directly into an existing engine table, with no object storage. | Writes rows through batched `INSERT INTO` SQL. Supports batching, optional table creation, and a staging-and-swap for full loads. |
 
-For the Trino adapter, the storage strategy is the default; opt into the SQL path with `writeConfig: { strategy: "insert" }`. See [Trino queries](/docs/data-sources/trino/queries) for both `writeConfig` shapes side by side.
+For the Trino adapter, the storage strategy is the default; opt into the SQL path with `writeConfig: { strategy: "insert" }`. See [Trino write config](/docs/data-sources/trino/write-config) for both `writeConfig` shapes side by side.
 
 ## Choosing a load strategy
 
@@ -38,6 +38,6 @@ A single write is one cell in the grid of (write strategy × load strategy). For
 
 The rest of this section goes one layer deeper:
 
-- [Executing the pipeline](/docs/data-sources/write-pipeline/execute-write-pipeline) — what each write strategy does step by step, and how to wire the Trino storage strategy.
-- [Load strategies](/docs/data-sources/write-pipeline/load-strategies) — the precise behavior of each, including the edge cases (empty input, errors).
-- [Partitioning](/docs/data-sources/write-pipeline/partitioning) — how the storage strategy lays files out on disk.
+- [Write strategies](/docs/data-sources/writing/write-strategies) — what each write strategy does step by step and the capability matrix of which adapter supports which.
+- [Load strategies](/docs/data-sources/writing/load-strategies) — the precise behavior of each, including the edge cases (empty input, errors).
+- [Partitioning](/docs/data-sources/writing/partitioning) — how the storage strategy lays files out on disk.

@@ -12,7 +12,7 @@ Storage operations are the narrow interface the external-storage write strategy 
 - **List** — enumerate files under a prefix.
 - **Delete** — remove files, used during cleanup.
 
-Load-strategy semantics (whether to replace, append, or extend) live in the [write strategy](/docs/data-sources/write-pipeline/execute-write-pipeline), not here. The [table manager](/docs/data-sources/write-pipeline/execute-write-pipeline) handles the external-table DDL that registers uploaded files. This separation keeps each piece testable on its own and lets a write strategy swap the storage backend without touching its load logic.
+Load-strategy semantics (whether to replace, append, or extend) live in the [write strategy](/docs/data-sources/writing/write-strategies), not here. The [table manager](/docs/data-sources/writing/write-strategies) handles the external-table DDL that registers uploaded files. This separation keeps each piece testable on its own and lets a write strategy swap the storage backend without touching its load logic.
 
 <Note>
   Storage is only involved in the external-storage write path. The INSERT

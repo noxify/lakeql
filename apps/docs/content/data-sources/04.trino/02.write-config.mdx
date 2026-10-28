@@ -1,16 +1,8 @@
 ---
-title: Queries
-navTitle: Queries
-description: How reads and writes run through the Trino adapter.
+title: Write Config
+navTitle: Write Config
+description: The two writeConfig shapes the Trino adapter supports — INSERT and external storage.
 ---
-
-The Trino adapter executes the SQL that the [query builder](/docs/packages/query-builder) produces, rendering it in the Trino SQL dialect and running it over the REST API. In normal operation you do not call the adapter directly — the generated query schemas and the API server drive it.
-
-## Reads
-
-A read goes through the adapter's read strategy: the query builder constructs the SQL from the GraphQL selection, filter, sorting, and paging; the Trino dialect renders it; the adapter runs it and decodes the positional response into keyed records. See [data flow](/docs/lakeql/architecture/data-flow).
-
-## Writes
 
 The Trino adapter offers two write strategies, selected by the data source's `writeConfig`:
 
@@ -53,4 +45,9 @@ dataSources: {
 
 The bucket and credentials live on the `files-sdk` adapter, not in any LakeQL-native field — the Trino adapter's config has no bucket/credential keys.
 
-See the [write pipeline](/docs/data-sources/write-pipeline) for load-strategy semantics and the storage wiring, and [`TrinoWriteConfig`](/docs/data-sources/trino/api-reference#trino-write-config) for the full option set.
+<Warning>
+  A storage write call without a resolved `basePath` throws before any file is
+  uploaded.
+</Warning>
+
+See [Writing](/docs/data-sources/writing) for load-strategy semantics and the step-by-step pipeline, and [`TrinoWriteConfig`](/docs/data-sources/trino/api-reference#trino-write-config) for the full option set.
