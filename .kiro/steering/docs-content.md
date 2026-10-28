@@ -573,3 +573,30 @@ Concrete rules:
 - Document at least one **failure or edge case** per mechanism page, not only the happy path.
 - Put adapter-neutral mechanics in ONE place (the concept section) and have adapter pages link to it; do not re-explain the mechanics per adapter. When an adapter-specific config shape is needed next to the neutral explanation, use `<Tabs>` (one tab per adapter) rather than duplicating the page.
 - A page should answer at most ~2 core questions. Split rather than combine.
+
+## Domain Facts the Docs Must State Correctly
+
+These are verified behaviors of the codebase. When a page touches one of them, it MUST describe it accurately. Do not soften, overstate, or invent around these — they were each confirmed against source and are common places docs drift out of sync.
+
+- **`pull` generates a READ-ONLY endpoint.** The `pull` command hard-codes `mutation: false`; it does not add a mutation block and does not make an endpoint writable. A mutation always requires an endpoint definition with an explicit `mutation` block. Never imply that running `pull` is enough to enable writes — point readers to the mutation how-to for that.
+- **`pull` and `create-endpoint` are NOT fully interchangeable.** They produce the same per-table file _set and format_, but write to DIFFERENT directories: `pull` → `schemas/generated/<dataSource>/<catalog>/<schema>/<table>/`, `create-endpoint` → `schemas/custom/<catalog>/<schema>/<table>/` (no data-source segment). Only `pull`'s path is "organized by data source". Do not describe them as producing "the exact same output" or being "fully interchangeable".
+- **A pulled `endpoint.json` does not record its `dataSource`.** `pull` serializes only the definition, which has no `dataSource` key (the data-source name flows into the generated `config.ts`, not the JSON). Recreating a pulled endpoint — especially a Fabric one — via `create-endpoint --from-file` therefore requires manually re-adding `dataSource`; without it, generation falls back to the `"default"` data source and the Trino adapter. Any page about round-tripping a pulled endpoint must carry this warning.
+- **Writes are deny-by-default.** An unconfigured server (empty `permissions`) denies all writes. A write needs a matching `Mutation` permission rule targeting the data source; no entry, or no matching `Mutation` rule, means deny. (Reads are more lenient for human users; writes are not.) When showing permissions, prefer a concrete POSITIVE `Mutation` rule example (using the same `createPermission`/`rule` builder as `Query`) over only the empty `Mutation: []` default — the empty form is correct but does not show a reader how to grant access.
+- **`<Command variant="exec">` renders `npx` / `pnpm dlx`, and that is intentional.** Using `npx`/`pnpm dlx` for CLI examples (e.g. `lakeql-cli …`) is a deliberate "run-without-assuming-it's-installed" convention, like `npx prisma`. Do NOT rewrite these into local-binary invocations and do NOT flag the pattern as a bug. (Inside a scaffolded project the local `cli` script resolves the workspace binary regardless.)
+- **Show the exact dev command, not a vague instruction.** For starting the generated app, use `<Command variant="run">dev</Command>` (renders `pnpm dev` / `npm run dev`), not prose like "run the project's dev script". The scaffolded `dev` script is `node --env-file=.env --import tsx ./src/index.ts`. When documenting a verification step, hedge response-body claims ("a request to `/live` is expected to succeed") rather than asserting exact output — the docs are not executed at build time.
+
+## Mutation / Write Docs — ownership map (avoid overlapping pages)
+
+The write/mutation story is split across several pages by Diátaxis mode. Respect these ownership boundaries; a new page LINKS to the owner instead of restating its content, so no two pages explain the same mechanic.
+
+- `lakeql/guides/mutations` (Explanation) — owns the mutation-resolver ↔ write-strategy concept, the permission model at the conceptual level, and custom mutation fields.
+- `lakeql/endpoints/mutations` (Reference) — owns the full `mutation` block field table (`loadStrategy`, `basePath`, `partitioning`, `partitioningFormat`), the load-strategy definitions, and the "`basePath` is required even for INSERT" note.
+- `data-sources/writing/*` (Explanation, adapter-neutral) — owns the two-axes model (write strategy × load strategy), the per-strategy pipeline mechanics, the cross-adapter capability matrix, and the general "choosing a write strategy" table.
+- `data-sources/trino/write-config` (Reference, adapter-specific) — owns the concrete `writeConfig` shapes and full option list, plus the `basePath`-before-upload warning.
+- `lakeql/guides/set-up-a-trino-mutation` (How-to) — owns only the end-to-end task sequencing (writeConfig → endpoint definition → generate → permission → replace a pulled endpoint) and a condensed, Trino-scoped decision table. It links to each page above for the mechanics rather than re-explaining them.
+
+A self-contained how-to MAY reuse or extend a concrete config snippet from a reference page (e.g. the Trino INSERT `writeConfig`) so the task is completable on one page — reuse for continuity is allowed; re-explaining the owning page's mechanics is not.
+
+## Guides Ordering
+
+The `lakeql/guides` section is ordered by workflow progression, and `lakeql/endpoints` (a normal app task) sorts before `lakeql/contributing` (developer-facing). Keep the numeric prefixes consistent with that intent; remember the `NN.` prefix is stripped from the slug (it sets sidebar order only, never the URL), so renumbering a directory never changes its links.
