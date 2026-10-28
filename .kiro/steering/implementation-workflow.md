@@ -29,11 +29,13 @@ pnpm --filter @lakeql/<package> build
 
 Use the actual package name and only scripts that exist in its `package.json`. Package tests are run with `-- --run` so Vitest does not enter watch mode.
 
-## Package-First Scope
+## Validation Scope
 
-During the architecture restart, the default implementation and validation scope is `packages/*` only. Do not include `apps/*`, `templates/*`, or `tooling/*` in package feature checks unless the active spec explicitly requires changes there.
+Validate the surface you actually changed, and no more:
 
-Preferred package-wide checks are:
+- For a package change, run that package's checks (`pnpm --filter @lakeql/<package> typecheck | test -- --run | build`).
+- For an app, template, tooling, workspace-config, or CI change, run the narrowest relevant check for that surface (e.g. `pnpm --filter docs build` for the docs app, a YAML parse for a workflow file).
+- When a change spans several packages, the package-wide checks are:
 
 ```bash
 pnpm --filter "./packages/*" typecheck
@@ -43,7 +45,7 @@ pnpm exec oxfmt --check packages
 pnpm exec oxlint packages
 ```
 
-Expand the validation scope only when the active task changes an app, template, tooling package, workspace configuration, CI, or another non-package surface. When expanding the scope, state the reason and run the narrowest relevant check for that additional surface.
+Do not pull unrelated surfaces into a change's validation. If a change genuinely requires touching more than its primary surface, state the reason and run the narrowest relevant check for each additional surface.
 
 ## Focused Validation
 
@@ -69,19 +71,15 @@ pnpm exec vitest run <test-file>
 - Do not reformat unrelated files.
 - Do not modify package READMEs with duplicated feature documentation.
 - Keep package READMEs short; complete documentation belongs in `apps/docs` after the package APIs are stable.
-- Keep changes inside the active Kiro feature scope.
+- Keep changes inside the active feature scope.
 - If a public interface or package dependency outside the scope is required, stop and report the architectural dependency before editing.
 
 ## Spec and Branch Discipline
 
-- Read the relevant `docs/architecture` design before implementation.
-- Complete `design.md`, `requirements.md`, and `tasks.md` before coding.
-- Keep one feature scope per branch.
-- Integrate only through `architecture-canary`.
-- Treat `adapters` as a reference branch, not as the implementation base.
-- This is a deliberate restart from `main`; backward compatibility with `adapters` is not required.
-- Do not add shims, deprecated aliases, re-exports, or fallback paths solely to preserve `adapters` APIs.
-- Preserve compatibility only for an external API explicitly marked as supported in the active design.
+- Keep one feature scope per branch; derive a descriptive branch name from the task.
+- For a non-trivial feature, complete its `design.md`, `requirements.md`, and `tasks.md` before coding; small, well-scoped changes do not require a spec.
+- Base a feature branch on the branch it will integrate into, and integrate back through that same branch.
+- Do not add shims, deprecated aliases, re-exports, or fallback paths for backward compatibility unless an active design explicitly requires it.
 - Update tasks and record validation results before declaring a slice complete.
 
 ## Release Notes and Tegami
