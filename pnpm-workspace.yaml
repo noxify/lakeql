@@ -1,6 +1,11 @@
 packages:
   - apps/*
-  - examples/*
+  # examples/* is intentionally NOT a workspace member: the example apps are
+  # gitignored, local-only scratch apps. Keeping them in the workspace glob
+  # wrote their importers into the committed lockfile, which CI (without the
+  # gitignored examples) could not reconcile. Re-enable locally only while
+  # iterating against example apps, and do not commit the resulting lockfile.
+  # - examples/*
   - packages/*
   - tooling/*
   - templates/*
