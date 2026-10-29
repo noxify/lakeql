@@ -70,7 +70,7 @@
     "@lakeql/schema-generator": "workspace:*",
     "@t3-oss/env-core": "0.13.11",
     "@topcli/prompts": "4.0.0",
-    "c12": "4.0.0-rc.3",
+    "c12": "4.0.0-rc.4",
     "climt": "0.2.0",
     "globby": "16.2.4",
     "listr2": "11.4.0",
@@ -85,7 +85,7 @@
     "@types/node": "24.19.2",
     "fast-check": "4.10.2",
     "memfs": "4.80.0",
-    "tsdown": "0.23.2",
+    "tsdown": "0.23.3",
     "tsx": "4.23.15",
     "typescript": "6.0.3",
     "vitest": "5.0.5"

@@ -68,7 +68,7 @@
     "@types/fast-redact": "3.0.4",
     "@types/node": "24.19.2",
     "globby": "16.2.4",
-    "tsdown": "0.23.2",
+    "tsdown": "0.23.3",
     "typescript": "6.0.3"
   }
 }

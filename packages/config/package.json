@@ -47,7 +47,7 @@
   },
   "dependencies": {
     "@lakeql/datasource": "workspace:*",
-    "c12": "4.0.0-rc.3",
+    "c12": "4.0.0-rc.4",
     "jiti": "2.7.0"
   },
   "devDependencies": {
@@ -55,7 +55,7 @@
     "@lakeql/vitest-config": "workspace:*",
     "@types/node": "24.19.2",
     "fast-check": "4.10.2",
-    "tsdown": "0.23.2",
+    "tsdown": "0.23.3",
     "typescript": "6.0.3",
     "vitest": "5.0.5"
   }
