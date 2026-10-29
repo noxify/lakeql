@@ -10,6 +10,7 @@ import { search as oramaSearch } from "zbsearch"
 
 import { normalizeInternalHref } from "@/lib/normalize-internal-href"
 
+import { orderHitsByTypeThenScore } from "./search-ranking"
 import { Dialog, DialogContent } from "./ui/dialog"
 import { ScrollArea } from "./ui/scroll-area"
 
@@ -337,25 +338,6 @@ function filterCommandItems(
   })
 }
 
-function orderHitsByScore(hits: ZBSearchHit[]): ZBSearchHit[] {
-  const ordered: ZBSearchHit[] = []
-
-  for (const hit of hits) {
-    const score = hit.score ?? 0
-    const insertAt = ordered.findIndex(
-      (current) => (current.score ?? 0) < score
-    )
-
-    if (insertAt === -1) {
-      ordered.push(hit)
-    } else {
-      ordered.splice(insertAt, 0, hit)
-    }
-  }
-
-  return ordered
-}
-
 const SearchCommandContext =
   React.createContext<SearchCommandContextValue | null>(null)
 
@@ -492,6 +474,7 @@ export const SearchCommandProvider = ({
 
       const [pageResult, headingResult, textResult] = await Promise.all([
         oramaSearch(index, {
+          boost: { content: 1, title: 5 },
           distinctOn: "url",
           limit: 10,
           properties: ["title", "content"],
@@ -503,6 +486,7 @@ export const SearchCommandProvider = ({
           },
         }) as Promise<ZBSearchResult>,
         oramaSearch(index, {
+          boost: { content: 1, heading: 2 },
           distinctOn: "url",
           limit: 10,
           properties: ["heading", "content"],
@@ -514,6 +498,7 @@ export const SearchCommandProvider = ({
           },
         }) as Promise<ZBSearchResult>,
         oramaSearch(index, {
+          boost: { content: 1, heading: 1 },
           distinctOn: "url",
           limit: 10,
           properties: ["content", "heading"],
@@ -526,7 +511,7 @@ export const SearchCommandProvider = ({
         }) as Promise<ZBSearchResult>,
       ])
 
-      const hits = orderHitsByScore([
+      const hits = orderHitsByTypeThenScore([
         ...(Array.isArray(pageResult.hits)
           ? (pageResult.hits as ZBSearchHit[])
           : []),

@@ -139,6 +139,33 @@ describe("section → schema mapping", () => {
     expect(docs).toHaveLength(1)
     expect(docs[0]?.type).toBe("page")
   })
+
+  it("produces a page doc at the directory slug for a section landing page", () => {
+    // A section landing page (e.g. `getting-started/index.mdx`) is indexed via
+    // its directory entry, so its url is the directory slug — not `.../index`.
+    const landing = `Go from nothing to a running GraphQL API: check the
+prerequisites, scaffold a project, configure the environment, and make your
+first request.`
+    const parsed = parseMarkdown(landing, { dialect: "mdx" })
+    const docs = mapSectionsToDocuments(
+      parsed,
+      makeContext({
+        breadcrumbStr: "LakeQL > Getting Started",
+        pageDescription:
+          "Scaffold a project, configure it, and make your first request.",
+        pageTitle: "Getting Started",
+        pathname: "/docs/lakeql/getting-started/",
+        sectionName: "lakeql",
+      })
+    )
+
+    const pageDocs = docs.filter((doc) => doc.type === "page")
+    expect(pageDocs).toHaveLength(1)
+    const [pageDoc] = pageDocs
+    expect(pageDoc?.title).toBe("Getting Started")
+    expect(pageDoc?.url).toBe("/docs/lakeql/getting-started/")
+    expect(pageDoc?.url.endsWith("/index")).toBeFalsy()
+  })
 })
 
 describe("heading title normalization", () => {

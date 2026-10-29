@@ -4,10 +4,10 @@ import { parseMarkdown } from "@zbsearch/docs-index/node"
 import type { MarkdownSection, ParsedMarkdown } from "@zbsearch/docs-index/node"
 import type { Ora } from "ora"
 import pMap from "p-map"
-import { isDirectory, isFile } from "renoun/file-system"
 import { create } from "zbsearch"
 
 import {
+  getCanonicalEntry,
   getFileContent,
   getBreadcrumbItems,
   getMetadata,
@@ -42,9 +42,19 @@ export async function getAllSearchableEntries() {
     walk(node.children)
     return all
   })
-  return flattenEntries(rootEntries).filter(
-    (entry) => !isDirectory(entry) || (isDirectory(entry) && isFile(entry))
-  )
+  // Keep every entry: files, and directory entries that are section landing
+  // pages. A section directory carrying an `index`/`readme` (e.g.
+  // `/docs/lakeql/getting-started/`) is served at the directory's own slug and
+  // resolves its content through the directory entry, yet renoun reports
+  // `isFile` as false for it — so filtering on `isFile` dropped every section
+  // landing page. Directories with no rendered content are harmless: they
+  // produce no document because `buildSearchDocuments` skips any entry whose
+  // `getFileContent` is null.
+  //
+  // Do NOT reintroduce an `isDirectory && isFile` (or any `isFile`-based)
+  // filter here: it silently drops every section landing page and is the exact
+  // regression this change fixes.
+  return flattenEntries(rootEntries)
 }
 
 export type DocumentType = "page" | "heading" | "text"
@@ -76,14 +86,15 @@ export function flattenEntries(entries: EntryType[]): EntryType[] {
       continue
     }
 
-    if (
-      isFile(entry) &&
-      (entry.baseName === "index" || entry.baseName === "readme")
-    ) {
-      continue
-    }
-
-    const pathname = entry.getPathname({ includeBasePathname: true })
+    // Index/readme files are the rendered content of their section landing
+    // page (e.g. `.../getting-started/index.mdx` → `/docs/lakeql/getting-started/`),
+    // so they must be indexed rather than dropped. Dedupe on the canonical
+    // pathname — an index/readme file resolves to its parent directory — so a
+    // directory that also carries an index yields exactly one page doc for the
+    // slug instead of two.
+    const pathname = getCanonicalEntry(entry).getPathname({
+      includeBasePathname: true,
+    })
     if (seen.has(pathname)) {
       continue
     }
