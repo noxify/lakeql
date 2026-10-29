@@ -3,6 +3,8 @@ import path from "node:path"
 
 import { installPackage } from "@antfu/install-pkg"
 
+import { getBuildEnv } from "./build-env"
+
 /**
  * Installs the generated project's dependencies.
  *
@@ -36,8 +38,30 @@ export async function installDependencies(
   }
 
   await installPackage([], {
+    additionalArgs: installAdditionalArgs(packageManager),
     cwd: targetDir,
     packageManager,
     silent: true,
   })
+}
+
+/**
+ * Extra install flags for the chosen package manager.
+ *
+ * During a `pkg.pr.new` preview build the generated `package.json` pins its
+ * `@lakeql/*` dependencies to `pkg.pr.new` URLs, and those packages depend on
+ * further `@lakeql/*` packages that are themselves URL-resolved. pnpm v10+
+ * rejects such transitive URL dependencies by default
+ * (`ERR_PNPM_EXOTIC_SUBDEP`), so the install must opt out via
+ * `--config.block-exotic-subdeps=false`. A released build resolves every
+ * dependency from npm with no exotic subdependencies, so the flag is only
+ * emitted in preview mode.
+ */
+function installAdditionalArgs(packageManager: string): string[] {
+  const { previewSha } = getBuildEnv()
+  if (packageManager === "pnpm" && previewSha) {
+    return ["--config.block-exotic-subdeps=false"]
+  }
+
+  return []
 }
