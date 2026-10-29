@@ -772,14 +772,8 @@ export const SearchCommandProvider = ({
                     items={group.items}
                     className="not-last:mb-2"
                   >
-                    <Autocomplete.GroupLabel className="text-muted-foreground px-2 py-1 text-xs font-medium tracking-wide uppercase">
-                      {group.subtitle ? (
-                        <span className="text-muted-foreground/80 normal-case">
-                          {group.subtitle}
-                        </span>
-                      ) : (
-                        group.value
-                      )}
+                    <Autocomplete.GroupLabel className="text-muted-foreground/80 px-2 py-1 text-xs font-medium tracking-wide">
+                      {group.subtitle ?? group.value}
                     </Autocomplete.GroupLabel>
                     <Autocomplete.Collection>
                       {(item: SearchCommandItem) => (
