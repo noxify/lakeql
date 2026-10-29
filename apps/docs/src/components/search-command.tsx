@@ -20,7 +20,7 @@ export interface SearchCommandItem {
   href?: string
   group?: string
   hint?: string
-  description?: string
+  descriptionParts?: SnippetParts
   documentType?: "page" | "heading" | "text"
   pageId?: string
   pageTitle?: string
@@ -313,13 +313,111 @@ function stripMarkdown(content: string): string {
     .trim()
 }
 
-function toSnippet(content: string, maxLength = 120): string {
-  const cleaned = stripMarkdown(content)
-  if (cleaned.length <= maxLength) {
-    return cleaned
+/**
+ * A snippet split into the text before the matched query term, the matched
+ * term itself (preserving the source casing), and the text after it. When no
+ * query term is found, only `before` is populated and `match`/`after` are
+ * empty strings, so the preview falls back to a head-of-text excerpt.
+ */
+interface SnippetParts {
+  before: string
+  match: string
+  after: string
+}
+
+/**
+ * Collect the individual query terms used for snippet matching, lower-cased
+ * and de-duplicated. Terms shorter than two characters are dropped so that
+ * stray single characters do not anchor the preview window.
+ */
+function snippetQueryTerms(query: string): string[] {
+  const terms = query
+    .toLowerCase()
+    .split(/\s+/u)
+    .map((term) => term.trim())
+    .filter((term) => term.length >= 2)
+
+  return [...new Set(terms)]
+}
+
+/**
+ * Find the earliest case-insensitive occurrence of any query term in the
+ * cleaned content. Returns the match offset and length, or `undefined` when no
+ * term matches.
+ */
+function firstQueryMatch(
+  haystack: string,
+  terms: string[]
+): { index: number; length: number } | undefined {
+  const lowerHaystack = haystack.toLowerCase()
+
+  let best: { index: number; length: number } | undefined
+  for (const term of terms) {
+    const index = lowerHaystack.indexOf(term)
+    if (index !== -1 && (best === undefined || index < best.index)) {
+      best = { index, length: term.length }
+    }
   }
 
-  return `${cleaned.slice(0, maxLength).trimEnd()}...`
+  return best
+}
+
+/**
+ * Build a preview snippet for a text block. When a query term is present, the
+ * snippet is a window centred on the first match with leading/trailing
+ * ellipses, and `match` carries the matched substring for highlighting. When
+ * no term matches (e.g. a stemmed hit), it falls back to a head-of-text
+ * excerpt in `before`.
+ *
+ * @param content - The raw markdown text block.
+ * @param query - The active search query; may contain multiple terms.
+ * @param maxLength - Target length of the snippet in characters.
+ */
+function toSnippet(content: string, query = "", maxLength = 120): SnippetParts {
+  const cleaned = stripMarkdown(content)
+  const terms = snippetQueryTerms(query)
+  const match = terms.length > 0 ? firstQueryMatch(cleaned, terms) : undefined
+
+  if (!match) {
+    const head =
+      cleaned.length <= maxLength
+        ? cleaned
+        : `${cleaned.slice(0, maxLength).trimEnd()}...`
+    return { after: "", before: head, match: "" }
+  }
+
+  // Centre a window of `maxLength` characters on the match.
+  const matchEnd = match.index + match.length
+  const slack = Math.max(0, maxLength - match.length)
+  const windowStart = Math.max(0, match.index - Math.floor(slack / 2))
+  const windowEnd = Math.min(cleaned.length, matchEnd + Math.ceil(slack / 2))
+
+  const leadingEllipsis = windowStart > 0 ? "..." : ""
+  const trailingEllipsis = windowEnd < cleaned.length ? "..." : ""
+
+  const before = `${leadingEllipsis}${cleaned.slice(windowStart, match.index)}`
+  const matchedText = cleaned.slice(match.index, matchEnd)
+  const after = `${cleaned.slice(matchEnd, windowEnd).trimEnd()}${trailingEllipsis}`
+
+  return { after, before, match: matchedText }
+}
+
+/**
+ * Render a snippet, highlighting the matched query term. When there is no
+ * match the snippet degrades to plain text (only `before` is populated).
+ */
+function SnippetText({ parts }: { parts: SnippetParts }): React.ReactElement {
+  return (
+    <>
+      {parts.before}
+      {parts.match ? (
+        <mark className="text-foreground bg-transparent font-medium">
+          {parts.match}
+        </mark>
+      ) : null}
+      {parts.after}
+    </>
+  )
 }
 
 function filterCommandItems(
@@ -562,9 +660,9 @@ export const SearchCommandProvider = ({
               ? document.heading || document.title
               : document.title
 
-          const description =
+          const descriptionParts =
             document.type === "text" && typeof document.content === "string"
-              ? toSnippet(document.content)
+              ? toSnippet(document.content, query)
               : undefined
 
           return {
@@ -573,7 +671,7 @@ export const SearchCommandProvider = ({
               (typeof document.section === "string"
                 ? normalizeCollection(document.section)
                 : undefined),
-            description,
+            descriptionParts,
             documentType: document.type,
             group: "Documentation",
             hint: formatHint(document),
@@ -796,9 +894,9 @@ export const SearchCommandProvider = ({
 
                             <div className="min-w-0">
                               <div className="truncate">{item.label}</div>
-                              {item.description ? (
+                              {item.descriptionParts ? (
                                 <div className="text-muted-foreground line-clamp-1 text-xs">
-                                  {item.description}
+                                  <SnippetText parts={item.descriptionParts} />
                                 </div>
                               ) : null}
                             </div>
