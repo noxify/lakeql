@@ -8,6 +8,6 @@ export default defineConfig({
       include: ["packages/*/src/**/*.{ts,tsx}"],
       provider: "v8",
     },
-    projects: ["packages/*", "tooling/type-tests"],
+    projects: ["packages/*", "apps/docs", "tooling/type-tests"],
   },
 })

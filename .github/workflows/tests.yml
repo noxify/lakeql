@@ -5,11 +5,13 @@ on:
     branches: ["*"]
     paths:
       - "packages/**"
+      - "apps/docs/**"
       - "pnpm-lock.yaml"
   push:
     branches: ["main", "tegami/version-packages"]
     paths:
       - "packages/**"
+      - "apps/docs/**"
       - "pnpm-lock.yaml"
   merge_group:
   workflow_dispatch:

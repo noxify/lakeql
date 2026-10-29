@@ -3,9 +3,13 @@ import path from "node:path"
 
 import { persist } from "@zbsearch/plugin-data-persistence"
 import ora from "ora"
-import { create, insertMultiple } from "zbsearch"
+import { insertMultiple } from "zbsearch"
 
-import { buildSearchDocuments, getAllSearchableEntries } from "./builder"
+import {
+  buildSearchDocuments,
+  createSearchIndex,
+  getAllSearchableEntries,
+} from "./builder"
 
 async function generateAndPersistSearchIndex() {
   const spinner = ora("Building zbsearch search index...").start()
@@ -15,18 +19,7 @@ async function generateAndPersistSearchIndex() {
     spinner.text = `Preparing ${entries.length} documentation entries...`
     const searchDocuments = await buildSearchDocuments(entries, spinner)
 
-    const db = create({
-      schema: {
-        breadcrumb: "string",
-        content: "string",
-        heading: "string",
-        page_id: "string",
-        section: "string",
-        title: "string",
-        type: "enum" as const,
-        url: "string",
-      },
-    })
+    const db = createSearchIndex()
 
     spinner.text = `Indexing ${searchDocuments.length} documents in zbsearch...`
     await insertMultiple(db, searchDocuments)
