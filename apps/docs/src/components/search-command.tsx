@@ -166,6 +166,16 @@ function groupItems(items: SearchCommandItem[]): SearchCommandGroup[] {
       (item) => item.documentType === "page"
     )
 
+    // A synthetic page header inherits the best (lowest) resultOrder of the
+    // group's real hits. It must NOT use -Infinity: group ordering is decided
+    // by Math.min(resultOrder) across a group's items, so -Infinity would float
+    // every synthetic-header group above a group whose real page hit ranked #0
+    // (e.g. the Getting Started landing page). typeOrder still sorts this
+    // header to the top WITHIN its own group.
+    const syntheticPageOrder = Math.min(
+      ...pageItems.map((item) => item.resultOrder ?? Number.MAX_SAFE_INTEGER)
+    )
+
     const enrichedItems = hasExplicitPageItem
       ? pageItems
       : [
@@ -179,7 +189,7 @@ function groupItems(items: SearchCommandItem[]): SearchCommandGroup[] {
             pageHref,
             pageId,
             pageTitle,
-            resultOrder: Number.NEGATIVE_INFINITY,
+            resultOrder: syntheticPageOrder,
             value: `doc-page-${pageId}`,
           },
           ...pageItems,
