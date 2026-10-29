@@ -212,11 +212,12 @@ describe("Package boundary: @lakeql/config", () => {
 
     /**
      * Package-scope files: all other src/ modules.
-     * Broader boundary — relative, @lakeql/datasource, node:, and c12.
-     * c12 is allowed ONLY in designated loader modules (load-config.ts).
+     * Broader boundary — relative, @lakeql/datasource, node:, c12, and jiti.
+     * c12 and jiti are allowed ONLY in designated loader modules
+     * (load-config.ts); jiti backs c12's TypeScript config import.
      */
     const PACKAGE_ALLOWED_PATTERN =
-      /^(?:\.|\.\.\/|@lakeql\/datasource(?:\/[^"']*)?$|node:|c12(?:$|\/[^"']*))/u
+      /^(?:\.|\.\.\/|@lakeql\/datasource(?:\/[^"']*)?$|node:|c12(?:$|\/[^"']*)|jiti(?:$|\/[^"']*))/u
 
     const allSrcFiles = collectTsFiles(SRC_DIR)
 
@@ -267,7 +268,7 @@ describe("Package boundary: @lakeql/config", () => {
           for (const specifier of specifiers) {
             expect(
               PACKAGE_ALLOWED_PATTERN.test(specifier),
-              `Disallowed import "${specifier}" in ${_label}. Package-scope allows relative imports, @lakeql/datasource, node: built-ins, and c12 (loader modules only).`
+              `Disallowed import "${specifier}" in ${_label}. Package-scope allows relative imports, @lakeql/datasource, node: built-ins, and c12/jiti (loader modules only).`
             ).toBeTruthy()
           }
         }
@@ -295,6 +296,31 @@ describe("Package boundary: @lakeql/config", () => {
         expect(
           violations,
           `Non-loader modules must not import c12:\n${violations.join("\n")}`
+        ).toStrictEqual([])
+      })
+
+      it("only load-config.ts imports jiti — non-loader modules must not", () => {
+        const nonLoaderFiles = packageScopeFiles.filter(
+          (f) => !isLoaderModule(f)
+        )
+
+        const violations: string[] = []
+        for (const filePath of nonLoaderFiles) {
+          const content = readFileSync(filePath, "utf-8")
+          const specifiers = extractImportSpecifiers(content)
+          const jitiImports = specifiers.filter(
+            (s) => s === "jiti" || s.startsWith("jiti/")
+          )
+          if (jitiImports.length > 0) {
+            violations.push(
+              `${filePath.replace(`${PKG_ROOT}/`, "")} imports jiti: ${jitiImports.join(", ")}`
+            )
+          }
+        }
+
+        expect(
+          violations,
+          `Non-loader modules must not import jiti:\n${violations.join("\n")}`
         ).toStrictEqual([])
       })
     })

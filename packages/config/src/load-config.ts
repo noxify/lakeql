@@ -3,6 +3,7 @@ import path from "node:path"
 
 import type { AdapterFactory } from "@lakeql/datasource"
 import { loadConfig as loadC12Config } from "c12"
+import { createJiti } from "jiti"
 
 import { resolvePaging } from "./define-config/resolve-paging"
 import type { LoadedLakeQLProject, RuntimeDataSourceDefinition } from "./types"
@@ -210,6 +211,17 @@ export async function loadConfig(
   let configFile: string | undefined
   let config: unknown
 
+  // Wire jiti in as c12's config importer deterministically. In c12 4.x the
+  // primary loader is native `import()`, which cannot resolve extensionless
+  // relative TypeScript specifiers (e.g. `import { env } from "./src/env"`)
+  // inside the loaded `lakeql.config.ts`. c12 only falls back to jiti when
+  // jiti happens to be importable, which is not guaranteed in a freshly
+  // scaffolded app. Passing a jiti-backed `import` makes that TypeScript
+  // resolution behavior deterministic rather than incidental. The jiti
+  // instance is anchored at `cwd` so relative specifiers resolve against the
+  // project root. See https://github.com/unjs/c12#import.
+  const jiti = createJiti(cwd)
+
   try {
     const result = await loadC12Config({
       name: "lakeql",
@@ -218,6 +230,7 @@ export async function loadConfig(
       globalRc: false,
       rcFile: false,
       dotenv: false,
+      import: (id) => jiti.import(id),
     })
 
     const { configFile: resolvedFile, config: resolvedConfig } = result

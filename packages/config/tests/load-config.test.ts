@@ -193,12 +193,17 @@ export default {
   adapters: [],
 };
 `
+            // Each property run gets its own directory so the config path is
+            // unique. The loader resolves `.mjs` via native ESM (through jiti),
+            // which caches by file URL; reusing one path across runs would
+            // serve a stale module.
+            const runDir = fs.mkdtempSync(path.join(tempDir, "run-"))
             fs.writeFileSync(
-              path.join(tempDir, "lakeql.config.mjs"),
+              path.join(runDir, "lakeql.config.mjs"),
               configContent
             )
 
-            const result = await loadConfig({ cwd: tempDir })
+            const result = await loadConfig({ cwd: runDir })
 
             // Result has the expected structure
             expect(result).toHaveProperty("config")
@@ -367,12 +372,15 @@ export default {
   adapters,
 };
 `
+            // Unique directory per run so the native-ESM module cache (keyed by
+            // file URL) does not serve a stale config from a prior iteration.
+            const runDir = fs.mkdtempSync(path.join(tempDir, "run-"))
             fs.writeFileSync(
-              path.join(tempDir, "lakeql.config.mjs"),
+              path.join(runDir, "lakeql.config.mjs"),
               configContent
             )
 
-            const result = await loadConfig({ cwd: tempDir })
+            const result = await loadConfig({ cwd: runDir })
 
             // The adapters array has the expected length
             expect(result.adapters).toHaveLength(adapterCount)
