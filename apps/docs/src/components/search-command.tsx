@@ -287,9 +287,12 @@ function formatHint(document: Partial<ZBSearchDocument>): string | undefined {
     return parentBreadcrumb
   }
 
-  return typeof document.section === "string" && document.section.length > 0
-    ? document.section
-    : undefined
+  // No parent segment (a top-level section landing page, e.g. breadcrumb
+  // "LakeQL"): return undefined so the group renders its properly-cased
+  // pageTitle. Do NOT fall back to `document.section` — that is a raw
+  // lowercase collection slug ("lakeql", "data-sources") and would show as a
+  // broken lowercase group label.
+  return undefined
 }
 
 function stripMarkdown(content: string): string {
