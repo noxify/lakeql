@@ -46,6 +46,22 @@ export async function installDependencies(
 }
 
 /**
+ * Whether installing the generated project opts out of pnpm's exotic
+ * subdependency block.
+ *
+ * This is true only for a pnpm install of a `pkg.pr.new` preview build, the
+ * exact case {@link installAdditionalArgs} adds the opt-out flag for. Callers
+ * use it to surface a notice so the relaxed install setting is not applied
+ * silently.
+ *
+ * @param packageManager - The chosen package manager (npm, pnpm, yarn).
+ */
+export function allowsExoticSubdeps(packageManager: string): boolean {
+  const { previewSha } = getBuildEnv()
+  return packageManager === "pnpm" && Boolean(previewSha)
+}
+
+/**
  * Extra install flags for the chosen package manager.
  *
  * During a `pkg.pr.new` preview build the generated `package.json` pins its
@@ -58,8 +74,7 @@ export async function installDependencies(
  * emitted in preview mode.
  */
 function installAdditionalArgs(packageManager: string): string[] {
-  const { previewSha } = getBuildEnv()
-  if (packageManager === "pnpm" && previewSha) {
+  if (allowsExoticSubdeps(packageManager)) {
     return ["--config.block-exotic-subdeps=false"]
   }
 

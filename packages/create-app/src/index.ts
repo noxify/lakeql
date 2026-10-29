@@ -26,7 +26,10 @@ import {
   validatePackageManager,
 } from "./prompts/install"
 import { promptProjectName, validateProjectName } from "./prompts/project-name"
-import { installDependencies } from "./runtime/dependencies"
+import {
+  allowsExoticSubdeps,
+  installDependencies,
+} from "./runtime/dependencies"
 import {
   invocationCwd,
   resolveLocalTemplateDir,
@@ -131,6 +134,29 @@ async function executeTasks(opts: {
   ])
 
   const localMode = opts.localTemplateDir !== undefined
+
+  // Surface the relaxed install setting rather than applying it silently.
+  // Only a pnpm install of a pkg.pr.new preview build opts out of pnpm's
+  // exotic-subdependency block (see allowsExoticSubdeps); released scaffolds
+  // never hit this path.
+  if (
+    opts.installDeps &&
+    !opts.dryRun &&
+    !localMode &&
+    allowsExoticSubdeps(opts.packageManager)
+  ) {
+    note(
+      [
+        "This is a pkg.pr.new preview build, so the generated project pins its",
+        "@lakeql/* dependencies (and their transitive @lakeql/* deps) to",
+        "pkg.pr.new URLs. Dependencies install with",
+        "`--config.block-exotic-subdeps=false` so pnpm resolves those URL",
+        "subdependencies. Released scaffolds resolve from npm and never use",
+        "this flag.",
+      ].join(" "),
+      "Preview build"
+    )
+  }
 
   await tasks([
     {
