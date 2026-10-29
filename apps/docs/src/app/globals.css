@@ -123,7 +123,11 @@
   --brand-950: #0f3742;
   --brand: var(--brand-500);
   --brand-soft: var(--brand-300);
-  --background: oklch(16.5% 0.028 229);
+  /* sRGB hex (exact equivalent of oklch(16.5% 0.028 229)). Kept as hex, not
+     oklch: the wide-gamut oklch value rendered with a tiny difference between
+     the content <main> and the TOC <aside> (different compositing paths),
+     producing a visible seam in dark mode. sRGB has no such ambiguity. */
+  --background: #021118;
   --foreground: oklch(0.985 0 0);
   --card: oklch(19.5% 0.02 229);
   --card-foreground: oklch(0.985 0 0);
