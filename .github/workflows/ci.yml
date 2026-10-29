@@ -144,6 +144,8 @@ jobs:
                 "```",
                 "",
                 "> The `--config.block-exotic-subdeps=false` flag is required because create-app's own `@lakeql/scaffold` dependency resolves to a pkg.pr.new URL, which recent pnpm versions block as an exotic subdependency by default.",
+                "",
+                "> **Choose pnpm at the package-manager prompt.** A preview build pins its `@lakeql/*` dependencies (and their transitive `@lakeql/*` deps) to pkg.pr.new URLs, and only the generated pnpm setup opts out of pnpm's exotic-subdependency block so those URLs resolve on install and on every later command. npm and yarn are not supported for preview builds. Released scaffolds resolve from npm and work with any package manager.",
               ];
               sections.push(createAppLines.join("\n"));
             }
