@@ -29,16 +29,17 @@ export async function installDependencies(
     return
   }
 
-  // pnpm requires allowBuilds for esbuild postinstall scripts
+  // pnpm reads project settings from pnpm-workspace.yaml (since pnpm 11,
+  // .npmrc is auth/registry only). allowBuilds lets esbuild's postinstall
+  // run; the preview-only blockExoticSubdeps opt-out is appended below.
   if (packageManager === "pnpm") {
     writeFileSync(
       path.resolve(targetDir, "pnpm-workspace.yaml"),
-      "allowBuilds:\n  esbuild: true\n"
+      pnpmWorkspaceYaml(packageManager)
     )
   }
 
   await installPackage([], {
-    additionalArgs: installAdditionalArgs(packageManager),
     cwd: targetDir,
     packageManager,
     silent: true,
@@ -46,13 +47,13 @@ export async function installDependencies(
 }
 
 /**
- * Whether installing the generated project opts out of pnpm's exotic
- * subdependency block.
+ * Whether the generated project opts out of pnpm's exotic subdependency
+ * block.
  *
- * This is true only for a pnpm install of a `pkg.pr.new` preview build, the
- * exact case {@link installAdditionalArgs} adds the opt-out flag for. Callers
- * use it to surface a notice so the relaxed install setting is not applied
- * silently.
+ * This is true only for a pnpm `pkg.pr.new` preview build, where the project
+ * pins its `@lakeql/*` dependencies to `pkg.pr.new` URLs and those packages
+ * depend on further url-resolved `@lakeql/*` packages. Callers use it to
+ * surface a notice so the relaxed setting is not applied silently.
  *
  * @param packageManager - The chosen package manager (npm, pnpm, yarn).
  */
@@ -62,21 +63,26 @@ export function allowsExoticSubdeps(packageManager: string): boolean {
 }
 
 /**
- * Extra install flags for the chosen package manager.
+ * Builds the generated project's `pnpm-workspace.yaml`.
  *
- * During a `pkg.pr.new` preview build the generated `package.json` pins its
- * `@lakeql/*` dependencies to `pkg.pr.new` URLs, and those packages depend on
- * further `@lakeql/*` packages that are themselves URL-resolved. pnpm v10+
- * rejects such transitive URL dependencies by default
- * (`ERR_PNPM_EXOTIC_SUBDEP`), so the install must opt out via
- * `--config.block-exotic-subdeps=false`. A released build resolves every
- * dependency from npm with no exotic subdependencies, so the flag is only
- * emitted in preview mode.
+ * Always enables the esbuild build script. During a `pkg.pr.new` preview
+ * build it also sets `blockExoticSubdeps: false`: the project's `@lakeql/*`
+ * deps resolve via `pkg.pr.new` URLs and depend on further url-resolved
+ * `@lakeql/*` packages, which pnpm v10+ rejects by default
+ * (`ERR_PNPM_EXOTIC_SUBDEP`). Writing it to the workspace file — rather than
+ * passing a one-off install flag — means every later pnpm command in the
+ * project (including the `verifyDepsBeforeRun` install that `pnpm run` performs)
+ * also resolves the tree. A released build resolves every dependency from npm
+ * with no exotic subdependencies, so the setting is only written in preview
+ * mode.
+ *
+ * @param packageManager - The chosen package manager (npm, pnpm, yarn).
  */
-function installAdditionalArgs(packageManager: string): string[] {
+function pnpmWorkspaceYaml(packageManager: string): string {
+  const base = "allowBuilds:\n  esbuild: true\n"
   if (allowsExoticSubdeps(packageManager)) {
-    return ["--config.block-exotic-subdeps=false"]
+    return `${base}blockExoticSubdeps: false\n`
   }
 
-  return []
+  return base
 }

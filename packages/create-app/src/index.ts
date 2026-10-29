@@ -149,10 +149,10 @@ async function executeTasks(opts: {
       [
         "This is a pkg.pr.new preview build, so the generated project pins its",
         "@lakeql/* dependencies (and their transitive @lakeql/* deps) to",
-        "pkg.pr.new URLs. Dependencies install with",
-        "`--config.block-exotic-subdeps=false` so pnpm resolves those URL",
-        "subdependencies. Released scaffolds resolve from npm and never use",
-        "this flag.",
+        "pkg.pr.new URLs. The generated pnpm-workspace.yaml sets",
+        "`blockExoticSubdeps: false` so pnpm resolves those URL subdependencies",
+        "on install and on every later pnpm command. Released scaffolds resolve",
+        "from npm and never set this.",
       ].join(" "),
       "Preview build"
     )
