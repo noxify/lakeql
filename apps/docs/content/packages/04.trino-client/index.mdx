@@ -1,0 +1,24 @@
+---
+title: trino-client
+navTitle: trino-client
+description: A standalone Trino REST client with streaming, cancellation, and retry.
+---
+
+`@lakeql/trino-client` is a standalone client for a Trino cluster. It talks to the Trino REST API using native `fetch` — no external HTTP dependencies — and supports automatic result pagination, streaming via async generators, query cancellation, and configurable retry with exponential backoff.
+
+The adapters use it under the hood, but you can use it directly whenever you need raw access to Trino.
+
+```ts
+import { TrinoClient } from "@lakeql/trino-client"
+
+const client = new TrinoClient({
+  host: "http://localhost",
+  port: 8080,
+  auth: { type: "basic", username: "user", password: "secret" },
+  catalog: "hive",
+})
+
+const rows = await client.query({ sql: "SELECT 1" })
+```
+
+This section covers [client setup](/docs/packages/trino-client/client-setup), [executing queries](/docs/packages/trino-client/executing-queries), [streaming](/docs/packages/trino-client/streaming), and [metadata](/docs/packages/trino-client/metadata), with the full [API reference](/docs/packages/trino-client/api-reference) at the end.

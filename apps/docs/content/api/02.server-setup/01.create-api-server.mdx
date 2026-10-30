@@ -1,63 +1,42 @@
 ---
-title: createApiServer
-navTitle: createApiServer
-description: Create a configured Hono application with GraphQL Yoga integration, CORS, and logging middleware.
+title: Create the API Server
+navTitle: Create Server
+description: Compose the server with defineApiConfig and start it.
 ---
 
-`createApiServer` is the primary factory function for building a LakeQL API instance. It wires together Hono, GraphQL Yoga, and all middleware into a ready-to-use server object.
-
-## Signature
+[`defineApiConfig`](/docs/api/api-reference#define-api-config) takes the runtime config and returns a resolved config with convenience methods. Call `startServer()` to run the full HTTP server.
 
 ```ts
-function createApiServer(options?: ApiRuntimeConfig): Promise<ApiServer>
-```
+import { defineApiConfig } from "@lakeql/api/config"
 
-## Return type
-
-## What it sets up
-
-1. Creates a structured logger via `@lakeql/logger`
-2. Initializes GraphQL Yoga with the loaded schema and context
-3. Mounts Hono logger middleware on all routes
-4. Configures CORS on the GraphQL path (POST, GET, OPTIONS)
-5. Connects the Yoga request handler to Hono
-
-## Usage
-
-```ts path="src/server.ts"
-import { createApiServer } from "@lakeql/api/server"
-
-const { app, logger, yoga } = await createApiServer({
+const server = defineApiConfig({
+  runtime,
+  tokenResolver,
+  permissions,
   baseDir: import.meta.dirname,
   schemaPath: "./schemas",
-  graphqlPath: "/graphql",
-  port: 4000,
 })
 
-// Add custom middleware or routes to the Hono app
-app.get("/health", (c) => c.json({ status: "ok" }))
+await server.startServer()
 ```
 
-## Starting the server
+## The Runtime
 
-For most projects, use `defineConfig` with `startServer()` instead of calling `createApiServer` directly:
+The API server does not build the runtime — the application does, with [`createLakeQLRuntime`](/docs/packages/config/api-reference#create-lake-ql-runtime), and passes it in as `runtime`. Resolvers reach read strategies through it. This keeps the API out of the runtime lifecycle; your code owns shutdown.
 
-```ts path="src/index.ts"
-import { config } from "./config"
+## Graceful Shutdown
 
-await config.startServer()
+Because the application owns the runtime, close it on shutdown signals:
+
+```ts
+const shutdown = async () => {
+  await runtime.close()
+  process.exit(0)
+}
+process.on("SIGTERM", shutdown)
+process.on("SIGINT", shutdown)
 ```
 
-If you don't need `defineConfig`, `startApiServer` calls `createApiServer` internally and binds to a port:
+## Lower-Level Entry Points
 
-```ts path="src/index.ts"
-import { startApiServer } from "@lakeql/api/server"
-
-await startApiServer({
-  baseDir: import.meta.dirname,
-  schemaPath: "./schemas",
-  port: 4000,
-})
-```
-
-`startApiServer` uses `@hono/node-server` to serve the application via Node.js `http` module.
+`defineApiConfig` also exposes `createYogaServer(logger)` if you need the Yoga instance without starting an HTTP listener. The package additionally exports [`createApiServer`](/docs/api/api-reference#create-api-server) and [`startApiServer`](/docs/api/api-reference#start-api-server) for direct use.

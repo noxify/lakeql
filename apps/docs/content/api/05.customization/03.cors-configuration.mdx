@@ -1,97 +1,30 @@
 ---
 title: CORS Configuration
 navTitle: CORS Configuration
-description: Customize CORS settings and add additional Hono middleware to the API server.
+description: Control cross-origin access to the GraphQL endpoint.
 ---
 
-By default, `createApiServer` applies permissive CORS settings on the GraphQL endpoint. For production deployments, you'll typically want to restrict the allowed origins and customize headers.
-
-## Default CORS configuration
-
-The built-in CORS middleware is applied to POST, GET, and OPTIONS requests on the GraphQL path:
-
-| Setting        | Default Value                       |
-| -------------- | ----------------------------------- |
-| `origin`       | `"*"` (all origins)                 |
-| `allowMethods` | `["POST", "GET", "OPTIONS"]`        |
-| `allowHeaders` | `["content-type", "authorization"]` |
-| `credentials`  | `true`                              |
-
-## Customizing CORS
-
-Since `createApiServer` returns the Hono `app` instance, you can add or override middleware:
+CORS for the GraphQL route is controlled by the `cors` option on [`defineApiConfig`](/docs/api/server-setup/define-config). The option is applied by the Hono layer that wraps the GraphQL server.
 
 ```ts
-import { createApiServer } from "@lakeql/api/server"
-import { cors } from "hono/cors"
-
-const { app } = await createApiServer({
-  schemaPath: "./src/schemas",
-})
-
-// Add restrictive CORS for a specific path
-app.use(
-  "/graphql/*",
-  cors({
-    origin: ["https://app.example.com", "https://admin.example.com"],
-    allowMethods: ["POST", "OPTIONS"],
-    allowHeaders: ["content-type", "authorization", "x-request-id"],
+const server = defineApiConfig({
+  runtime,
+  tokenResolver,
+  cors: {
+    origin: "https://app.example.com",
     credentials: true,
-    maxAge: 86400,
-  })
-)
-```
-
-## Adding custom middleware
-
-The Hono app supports any compatible middleware. Add rate limiting, request logging, or custom headers:
-
-```ts
-import { createApiServer, startApiServer } from "@lakeql/api/server"
-import { serve } from "@hono/node-server"
-
-const { app, yoga } = await createApiServer({
-  schemaPath: "./src/schemas",
-})
-
-// Custom request ID header
-app.use("*", async (c, next) => {
-  const requestId = crypto.randomUUID()
-  c.header("x-request-id", requestId)
-  await next()
-})
-
-// Custom health endpoint
-app.get("/ready", (c) =>
-  c.json({ status: "ready", timestamp: new Date().toISOString() })
-)
-
-// Start manually with the customized app
-serve({
-  fetch: app.fetch,
-  port: 4000,
+  },
 })
 ```
 
-## Adding authentication middleware
+The option shape is [Hono's CORS middleware](https://hono.dev/docs/middleware/builtin/cors) config — `origin`, `allowMethods`, `allowHeaders`, `credentials`, and so on.
 
-For scenarios where you need pre-GraphQL authentication checks:
+## Default
 
-```ts
-import { createApiServer } from "@lakeql/api/server"
+When `cors` is omitted, CORS is **not** enabled — the GraphQL route is same-origin only, and no `Access-Control-Allow-Origin` header is sent. Set `origin` to opt in.
 
-const { app } = await createApiServer({
-  schemaPath: "./src/schemas",
-})
-
-// Block unauthenticated requests before they reach Yoga
-app.use("/graphql/*", async (c, next) => {
-  const auth = c.req.header("authorization")
-  if (!auth && c.req.method !== "OPTIONS") {
-    return c.json({ error: "Authorization required" }, 401)
-  }
-  await next()
-})
-```
-
-Note that this is separate from the GraphQL-level `authScopes` — it blocks requests at the HTTP layer before they reach the GraphQL resolver.
+<Warning>
+  A wildcard origin (`"*"`) cannot be combined with `credentials: true` —
+  browsers reject that pairing, so there is no permissive-with-credentials
+  default. List the exact front-end origins that should reach the API.
+</Warning>

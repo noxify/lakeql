@@ -249,9 +249,9 @@ const _entryFrontmatterCache = new Map<
   Promise<Frontmatter | undefined>
 >()
 
+collectionHelperGlobals.__docsEntryFrontmatterCache ??= _entryFrontmatterCache
 const _sharedEntryFrontmatterCache =
-  (collectionHelperGlobals.__docsEntryFrontmatterCache ??=
-    _entryFrontmatterCache)
+  collectionHelperGlobals.__docsEntryFrontmatterCache
 
 export async function getEntryFrontmatter(entry: EntryType) {
   const cacheKey = entry.getPathname({ includeBasePathname: true })
@@ -348,6 +348,72 @@ export async function getSections(
 
 export function getRootSections() {
   return AllDocumentation.getRootEntries() as EntryType[]
+}
+
+/**
+ * An item resolved for {@link PageList}: the title and description come from the
+ * target page's frontmatter, so they never need to be maintained twice.
+ */
+export interface PageListItem {
+  title: string
+  description: string
+  path: string
+}
+
+/**
+ * Normalizes a page reference to collection-relative pathname segments.
+ *
+ * Accepts `"lakeql/introduction/overview"`, a leading slash, or a leading
+ * `docs/` / `/docs/` prefix, so authors can paste the same path they use in a
+ * link.
+ */
+function toPageSegments(reference: string): string[] {
+  return reference
+    .replace(/^\/+/u, "")
+    .replace(/^docs\//u, "")
+    .split("/")
+    .filter(Boolean)
+}
+
+/**
+ * Resolves a list of documentation page references to {@link PageListItem}s,
+ * reading each page's title and description from its frontmatter.
+ *
+ * References that do not resolve to an existing page are skipped, so a typo
+ * drops the item rather than failing the build. Order is preserved.
+ *
+ * @param references - Page paths relative to `/docs` (e.g.
+ *   `"lakeql/introduction/overview"`). A leading slash or `docs/` prefix is
+ *   tolerated.
+ */
+export async function resolvePageListItems(
+  references: readonly string[]
+): Promise<PageListItem[]> {
+  const resolved = await Promise.all(
+    references.map(async (reference) => {
+      const segments = toPageSegments(reference)
+
+      if (segments.length === 0) {
+        return null
+      }
+
+      const file = await getFileContentByPathCached(segments.join("/"))
+
+      if (!file) {
+        return null
+      }
+
+      const frontmatter = await getMetadata(file)
+
+      return {
+        description: frontmatter?.description ?? "",
+        path: `/docs/${segments.join("/")}`,
+        title: frontmatter ? getTitle(file, frontmatter, true) : file.title,
+      } satisfies PageListItem
+    })
+  )
+
+  return resolved.filter((item): item is PageListItem => item !== null)
 }
 
 /**

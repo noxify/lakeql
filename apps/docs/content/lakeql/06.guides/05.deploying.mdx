@@ -1,0 +1,27 @@
+---
+title: Deploying
+navTitle: Deploying
+description: Run a LakeQL server in production.
+---
+
+A LakeQL project is an ordinary Node application, so it deploys like any Node service. A few things are worth getting right for production.
+
+## Build and Generated Files
+
+The generated endpoint files under your source path are part of your source — commit them, and regenerate with [`pull`](/docs/cli/commands/pull) when a table changes. Build the project with its build script before deploying.
+
+## Environment
+
+Provide the connection variables through your platform's environment or secrets manager rather than a committed `.env`. Validate them at startup so a misconfiguration fails fast. See [environment variables](/docs/lakeql/configuration/environment-variables).
+
+## Lifecycle
+
+The application owns the runtime. Wire `runtime.close()` to `SIGTERM`/`SIGINT` so connections drain cleanly on shutdown, as shown in [server setup](/docs/api/server-setup/create-api-server). The server exposes a health check at `/live` (configurable) for readiness and liveness probes.
+
+## Observability
+
+LakeQL logs every execution error server-side and offers an [`onError`](/docs/api/customization/error-handling) hook to forward errors to your telemetry (OpenTelemetry, Sentry, metrics) without coupling the framework to any provider.
+
+## Containers
+
+The project builds into a standard Node container image. Set the environment at runtime, expose the server port (default `4000`), and run the built entry point.

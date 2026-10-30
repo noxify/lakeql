@@ -34,21 +34,19 @@ const badgeVariants: Record<Exclude<NavBadge, "pulse">, string> = {
   deprecated: "bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400",
 }
 
-function PulseDot({ className }: { className?: string }) {
-  return (
-    <span className={cn("pointer-events-none absolute flex size-2", className)}>
-      <span className="bg-brand-600 relative inline-flex size-2 rounded-full" />
-    </span>
-  )
-}
+const PulseDot = ({ className }: { className?: string }) => (
+  <span className={cn("pointer-events-none absolute flex size-2", className)}>
+    <span className="bg-brand-600 relative inline-flex size-2 rounded-full" />
+  </span>
+)
 
-export function SidebarItem({
+export const SidebarItem = ({
   item,
   isSubItem = false,
 }: {
   item: TreeItem
   isSubItem?: boolean
-}) {
+}) => {
   const pathname = usePathname()
   const isActive = current({ pathname, item })
   const icon = getNavIconComponent(item.navIcon)

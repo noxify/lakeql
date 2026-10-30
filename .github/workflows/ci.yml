@@ -91,6 +91,9 @@ jobs:
     needs: [lint, format, typecheck, detect-package-changes]
     if: github.event_name == 'pull_request' && needs.detect-package-changes.outputs.packages_changed == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
     steps:
       - uses: actions/checkout@v7
 
@@ -98,6 +101,109 @@ jobs:
         uses: ./.github/setup
 
       - name: Build
+        env:
+          LAKEQL_TEMPLATE_REF: ${{ github.event.pull_request.head.ref }}
+          LAKEQL_PKG_SHA: ${{ github.event.pull_request.head.sha }}
         run: pnpm build:pkg
 
-      - run: pnpx pkg-pr-new publish --commentWithSha --packageManager=pnpm ./packages/*
+      - name: Publish packages
+        id: publish
+        run: pnpm exec pkg-pr-new publish --commentWithSha --packageManager=pnpm --json output.json --comment=off ./packages/*
+
+      - name: Post or update preview comment
+        uses: actions/github-script@v9
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require("fs");
+
+            let output;
+            try {
+              output = JSON.parse(fs.readFileSync("output.json", "utf8"));
+            } catch (error) {
+              core.setFailed(`Unable to read pkg-pr-new output.json: ${error.message}`);
+              return;
+            }
+
+            const packages = Array.isArray(output.packages) ? output.packages : [];
+
+            const createAppPackage = packages.find((pkg) => pkg.name === "@lakeql/create-app");
+
+            const identifier = "<!-- lakeql-pkg-pr-new-comment -->";
+
+            const sections = [identifier, "## \ud83d\udce6 LakeQL preview build"];
+
+            if (createAppPackage) {
+              const createAppLines = [
+                "### \ud83d\ude80 Try `create-app`",
+                "",
+                "This preview build includes `@lakeql/create-app`. Scaffold a new app with it:",
+                "",
+                "```sh",
+                `pnpm dlx --config.block-exotic-subdeps=false ${createAppPackage.url} my-app`,
+                "```",
+                "",
+                "> The `--config.block-exotic-subdeps=false` flag is required because create-app's own `@lakeql/scaffold` dependency resolves to a pkg.pr.new URL, which recent pnpm versions block as an exotic subdependency by default.",
+                "",
+                "> **Choose pnpm at the package-manager prompt.** A preview build pins its `@lakeql/*` dependencies (and their transitive `@lakeql/*` deps) to pkg.pr.new URLs, and only the generated pnpm setup opts out of pnpm's exotic-subdependency block so those URLs resolve on install and on every later command. npm and yarn are not supported for preview builds. Released scaffolds resolve from npm and work with any package manager.",
+              ];
+              sections.push(createAppLines.join("\n"));
+            }
+
+            if (packages.length > 0) {
+              const packageBlocks = packages.map((pkg) =>
+                [
+                  "<details>",
+                  `<summary><b>${pkg.name}</b></summary>`,
+                  "",
+                  "```sh",
+                  `pnpm add ${pkg.url}`,
+                  "```",
+                  "",
+                  "</details>",
+                ].join("\n"),
+              );
+              sections.push(["### \ud83d\udce5 Packages", "", ...packageBlocks].join("\n"));
+            }
+
+            const headSha =
+              (context.payload.pull_request && context.payload.pull_request.head.sha) ||
+              context.sha;
+            const shortSha = headSha ? headSha.slice(0, 7) : "";
+            if (headSha) {
+              const commitUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/commit/${headSha}`;
+              sections.push(`_commit: [\`${shortSha}\`](${commitUrl})_`);
+            }
+
+            const body = sections.join("\n\n");
+
+            const issueNumber = context.issue.number;
+
+            if (!issueNumber) {
+              console.log("No associated pull request. Skipping preview comment.");
+              return;
+            }
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+            });
+
+            const existingComment = comments.find((comment) => comment.body && comment.body.includes(identifier));
+
+            if (existingComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existingComment.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                body,
+              });
+            }

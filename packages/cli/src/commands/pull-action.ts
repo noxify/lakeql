@@ -2,14 +2,14 @@
 import path from "node:path"
 
 import { parseColumns } from "@lakeql/column-parser"
-import { convertTrinoResponse } from "@lakeql/response-transformer"
-import type { TrinoClient } from "@lakeql/trino-client"
+import type { DataSource } from "@lakeql/datasource"
 
+import { columnsToDefinition } from "@/pipeline/columns-to-definition"
 import { generateEndpoint } from "@/pipeline/generate"
-import { trinoColumnsToDefinition } from "@/pipeline/trino-to-definition"
 
 export interface PullActionParams {
-  trinoClient: TrinoClient
+  dataSource: DataSource
+  dataSourceName: string
   catalog: string
   schema: string
   tables: string[]
@@ -21,12 +21,13 @@ export interface PullActionParams {
 }
 
 /**
- * Core pull logic — fetches columns from Trino and generates endpoints.
+ * Core pull logic — fetches columns from the data source and generates endpoints.
  * Shared by both interactive `pull` and `bulk-pull` flows.
  */
 export async function executePull(params: PullActionParams): Promise<void> {
   const {
-    trinoClient,
+    dataSource,
+    dataSourceName,
     catalog,
     schema,
     tables,
@@ -43,36 +44,32 @@ export async function executePull(params: PullActionParams): Promise<void> {
     onItemStart?.(table)
 
     try {
-      const columns = await trinoClient.columns({
-        catalog,
-        schema,
-        table,
-      })
+      const columnInfos = await dataSource.columns(catalog, schema, table)
 
-      const transformedResponse = columns.map((values) =>
-        convertTrinoResponse<{
-          name: string
-          type: string
-          extra: string
-          description: string
-        }>({
-          keys: ["name", "type", "extra", "description"],
-          values,
-        })
-      )
+      // Convert ColumnInfo[] to the Record<string, JSONType> expected by parseColumns.
+      // ColumnInfo has { name, type, extra?, description? }. The column parser
+      // expects { name: string; type: string } with the native type string.
+      const columnRecords = columnInfos.map((col) => ({
+        name: col.name,
+        type: col.type,
+        extra: col.extra ?? "",
+        description: col.description ?? "",
+      }))
 
-      const parsedColumns = parseColumns(transformedResponse)
+      const parsedColumns = parseColumns(columnRecords)
 
-      const definition = trinoColumnsToDefinition({
+      const definition = columnsToDefinition({
         tableName: table,
         catalog,
         schema,
         parsedColumns,
+        typeMapper: dataSource.typeMapper,
       })
 
       const targetPath = path.join(
         resolvedTargetPath,
         "schemas/generated",
+        dataSourceName,
         catalog,
         schema,
         table
@@ -83,6 +80,8 @@ export async function executePull(params: PullActionParams): Promise<void> {
         outputDir: targetPath,
         skipRegistry,
         sourcePathOverride,
+        adapter: dataSource.adapter,
+        dataSourceName,
       })
 
       succeeded = true

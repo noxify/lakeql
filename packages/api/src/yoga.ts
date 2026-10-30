@@ -3,10 +3,15 @@ import { initContextCache } from "@pothos/core"
 import { createYoga } from "graphql-yoga"
 import type { MiddlewareHandler } from "hono"
 
-import { getUser, hasReadPermission, hasWritePermission } from "./auth"
-import { setMaxRecordsPerPage } from "./builder"
+import {
+  tokenResolver as defaultTokenResolver,
+  hasReadPermission,
+  hasWritePermission,
+} from "./auth"
 import type { ApiRuntimeConfig } from "./config"
 import { env } from "./env"
+import { createErrorLoggingPlugin } from "./error-logging-plugin"
+import { entraIdIdentityResolver } from "./identity"
 import { loadSchema } from "./schema"
 
 export interface ApiYoga {
@@ -18,7 +23,8 @@ export async function createYogaServer(
   logger: ReturnType<typeof createLogger>,
   options: ApiRuntimeConfig = {}
 ): Promise<ApiYoga> {
-  const getUserResolver = options.getUser ?? getUser
+  const resolveToken = options.tokenResolver ?? defaultTokenResolver
+  const resolveIdentity = options.identityResolver ?? entraIdIdentityResolver
   const hasReadPermissionResolver =
     options.hasReadPermission ?? hasReadPermission
   const hasWritePermissionResolver =
@@ -26,22 +32,40 @@ export async function createYogaServer(
   const yogaConfig = options.yogaConfig ?? {}
   const permissions = options.permissions ?? []
 
-  setMaxRecordsPerPage(options.maxRecordsPerPage)
-
   const schema = await loadSchema({
     baseDir: options.baseDir,
     schemaPath: options.schemaPath,
   })
 
+  const { runtime } = options
+
   return createYoga({
-    context: async ({ request }) => ({
-      ...initContextCache(),
-      currentUser: await getUserResolver(request),
-      hasReadPermission: hasReadPermissionResolver,
-      hasWritePermission: hasWritePermissionResolver,
-      logger,
-      permissions,
-    }),
+    context: async ({ request }) => {
+      const currentUser = await resolveToken(request)
+      const identity = currentUser ? await resolveIdentity(currentUser) : null
+
+      return {
+        ...initContextCache(),
+        currentUser: currentUser ?? null,
+        identity,
+        hasReadPermission: hasReadPermissionResolver,
+        hasWritePermission: hasWritePermissionResolver,
+        logger,
+        permissions,
+        getReadStrategy: (name: string) => {
+          if (!runtime) {
+            throw new Error(
+              `Cannot resolve read strategy for "${name}": the API was configured without a runtime. ` +
+                `Pass a runtime to defineApiConfig.`
+            )
+          }
+          return runtime.getReadStrategy(name)
+        },
+        getWriteStrategy: runtime
+          ? (name: string) => runtime.getWriteStrategy(name)
+          : undefined,
+      }
+    },
     graphiql: env.NODE_ENV === "development",
     healthCheckEndpoint:
       options.healthCheckEndpoint ?? yogaConfig.healthCheckEndpoint ?? "/live",
@@ -50,6 +74,12 @@ export async function createYogaServer(
     maskedErrors: true,
     schema,
     ...yogaConfig,
+    // Keep LakeQL's error-logging plugin even when yogaConfig provides its own;
+    // set after the spread so user plugins are appended, not replaced.
+    plugins: [
+      createErrorLoggingPlugin(logger, options.onError),
+      ...(yogaConfig.plugins ?? []),
+    ],
   }) as ApiYoga
 }
 

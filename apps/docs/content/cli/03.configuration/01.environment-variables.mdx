@@ -1,49 +1,26 @@
 ---
 title: Environment Variables
-description: All environment variables used by the LakeQL CLI for Trino connectivity.
+navTitle: Environment Variables
+description: The environment the CLI reads, and the --env option.
 ---
 
-The LakeQL CLI reads connection details from environment variables. These are required for any command that communicates with Trino.
+The CLI needs the same environment your `lakeql.config.ts` references — data source hosts, credentials, and so on — because it connects to the data source to introspect and generate.
 
-## Required variables
+## Loading an Env File
 
-| Variable | Type | Description |
-| --- | --- | --- |
-| `HIVE_HOST` | string | Trino host URL including protocol (e.g. `https://trino.example.com`) |
-| `HIVE_PORT` | number | Trino port (e.g. `443`) |
-| `HIVE_USERNAME` | string | Authentication username |
-| `HIVE_PASSWORD` | string | Authentication password |
-| `HIVE_CATALOG` | string | Default catalog name used when `--catalog` is not provided |
+Every command accepts the global `--env [path]` option. It loads an env file into the environment **before** the config is read, so a config that references `env.*` resolves its values:
 
-## Optional variables
+<Command variant="exec">lakeql-cli pull --env .env</Command>
 
-| Variable | Type | Default | Description |
-| --- | --- | --- | --- |
-| `HIVE_SOURCE` | string | — | Optional source identifier sent to Trino |
-| `LOG_LEVEL` | string | `warn` | Log verbosity: `debug`, `info`, `warn`, or `error` |
+- Given without a value, `--env` defaults to `.env`.
+- Relative paths resolve against the directory you ran the command from.
+- Loading uses Node's built-in `.env` parser — no extra dependency.
+- A missing or unreadable file is a hard error, since you asked for it explicitly. Omit `--env` to use the ambient environment instead.
 
-## Example .env file
+## CLI Log Level
+
+The CLI's own verbosity is controlled by `LOG_LEVEL`, one of `debug`, `info`, `warn`, or `error`. It defaults to `warn`.
 
 ```bash
-# .env
-HIVE_HOST=https://trino.example.com
-HIVE_PORT=443
-HIVE_USERNAME=service-account
-HIVE_PASSWORD=s3cur3-p4ssw0rd
-HIVE_CATALOG=hive
-LOG_LEVEL=info
-```
-
-The CLI does not load `.env` automatically. Make sure variables are present in the process environment before running commands.
-
-You can do this in different ways:
-
-- export variables in your shell session
-- use a wrapper like `dotenv-cli`
-- run commands through your process manager or CI environment
-
-Example with `dotenv-cli`:
-
-```bash
-dotenv -e ./.env -- lakeql-cli pull
+LOG_LEVEL=debug lakeql-cli pull --env .env
 ```

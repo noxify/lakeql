@@ -8,8 +8,10 @@ export default defineConfig({
   extends: [core, vitest, react, next],
   ignorePatterns: [
     "apps/docs/src/components/beautiful-mermaid/**",
-    "templates/stackblitz/**",
     ".tegami/publish-lock.yaml",
+    // Vendored minitrino library — keep it byte-for-byte identical to the
+    // upstream release so version upgrades stay a clean, diffable swap.
+    ".minitrino/**",
   ],
 
   overrides: [
@@ -27,6 +29,21 @@ export default defineConfig({
             allowNamedExports: true,
             functions: false,
             ignoreTypeReferences: true,
+          },
+        ],
+      },
+    },
+    {
+      // Default-export components (Next.js pages/layouts, async RSCs) are
+      // idiomatically written as function declarations. Allow both forms so
+      // the arrow-function preference still applies to inline/named components.
+      files: ["apps/docs/**/*.{ts,tsx}"],
+      rules: {
+        "react/function-component-definition": [
+          "error",
+          {
+            namedComponents: ["arrow-function", "function-declaration"],
+            unnamedComponents: "arrow-function",
           },
         ],
       },

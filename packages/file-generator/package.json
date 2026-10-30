@@ -1,7 +1,7 @@
 {
   "name": "@lakeql/file-generator",
   "version": "0.2.0",
-  "description": "Generates TypeScript source files from Trino table metadata",
+  "description": "Generates TypeScript source files from data source table metadata",
   "keywords": [
     "ast",
     "codegen",
@@ -37,6 +37,10 @@
       "types": "./dist/index.d.mts",
       "import": "./dist/index.mjs"
     },
+    "./ast-builders": {
+      "types": "./dist/ast-builders.d.mts",
+      "import": "./dist/ast-builders.mjs"
+    },
     "./config": {
       "types": "./dist/config.d.mts",
       "import": "./dist/config.mjs"
@@ -48,10 +52,6 @@
     "./interface": {
       "types": "./dist/interface.d.mts",
       "import": "./dist/interface.mjs"
-    },
-    "./mutation-schema": {
-      "types": "./dist/mutation-schema.d.mts",
-      "import": "./dist/mutation-schema.mjs"
     },
     "./query-schema": {
       "types": "./dist/query-schema.d.mts",
@@ -67,17 +67,21 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@ianvs/prettier-plugin-sort-imports": "4.7.1",
+    "@lakeql/datasource": "workspace:*",
     "@lakeql/helpers": "workspace:*",
     "@lakeql/schema-generator": "workspace:*",
+    "prettier": "3.9.10",
     "typescript": "6.0.3"
   },
   "devDependencies": {
     "@lakeql/column-parser": "workspace:*",
     "@lakeql/tsconfig": "workspace:*",
+    "@lakeql/vitest-config": "workspace:*",
     "@types/json-schema": "7.0.15",
-    "@types/node": "24.13.3",
+    "@types/node": "24.19.2",
     "lodash-es": "4.18.1",
-    "tsdown": "0.22.13",
-    "vitest": "4.1.10"
+    "tsdown": "0.23.3",
+    "vitest": "5.0.5"
   }
 }

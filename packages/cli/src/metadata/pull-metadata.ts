@@ -7,6 +7,7 @@ import { Command, Option } from "@commander-js/extra-typings"
 import {
   createCatalogOption,
   createConcurrencyOption,
+  createDataSourceOption,
   createSchemaOption,
   createSourcePathOption,
   createTableOption,
@@ -33,6 +34,7 @@ export function buildPullCommandStructure() {
     .description(
       "Interactive query endpoint generation based on a remote table"
     )
+    .addOption(createDataSourceOption())
     .addOption(createCatalogOption())
     .addOption(createTableOrSchemaOption())
     .addOption(createSchemaOption().makeOptionMandatory(false))

@@ -10,55 +10,53 @@ import { LakeqlLogo } from "@/components/lakeql-logo"
 
 const spaceGrotesk = Space_Grotesk({ subsets: ["latin"] })
 
-function OGImage() {
-  return (
-    <GradientGridBackground
-      className="h-full w-full"
-      gridSize={48}
-      gridColor="rgba(107,114,128,0.3)"
-      gradientFrom="#f5f7fa"
-      gradientVia="#d8dee8"
-      gradientTo="#c3cfe2"
-      fadeStartPercent={20}
-      fadeMidPercent={84}
-      midOpacity={0.35}
-      edgeOpacity={0}
-      fadeRadiusXPercent={100}
-      fadeRadiusYPercent={80}
-    >
-      <div className="absolute inset-0 h-full" />
-      <div className="relative flex h-full w-full items-center px-30">
-        <div className="w-full">
-          <div className="relative flex justify-center">
-            <div className="flex items-center gap-6">
-              <div
-                className="flex size-37.5 shrink-0 items-center justify-center rounded-[28px] bg-white shadow-[0_18px_40px_rgba(2,73,118,0.18)]"
-                style={{
-                  transform: "translateZ(0)",
-                }}
-              >
-                <LakeqlLogo className="size-28" />
-              </div>
-              <div
-                className="text-[98px] leading-none font-medium text-slate-700"
-                style={{ fontFamily: spaceGrotesk.style.fontFamily }}
-              >
-                LakeQL
-              </div>
+const OGImage = () => (
+  <GradientGridBackground
+    className="h-full w-full"
+    gridSize={48}
+    gridColor="rgba(107,114,128,0.3)"
+    gradientFrom="#f5f7fa"
+    gradientVia="#d8dee8"
+    gradientTo="#c3cfe2"
+    fadeStartPercent={20}
+    fadeMidPercent={84}
+    midOpacity={0.35}
+    edgeOpacity={0}
+    fadeRadiusXPercent={100}
+    fadeRadiusYPercent={80}
+  >
+    <div className="absolute inset-0 h-full" />
+    <div className="relative flex h-full w-full items-center px-30">
+      <div className="w-full">
+        <div className="relative flex justify-center">
+          <div className="flex items-center gap-6">
+            <div
+              className="flex size-37.5 shrink-0 items-center justify-center rounded-[28px] bg-white shadow-[0_18px_40px_rgba(2,73,118,0.18)]"
+              style={{
+                transform: "translateZ(0)",
+              }}
+            >
+              <LakeqlLogo className="size-28" />
             </div>
-          </div>
-
-          <div className="mt-20 flex flex-row">
-            <div className="text-[34px] leading-tight text-slate-600">
-              Build predictable, secure GraphQL APIs on top of Trino metadata
-              with LakeQL’s type-safe runtime and schema generation CLI.
+            <div
+              className="text-[98px] leading-none font-medium text-slate-700"
+              style={{ fontFamily: spaceGrotesk.style.fontFamily }}
+            >
+              LakeQL
             </div>
           </div>
         </div>
+
+        <div className="mt-20 flex flex-row">
+          <div className="text-[34px] leading-tight text-slate-600">
+            An adapter-agnostic data access layer for modern platforms.
+            Type-safe queries across any supported data engine.
+          </div>
+        </div>
       </div>
-    </GradientGridBackground>
-  )
-}
+    </div>
+  </GradientGridBackground>
+)
 
 export default function OGImagePage() {
   const renderRef = useRef<HTMLDivElement | null>(null)

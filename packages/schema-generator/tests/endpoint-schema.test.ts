@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  endpointDefinitionSchema,
   mutationConfigSchema,
   partitioningFormats,
   validatePartitioningFormat,
@@ -283,6 +284,41 @@ describe(validatePartitioningFormat, () => {
     const result = validatePartitioningFormat("field//other")
     expect(result).not.toBeNull()
     expect(result).toContain("empty segment")
+  })
+})
+
+/** Minimal valid endpoint definition for exercising the optional dataSource field. */
+function validDefinition(overrides: Record<string, unknown> = {}) {
+  return {
+    version: "1.0",
+    tableName: "test_table",
+    catalog: "my_catalog",
+    schema: "my_schema",
+    fields: [{ name: "id", type: "String" }],
+    ...overrides,
+  }
+}
+
+describe("endpointDefinitionSchema - dataSource field", () => {
+  it("accepts a non-empty dataSource string", () => {
+    const result = endpointDefinitionSchema.safeParse(
+      validDefinition({ dataSource: "trino" })
+    )
+    expect(result.success).toBeTruthy()
+    expect(result.data?.dataSource).toBe("trino")
+  })
+
+  it("accepts a definition without dataSource (undefined)", () => {
+    const result = endpointDefinitionSchema.safeParse(validDefinition())
+    expect(result.success).toBeTruthy()
+    expect(result.data?.dataSource).toBeUndefined()
+  })
+
+  it("rejects an empty dataSource string", () => {
+    const result = endpointDefinitionSchema.safeParse(
+      validDefinition({ dataSource: "" })
+    )
+    expect(result.success).toBeFalsy()
   })
 })
 

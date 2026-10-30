@@ -1,5 +1,4 @@
 // oxlint-disable import/no-named-as-default-member
-// Feature: custom-endpoint-cli, Property 6: Output path construction follows convention
 
 import path from "node:path"
 
@@ -49,7 +48,7 @@ const resolvedSourcePathArb = fc
 
 // --- Tests ---
 
-describe("Property 6: Output path construction follows convention", () => {
+describe("Output path construction follows convention", () => {
   it("output directory equals path.join(resolvedSourcePath, 'schemas/generated', catalog, schema, tableName)", () => {
     fc.assert(
       fc.property(

@@ -1,53 +1,70 @@
 ---
 title: Overview
-description: LakeQL is a toolkit for generating type-safe GraphQL APIs on top of Trino data lakehouses.
+navTitle: Overview
+description: LakeQL generates type-safe GraphQL APIs over your data lakehouse — no hand-written resolvers.
 ---
 
 ## What is LakeQL?
 
-LakeQL is a toolkit that automatically generates a type-safe GraphQL API on top of your Trino data lakehouse. It introspects your Trino schemas, generates TypeScript interfaces and query schemas, and serves them through a production-ready GraphQL API with built-in pagination, filtering, and sorting.
+LakeQL is a framework that generates a type-safe GraphQL API on top of data lakehouse query engines. You point its CLI at a data source, generate typed schema files from the real table metadata, and serve them through a GraphQL server that you compose from explicit building blocks.
+
+LakeQL supports [Trino](https://trino.io/) and [Microsoft Fabric](https://www.microsoft.com/en-us/microsoft-fabric) through adapters. A single project can register multiple adapters and route queries to different engines from one API.
 
 ## The Problem
 
-Manually writing GraphQL resolvers for data lakehouse tables is repetitive and error-prone. Every time a table changes, you update interfaces, resolvers, and type definitions by hand. Schema drift, missing fields, and inconsistent filtering logic creep in fast — especially when your lakehouse has dozens of tables across multiple schemas.
+Building a GraphQL API over lakehouse tables is repetitive. Every table needs a TypeScript interface, resolver logic, filter and sort definitions, pagination, and permission checks. When a table changes — a new column, a renamed field, an altered type — you update all of those layers by hand. Schema drift and broken types accumulate quickly across dozens of tables and several schemas.
 
-## The Solution
+## How LakeQL Solves It
 
-LakeQL flips the workflow. Instead of writing resolvers manually, you introspect your Trino catalog and generate everything:
+LakeQL inverts the workflow. Instead of writing resolvers by hand, you introspect the data source and generate the typed layer:
 
-- **TypeScript interfaces** from column metadata
-- **Pothos query schemas** with filtering, sorting, and pagination baked in
-- **JSON schemas** for response transformation
-- **A config registry** that ties it all together at runtime
+- **TypeScript interfaces** derived from column metadata
+- **GraphQL query schemas** with filtering, sorting, and pagination built in
+- **JSON schemas** that drive runtime response transformation
+- **Config files** that register each generated endpoint
 
-The generated code is fully typed end-to-end, from GraphQL input to SQL output.
+The generated code is committed to your repository and loaded by the API server at startup. When a table changes, you re-run the introspection command and the typed layer is regenerated.
 
-Pull a schema from Trino and generate all artifacts:
+## The Shape of a Project
 
-<Command variant="exec">lakeql-cli pull --catalog hive --schema sales</Command>
+A LakeQL project is an ordinary TypeScript application with three moving parts:
 
-## Key Benefits
+<FileTree
+  files={[
+    { path: "lakeql.config.ts", description: "Adapters and data sources" },
+    { path: "src/index.ts", description: "Composes and starts the API server" },
+    {
+      path: "src/schemas/generated/",
+      description: "Generated, typed endpoint files",
+    },
+  ]}
+/>
 
-- **Type safety** — Generated TypeScript interfaces ensure compile-time correctness from GraphQL layer to SQL queries
-- **Automatic schema generation** — Run one CLI command to generate resolvers, types, and configs for entire schemas
-- **Pothos-based schema builder** — Leverage the Pothos GraphQL schema builder for type-safe, declarative schema construction
-- **Built-in pagination** — Connection-based pagination with `pageInfo` metadata out of the box
-- **Flexible filtering** — AND/OR combinable filters with operators like `eq`, `neq`, `like`, `in`, `gt`, `lt`, and more
-- **Sorting** — Multi-field sorting with ASC/DESC direction
-- **Permission model** — Read/write permission checks per table with support for user-level and system-user flows
-- **Kysely SQL generation** — SQL queries are built with Kysely, giving you type-safe query construction without raw strings
+1. **`lakeql.config.ts`** declares which adapters are available and which named data sources exist. See [Configuration](/docs/lakeql/configuration).
+2. **`src/index.ts`** loads that config, builds a runtime that owns the data source connections, and starts the GraphQL server. See [Server Setup](/docs/api/server-setup).
+3. **`src/schemas/generated/`** holds the typed files the CLI writes when you introspect a table. See the [CLI commands](/docs/cli/commands).
+
+The fastest way to get all three is to scaffold a project:
+
+<Command variant="create">@lakeql/app my-api</Command>
 
 ## How It Works
 
-```mermaid preview
+```mermaid
 flowchart LR
-    trino["Trino Catalog"] -->|introspect| cli["LakeQL CLI<br/>(pull)"]
-    cli -->|generate| ts["Generated TypeScript"]
-    ts -->|load| api["LakeQL API<br/>(serve)"]
-    api --> gql["GraphQL Endpoint"]
+    ds["Data Source"] -->|introspect| cli["CLI"]
+    cli -->|generate| ts["Typed schema files"]
+    ts -->|load| api["API server"]
+    api --> gql["GraphQL endpoint"]
 ```
 
-1. **Introspect** — The CLI connects to Trino and discovers table structures
-2. **Generate** — TypeScript files are written with interfaces, query schemas, and configs
-3. **Serve** — The API server loads generated schemas and exposes a GraphQL endpoint
-4. **Query** — Clients send GraphQL queries that are translated into optimized Trino SQL
+1. **Introspect** — the CLI connects through an adapter and discovers table structures.
+2. **Generate** — typed files are written: interfaces, query schemas, and configs.
+3. **Serve** — the server loads the generated schemas and exposes a GraphQL endpoint.
+4. **Query** — clients send GraphQL queries that translate into adapter-specific SQL.
+
+## Where to Next
+
+<PageList
+  items={["lakeql/introduction/key-concepts", "lakeql/getting-started"]}
+/>

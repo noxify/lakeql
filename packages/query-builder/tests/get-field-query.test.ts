@@ -1,5 +1,5 @@
 import { sql } from "kysely"
-import { beforeEach, describe, expect, test, vi } from "vitest"
+import { beforeEach, describe, expect, vi, it } from "vitest"
 
 import { getFieldQuery } from "../src/index"
 
@@ -37,7 +37,7 @@ describe(getFieldQuery, () => {
     vi.clearAllMocks()
   })
 
-  test("should handle eq operator", () => {
+  it("should handle eq operator", () => {
     getFieldQuery({
       // @ts-expect-error - Mock doesn't match the full ExpressionBuilder interface
       eb: mockEb,
@@ -51,7 +51,7 @@ describe(getFieldQuery, () => {
     expect(sql.id).toHaveBeenCalledWith("testField")
   })
 
-  test("should handle neq operator", () => {
+  it("should handle neq operator", () => {
     getFieldQuery({
       // @ts-expect-error - Mock doesn't match the full ExpressionBuilder interface
       eb: mockEb,
@@ -65,7 +65,7 @@ describe(getFieldQuery, () => {
     expect(sql.id).toHaveBeenCalledWith("testField")
   })
 
-  test("should handle in operator", () => {
+  it("should handle in operator", () => {
     getFieldQuery({
       // @ts-expect-error - Mock doesn't match the full ExpressionBuilder interface
       eb: mockEb,
@@ -82,7 +82,7 @@ describe(getFieldQuery, () => {
     expect(sql.id).toHaveBeenCalledWith("testField")
   })
 
-  test("should handle like operator", () => {
+  it("should handle like operator", () => {
     getFieldQuery({
       // @ts-expect-error - Mock doesn't match the full ExpressionBuilder interface
       eb: mockEb,
@@ -100,7 +100,7 @@ describe(getFieldQuery, () => {
     expect(sql.id).toHaveBeenCalledWith("testField")
   })
 
-  test("should handle notLike operator", () => {
+  it("should handle notLike operator", () => {
     getFieldQuery({
       // @ts-expect-error - Mock doesn't match the full ExpressionBuilder interface
       eb: mockEb,
@@ -120,7 +120,7 @@ describe(getFieldQuery, () => {
     expect(sql.id).toHaveBeenCalledWith("testField")
   })
 
-  test("should handle startsWith operator", () => {
+  it("should handle startsWith operator", () => {
     getFieldQuery({
       // @ts-expect-error - Mock doesn't match the full ExpressionBuilder interface
       eb: mockEb,
@@ -134,7 +134,7 @@ describe(getFieldQuery, () => {
     expect(sql.id).toHaveBeenCalledWith("testField")
   })
 
-  test("should handle notStartsWith operator", () => {
+  it("should handle notStartsWith operator", () => {
     getFieldQuery({
       // @ts-expect-error - Mock doesn't match the full ExpressionBuilder interface
       eb: mockEb,
@@ -150,7 +150,7 @@ describe(getFieldQuery, () => {
     expect(sql.id).toHaveBeenCalledWith("testField")
   })
 
-  test("should handle endsWith operator", () => {
+  it("should handle endsWith operator", () => {
     getFieldQuery({
       // @ts-expect-error - Mock doesn't match the full ExpressionBuilder interface
       eb: mockEb,
@@ -164,7 +164,7 @@ describe(getFieldQuery, () => {
     expect(sql.id).toHaveBeenCalledWith("testField")
   })
 
-  test("should handle notEndsWith operator", () => {
+  it("should handle notEndsWith operator", () => {
     getFieldQuery({
       // @ts-expect-error - Mock doesn't match the full ExpressionBuilder interface
       eb: mockEb,
@@ -180,7 +180,7 @@ describe(getFieldQuery, () => {
     expect(sql.id).toHaveBeenCalledWith("testField")
   })
 
-  test("should handle unknown operator with default equals", () => {
+  it("should handle unknown operator with default equals", () => {
     getFieldQuery({
       // @ts-expect-error - Mock doesn't match the full ExpressionBuilder interface
       eb: mockEb,

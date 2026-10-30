@@ -39,14 +39,15 @@ type NavigationCacheGlobals = typeof globalThis & {
 
 const navigationGlobals = globalThis as NavigationCacheGlobals
 
-const _collectionTreeCache = (navigationGlobals.__docsCollectionTreeCache ??=
-  new Map())
+navigationGlobals.__docsCollectionTreeCache ??= new Map()
+const _collectionTreeCache = navigationGlobals.__docsCollectionTreeCache
 
+navigationGlobals.__docsCollectionNavigationCache ??= new Map()
 const _collectionNavigationCache =
-  (navigationGlobals.__docsCollectionNavigationCache ??= new Map())
+  navigationGlobals.__docsCollectionNavigationCache
 
-const _linearNavigationCache =
-  (navigationGlobals.__docsLinearNavigationCache ??= new Map())
+navigationGlobals.__docsLinearNavigationCache ??= new Map()
+const _linearNavigationCache = navigationGlobals.__docsLinearNavigationCache
 
 async function buildCollectionTreeNode(
   entry: EntryType
@@ -155,7 +156,10 @@ export const getNavigationTree = cache(async (): Promise<TreeItem[]> => {
 
 export interface NavigationGroup {
   label: string
+  separator: boolean
   items: TreeItem[]
+  url?: string
+  external?: boolean
 }
 
 export function flattenNavigationItems(items: TreeItem[]): TreeItem[] {
@@ -217,9 +221,19 @@ export const getCollectionNavigation = cache(
       for (const child of rootNode.children) {
         if (child.children.length === 0) {
           // Leaf item — render as a standalone group without a label
-          groups.push({ label: "", items: [child] })
+          groups.push({
+            label: "",
+            separator: child.separator ?? false,
+            items: [child],
+          })
         } else {
-          groups.push({ label: child.title, items: child.children })
+          groups.push({
+            label: child.title,
+            separator: child.separator ?? false,
+            items: child.children,
+            url: child.url,
+            external: child.external,
+          })
         }
       }
 

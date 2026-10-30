@@ -29,8 +29,6 @@ const complexDefinition: EndpointDefinitionFormat = {
   schema: "tracking",
   mutation: {
     loadStrategy: "full_load",
-    type: "s3",
-    bucket: "analytics-datalake",
     basePath: "warehouse/analytics/tracking/user_events",
     partitioning: true,
     partitioningFormat: "year/month/day",
@@ -87,8 +85,6 @@ const partitionedDefinition: EndpointDefinitionFormat = {
   schema: "tracking",
   mutation: {
     loadStrategy: "append",
-    type: "s3",
-    bucket: "analytics-datalake",
     basePath: "warehouse/analytics/tracking/partitioned_events",
     partitioning: "event_date",
     partitioningFormat: "year/month",
@@ -109,8 +105,6 @@ const fullLoadDefinition: EndpointDefinitionFormat = {
   schema: "tracking",
   mutation: {
     loadStrategy: "full_load",
-    type: "s3",
-    bucket: "analytics-datalake",
     basePath: "warehouse/analytics/tracking/full_load_events",
     partitioning: "event_date",
     partitioningFormat: "year/month",
@@ -131,8 +125,6 @@ const timestampPartitionedDefinition: EndpointDefinitionFormat = {
   schema: "tracking",
   mutation: {
     loadStrategy: "full_load_append",
-    type: "s3",
-    bucket: "analytics-datalake",
     basePath: "warehouse/analytics/tracking/timestamp_events",
     partitioning: true,
     partitioningFormat: "year/month/day",
@@ -185,8 +177,8 @@ describe("end-to-end generation (integration)", () => {
     })
   })
 
-  describe("config.ts exports hiveConfig with correct metadata", () => {
-    it("should export hiveConfig with catalog, schema, and tableName", async () => {
+  describe("config.ts exports sourceConfig with correct metadata", () => {
+    it("should export sourceConfig with catalog, schema, and tableName", async () => {
       await generateEndpoint({
         definition: complexDefinition,
         outputDir,
@@ -198,8 +190,8 @@ describe("end-to-end generation (integration)", () => {
         "utf-8"
       )
 
-      // Verify hiveConfig export
-      expect(configContent).toContain("hiveConfig")
+      // Verify sourceConfig export
+      expect(configContent).toContain("sourceConfig")
 
       // Verify catalog, schema, tableName values are present
       expect(configContent).toContain("analytics")

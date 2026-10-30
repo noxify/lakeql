@@ -67,7 +67,7 @@ const defaultComponents: TableOfContentsComponents = {
  * Script to manage active heading state in the table of contents.
  * @internal
  */
-export function TableOfContentsScript({ nonce }: { nonce?: string }) {
+export const TableOfContentsScript = ({ nonce }: { nonce?: string }) => {
   const code = `void (${Function.prototype.toString.call(tocScript)})(${JSON.stringify({ activationRatio: 0.333 })});`
 
   return (
@@ -134,12 +134,12 @@ function renderSections(
 }
 
 /** A table of contents that displays links to the sections in the current document. */
-export function TableOfContents({
+export const TableOfContents = ({
   sections,
   // oxlint-disable-next-line react/no-object-type-as-default-prop
   components = {},
   children,
-}: TableOfContentsProps) {
+}: TableOfContentsProps) => {
   const rootId = useId()
   const sectionIds = new Set<string>()
   const { Root, Title, List, Item, Link }: TableOfContentsComponents = {

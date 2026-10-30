@@ -1,0 +1,60 @@
+{
+  "name": "@lakeql/scaffold",
+  "version": "0.1.0",
+  "description": "Consumer-neutral scaffolding engine for LakeQL (ops, TS serialization, file materialization)",
+  "keywords": [
+    "codegen",
+    "lakeql",
+    "scaffold",
+    "scaffolding"
+  ],
+  "homepage": "https://lakeql.dev",
+  "license": "Apache-2.0",
+  "author": {
+    "name": "Marcus Reinhardt",
+    "url": "https://github.com/noxify"
+  },
+  "contributors": [
+    {
+      "name": "Marcus Reinhardt",
+      "url": "https://github.com/noxify"
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/noxify/lakeql",
+    "directory": "packages/scaffold"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs"
+    }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "clean": "git clean -xdf .cache .turbo dist node_modules dist",
+    "clean:cache": "git clean -xdf .cache .turbo",
+    "clean:dist": "git clean -xdf dist",
+    "dev": "tsdown --watch",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "deepmerge-ts": "8.0.2"
+  },
+  "devDependencies": {
+    "@lakeql/config": "workspace:*",
+    "@lakeql/tsconfig": "workspace:*",
+    "@lakeql/vitest-config": "workspace:*",
+    "@types/node": "24.19.2",
+    "tsdown": "0.23.3",
+    "typescript": "6.0.3",
+    "vitest": "5.0.5"
+  }
+}

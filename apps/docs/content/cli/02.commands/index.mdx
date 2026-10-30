@@ -1,4 +1,15 @@
 ---
 title: Commands
-description: Reference for all available CLI commands with syntax, options, and usage examples.
+navTitle: Commands
+description: Every LakeQL CLI command, its arguments, and options.
 ---
+
+The LakeQL CLI groups into three kinds of command: **project setup** (`init`, `add`), **introspection** (the `list-*` commands that explore a data source), and **generation** (`pull`, `create-endpoint`, `create-registry`, and `generate-import-config`, which write the typed endpoint files).
+
+Each command's arguments and options are generated from the CLI's own metadata, so they always match the installed version.
+
+<Note>
+  Every command accepts the global `--env [path]` option to load environment
+  variables from a file before running (defaults to `.env` when given without a
+  value).
+</Note>

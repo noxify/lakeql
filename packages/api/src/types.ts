@@ -1,30 +1,57 @@
+import type { JWTPayload, Permission, ResolvedIdentity } from "@lakeql/config"
+import type {
+  DataSourceReadStrategy,
+  DataSourceWriteStrategy,
+} from "@lakeql/datasource"
 import type { MergedScalars } from "@pothos/core"
-import type { StandardSchemaV1 } from "@pothos/plugin-validation"
 import type { createYoga } from "graphql-yoga"
-import type { JWTPayload } from "jose"
+
+/**
+ * Adapter-agnostic permission target fields.
+ *
+ * `dataSource` and `tableName` are always required.
+ * `catalog` and `schema` are optional — some adapters
+ * expose flat namespaces without catalogs or schemas.
+ */
+export interface PermissionFields {
+  dataSource: string
+  tableName: string
+  catalog?: string
+  schema?: string
+}
 
 /**
  * The GraphQL context object available in every resolver.
  */
 export interface Context {
   /**
-   * Authenticated user payload from JWT verification, or `null` for unauthenticated requests.
-   *
-   * @see {@link https://github.com/panva/jose/blob/main/docs/types/interfaces/JWTPayload.md | jose - JWTPayload}
+   * Decoded JWT payload from token verification, or `null` for unauthenticated requests.
    */
   currentUser: JWTPayload | null
+  /**
+   * Resolved identity information (user name, SP flag), or `null` when unauthenticated.
+   */
+  identity: ResolvedIdentity | null
   /** Configured permission rules for technical users. */
   permissions: Permission[]
   /** Custom resolver for read permission checks. */
   hasReadPermission?: ReadPermissionResolver
   /** Custom resolver for write permission checks. */
   hasWritePermission?: WritePermissionResolver
-}
-
-export interface PermissionFields {
-  catalog: string
-  schema: string
-  tableName: string
+  /**
+   * Resolves the read strategy for a configured data-source name.
+   *
+   * Delegates to the runtime passed to `defineApiConfig`. Always present;
+   * when the API was configured without a runtime, calling it throws.
+   */
+  getReadStrategy: (name: string) => DataSourceReadStrategy
+  /**
+   * Resolves the write strategy for a configured data-source name.
+   *
+   * Delegates to the runtime passed to `defineApiConfig`. Undefined when
+   * the API was configured without a runtime.
+   */
+  getWriteStrategy?: (name: string) => DataSourceWriteStrategy
 }
 
 export interface UserScalars {
@@ -59,53 +86,11 @@ export interface PageInfoInterface {
   previousPage: number | null
 }
 
-export interface ErrorMessage {
-  errorCode?: number
-  message?: string
-  code?: string
-  /**
-   * Validation issues from schema validation or custom error details.
-   *
-   * @see {@link https://standardschema.dev | Standard Schema Spec}
-   */
-  additionalInformation?:
-    | readonly StandardSchemaV1.Issue[]
-    | Record<string, unknown>[]
-}
-
-/**
- * Permission rule for a technical user, defining which catalogs/schemas/tables they can read and write.
- */
-export interface Permission {
-  /** Username to match against `currentUser.userName`. */
-  name: string
-  /** Whether this user's queries run via the Trino system user. */
-  useSystemUser: boolean
-  /** Read and write access rules. */
-  permissions: {
-    /** Read access rules (catalog + schema + tables). Use `["*"]` for wildcard table access. */
-    Query: {
-      catalog: string
-      schema: string
-      tables: string[]
-    }[]
-    /** Write access rules (catalog + schema + tables). Use `["*"]` for wildcard table access. */
-    Mutation: {
-      catalog: string
-      schema: string
-      tables: string[]
-    }[]
-  }
-}
-
-export type GetUserResolver = (
-  req: Request
-) => Promise<JWTPayload | null | undefined> | JWTPayload | null | undefined
-
 export type ReadPermissionResolver = (
   args: {
     context: {
       currentUser: JWTPayload | null
+      identity: ResolvedIdentity | null
       permissions: Permission[]
     }
   } & PermissionFields
@@ -115,6 +100,7 @@ export type WritePermissionResolver = (
   args: {
     context: {
       currentUser: JWTPayload | null
+      identity: ResolvedIdentity | null
       permissions: Permission[]
     }
   } & PermissionFields
@@ -134,17 +120,4 @@ export interface ConnectionInterface<T> {
   totalCount: number
   pageInfo: PageInfoInterface
   nodes: T[]
-}
-
-export type TrinoArrayResponse<T> = [number, ...T[]]
-
-export interface WrappedTrinoResponse<T> {
-  total_count: number
-  data: T[]
-}
-
-declare module "jose" {
-  export interface JWTPayload {
-    userName: string
-  }
 }

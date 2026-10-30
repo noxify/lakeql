@@ -1,0 +1,45 @@
+---
+title: Error Handling
+navTitle: Error Handling
+description: How LakeQL maps, logs, and forwards errors.
+---
+
+LakeQL normalizes errors end to end: adapters throw typed [`DataSourceError`](/docs/data-sources/overview/api-reference#data-source-error)s, the API maps them to GraphQL errors with a stable code and HTTP status, logs them server-side, and offers a hook to forward them to telemetry.
+
+## Error Mapping
+
+[`handleErrorResponse`](/docs/api/api-reference#handle-error-response) maps a `DataSourceError` to a `GraphQLError` by its `category`:
+
+| `category`      | Code                    | HTTP status |
+| --------------- | ----------------------- | ----------- |
+| `auth`          | `PERMISSION_DENIED`     | 403         |
+| `query`         | `QUERY_ERROR`           | 400         |
+| `network`       | `NETWORK_ERROR`         | 502         |
+| `timeout`       | `TIMEOUT`               | 504         |
+| `cancelled`     | `CANCELLED`             | 499         |
+| `unsupported`   | `UNSUPPORTED_OPERATION` | 400         |
+| _anything else_ | `UNKNOWN`               | 500         |
+
+Errors that are not a `DataSourceError` — including `DataSourceValidationError`, which is a plain `Error` subclass — fall through to the `UNKNOWN` / 500 branch.
+
+The original error is preserved on the GraphQL error so server-side logging and telemetry keep the full context.
+
+## Server-Side Logging
+
+A built-in Yoga plugin logs every execution error with a severity matched to its category — network and timeout errors at `error` level, auth and query errors at `warn`, and anything that is not a `DataSourceError` at `error`. This runs regardless of what the client sees, so operational issues are visible in your logs.
+
+## The onError Hook
+
+To forward errors to external telemetry — OpenTelemetry, Sentry, metrics — without the package depending on any of them, provide an `onError` hook on [`defineApiConfig`](/docs/api/server-setup/define-config):
+
+```ts
+const server = defineApiConfig({
+  runtime,
+  tokenResolver,
+  onError: ({ error }) => {
+    telemetry.recordException(error)
+  },
+})
+```
+
+The hook runs for every execution error after it is logged. Errors thrown by the hook itself are swallowed, so a telemetry failure never breaks a response. See [`ApiErrorHook`](/docs/api/api-reference#api-error-hook) and [`createErrorLoggingPlugin`](/docs/api/api-reference#create-error-logging-plugin).

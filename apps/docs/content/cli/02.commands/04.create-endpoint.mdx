@@ -1,0 +1,16 @@
+---
+title: create-endpoint
+navTitle: create-endpoint
+description: Create a custom endpoint from a JSON definition file.
+cliCommand: create-endpoint
+---
+
+`create-endpoint` generates a typed endpoint from a JSON definition file instead of introspecting a live table. Use it to recreate an endpoint from a committed `endpoint.json`, or to define an endpoint by hand when you cannot reach the data source at generation time.
+
+<Command variant="exec">
+  lakeql-cli create-endpoint --from-file ./endpoint.json
+</Command>
+
+Each table that [`pull`](/docs/cli/commands/pull) generates includes an `endpoint.json` alongside its other files — that file is a valid input here, so endpoints are reproducible from the definition alone. By default the config registry is updated; pass `--skip-registry` to skip it, or `--force` to overwrite existing files.
+
+<CliCommandDetails command="create-endpoint" />

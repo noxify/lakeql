@@ -1,0 +1,79 @@
+{
+  "name": "@lakeql/storage",
+  "version": "0.0.0",
+  "description": "Storage adapters and write pipeline for LakeQL — provides table management and S3/MinIO operations",
+  "keywords": [
+    "hive",
+    "lakeql",
+    "parquet",
+    "s3",
+    "storage",
+    "table-manager",
+    "trino",
+    "write-pipeline"
+  ],
+  "homepage": "https://lakeql.dev",
+  "license": "Apache-2.0",
+  "author": {
+    "name": "Marcus Reinhardt",
+    "url": "https://github.com/noxify"
+  },
+  "contributors": [
+    {
+      "name": "Marcus Reinhardt",
+      "url": "https://github.com/noxify"
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/noxify/lakeql",
+    "directory": "packages/storage"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs"
+    },
+    "./serializer/parquet": {
+      "types": "./dist/serializer/parquet.d.mts",
+      "import": "./dist/serializer/parquet.mjs"
+    }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "clean": "git clean -xdf .cache .turbo dist node_modules dist",
+    "clean:cache": "git clean -xdf .cache .turbo",
+    "clean:dist": "git clean -xdf dist",
+    "dev": "tsdown --watch",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@lakeql/datasource": "workspace:*",
+    "@lakeql/parquet": "workspace:*",
+    "@lakeql/schema-generator": "workspace:*"
+  },
+  "devDependencies": {
+    "@lakeql/tsconfig": "workspace:*",
+    "@lakeql/vitest-config": "workspace:*",
+    "@types/node": "24.19.2",
+    "fast-check": "4.10.2",
+    "files-sdk": "3.1.2",
+    "tsdown": "0.23.3",
+    "typescript": "6.0.3",
+    "vitest": "5.0.5"
+  },
+  "peerDependencies": {
+    "files-sdk": "^3.1.2"
+  },
+  "peerDependenciesMeta": {
+    "files-sdk": {
+      "optional": true
+    }
+  }
+}

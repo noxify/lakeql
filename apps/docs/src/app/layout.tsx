@@ -27,7 +27,7 @@ export const metadata: Metadata = {
     },
   },
   description:
-    "Build predictable, secure GraphQL APIs on top of Trino metadata with LakeQL’s type-safe runtime and schema generation CLI.",
+    "An adapter-agnostic data access layer for modern platforms. Type-safe queries across any supported data engine.",
   icons: {
     apple: [
       { sizes: "180x180", type: "image/png", url: "/apple-touch-icon.png" },

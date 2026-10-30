@@ -1,0 +1,44 @@
+---
+title: Executing Queries
+navTitle: Executing Queries
+description: Run statements, collect results, and cancel in-flight queries.
+---
+
+[`query`](/docs/packages/trino-client/api-reference#trino-client-query) executes a statement and collects all result pages into a single array, following Trino's `nextUri` pagination automatically.
+
+```ts
+const rows = await client.query<{ id: number; status: string }>({
+  sql: "SELECT id, status FROM hive.sales.orders",
+})
+```
+
+## Transforming Rows
+
+Trino returns rows as positional arrays. Pass a `transform` to map each row (with its column metadata) into a shape of your choice:
+
+```ts
+const rows = await client.query({
+  sql: "SHOW COLUMNS FROM hive.sales.orders",
+  transform: (row, columns) => ({ name: row[0], type: row[1] }),
+})
+```
+
+## Impersonation
+
+Pass `impersonateAs` to run the statement as another user via the `X-Trino-User` header:
+
+```ts
+await client.query({ sql: "SELECT 1", impersonateAs: "alice" })
+```
+
+## Cancellation
+
+Pass an `AbortSignal` to cancel a query, or cancel by id:
+
+```ts
+const controller = new AbortController()
+const promise = client.query({ sql: longRunningSql, signal: controller.signal })
+controller.abort()
+```
+
+The client tracks in-flight queries. Use [`cancelQuery`](/docs/packages/trino-client/api-reference#trino-client-cancel-query), [`cancelAllQueries`](/docs/packages/trino-client/api-reference#trino-client-cancel-all-queries), and [`getActiveQueries`](/docs/packages/trino-client/api-reference#trino-client-get-active-queries) to manage them. An aborted query throws a `TrinoCancellationError`.

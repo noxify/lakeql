@@ -1,0 +1,65 @@
+---
+title: Definition Format
+navTitle: Definition Format
+description: The top-level shape of an endpoint.json definition file.
+---
+
+An `endpoint.json` file is validated against a Zod schema at generation time. The top-level shape has six keys:
+
+| Key | Required | Type | Notes |
+| --- | --- | --- | --- |
+| `version` | yes | literal `"1.0"` | The only accepted value today. |
+| `catalog` | yes | `string` | Must match the metadata name pattern below. |
+| `schema` | yes | `string` | Must match the metadata name pattern below. |
+| `tableName` | yes | `string` | Must match the metadata name pattern below. |
+| `dataSource` | no | `string` | Name of the configured data source this endpoint targets. Defaults to `"default"` when omitted. |
+| `fields` | yes | array of field definitions | See [Field Types](/docs/lakeql/endpoints/field-types) and [Nested Fields](/docs/lakeql/endpoints/nested-fields). |
+| `mutation` | no | `false` or a mutation config | See [Mutations](/docs/lakeql/endpoints/mutations). |
+
+## Name validation
+
+`catalog`, `schema`, and `tableName` are validated against the same metadata pattern — letters, digits, and underscores, no leading digit, up to 128 characters:
+
+```
+/^[a-zA-Z_][a-zA-Z0-9_]{0,127}$/u
+```
+
+Field names (covered on the next page) are validated against a related but stricter pattern limited to 64 characters:
+
+```
+/^[a-zA-Z_][a-zA-Z0-9_]{0,63}$/u
+```
+
+## The `dataSource` field
+
+`dataSource` names the entry in your `lakeql.config.ts` `dataSources` map that this endpoint queries against. It's optional — when omitted, generation targets the data source named `"default"`. Set it explicitly whenever an endpoint belongs to a non-default data source, for example when a project configures more than one.
+
+## Minimal example
+
+A read-only endpoint with three flat fields and no mutation:
+
+```json
+{
+  "version": "1.0",
+  "catalog": "hive",
+  "schema": "sales",
+  "tableName": "orders",
+  "dataSource": "warehouse",
+  "fields": [
+    { "name": "id", "type": "Integer", "options": { "required": true } },
+    { "name": "customerEmail", "type": "String" },
+    { "name": "createdAt", "type": "DateTime" }
+  ]
+}
+```
+
+Run it through [`create-endpoint`](/docs/cli/commands/create-endpoint) to generate the same `config.ts`, `interface.ts`, `query-schema.ts`, `json-schema.json`, and `endpoint.json` that [`pull`](/docs/cli/commands/pull) would have produced for an equivalent live table. Because there's no `mutation` block, no `mutation-schema.ts` is written.
+
+<Warning>
+  `pull` does not write the `dataSource` it used into the generated
+  `endpoint.json` — the field only flows into `config.ts`. If you recreate a
+  pulled endpoint from its `endpoint.json` with `create-endpoint --from-file`
+  (for example, re-running it for a Fabric data source), add the `dataSource`
+  field back by hand first. Without it, generation falls back to the `"default"`
+  data source and the Trino adapter.
+</Warning>

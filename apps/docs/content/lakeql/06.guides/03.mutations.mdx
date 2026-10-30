@@ -1,0 +1,23 @@
+---
+title: Mutations
+navTitle: Mutations
+description: Write data back through LakeQL.
+---
+
+Writes go through a data source's [writing](/docs/data-sources/writing). A mutation resolver builds the records to write and runs them through the runtime's write strategy for the target source, choosing a [load strategy](/docs/data-sources/writing/load-strategies) (`full_load`, `full_load_append`, or `append`).
+
+## Write Strategy Availability
+
+A write strategy is only available when the adapter reports the capabilities it needs. The Trino adapter ships a storage strategy (serialize → upload → register via DDL) and an INSERT strategy (`INSERT INTO`, no object storage), selected by the data source's `writeConfig`. The Fabric adapter is read-only. See [Trino write config](/docs/data-sources/trino/write-config) and [writing](/docs/data-sources/writing).
+
+A data source configured without a `writeConfig` has no write strategy: `runtime.getWriteStrategy(name)` throws `WriteStrategyNotConfiguredError`.
+
+For the full step-by-step — `writeConfig`, endpoint definition, generation, and permission — see [Set Up a Trino Mutation](/docs/lakeql/guides/set-up-a-trino-mutation).
+
+## Permissions
+
+Writes are authorized by the `writePermission` scope, backed by your [permission rules](/docs/api/authentication/permissions) under `Mutation`. A caller without write access to the target table is denied before the write runs.
+
+## Custom Mutation Fields
+
+Define mutation fields on the shared builder, the same way as [custom resolvers](/docs/lakeql/guides/custom-resolvers), validating input with a Zod schema and declaring the required write scope.

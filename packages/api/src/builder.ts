@@ -1,12 +1,20 @@
 import SchemaBuilder from "@pothos/core"
+// The bare specifier is kept alongside the default import on purpose: the
+// side-effect form survives dts bundling, which keeps the Pothos plugin global
+// type augmentations (e.g. scope-auth's `authScopes` on field options) in the
+// emitted declaration file. Consumers of the built `builder` export — including
+// generated query-schema files — then see the augmented types without
+// depending on the plugins directly.
+// oxlint-disable import/no-duplicates
+import "@pothos/plugin-scope-auth"
+import "@pothos/plugin-validation"
 import ScopeAuthPlugin from "@pothos/plugin-scope-auth"
 import ValidationPlugin from "@pothos/plugin-validation"
+// oxlint-enable import/no-duplicates
 import { DateResolver, DateTimeResolver } from "graphql-scalars"
-import { z } from "zod"
 
 import { hasReadPermission, hasWritePermission } from "./auth"
 import { createComparisonTypes } from "./comparison"
-import { env } from "./env"
 import { handleErrorResponse, throwFirstError } from "./helpers"
 import type {
   Context,
@@ -28,24 +36,26 @@ export const builder = new SchemaBuilder<{
   scopeAuth: {
     authScopes: (context) => ({
       authorized: !!context.currentUser,
-      readPermission: ({ catalog, schema, tableName }) =>
+      readPermission: ({ dataSource, tableName, catalog, schema }) =>
         (context.hasReadPermission ?? hasReadPermission)({
           catalog,
           context,
+          dataSource,
           schema,
           tableName,
         }),
-      writePermission: ({ catalog, schema, tableName }) =>
+      writePermission: ({ dataSource, tableName, catalog, schema }) =>
         (context.hasWritePermission ?? hasWritePermission)({
           catalog,
           context,
+          dataSource,
           schema,
           tableName,
         }),
     }),
     defaultStrategy: "any",
     treatErrorsAsUnauthorized: true,
-    unauthorizedError: (parent, context, info, result) => {
+    unauthorizedError: (_parent, _context, _info, result) => {
       // throw an error if it's found
       // this handles also 403 errors ( aka Permission denied)
       throwFirstError(result.failure)
@@ -56,13 +66,12 @@ export const builder = new SchemaBuilder<{
 
   validation: {
     validationError: (validationResult) =>
-      handleErrorResponse({
-        errorMessage: {
-          additionalInformation: validationResult.issues,
-
-          errorCode: 200,
-        },
-      }),
+      handleErrorResponse(
+        new Error(
+          validationResult.issues.map((i) => i.message).join("; ") ||
+            "Validation failed"
+        )
+      ),
   },
 })
 
@@ -78,34 +87,12 @@ export const SortDirection = builder.enumType("SortDirection", {
   values: ["ASC", "DESC"] as const,
 })
 
-const maxRecordsPerPage = env.API_MAX_RECORDS_PER_PAGE
-let runtimeMaxRecordsPerPage = maxRecordsPerPage
-
-export function setMaxRecordsPerPage(value?: number) {
-  if (value === null || value === undefined) {
-    runtimeMaxRecordsPerPage = maxRecordsPerPage
-    return
-  }
-
-  runtimeMaxRecordsPerPage = Math.max(1, Math.trunc(value))
-}
-
-export function getMaxRecordsPerPage() {
-  return runtimeMaxRecordsPerPage
-}
-
 export const Paging = builder.inputType("Paging", {
   fields: (t) => ({
     page: t.int({ defaultValue: 1 }),
     perPage: t.int({
-      defaultValue: 100,
-      description: `Defines the number of records which should be shown. Minimum is \`1\`. Maximum is \`${getMaxRecordsPerPage()}\`. Default is \`100\`.`,
-      validate: z
-        .number()
-        .min(1)
-        .refine((value) => value <= getMaxRecordsPerPage(), {
-          message: `Value must be less than or equal to ${getMaxRecordsPerPage()}`,
-        }),
+      description:
+        "Number of records to return for this page. Must be a positive integer. When omitted, the data source's configured default page size is used. The maximum allowed value is configured per data source and enforced by the server.",
     }),
   }),
 })
@@ -120,13 +107,13 @@ export const PageInfo = builder
       maxPages: t.expose("maxPages", { type: "Int" }),
       nextPage: t.expose("nextPage", {
         description:
-          "Defines the value which can be used in the `paging` arg to go to the previous page",
+          "Defines the value which can be used in the `paging` arg to go to the next page",
         nullable: true,
         type: "Int",
       }),
       previousPage: t.expose("previousPage", {
         description:
-          "Defines the value which can be used in the `paging` arg to go to the next page",
+          "Defines the value which can be used in the `paging` arg to go to the previous page",
         nullable: true,
         type: "Int",
       }),
@@ -135,19 +122,12 @@ export const PageInfo = builder
 
 builder.queryType({})
 
-//builder.mutationType({})
-
 const comparisonTypes = createComparisonTypes(builder)
 
-export const StringFieldComparison =
-  comparisonTypes.createStringFieldComparison({})
-export const IntFieldComparison = comparisonTypes.createIntFieldComparison({})
-export const FloatFieldComparison = comparisonTypes.createFloatFieldComparison(
-  {}
-)
-export const BooleanFieldComparison =
-  comparisonTypes.createBooleanFieldComparison({})
-export const DateFieldComparison = comparisonTypes.createDateFieldComparison({})
-export const DateTimeFieldComparison =
-  comparisonTypes.createDateTimeFieldComparison({})
-export const IDFieldComparison = comparisonTypes.createIDFieldComparison({})
+export const StringFieldComparison = comparisonTypes.String
+export const IntFieldComparison = comparisonTypes.Int
+export const FloatFieldComparison = comparisonTypes.Float
+export const BooleanFieldComparison = comparisonTypes.Boolean
+export const DateFieldComparison = comparisonTypes.Date
+export const DateTimeFieldComparison = comparisonTypes.DateTime
+export const IDFieldComparison = comparisonTypes.ID

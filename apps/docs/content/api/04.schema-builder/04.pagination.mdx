@@ -1,13 +1,12 @@
 ---
 title: Pagination
-description: Built-in page-based pagination with Paging input, PageInfo output, and ConnectionInterface.
+navTitle: Pagination
+description: The Paging input and PageInfo type on generated queries.
 ---
 
-LakeQL uses offset-based pagination (page + perPage) rather than cursor-based pagination. This maps naturally to Trino's `LIMIT` and `OFFSET` clauses and provides predictable navigation for tabular data.
+Generated queries are paginated with a `Paging` input argument and return a `PageInfo` object alongside the rows.
 
-## Paging input
-
-The `Paging` input type is available on all generated query fields:
+## Paging Input
 
 ```graphql
 input Paging {
@@ -16,95 +15,26 @@ input Paging {
 }
 ```
 
-| Field     | Default | Constraints                         |
-| --------- | ------- | ----------------------------------- |
-| `page`    | `1`     | Must be ≥ 1                         |
-| `perPage` | `100`   | Must be ≥ 1 and ≤ maxRecordsPerPage |
+- `page` — the 1-based page number, defaulting to `1`.
+- `perPage` — rows per page, defaulting to `100`. It is validated to be at least `1` and at most the configured maximum (see [`maxRecordsPerPage`](/docs/api/server-setup/define-config), default `2000`).
 
-## PageInfo output
+## Page Info
 
-Every paginated response includes a `PageInfo` object:
+Every paginated result includes a `PageInfo`:
 
 ```graphql
 type PageInfo {
-  currentPage: Int!
-  hasNext: Boolean!
-  hasPrevious: Boolean!
-  maxPages: Int!
+  currentPage: Int
+  hasNext: Boolean
+  hasPrevious: Boolean
+  maxPages: Int
   nextPage: Int
   previousPage: Int
 }
 ```
 
-| Field          | Description                                           |
-| -------------- | ----------------------------------------------------- |
-| `currentPage`  | The current page number                               |
-| `hasNext`      | Whether more pages exist after the current one        |
-| `hasPrevious`  | Whether pages exist before the current one            |
-| `maxPages`     | Total number of pages based on totalCount and perPage |
-| `nextPage`     | Page number for the next page (null if on last page)  |
-| `previousPage` | Page number for the previous page (null if on first)  |
+`nextPage` and `previousPage` are the values to pass back in `paging` to move between pages; they are null at the ends. The total used to compute `maxPages` comes from the query builder's count CTE, so pagination metadata is accurate in a single round trip. See [sorting and paging](/docs/packages/query-builder/sorting-and-paging).
 
-## ConnectionInterface
+## Total Count
 
-All paginated query responses conform to the `ConnectionInterface`:
-
-```ts
-interface ConnectionInterface<T> {
-  totalCount: number
-  pageInfo: PageInfoInterface
-  nodes: T[]
-}
-```
-
-In GraphQL, this looks like:
-
-```graphql
-type UserConnection {
-  totalCount: Int!
-  pageInfo: PageInfo!
-  nodes: [User!]!
-}
-```
-
-## Configuring maxRecordsPerPage
-
-The maximum allowed value for `perPage` is controlled by:
-
-1. The `API_MAX_RECORDS_PER_PAGE` environment variable (default: `2000`)
-2. The `maxRecordsPerPage` option in `defineConfig`
-
-```ts
-import { defineConfig } from "@lakeql/api/config"
-import { allConfigs } from "./generated/configs"
-
-export default defineConfig({
-  allConfigs,
-  maxRecordsPerPage: 500, // override the env default
-})
-```
-
-Requesting more than `maxRecordsPerPage` returns a validation error.
-
-## Example query
-
-```graphql
-query PaginatedUsers {
-  users(paging: { page: 2, perPage: 25 }) {
-    totalCount
-    pageInfo {
-      currentPage
-      hasNext
-      hasPrevious
-      maxPages
-      nextPage
-      previousPage
-    }
-    nodes {
-      id
-      name
-      email
-    }
-  }
-}
-```
+Alongside `nodes` and `pageInfo`, the generated connection type exposes a `totalCount` — the total number of matching rows before paging. It comes from the same count CTE, so you get it without a second query.

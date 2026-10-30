@@ -21,7 +21,7 @@ const spaceGrotesk = Space_Grotesk({ subsets: ["latin"] })
 // Sub-sections extracted to reduce complexity
 // ---------------------------------------------------------------------------
 
-function SeeLinks({ tags }: { tags?: { name: string; text?: string }[] }) {
+const SeeLinks = ({ tags }: { tags?: { name: string; text?: string }[] }) => {
   const links = extractSeeLinks(tags)
 
   if (!links) {
@@ -46,13 +46,13 @@ function SeeLinks({ tags }: { tags?: { name: string; text?: string }[] }) {
   )
 }
 
-function FunctionSignatures({
+const FunctionSignatures = ({
   source,
   slug,
 }: {
   source: ResolvedExport
   slug: string
-}) {
+}) => {
   if (!source.signatures || source.signatures.length === 0) {
     return null
   }
@@ -122,7 +122,7 @@ function FunctionSignatures({
   )
 }
 
-function TypeDefinition({ source }: { source: ResolvedExport }) {
+const TypeDefinition = ({ source }: { source: ResolvedExport }) => {
   const showDefinition =
     source.typeText &&
     ((source.kind === "TypeAlias" &&
@@ -166,13 +166,13 @@ function TypeDefinition({ source }: { source: ResolvedExport }) {
   )
 }
 
-function MethodDetail({
+const MethodDetail = ({
   method,
   parentSlug,
 }: {
   method: ResolvedExport
   parentSlug: string
-}) {
+}) => {
   const sig = method.signatures?.[0]
   const methodSlug = `${parentSlug}-${createSlug(method.name)}`
 
@@ -259,7 +259,7 @@ function MethodDetail({
 /**
  * Renders a single ResolvedExport as a collapsible section with full details.
  */
-export function ReferenceSection({ source }: { source: ResolvedExport }) {
+export const ReferenceSection = ({ source }: { source: ResolvedExport }) => {
   const slug = createSlug(source.name)
 
   return (
@@ -405,7 +405,7 @@ export function ReferenceSection({ source }: { source: ResolvedExport }) {
 /**
  * Renders a single ResolvedExport in summary mode (title + description only).
  */
-export function ReferenceSummary({ source }: { source: ResolvedExport }) {
+export const ReferenceSummary = ({ source }: { source: ResolvedExport }) => {
   const slug = createSlug(source.name)
 
   return (
@@ -430,7 +430,7 @@ export function ReferenceSummary({ source }: { source: ResolvedExport }) {
  * Renders a single ResolvedExport as a flat properties table (no collapsible).
  * Used for showing a single interface/type inline without the full section chrome.
  */
-export function ReferenceTable({ source }: { source: ResolvedExport }) {
+export const ReferenceTable = ({ source }: { source: ResolvedExport }) => {
   const slug = createSlug(source.name)
 
   if (!source.members || source.members.length === 0) {

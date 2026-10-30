@@ -27,7 +27,7 @@ interface Transform {
   scale: number
 }
 
-export function PanZoomDialog({
+export const PanZoomDialog = ({
   children,
   className,
   previewClassName,
@@ -39,7 +39,7 @@ export function PanZoomDialog({
   zoomStep = 0.25,
   initialZoom = 1,
   fitOnMount = false,
-}: PanZoomDialogProps) {
+}: PanZoomDialogProps) => {
   const [open, setOpen] = React.useState(false)
   const containerRef = React.useRef<HTMLDivElement>(null)
   const contentRef = React.useRef<HTMLDivElement>(null)
@@ -106,6 +106,9 @@ export function PanZoomDialog({
     return () => {
       resizeObserver.disconnect()
     }
+    // `children` is a trigger: the effect re-measures the preview scale when
+    // the rendered content changes but does not read children in its body.
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies
   }, [children, updatePreviewScale])
 
   const centerView = React.useCallback(
@@ -166,9 +169,12 @@ export function PanZoomDialog({
     }
 
     if (fitOnMount) {
+      // Layout effect intentionally sets the transform before paint to
+      // avoid a visible top-left flash on first render.
+      // oxlint-disable-next-line react/set-state-in-effect
       fitView()
     } else {
-      // oxlint-disable-next-line react/react-compiler
+      // oxlint-disable-next-line react/react-compiler react/set-state-in-effect
       centerView(initialZoom)
     }
 
@@ -185,6 +191,10 @@ export function PanZoomDialog({
     return () => {
       cancelAnimationFrame(frameId)
     }
+    // `children` and `open` are triggers: the effect re-fits/re-centers the
+    // view when the content or dialog visibility changes but does not read
+    // those values in its body.
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies
   }, [centerView, children, fitOnMount, fitView, initialZoom, open])
 
   // Handle mouse wheel zoom

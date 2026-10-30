@@ -1,0 +1,12 @@
+---
+title: API Reference
+navTitle: API Reference
+description: Complete reference for the @lakeql/query-builder public API.
+apiReference:
+  - name: "@lakeql/query-builder"
+    file: "query-builder/src/index"
+---
+
+The complete public API of `@lakeql/query-builder`, generated from the package's TypeScript source.
+
+The main entry point is [`generateQuery`](#generate-query), which turns a set of selected fields, a filter, sorting, and paging into a compiled SQL query. The filter types ([`Where`](#where), [`Field`](#field), [`FieldOptions`](#field-options)) describe the shape of a filter; the helper functions ([`getSelectFields`](#get-select-fields), [`normalizeFilter`](#normalize-filter), [`formatQuery`](#format-query)) support building and inspecting queries.

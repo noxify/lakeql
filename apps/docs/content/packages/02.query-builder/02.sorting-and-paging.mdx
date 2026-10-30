@@ -1,0 +1,51 @@
+---
+title: Sorting & Paging
+navTitle: Sorting & Paging
+description: Order results with SortInput and page through them with PagingInput.
+---
+
+Alongside filtering, [`generateQuery`](/docs/packages/query-builder/api-reference#generate-query) takes sorting and paging inputs that control the `ORDER BY` and the row window of the generated SQL.
+
+## Sorting
+
+Sorting is an array of `SortInput` entries, applied in order. Each entry names a `field` and a `direction`:
+
+```ts
+import type { SortInput } from "@lakeql/query-builder"
+
+const sorting: SortInput<OrdersTable>[] = [
+  { field: "status", direction: "asc" },
+  { field: "createdAt", direction: "desc" },
+]
+```
+
+The `field` type is constrained to the columns of the table definition passed as the type parameter, so an invalid column name is a compile-time error.
+
+<Note>
+  In the generated GraphQL API, `sorting` is a **required** argument. A
+  deterministic `ORDER BY` is the only way a SQL engine guarantees a stable row
+  order across pages — without it, offset-based paging can repeat or skip rows
+  between requests, so the same page can return different results. This is not
+  engine-specific (it was first observed with Trino, but any engine applying
+  `LIMIT`/`OFFSET` without an `ORDER BY` can exhibit it), which is why the
+  generated queries always require at least one sort field.
+</Note>
+
+## Paging
+
+Paging is offset-based, via `PagingInput`:
+
+```ts
+import type { PagingInput } from "@lakeql/query-builder"
+
+const paging: PagingInput = {
+  limit: 20, // max rows to return — defaults to 100
+  offset: 40, // rows to skip before fetching
+}
+```
+
+`limit` caps the number of returned rows and defaults to `100` when omitted. `offset` skips rows before the window; omit it (or pass `0`) for the first page. The adapter's dialect renders the correct pagination syntax for the target engine.
+
+## Total Count
+
+The generated query reports the total number of matching rows independently of the page window. [`generateQuery`](/docs/packages/query-builder/api-reference#generate-query) builds two CTEs — one counts all matching rows, the other selects the current page — so a single round trip returns both the page and the total used for page-info metadata.

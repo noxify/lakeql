@@ -1,119 +1,57 @@
 ---
 title: Custom Queries & Mutations
 navTitle: Custom Queries & Mutations
-description: Add custom query and mutation endpoints using the CLI endpoint builder.
+description: Add your own fields alongside the generated schema.
 ---
 
-The recommended way to add custom queries and mutations is through the CLI's `create-endpoint` command. It generates all necessary files (schema, config, types, JSON Schema) from a simple endpoint definition — the same way the `pull` command works, but from a JSON definition instead of an existing Trino table.
+The generated endpoints attach to the shared [`builder`](/docs/api/api-reference#builder). You add custom queries and mutations the same way — define fields on the builder, and they join the schema the server serves.
 
-## Creating an endpoint definition
+```ts
+import { builder } from "@lakeql/api/builder"
 
-Define your endpoint as a JSON file:
-
-```json path="my-endpoint.json"
-{
-  "version": "1.0",
-  "tableName": "user_events",
-  "catalog": "hive",
-  "schema": "analytics",
-  "fields": [
-    { "name": "event_id", "type": "String", "options": { "required": true } },
-    { "name": "message", "type": "String" },
-    { "name": "timestamp", "type": "DateTime" }
-  ],
-  "mutation": {
-    "loadStrategy": "full_load",
-    "type": "minio",
-    "bucket": "my-datalake",
-    "basePath": "analytics/user_events",
-    "endpoint": "http://localhost:9000"
-  }
-}
+builder.queryField("ping", (t) =>
+  t.string({
+    resolve: () => "pong",
+  })
+)
 ```
 
-## Generating the endpoint
+Because it is the same builder, your custom fields get the same facilities as the generated ones: the scope-auth scopes, the validation plugin, and the registered scalar and comparison types.
 
-Run the CLI to generate all files:
+## Two Prerequisites
 
-<Command variant="exec">
-  lakeql-cli create-endpoint --from-file ./my-endpoint.json
-</Command>
+Custom fields do not reach the served schema by themselves:
 
-This generates:
+1. **Import your module before `startServer()`.** The server discovers schema modules by globbing the generated `query-schema`/`mutation-schema` files under its schema path — it does not import arbitrary files. A module like `src/custom-fields.ts` is only included if your entry point imports it before starting the server (or you name it to match the glob).
 
+   ```ts
+   import "./custom-fields" // registers the builder fields
+   await server.startServer()
+   ```
+
+2. **The `Mutation` root type exists only when a generated `mutation-schema` file is present.** If your project has no generated mutations, `builder.mutationField(...)` has no `Mutation` type to attach to and Pothos throws "Mutation type not defined". Add a generated mutation first, or register the mutation type yourself.
+
+## Authorization
+
+Declare the scopes a custom field requires through Pothos's `authScopes` field option — for example, require an authenticated user, or a read permission on a particular table. See [scope authorization](/docs/api/authentication/scope-authorization).
+
+## Validation
+
+Attach a Zod schema to an argument via its `validate` option to validate input before the resolver runs. See [input validation](/docs/api/schema-builder/input-validation).
+
+## Accessing Data
+
+Resolvers reach the runtime through the GraphQL context, which exposes `getReadStrategy(name)` and `getWriteStrategy(name)` — there is no `context.runtime`.
+
+```ts
+builder.queryField("orderCount", (t) =>
+  t.int({
+    resolve: async (_root, _args, context) => {
+      const strategy = context.getReadStrategy("warehouse")
+      // use the strategy to read, the same path generated resolvers take
+      // ...
+      return count
+    },
+  })
+)
 ```
-src/schemas/custom/hive/analytics/user_events/
-├── config.ts              # Hive + storage config
-├── endpoint.json          # Persisted definition
-├── json-schema.json       # JSON Schema for Parquet serialization
-├── query-schema.ts        # GraphQL query with sorting, filtering, paging
-└── mutation-schema.ts     # GraphQL mutation with write pipeline
-```
-
-The `config-registry.ts` is updated automatically to include the new endpoint.
-
-## Query-only endpoints
-
-Omit the `mutation` field to generate a query-only endpoint:
-
-```json path="query-only.json"
-{
-  "version": "1.0",
-  "tableName": "reports",
-  "catalog": "hive",
-  "schema": "analytics",
-  "fields": [
-    { "name": "report_id", "type": "String" },
-    { "name": "title", "type": "String" },
-    { "name": "created_at", "type": "DateTime" }
-  ]
-}
-```
-
-Or explicitly disable mutations:
-
-```json
-{ "mutation": false }
-```
-
-## Field options
-
-Each field supports options for mutation input behavior:
-
-| Option | Default | Description |
-| --- | --- | --- |
-| `required` | `false` | Field is required in mutation input |
-| `readOnly` | `false` | Field appears in queries but is excluded from mutation input |
-| `validations` | `[]` | Zod validation refinements (email, url, uuid, min, max, regex) |
-
-```json
-{
-  "name": "email",
-  "type": "String",
-  "options": {
-    "required": true,
-    "validations": [{ "type": "email" }]
-  }
-}
-```
-
-## Mutation load strategies
-
-The `mutation` config supports three strategies. See [Load Strategies](/docs/adapters/write-pipeline/load-strategies) for details.
-
-| Strategy           | Behavior                        |
-| ------------------ | ------------------------------- |
-| `full_load`        | Replace all data on every write |
-| `full_load_append` | Replace latest + keep history   |
-| `append`           | Append only                     |
-
-## File discovery
-
-The API server automatically discovers all schema files at startup by scanning for:
-
-```
-schemas/**/query-schema.{ts,js,mjs}
-schemas/**/mutation-schema.{ts,js,mjs}
-```
-
-No manual registration is needed — just generate and start the server.

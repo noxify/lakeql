@@ -1,13 +1,21 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 
+import { makeResolvedDataSource } from "../support/mock-datasource"
+
 const mockExecutePull = vi.fn<(...args: unknown[]) => Promise<void>>()
 const mockExecuteBulkPull = vi.fn<(...args: unknown[]) => Promise<void>>()
 const mockRunConfigRegistryGeneration =
   vi.fn<(...args: unknown[]) => Promise<void>>()
+const resolved = makeResolvedDataSource({ name: "default" })
+const mockResolveDataSource = vi.fn<() => Promise<typeof resolved>>(() =>
+  Promise.resolve(resolved)
+)
+const mockResolveCatalog = vi.fn<(...args: unknown[]) => Promise<string>>()
 
 mockExecutePull.mockResolvedValue()
 mockExecuteBulkPull.mockResolvedValue()
 mockRunConfigRegistryGeneration.mockResolvedValue()
+mockResolveCatalog.mockResolvedValue("hive")
 
 vi.mock(import("@/commands/pull-action"), () => ({
   executePull: (...args: unknown[]) => mockExecutePull(...args),
@@ -35,15 +43,12 @@ vi.mock(import("@/config"), () => ({
     .mockResolvedValue("/tmp/lakeql-out"),
 }))
 
-vi.mock(import("@/env"), () => ({
-  getEnv: () => ({
-    HIVE_CATALOG: "hive",
-    HIVE_HOST: "localhost",
-    HIVE_PASSWORD: "secret",
-    HIVE_PORT: 443,
-    HIVE_USERNAME: "user",
-    LOG_LEVEL: "warn" as const,
-  }),
+vi.mock(import("@/resolve-datasource"), () => ({
+  resolveDataSource: () => mockResolveDataSource(),
+}))
+
+vi.mock(import("@/resolve-catalog"), () => ({
+  resolveCatalog: (...args: unknown[]) => mockResolveCatalog(...args),
 }))
 
 vi.mock(import("@lakeql/logger/console"), () => ({
@@ -60,6 +65,9 @@ describe("pull command output", () => {
     mockExecutePull.mockResolvedValue()
     mockExecuteBulkPull.mockClear()
     mockRunConfigRegistryGeneration.mockClear()
+    mockResolveDataSource.mockClear()
+    mockResolveCatalog.mockClear()
+    mockResolveCatalog.mockResolvedValue("hive")
   })
 
   it("prints start and completion messages for successful non-interactive pull", async () => {
@@ -82,6 +90,7 @@ describe("pull command output", () => {
 
     expect(mockExecutePull).toHaveBeenCalledExactlyOnceWith(
       expect.objectContaining({
+        dataSourceName: "default",
         catalog: "hive",
         schema: "analytics",
         tables: ["events"],
@@ -91,10 +100,10 @@ describe("pull command output", () => {
     )
 
     expect(logSpy).toHaveBeenCalledWith(
-      "INFO Pulling 1 item(s) from hive.analytics into /tmp/lakeql-out/schemas/generated..."
+      "INFO Pulling 1 item(s) from hive.analytics into /tmp/lakeql-out/schemas/generated/default..."
     )
     expect(logSpy).toHaveBeenCalledWith(
-      "SUCCESS Pull completed: 1 item(s) generated under /tmp/lakeql-out/schemas/generated/hive/analytics"
+      "SUCCESS Pull completed: 1 item(s) generated under /tmp/lakeql-out/schemas/generated/default/hive/analytics"
     )
 
     expect(mockRunConfigRegistryGeneration).not.toHaveBeenCalled()
@@ -112,6 +121,7 @@ describe("pull command output", () => {
 
     expect(mockExecutePull).toHaveBeenCalledExactlyOnceWith(
       expect.objectContaining({
+        dataSourceName: "default",
         catalog: "hive",
         schema: "analytics",
         tables: ["events"],
@@ -121,10 +131,9 @@ describe("pull command output", () => {
     )
 
     expect(mockRunConfigRegistryGeneration).toHaveBeenCalledOnce()
-    expect(mockRunConfigRegistryGeneration.mock.calls[0]?.[0]).toBeUndefined()
 
     expect(logSpy).toHaveBeenCalledWith(
-      "SUCCESS Pull completed: 1 item(s) generated under /tmp/lakeql-out/schemas/generated/hive/analytics"
+      "SUCCESS Pull completed: 1 item(s) generated under /tmp/lakeql-out/schemas/generated/default/hive/analytics"
     )
   })
 
@@ -148,6 +157,7 @@ describe("pull command output", () => {
     for (const table of tables) {
       expect(mockExecutePull).toHaveBeenCalledWith(
         expect.objectContaining({
+          dataSourceName: "default",
           catalog: "hive",
           schema: "analytics",
           tables: [table],
@@ -161,10 +171,10 @@ describe("pull command output", () => {
     expect(mockRunConfigRegistryGeneration).toHaveBeenCalledOnce()
 
     expect(logSpy).toHaveBeenCalledWith(
-      "INFO Pulling 11 item(s) from hive.analytics into /tmp/lakeql-out/schemas/generated..."
+      "INFO Pulling 11 item(s) from hive.analytics into /tmp/lakeql-out/schemas/generated/default..."
     )
     expect(logSpy).toHaveBeenCalledWith(
-      "SUCCESS Pull completed: 11 item(s) generated under /tmp/lakeql-out/schemas/generated/hive/analytics"
+      "SUCCESS Pull completed: 11 item(s) generated under /tmp/lakeql-out/schemas/generated/default/hive/analytics"
     )
   })
 
@@ -185,6 +195,8 @@ describe("pull command output", () => {
   })
 
   it("uses custom concurrency for non-bulk multi-table pulls", async () => {
+    vi.spyOn(console, "log").mockImplementation(() => {})
+
     let inFlight = 0
     let maxInFlight = 0
 

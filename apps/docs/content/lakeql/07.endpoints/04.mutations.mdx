@@ -1,0 +1,63 @@
+---
+title: Mutations
+navTitle: Mutations
+description: The optional mutation block and its load strategies.
+---
+
+Adding a `mutation` block to `endpoint.json` makes the endpoint writable. It's either `false` (explicitly disabled, same as omitting it) or a config object with a `loadStrategy` and a `basePath`.
+
+<ApiReference
+  variant="table"
+  file="schema-generator/src/endpoint-schema"
+  name="MutationConfig"
+/>
+
+`loadStrategy` accepts one of three values — `full_load`, `full_load_append`, or `append` — defined under [Load strategies](#load-strategies) below. `basePath` is required for every one of them, even those that don't use it (see the note below).
+
+### Where the data goes
+
+`basePath`, `partitioning`, and `partitioningFormat` describe _where inside the configured object store_ this endpoint's data lands and how it is laid out — they do **not** configure the store itself. The bucket, region, and credentials come from the `files-sdk` instance on the data source's `writeConfig`, not from the endpoint. For example, with `basePath: "sales/orders"` and timestamp partitioning, an `append` write lands at `sales/orders/all.parquet/year=2026/month=08/day=29/<uuid>.parquet` in whatever bucket the data source is wired to.
+
+See [Writing data](/docs/data-sources/writing) for how the storage write strategy is configured and [Partitioning](/docs/data-sources/writing/partitioning) for the full path layout.
+
+## Load strategies
+
+- **`append`** adds the written records to the target without touching existing data.
+- **`full_load`** replaces the target completely: records are written to a pending table, the original is dropped, and the pending table is renamed into place.
+- **`full_load_append`** maintains two targets: a `_latest` table that's fully replaced on every write (same swap as `full_load`), and an `_all` table that every write appends to, so history accumulates alongside the latest snapshot.
+
+<Note>
+  `basePath` is required by the `mutation` schema regardless of which write
+  strategy ends up handling the write. The `basePath`, `partitioning`, and
+  `partitioningFormat` fields are only meaningful for the **storage** write
+  strategy. `full_load` ignores partitioning, and the Trino adapter's `INSERT
+  INTO` strategy ignores all three — it writes directly through SQL — but
+  `basePath` must still be present for the definition to validate.
+</Note>
+
+## Example
+
+```json
+{
+  "version": "1.0",
+  "catalog": "hive",
+  "schema": "sales",
+  "tableName": "orders",
+  "dataSource": "warehouse",
+  "fields": [
+    { "name": "id", "type": "Integer", "options": { "required": true } },
+    {
+      "name": "customerEmail",
+      "type": "String",
+      "options": { "required": true, "validations": [{ "type": "email" }] }
+    },
+    { "name": "status", "type": "String", "options": { "readOnly": true } }
+  ],
+  "mutation": {
+    "loadStrategy": "append",
+    "basePath": "sales/orders"
+  }
+}
+```
+
+Generating this definition with [`create-endpoint`](/docs/cli/commands/create-endpoint) additionally writes a `mutation-schema.ts` file and registers a mutation field in the GraphQL schema, alongside the query field every endpoint gets. See the [mutations guide](/docs/lakeql/guides/mutations) for how that field is authorized and resolved at runtime, or [Set Up a Trino Mutation](/docs/lakeql/guides/set-up-a-trino-mutation) for the end-to-end task.

@@ -1,0 +1,73 @@
+---
+title: Write Config
+navTitle: Write Config
+description: The two writeConfig shapes the Trino adapter supports — INSERT and external storage.
+---
+
+The Trino adapter offers two write strategies, selected by the data source's `writeConfig`:
+
+- **Storage** (default) — serializes records, uploads them to object storage, and registers them through Hive DDL. Selected when `strategy` is `"storage"` or omitted.
+- **INSERT** — writes via `INSERT INTO` with no object storage. Selected with `strategy: "insert"`, and supports batching (`batchSize`), optional `autoCreateTable`, and `tableProperties`.
+
+The INSERT strategy needs no object storage:
+
+```ts
+dataSources: {
+  warehouse: {
+    adapter: "trino",
+    connection: { /* ... */ },
+    writeConfig: { strategy: "insert", batchSize: 500 },
+  },
+}
+```
+
+<ApiReference
+  variant="table"
+  file="adapter-trino/src/config"
+  name="TrinoInsertWriteConfig"
+/>
+
+The storage strategy's fields are not LakeQL-native — the bucket, region, and credentials live on a `files-sdk` instance, so they are not part of the adapter's config type:
+
+<DescriptionList>
+  <DescriptionListItem label="Object storage">
+    The storage strategy writes Parquet files to object storage you provide.
+  </DescriptionListItem>
+  <DescriptionListItem label="SDK ownership">
+    The bucket, region, and credentials live on a `files-sdk` instance, not on
+    any LakeQL-native field — the Trino adapter's config has no
+    bucket/credential keys.
+  </DescriptionListItem>
+  <DescriptionListItem label="Serialization">
+    A serializer converts records to the storage file format before upload.
+  </DescriptionListItem>
+</DescriptionList>
+
+Construct both as live objects in `lakeql.config.ts`; they are passed through to the write strategy as-is, not serialized:
+
+```ts
+import { Files } from "files-sdk"
+import { s3 } from "files-sdk/s3"
+import { parquetSerializer } from "@lakeql/storage/serializer/parquet"
+
+dataSources: {
+  warehouse: {
+    adapter: "trino",
+    connection: { /* ... */ },
+    writeConfig: {
+      // strategy defaults to "storage" when omitted
+      files: new Files({ adapter: s3({ bucket: "warehouse", region: "eu-central-1" }) }),
+      serializer: parquetSerializer(),
+      // externalLocationPrefix?: override the auto-derived s3a://<bucket> prefix
+      // keepShadowTables?: retain shadow tables after a successful swap
+    },
+  },
+}
+```
+
+<Warning>
+  A storage write call without a resolved `basePath` throws before any file is
+  uploaded.
+</Warning>
+
+See [Writing](/docs/data-sources/writing) for load-strategy semantics and the step-by-step pipeline, and [`TrinoWriteConfig`](/docs/data-sources/trino/api-reference#trino-write-config) for the full option set.

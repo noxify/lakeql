@@ -1,101 +1,28 @@
 ---
 title: Data Flow
-description: How LakeQL's CLI pipeline transforms Trino metadata into generated TypeScript files.
+navTitle: Data Flow
+description: How a GraphQL query becomes SQL and a typed response.
 ---
 
-## The Generation Pipeline
+A read request flows down through the layers and back up:
 
-When you run `lakeql-cli pull`, a multi-stage pipeline transforms Trino metadata into ready-to-use TypeScript source files.
-
-```mermaid preview
-flowchart LR
-    trino["Trino Instance"] -->|SHOW COLUMNS| cp["@lakeql/column-parser"]
-    cp -->|Structured columns| sg["@lakeql/schema-generator"]
-    sg -->|Models + JSON Schema| fg["@lakeql/file-generator"]
-    fg -->|Writes to disk| files["Generated Files<br/>config.ts · interface.ts<br/>query-schema.ts · json-schema.json"]
+```mermaid
+flowchart TB
+    client["GraphQL query"] --> api["API — schema + auth"]
+    api --> qb["query-builder — build SQL intent"]
+    qb --> adapter["Adapter — render dialect SQL"]
+    adapter --> engine["Query engine (Trino / Fabric)"]
+    engine --> adapter2["Adapter — decode response"]
+    adapter2 --> rt["response-transformer — typed records"]
+    rt --> api2["API — GraphQL response"]
+    api2 --> client
 ```
 
-## Stage 1: Trino Introspection
+1. **Query arrives** — the API server resolves the field, after checking auth and permissions.
+2. **SQL intent** — the [query builder](/docs/packages/query-builder) turns the selected fields, filter, sorting, and paging into a compiled, adapter-neutral query.
+3. **Dialect** — the adapter renders that into its engine's SQL and runs it.
+4. **Decode** — the adapter decodes the raw protocol response into keyed records.
+5. **Transform** — the response transformer applies the schema-aware mapping into typed objects.
+6. **Respond** — the API returns the typed rows plus pagination metadata.
 
-`@lakeql/trino-client` connects to your Trino instance and executes metadata queries:
-
-```ts
-// The CLI issues this for each table
-SHOW COLUMNS FROM hive.sales.orders
-```
-
-Trino returns rows like:
-
-| Column      | Type                                 | Extra | Comment |
-| ----------- | ------------------------------------ | ----- | ------- |
-| id          | bigint                               |       |         |
-| customer_id | bigint                               |       |         |
-| status      | varchar                              |       |         |
-| metadata    | row(source varchar, version integer) |       |         |
-| tags        | array(varchar)                       |       |         |
-
-## Stage 2: Column Parsing
-
-`@lakeql/column-parser` transforms raw type strings into structured objects. This handles Trino's complex type syntax including nested rows, arrays, and maps:
-
-```ts
-// Input: "array(row(id bigint, name varchar))"
-// Output:
-{
-  kind: "array",
-  element: {
-    kind: "row",
-    fields: [
-      { name: "id", type: { kind: "scalar", base: "bigint" } },
-      { name: "name", type: { kind: "scalar", base: "varchar" } }
-    ]
-  }
-}
-```
-
-The parser handles all Trino types: `varchar`, `bigint`, `integer`, `double`, `boolean`, `date`, `timestamp`, `array(T)`, `map(K, V)`, and `row(...)`.
-
-## Stage 3: Schema Generation
-
-`@lakeql/schema-generator` takes the parsed column definitions and produces:
-
-- **JSON Schema** — Describes the response structure for runtime transformation
-- **GraphQL model definitions** — Pothos-compatible type and field definitions
-- **TypeScript interface fields** — Mapped types for the interface file
-
-This stage maps Trino types to TypeScript and GraphQL types:
-
-| Trino Type  | TypeScript       | GraphQL          |
-| ----------- | ---------------- | ---------------- |
-| `bigint`    | `number`         | `Int` or `Float` |
-| `varchar`   | `string`         | `String`         |
-| `boolean`   | `boolean`        | `Boolean`        |
-| `date`      | `Date`           | `Date`           |
-| `timestamp` | `Date`           | `DateTime`       |
-| `array(T)`  | `T[]`            | `[T]`            |
-| `row(...)`  | nested interface | nested type      |
-
-## Stage 4: File Generation
-
-`@lakeql/file-generator` writes the final TypeScript source files to disk. Each file is formatted and ready to be imported by the API server.
-
-After generation, the CLI also updates the **config registry** — an aggregated index file that imports all generated configs:
-
-```ts path="src/config-registry.ts"
-import { ordersConfig } from "./schemas/generated/hive/sales/orders/config"
-import { customersConfig } from "./schemas/generated/hive/sales/customers/config"
-
-export const allConfigs = [ordersConfig, customersConfig] as const
-```
-
-This registry is what the API server uses to discover and load all available table schemas.
-
-## Re-running the Pipeline
-
-The pipeline is idempotent. Running `pull` again overwrites existing generated files with fresh versions based on current Trino metadata. This makes it safe to re-run whenever table schemas change.
-
-<Warning>
-  If you've made manual edits to generated files (e.g. adding custom fields to
-  `query-schema.ts`), those changes will be lost on the next `pull`. Place
-  custom resolvers in separate files instead.
-</Warning>
+The count and the page come back together: the query builder emits two CTEs so a single round trip yields both the rows and the total used for [`PageInfo`](/docs/api/schema-builder/pagination).

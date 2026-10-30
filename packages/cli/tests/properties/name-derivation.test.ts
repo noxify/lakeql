@@ -1,5 +1,4 @@
 // oxlint-disable eslint/no-template-curly-in-string
-// Feature: custom-endpoint-cli, Property 2: Name derivation produces correct transformations
 
 import * as fc from "fast-check"
 import { camelCase, upperFirst } from "lodash-es"
@@ -7,7 +6,7 @@ import { describe, expect, it } from "vitest"
 
 import { deriveNames } from "@/pipeline/derive-names"
 
-describe("Property 2: Name derivation produces correct transformations", () => {
+describe("Name derivation produces correct transformations", () => {
   // Generator for valid identifier strings matching metadataFieldPattern
   // /^[a-zA-Z_][a-zA-Z0-9_]{0,127}$/
   const validFirstChar = fc.constantFrom(

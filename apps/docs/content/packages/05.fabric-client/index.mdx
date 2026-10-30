@@ -1,0 +1,23 @@
+---
+title: fabric-client
+navTitle: fabric-client
+description: A standalone TDS client for Microsoft Fabric SQL endpoints.
+---
+
+`@lakeql/fabric-client` is a standalone client for Microsoft Fabric SQL endpoints. It executes T-SQL over TDS using the `mssql` driver, authenticating with Azure AD access tokens — resolved from the configured credentials, or supplied per query for an on-behalf-of flow.
+
+```ts
+import { FabricClient } from "@lakeql/fabric-client"
+
+const client = new FabricClient({
+  host: "your-endpoint.datawarehouse.fabric.microsoft.com",
+  port: 1433,
+  catalog: "my_warehouse",
+  auth: { type: "bearer", token: "..." },
+})
+
+const rows = await client.query({ sql: "SELECT 1 AS n" })
+await client.close()
+```
+
+This section covers [client setup](/docs/packages/fabric-client/client-setup) and [executing queries](/docs/packages/fabric-client/executing-queries), with the full [API reference](/docs/packages/fabric-client/api-reference) at the end.

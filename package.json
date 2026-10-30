@@ -28,8 +28,8 @@
     "clean:dist": "turbo clean:dist",
     "clean:cache": "turbo clean:cache",
     "cli": "pnpm -F cli cli",
-    "lint": "ultracite check",
-    "lint:fix": "ultracite fix",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
     "format": "oxfmt --check",
     "format:fix": "oxfmt .",
     "lint:ws": "sherif",
@@ -38,8 +38,7 @@
     "deps:check": "pnpm outdated -r",
     "deps:update": "pnpm update -i -L -r",
     "gh:update": "actions-up --style preserve",
-    "audit": "pnpm audit --prod",
-    "audit:ci": "pnpm audit --prod --ignore GHSA-qx2v-qp2m-jg93 --ignore-unfixable",
+    "audit:ci": "pnpm audit --prod --ignore-unfixable",
     "test": "vitest",
     "test:ui": "vitest --ui",
     "prune": "turbo prune --docker",
@@ -55,21 +54,22 @@
     "seed": "pnpm -F test-data seed"
   },
   "devDependencies": {
-    "@vitest/coverage-v8": "4.1.10",
-    "@vitest/ui": "4.1.10",
-    "actions-up": "1.16.0",
-    "dotenv-cli": "11.0.0",
-    "oxfmt": "^0.60.0",
-    "oxlint": "^1.75.0",
+    "@vitest/coverage-v8": "5.0.5",
+    "@vitest/ui": "5.0.5",
+    "actions-up": "2.0.0",
+    "dotenv-cli": "11.1.0",
+    "oxfmt": "0.75.0",
+    "oxlint": "1.90.0",
+    "pkg-pr-new": "0.0.92",
     "sherif": "1.13.0",
-    "tegami": "^1.2.6",
-    "turbo": "2.10.6",
+    "tegami": "1.5.0",
+    "turbo": "2.11.10",
     "typescript": "6.0.3",
-    "ultracite": "7.9.4",
-    "vitest": "4.1.10"
+    "ultracite": "8.1.0",
+    "vitest": "5.0.5"
   },
   "engines": {
-    "node": ">=22"
+    "node": ">=24"
   },
-  "packageManager": "pnpm@11.17.0"
+  "packageManager": "pnpm@12.15.0"
 }

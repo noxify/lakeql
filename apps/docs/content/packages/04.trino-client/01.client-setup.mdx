@@ -1,0 +1,48 @@
+---
+title: Client Setup
+navTitle: Client Setup
+description: Create and configure a TrinoClient.
+---
+
+Create a client by constructing [`TrinoClient`](/docs/packages/trino-client/api-reference#trino-client) with connection and authentication details.
+
+```ts
+import { TrinoClient } from "@lakeql/trino-client"
+
+const client = new TrinoClient({
+  host: "http://localhost",
+  port: 8080,
+  catalog: "hive",
+  auth: { type: "basic", username: "user", password: "secret" },
+})
+```
+
+## Authentication
+
+Two auth types are supported:
+
+```ts
+// Basic auth
+auth: { type: "basic", username: "user", password: "secret" }
+
+// Bearer token
+auth: { type: "bearer", token: "..." }
+```
+
+## Optional Settings
+
+- `schema` — a default schema, sent as the `X-Trino-Schema` header.
+- `source` — a source identifier (`X-Trino-Source`); defaults to `"nodejs"`.
+- `timeout` — a default per-query timeout in milliseconds.
+- `retry` — retry configuration (see [`RetryConfig`](/docs/packages/trino-client/api-reference#retry-config)).
+
+```ts
+const client = new TrinoClient({
+  host: "http://localhost",
+  port: 8080,
+  catalog: "hive",
+  auth: { type: "basic", username: "user", password: "secret" },
+  timeout: 30_000,
+  retry: { maxRetries: 3 },
+})
+```

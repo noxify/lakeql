@@ -1,102 +1,51 @@
 ---
 title: JWT Authentication
 navTitle: JWT Authentication
-description: Configure user authentication via JWT tokens or mock authentication for development.
+description: Validate the request token and resolve the current user.
 ---
 
-LakeQL uses JWT-based authentication to identify the current user on each request. The `getUser` resolver extracts user information from the `Authorization` header and makes it available in the GraphQL context.
-
-## GetUserResolver type
+Authentication starts with a `tokenResolver`: a function that inspects the incoming request, validates its token, and returns the decoded payload (the current user) or `null` when unauthenticated.
 
 ```ts
-type GetUserResolver = (
-  req: Request
-) => Promise<JWTPayload | null | undefined> | JWTPayload | null | undefined
-```
+import type { TokenResolver } from "@lakeql/config"
+import { createRemoteJWKSet, jwtVerify } from "jose"
 
-Returning `null` or `undefined` means the request is unauthenticated. The `JWTPayload` type extends jose's `JWTPayload` with an additional `userName` field:
-
-```ts
-// Extends jose JWTPayload
-interface JWTPayload {
-  userName: string
-  // ...standard JWT claims (iss, sub, aud, exp, etc.)
-}
-```
-
-## Default behavior
-
-The built-in `getUser` resolver supports mock authentication for local development. It does not perform real JWT verification — you must provide a custom resolver for production.
-
-## Mock authentication
-
-Set the following environment variables to enable mock auth:
-
-```bash
-AUTH_MOCK=true
-AUTH_MOCK_TOKEN=my-dev-token
-```
-
-Then pass the token as the `Authorization` header and the username via `x-username`:
-
-```bash
-curl -X POST http://localhost:4000/graphql \
-  -H "Authorization: my-dev-token" \
-  -H "x-username: developer" \
-  -H "Content-Type: application/json" \
-  -d '{"query": "{ __typename }"}'
-```
-
-## Custom JWT verification
-
-For production, provide a custom `getUser` resolver that verifies tokens using your identity provider:
-
-```ts path="src/auth.ts"
-import type { GetUserResolver } from "@lakeql/api/types"
-import { jwtVerify, createRemoteJWKSet } from "jose"
-
-const jwks = createRemoteJWKSet(
-  new URL("https://auth.example.com/.well-known/jwks.json")
+const JWKS = createRemoteJWKSet(
+  new URL(`https://login.microsoftonline.com/${tenantId}/discovery/v2.0/keys`)
 )
 
-export const getUser: GetUserResolver = async (req) => {
-  const authHeader = req.headers.get("authorization")
+export const tokenResolver: TokenResolver = async (request) => {
+  const authHeader = request.headers.get("authorization")
   if (!authHeader?.startsWith("Bearer ")) {
     return null
   }
 
   const token = authHeader.slice(7)
-
   try {
-    const { payload } = await jwtVerify(token, jwks, {
-      issuer: "https://auth.example.com",
-      audience: "lakeql-api",
+    const { payload } = await jwtVerify(token, JWKS, {
+      audience: clientId,
+      issuer: `https://login.microsoftonline.com/${tenantId}/v2.0`,
     })
-
-    return {
-      ...payload,
-      userName: payload.sub ?? "unknown",
-    }
+    return { ...payload, __rawToken: token }
   } catch {
     return null
   }
 }
 ```
 
-Pass it to `defineConfig` in your `src/config.ts`:
+Pass it to the server via [`defineApiConfig`](/docs/api/server-setup/define-config):
 
-```ts path="src/config.ts"
-import { defineConfig } from "@lakeql/api/config"
-
-import { getUser } from "./auth"
-import { allConfigs } from "./config-registry"
-
-export const config = defineConfig({
-  allConfigs,
-  baseDir: import.meta.dirname,
-  getUser,
-  schemaPath: "./schemas",
-})
+```ts
+defineApiConfig({ runtime, tokenResolver })
 ```
 
-The resolved user is available in every GraphQL resolver via `context.currentUser`.
+## Identity Resolution
+
+The decoded payload is mapped to a `ResolvedIdentity` by the `identityResolver`, which defaults to the Entra ID resolver ([`entraIdIdentityResolver`](/docs/api/api-reference#entra-id-identity-resolver)). The resolved identity drives permission checks and tells LakeQL whether the caller is a service principal. Override `identityResolver` for other identity providers.
+
+<Note>
+  Returning `null` from the token resolver leaves the request unauthenticated.
+  Whether that is allowed depends on the permissions and resolvers you configure
+  — an unauthenticated request resolves to the system user with no
+  request-scoped credentials.
+</Note>

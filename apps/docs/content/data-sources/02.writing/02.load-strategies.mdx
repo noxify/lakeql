@@ -1,0 +1,21 @@
+---
+title: Load Strategies
+navTitle: Load Strategies
+description: How a write combines with existing data — full load, append, and more.
+---
+
+A load strategy decides how a write combines with the data already in the target table. It is independent of the write strategy — both the storage and INSERT paths implement the same load-strategy semantics.
+
+| Strategy | Behavior |
+| --- | --- |
+| `full_load` | Replace the target dataset with the written records. |
+| `full_load_append` | Replace the current dataset and extend the historical dataset. |
+| `append` | Append the new records, retaining the existing dataset. |
+
+Each strategy defines explicit behavior for the tricky cases — **empty input**, **errors**, and **retries** — rather than letting it be inferred from a storage method name. For example, a `full_load` with empty input has defined semantics for what happens to the existing dataset.
+
+<Note>
+  A write strategy is only offered when the adapter reports the capabilities it
+  needs. `INSERT INTO` does not by itself imply atomic replacement or DDL
+  support, so not every adapter exposes every load strategy.
+</Note>

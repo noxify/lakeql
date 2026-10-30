@@ -14,11 +14,15 @@ body:
       label: Package
       description: Which package is this feature request for?
       options:
-        - adapters
+        - adapter-fabric
+        - adapter-trino
         - api
         - cli
         - column-parser
+        - config
         - create-app
+        - datasource
+        - fabric-client
         - file-generator
         - helpers
         - logger
@@ -26,9 +30,10 @@ body:
         - query-builder
         - response-transformer
         - schema-generator
+        - sql-read-strategy
+        - storage
         - trino-client
         - documentation
-        - endpoint-builder
         - other
     validations:
       required: true

@@ -1,0 +1,18 @@
+---
+title: API Reference
+navTitle: API Reference
+description: Complete reference for the @lakeql/api public API.
+apiReference:
+  - name: "@lakeql/api"
+    file: "api/src/index"
+---
+
+The complete public API of `@lakeql/api`, generated from the package's TypeScript source.
+
+The server entry points are [`defineApiConfig`](#define-api-config), [`createApiServer`](#create-api-server), and [`startApiServer`](#start-api-server). Authentication is composed with [`createApiResolveAuth`](#create-api-resolve-auth) and [`trinoUserImpersonation`](#trino-user-impersonation); permissions with [`createPermission`](#create-permission). The rest of the surface covers the schema builder, error handling, the Yoga integration, and the supporting types.
+
+<Note>
+  The package is published with subpath exports (e.g. `@lakeql/api/config`,
+  `@lakeql/api/resolve-auth`). Each export below lives under the subpath
+  matching its source module.
+</Note>

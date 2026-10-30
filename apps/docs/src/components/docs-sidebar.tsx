@@ -16,6 +16,7 @@ import {
   SidebarGroup,
   SidebarGroupLabel,
   SidebarGroupContent,
+  SidebarSeparator,
 } from "@/components/ui/sidebar"
 import type { NavigationGroup, TreeItem } from "@/lib/navigation"
 import { cn } from "@/lib/utils"
@@ -32,7 +33,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip"
 
 const spaceGrotesk = Space_Grotesk({ subsets: ["latin"] })
 
-export function DocsSidebar({
+export const DocsSidebar = ({
   className,
   collectionChooser,
   favoriteItems,
@@ -42,7 +43,7 @@ export function DocsSidebar({
   collectionChooser?: React.ReactNode
   favoriteItems?: TreeItem[]
   navigationItems?: NavigationGroup[]
-}) {
+}) => {
   const pathname = usePathname()
   const quickLinks = favoriteItems ?? []
   const scrollContainerRef = React.useRef<HTMLDivElement | null>(null)
@@ -90,6 +91,9 @@ export function DocsSidebar({
     return () => {
       window.cancelAnimationFrame(frameId)
     }
+    // `pathname` is a trigger: the effect re-centers the active nav item on
+    // route change but does not read pathname in its body.
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies
   }, [pathname])
 
   return (
@@ -169,9 +173,34 @@ export function DocsSidebar({
         <div ref={navigationContainerRef}>
           {(navigationItems ?? []).map((group, groupIdx) => (
             <SidebarGroup key={group.label + groupIdx} className="px-0">
-              {group.label && (
-                <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
-              )}
+              {group.separator && <SidebarSeparator className="my-2" />}
+
+              {group.label &&
+                (group.url ? (
+                  group.external ? (
+                    <SidebarGroupLabel
+                      className="hover:text-foreground transition-colors"
+                      render={
+                        <a
+                          href={group.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        />
+                      }
+                    >
+                      {group.label}
+                    </SidebarGroupLabel>
+                  ) : (
+                    <SidebarGroupLabel
+                      className="hover:text-foreground transition-colors"
+                      render={<Link href={group.url} prefetch={false} />}
+                    >
+                      {group.label}
+                    </SidebarGroupLabel>
+                  )
+                ) : (
+                  <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+                ))}
               <SidebarGroupContent>
                 <SidebarMenu>
                   {group.items.map((item) => (

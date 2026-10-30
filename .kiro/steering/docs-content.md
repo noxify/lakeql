@@ -1,0 +1,602 @@
+---
+inclusion: auto
+globs: apps/docs/content/**/*.mdx
+---
+
+# Documentation Content Generation Rules
+
+You are writing MDX documentation for the LakeQL project. Follow these rules strictly.
+
+## Source of Truth
+
+#[[file:apps/docs/src/mdx-components.tsx]]
+
+The component map in `apps/docs/src/mdx-components.tsx` is the authoritative source for which MDX components are available. Do NOT use any component that is not registered there.
+
+## Allowed MDX Components
+
+You may ONLY use the following components. Do NOT invent or import other components.
+
+### Admonitions
+
+- `<Note>` / `<Note title="Title">` — Informational callout
+- `<Callout>` / `<Callout title="Title">` — General callout
+- `<Warning>` / `<Warning title="Title">` — Warning callout
+- `<Error>` / `<Error title="Title">` — Error/danger callout
+- `<Success>` / `<Success title="Title">` — Success callout
+
+**Example — without title:**
+
+```mdx
+<Note>
+  All adapters require a configured data source before they can execute queries.
+</Note>
+```
+
+**Example — with title:**
+
+```mdx
+<Warning title="Breaking Change">
+  The `connectionString` option was removed in 1.0. Use `host` and `port`
+  separately.
+</Warning>
+```
+
+**Example — all variants:**
+
+```mdx
+<Callout title="Tip">
+  Use environment variables for connection credentials in production.
+</Callout>
+
+<Success title="Done">Your adapter is configured and ready to use.</Success>
+
+<Error title="Connection Failed">
+  Check that your Trino coordinator is reachable at the configured host and
+  port.
+</Error>
+```
+
+### Command
+
+- `<Command variant="VARIANT">SUBJECT</Command>`
+  - Renders package-manager-aware commands (npm/pnpm)
+  - Variants: `create`, `exec`, `install`, `install-dev`, `run`
+  - The text content is the command subject only (no `npm`/`pnpm` prefix)
+
+**Example — install:**
+
+```mdx
+<Command variant="install">@lakeql/adapter-trino</Command>
+```
+
+**Example — install-dev:**
+
+```mdx
+<Command variant="install-dev">@lakeql/cli</Command>
+```
+
+**Example — run:**
+
+```mdx
+<Command variant="run">cli pull --source warehouse</Command>
+```
+
+**Example — create:**
+
+```mdx
+<Command variant="create">@lakeql/create-app my-api</Command>
+```
+
+**Example — exec:**
+
+```mdx
+<Command variant="exec">lakeql init</Command>
+```
+
+### CLI Reference
+
+- `<CliCommandDetails command="COMMAND_NAME" />`
+  - Renders auto-generated CLI option tables from `@lakeql/cli` metadata
+  - Use `command="create-app"` for the scaffolding tool
+  - Must match an exported command name from the CLI package
+  - The page should also set `cliCommand` in frontmatter
+
+**Example:**
+
+```mdx
+---
+title: pull
+description: Pull table schemas from a data source and generate TypeScript files.
+cliCommand: pull
+---
+
+## Overview
+
+The `pull` command connects to your data source, reads table metadata, and generates TypeScript interfaces.
+
+## Options
+
+<CliCommandDetails command="pull" />
+```
+
+### API Reference
+
+Auto-generated TypeScript reference, read from package source at build time via ts-morph. Two ways to use it — pick one per page:
+
+**(a) Frontmatter** — for a whole-page reference of one or more exports/files:
+
+```mdx
+---
+title: API Reference
+description: Auto-generated reference for adapter packages.
+separator: true
+apiReference:
+  - name: "@lakeql/trino-client"
+    file: "trino-client/src/index"
+  - name: "@lakeql/fabric-client"
+    file: "fabric-client/src/index"
+  - name: "@lakeql/datasource"
+    file: "datasource/src/index"
+---
+```
+
+**(b) Inline `<ApiReference>`** — to embed a single export or a filtered set within a prose page:
+
+| Prop | Type | Purpose |
+| --- | --- | --- |
+| `file` | string | Path relative to `packages/`, without extension (e.g. `query-builder/src/index`) |
+| `name` | string | Render a single named export |
+| `include` | string[] | Only these exports (when `name` is not set) |
+| `exclude` | string[] | Drop these exports (applied after `include`) |
+| `variant` | `"full"` \| `"summary"` \| `"table"` | `full` = collapsible details (default), `summary` = title+description, `table` = flat property table for one interface/type |
+
+The `file` path is always relative to the monorepo `packages/` directory, without the `.ts` extension.
+
+**Example — single interface as a table:**
+
+```mdx
+<ApiReference variant="table" file="trino-client/src/types" name="QueryProps" />
+```
+
+**Example — a filtered set with full detail:**
+
+```mdx
+<ApiReference
+  file="api/src/index"
+  include={["createApiServer", "defineApiConfig"]}
+/>
+```
+
+### Steps
+
+- `<Steps>` wraps `<Step>` children; it renders a numbered, vertical sequence.
+- `<Step>Step title</Step>` — the step heading (renders as a numbered `<h3>`). The step's content follows as normal MDX blocks **after** the `<Step>` line, until the next `<Step>` (or the closing `</Steps>`).
+- Content between steps supports full markdown, code blocks, and other components.
+
+> There is no `<Stepper>`/`<StepperItem>` — that was an older button-based component that produced invalid nested-`<button>` markup. Use `<Steps>` / `<Step>` only.
+
+**Example:**
+
+````mdx
+<Steps>
+
+<Step>Install dependencies</Step>
+
+<Command variant="install">@lakeql/api</Command>
+
+<Step>Configure your data source</Step>
+
+Create a `.env` file with your connection details:
+
+```bash
+TRINO_HOST=localhost
+TRINO_PORT=8080
+```
+
+<Step>Start the server</Step>
+
+<Command variant="run">dev</Command>
+
+</Steps>
+````
+
+### Tabs
+
+- `<Tabs defaultValue="VALUE">` — wrapper, `defaultValue` must match a TabsTrigger value
+- `<TabsList>` — wraps triggers
+- `<TabsTrigger value="VALUE">` — tab label
+- `<TabsContent value="VALUE">` — tab panel
+
+**Example:**
+
+```mdx
+<Tabs defaultValue="trino">
+  <TabsList>
+    <TabsTrigger value="trino">Trino</TabsTrigger>
+    <TabsTrigger value="fabric">Microsoft Fabric</TabsTrigger>
+  </TabsList>
+  <TabsContent value="trino">
+    Configure the Trino adapter by setting `TRINO_HOST` and `TRINO_PORT`.
+  </TabsContent>
+  <TabsContent value="fabric">
+    Configure the Fabric adapter by providing your Azure tenant credentials.
+  </TabsContent>
+</Tabs>
+```
+
+### Accordion
+
+- `<Accordion>` — wrapper (optional props: `multiple`, `orientation`)
+- `<AccordionItem title="Section title">` — collapsible section
+
+**Example:**
+
+```mdx
+<Accordion>
+  <AccordionItem title="What query engines are supported?">
+    LakeQL supports Trino and Microsoft Fabric as query engines.
+  </AccordionItem>
+  <AccordionItem title="Can I use multiple data sources?">
+    Yes, configure multiple entries in your `datasources` configuration.
+  </AccordionItem>
+</Accordion>
+```
+
+**Example — multiple open:**
+
+```mdx
+<Accordion multiple>
+  <AccordionItem title="Environment variables">
+    All connection settings can be overridden with environment variables.
+  </AccordionItem>
+  <AccordionItem title="Config file">
+    Alternatively, use a `lakeql.config.ts` file in your project root.
+  </AccordionItem>
+</Accordion>
+```
+
+### Description Lists
+
+- `<DescriptionList>` — wrapper for term/definition pairs
+- `<DescriptionListItem label="Term">Definition content</DescriptionListItem>`
+
+**Example:**
+
+```mdx
+<DescriptionList>
+  <DescriptionListItem label="catalog">
+    The top-level namespace in Trino that maps to a connector instance.
+  </DescriptionListItem>
+  <DescriptionListItem label="schema">
+    A grouping of tables within a catalog, equivalent to a database schema.
+  </DescriptionListItem>
+  <DescriptionListItem label="table">
+    A structured data set with columns and rows accessible via SQL.
+  </DescriptionListItem>
+</DescriptionList>
+```
+
+### Page List
+
+- `<PageList items={[...]} />` — a curated grid of cards linking to other documentation pages
+- `items` is an array of page paths relative to `/docs` (e.g. `"lakeql/introduction/overview"`); a leading slash or `docs/` prefix is tolerated
+- Each entry's **title and description are read from the target page's frontmatter**, so never pass them in — update the target page's frontmatter instead. This avoids maintaining the same text twice.
+- A reference that does not resolve is skipped silently, so a typo drops an entry rather than breaking the build.
+- `variant` chooses the rendering: `"card"` (default) is a grid of cards; `"list"` is a compact vertical list, better for an "in this section" or "where to next" list inside a page.
+
+Use `PageList` for a hand-picked "where to next" or cross-level list — e.g. a subsection page that links up to sibling sections of its group. Do NOT use it (or a bullet list) to list an index page's own direct children: the directory/index route already renders those automatically as a card grid (see the "Automatic Section Grid" note below), so a manual list of the same children renders them twice. Keep such index bodies to intro prose and let the auto grid list the children.
+
+Only reach for `items` with page paths — it reads page frontmatter, so do NOT use it for a list of code symbols or API-reference anchors (write those as prose).
+
+**Example — list variant (links to other doc pages):**
+
+```mdx
+<PageList
+  variant="list"
+  items={["api/server-setup", "api/authentication", "api/schema-builder"]}
+/>
+```
+
+**Example — card variant (default):**
+
+```mdx
+<PageList
+  items={["lakeql/introduction/key-concepts", "lakeql/getting-started"]}
+/>
+```
+
+### Automatic Section Grid (no component)
+
+Directory and `index.mdx` pages automatically render a grid of their child pages, with each child's title and description taken from frontmatter. Do NOT hand-write a list of child pages on an `index.mdx` — keep the index body to a short intro paragraph and let the automatic grid list the children.
+
+### Images
+
+- `<Image src="" alt="" />` — use for explicit control over width/height/className
+- Standard markdown `![alt](path)` — use for simple images
+
+**Example — Image component:**
+
+```mdx
+<Image
+  src="/images/architecture-diagram.png"
+  alt="LakeQL system architecture"
+  width={800}
+  height={450}
+/>
+```
+
+**Example — markdown image:**
+
+```mdx
+![Data flow diagram](/images/data-flow.png)
+```
+
+### File Tree
+
+- `<FileTree files={[...]} />` — renders a project/file structure
+- `files` is an array of path strings, or objects `{ path, description }`
+- `highlight` (optional) — array of paths to visually emphasise (e.g. files a command just generated)
+
+**Example — plain paths:**
+
+```mdx
+<FileTree
+  files={["src/index.ts", "src/env.ts", "lakeql.config.ts", ".env.example"]}
+/>
+```
+
+**Example — with descriptions and highlighted (newly generated) files:**
+
+```mdx
+<FileTree
+  files={[
+    { path: "src/env.ts", description: "Validated environment variables" },
+    {
+      path: "src/fabric-impersonation-resolver.ts",
+      description: "OBO resolver",
+    },
+    "lakeql.config.ts",
+  ]}
+  highlight={["src/fabric-impersonation-resolver.ts"]}
+/>
+```
+
+### Terminal
+
+- `<Terminal>OUTPUT</Terminal>` — renders text as terminal output, with ANSI color support
+- `title` (optional) — a label shown above the output
+- Use for command _output_; use `<Command>` for the command itself
+
+**Example:**
+
+````mdx
+<Terminal title="lakeql add fabric-obo">
+```
+✔ Applied feature "fabric-obo"
+
+Changes • created src/fabric-impersonation-resolver.ts
+
+```
+</Terminal>
+```
+````
+
+### Code Blocks
+
+Code blocks are rendered via markdown fenced code with language tags. The `CodeBlock` component handles rendering automatically — you do not use `<CodeBlock>` directly in MDX.
+
+**Supported language tags:**
+
+- `ts` — TypeScript
+- `bash` — Shell commands
+- `json` — JSON
+- `graphql` — GraphQL
+- `sql` — SQL
+- `yaml` — YAML
+- `mermaid` — Mermaid diagrams (renders as a visual diagram)
+- `railroad` — Railroad diagrams (renders as a visual diagram)
+
+**Example — TypeScript:**
+
+````mdx
+```ts
+import { createApiServer } from "@lakeql/api"
+
+const server = createApiServer({
+  port: 4000,
+  datasource: "warehouse",
+})
+```
+````
+
+**Example — Mermaid diagram:**
+
+````mdx
+```mermaid
+graph LR
+  Client --> API[GraphQL API]
+  API --> Adapter
+  Adapter --> Trino
+  Adapter --> Fabric
+```
+````
+
+**Example — Railroad diagram:**
+
+````mdx
+```railroad
+Diagram(
+  Choice(0, "SELECT", "INSERT", "UPDATE"),
+  Terminal("table_name")
+)
+```
+````
+
+## Documentation Patterns
+
+These are not components — they are standard shapes built from the components above. Reuse them verbatim so the same concept always looks the same across pages.
+
+### Capability block (per adapter)
+
+Every adapter's index page (`.../trino/index.mdx`, `.../fabric/index.mdx`, and any future adapter) opens with a `## Capabilities` section: a plain markdown table with the fixed rows below, in this order. This replaces scattered "this adapter is read-only" warnings — a reader sees at a glance what an adapter can and cannot do, and the shape is identical for every adapter.
+
+Fixed rows: **Reads**, **Writes**, **DDL**, **Metadata introspection**. The Support cell is `Yes`/`No`, optionally followed by a short qualifier.
+
+**Example — a write-capable adapter (Trino):**
+
+```mdx
+## Capabilities
+
+| Capability                 | Support                                      |
+| -------------------------- | -------------------------------------------- |
+| Reads                      | Yes                                          |
+| Writes                     | Yes — INSERT and external-storage strategies |
+| DDL (create / drop tables) | Yes                                          |
+| Metadata introspection     | Yes                                          |
+
+For how writing works across adapters, see [Writing](/docs/data-sources/writing).
+```
+
+**Example — a read-only adapter (Fabric):**
+
+```mdx
+## Capabilities
+
+| Capability             | Support                |
+| ---------------------- | ---------------------- |
+| Reads                  | Yes                    |
+| Writes                 | No — read-only adapter |
+| DDL                    | No                     |
+| Metadata introspection | Yes                    |
+```
+
+A read-only adapter states "No" in the Writes/DDL rows here; it does NOT get a dedicated "Writes" page. Keep the capability fact in this table, not in a `<Warning>` buried on another page.
+
+## Frontmatter Requirements
+
+Every page MUST include:
+
+```yaml
+---
+title: "Page Title"
+description: "Brief description of the page content (max 180 characters)."
+---
+```
+
+### Optional frontmatter fields
+
+| Field | Type | Purpose |
+| --- | --- | --- |
+| `navTitle` | string | Short title for sidebar (use when `title` is long) |
+| `navBadge` | enum | One of: `new`, `updated`, `beta`, `experimental`, `deprecated`, `pulse` |
+| `entrypoint` | string | Only on collection root `index.mdx`, points to first content page |
+| `separator` | boolean | Set `true` on section index pages that act only as dividers |
+| `apiReference` | array | Array of objects with `name` and `file` for auto-generated TypeScript API reference |
+| `cliCommand` | string | CLI command name for auto-generated option tables |
+| `toc` | boolean | Set `false` to hide table of contents on a page |
+| `tags` | string[] | Array of strings for search categorization |
+
+### Collection root `index.mdx` example
+
+```yaml
+---
+title: Data Sources
+navTitle: Data Sources
+description: Connect LakeQL to Trino, Microsoft Fabric, and other query engines.
+entrypoint: /docs/data-sources/setup/concept
+---
+```
+
+### Section index `index.mdx` example
+
+```yaml
+---
+title: Setup
+description: Configure data source connections for your LakeQL project.
+separator: true
+---
+```
+
+## Content Quality Rules
+
+1. **No hallucinated APIs**: Do NOT generate function signatures, configuration options, type names, or API endpoints that do not exist in the package source code. If uncertain, add a `TODO: requires source confirmation` marker.
+
+2. **No placeholder text**: Never use "lorem ipsum", "TBD", "TODO" (without confirmation context), "insert X here", or "coming soon".
+
+3. **Code fence language tags**: ALL code blocks MUST have explicit language tags:
+   - Use `ts` for TypeScript, `bash` for shell, `json` for JSON, `graphql` for GraphQL, `sql` for SQL
+   - Use `mermaid` for diagrams, `yaml` for YAML, `railroad` for railroad diagrams
+
+4. **Internal links**: Use relative paths that resolve to existing page slugs. Format: `/docs/collection/section/page`. Do NOT link to pages that do not exist.
+
+5. **File naming**: Use numeric prefixes for ordering (`01.page-name.mdx`). Use kebab-case for page names. Section directories also use numeric prefixes.
+
+6. **Heading hierarchy**: Start with `##` (h2) in page content. The `title` frontmatter renders as h1. Do not skip heading levels.
+
+7. **One topic per page**: Each page should address a single user task or concept. Split long pages rather than combining unrelated topics.
+
+8. **Code examples**: Must be runnable or clearly marked as pseudocode. Prefer real imports and realistic variable names.
+
+9. **No numeric prefixes in headings**: Do NOT prefix headings with numbers (e.g., `## 1. Install dependencies`). Use just the text (`## Install dependencies`). The document order establishes the sequence. Numeric prefixes create problematic slugs for the TOC and client-side anchor resolution.
+
+## Collection Organization Rules
+
+- Content is organized by USER TASK, not by package name
+- When multiple packages are used together for a task, write a combined guide
+- Internal packages (`@lakeql/helpers`, `@lakeql/logger`, `@lakeql/column-parser`, `@lakeql/parquet`, `@lakeql/file-generator`, `@lakeql/response-transformer`, `@lakeql/config`, `@lakeql/schema-generator`) do NOT get dedicated pages — reference inline only
+- Section `index.mdx` files typically only contain frontmatter (title, description, separator)
+
+## Terminology
+
+Use these terms consistently; do not mix synonyms across pages.
+
+- **Reads** — not "Queries". A page about reading data is "Reads". ("Query builder" stays, as it is a product name.)
+- **Writing** / **Write strategy** — the mechanism for persisting data (external-storage vs INSERT). **Load strategy** — how a write combines with existing data (`append` / `full_load` / `full_load_append`). These are two distinct axes; never conflate "write strategy" and "load strategy".
+- **Adapter** — a data-source backend (Trino, Fabric). **Capability** — a thing an adapter supports (Reads / Writes / DDL / Metadata introspection), shown via the capability block.
+- **Data source** — a configured instance of an adapter in a user's config.
+
+## Writing Style — explain, don't paraphrase the code
+
+The API reference is generated from source (`ApiReference`, `CliCommandDetails`). Hand-written prose must add what generated reference cannot: the _why_, the _when_, and the _what-goes-wrong_. A page that only restates type signatures or option names in sentences has no reason to exist — link to the generated reference instead.
+
+Follow a light Diátaxis split; know which mode a page is in:
+
+- **Explanation** — concepts, the two write/load axes, trade-offs, decision guidance ("use INSERT when …, external-storage when …"), and failure modes (staging failures, partial writes, retries/idempotency, batch-size limits). This is where most hand-written value lives.
+- **How-to** — task-focused, example-first. Lead with a realistic, runnable snippet, then explain. Cite the generated reference rather than repeating it.
+- **Reference** — generated (`ApiReference` / `CliCommandDetails`). Do not hand-maintain API tables that the generator already produces.
+- **Tutorial** — the getting-started / quickstart path; one happy path, end to end.
+
+Concrete rules:
+
+- Prefer a **decision table / "when to use which"** over a flat feature list whenever two options exist (e.g. write strategies, load strategies).
+- Document at least one **failure or edge case** per mechanism page, not only the happy path.
+- Put adapter-neutral mechanics in ONE place (the concept section) and have adapter pages link to it; do not re-explain the mechanics per adapter. When an adapter-specific config shape is needed next to the neutral explanation, use `<Tabs>` (one tab per adapter) rather than duplicating the page.
+- A page should answer at most ~2 core questions. Split rather than combine.
+
+## Domain Facts the Docs Must State Correctly
+
+These are verified behaviors of the codebase. When a page touches one of them, it MUST describe it accurately. Do not soften, overstate, or invent around these — they were each confirmed against source and are common places docs drift out of sync.
+
+- **`pull` generates a READ-ONLY endpoint.** The `pull` command hard-codes `mutation: false`; it does not add a mutation block and does not make an endpoint writable. A mutation always requires an endpoint definition with an explicit `mutation` block. Never imply that running `pull` is enough to enable writes — point readers to the mutation how-to for that.
+- **`pull` and `create-endpoint` are NOT fully interchangeable.** They produce the same per-table file _set and format_, but write to DIFFERENT directories: `pull` → `schemas/generated/<dataSource>/<catalog>/<schema>/<table>/`, `create-endpoint` → `schemas/custom/<catalog>/<schema>/<table>/` (no data-source segment). Only `pull`'s path is "organized by data source". Do not describe them as producing "the exact same output" or being "fully interchangeable".
+- **A pulled `endpoint.json` does not record its `dataSource`.** `pull` serializes only the definition, which has no `dataSource` key (the data-source name flows into the generated `config.ts`, not the JSON). Recreating a pulled endpoint — especially a Fabric one — via `create-endpoint --from-file` therefore requires manually re-adding `dataSource`; without it, generation falls back to the `"default"` data source and the Trino adapter. Any page about round-tripping a pulled endpoint must carry this warning.
+- **Writes are deny-by-default.** An unconfigured server (empty `permissions`) denies all writes. A write needs a matching `Mutation` permission rule targeting the data source; no entry, or no matching `Mutation` rule, means deny. (Reads are more lenient for human users; writes are not.) When showing permissions, prefer a concrete POSITIVE `Mutation` rule example (using the same `createPermission`/`rule` builder as `Query`) over only the empty `Mutation: []` default — the empty form is correct but does not show a reader how to grant access.
+- **`<Command variant="exec">` renders `npx` / `pnpm dlx`, and that is intentional.** Using `npx`/`pnpm dlx` for CLI examples (e.g. `lakeql-cli …`) is a deliberate "run-without-assuming-it's-installed" convention, like `npx prisma`. Do NOT rewrite these into local-binary invocations and do NOT flag the pattern as a bug. (Inside a scaffolded project the local `cli` script resolves the workspace binary regardless.)
+- **Show the exact dev command, not a vague instruction.** For starting the generated app, use `<Command variant="run">dev</Command>` (renders `pnpm dev` / `npm run dev`), not prose like "run the project's dev script". The scaffolded `dev` script is `node --env-file=.env --import tsx ./src/index.ts`. When documenting a verification step, hedge response-body claims ("a request to `/live` is expected to succeed") rather than asserting exact output — the docs are not executed at build time.
+
+## Mutation / Write Docs — ownership map (avoid overlapping pages)
+
+The write/mutation story is split across several pages by Diátaxis mode. Respect these ownership boundaries; a new page LINKS to the owner instead of restating its content, so no two pages explain the same mechanic.
+
+- `lakeql/guides/mutations` (Explanation) — owns the mutation-resolver ↔ write-strategy concept, the permission model at the conceptual level, and custom mutation fields.
+- `lakeql/endpoints/mutations` (Reference) — owns the full `mutation` block field table (`loadStrategy`, `basePath`, `partitioning`, `partitioningFormat`), the load-strategy definitions, and the "`basePath` is required even for INSERT" note.
+- `data-sources/writing/*` (Explanation, adapter-neutral) — owns the two-axes model (write strategy × load strategy), the per-strategy pipeline mechanics, the cross-adapter capability matrix, and the general "choosing a write strategy" table.
+- `data-sources/trino/write-config` (Reference, adapter-specific) — owns the concrete `writeConfig` shapes and full option list, plus the `basePath`-before-upload warning.
+- `lakeql/guides/set-up-a-trino-mutation` (How-to) — owns only the end-to-end task sequencing (writeConfig → endpoint definition → generate → permission → replace a pulled endpoint) and a condensed, Trino-scoped decision table. It links to each page above for the mechanics rather than re-explaining them.
+
+A self-contained how-to MAY reuse or extend a concrete config snippet from a reference page (e.g. the Trino INSERT `writeConfig`) so the task is completable on one page — reuse for continuity is allowed; re-explaining the owning page's mechanics is not.
+
+## Guides Ordering
+
+The `lakeql/guides` section is ordered by workflow progression, and `lakeql/endpoints` (a normal app task) sorts before `lakeql/contributing` (developer-facing). Keep the numeric prefixes consistent with that intent; remember the `NN.` prefix is stripped from the slug (it sets sidebar order only, never the URL), so renumbering a directory never changes its links.

@@ -1,171 +1,59 @@
 ---
 title: First Run
-description: Walk through pulling your first schema, understanding the generated files, and executing a GraphQL query.
+navTitle: First Run
+description: Generate an endpoint, start the server, and run a query.
 ---
 
-## Pulling a Table Schema
+With the environment configured, generate an endpoint and start the server.
 
-After configuring your environment variables, pull a schema from Trino:
+## Generate an Endpoint
 
-<Command variant="run">cli pull --catalog hive --schema sales</Command>
+Introspect a table and generate its typed files with [`pull`](/docs/cli/commands/pull):
 
-This command introspects every table in `hive.sales` and generates five files per table.
+<Command variant="exec">lakeql-cli pull --env .env</Command>
 
-### Generated Files
+Run interactively, it prompts for the source, schema, and table; or pass them as options. The generated files land under your configured source path. See [Key Concepts](/docs/lakeql/introduction/key-concepts) for the layout.
 
-For a table called `orders`, the CLI creates:
+## Start the Server
 
-```
-src/schemas/generated/hive/sales/orders/
-├── config.ts            # Table metadata and docs settings
-├── interface.ts         # TypeScript interface for the table
-├── query-schema.ts      # Pothos query schema with resolvers
-├── json-schema.json     # JSON Schema for response transformation
-└── endpoint.json # Endpoint definition (for re-generation)
-```
-
-**config.ts** — Contains the table's catalog, schema, table name, and docs settings:
-
-```ts
-export const hiveConfig = {
-  catalog: "hive",
-  schema: "sales",
-  tableName: "orders",
-} as const
-
-export const docsConfig = {
-  query: true,
-  mutation: false,
-  queryName: "orders",
-  mutationName: null,
-} as const
-```
-
-**interface.ts** — A TypeScript interface matching the table's column types:
-
-```ts
-export interface Orders {
-  id: number
-  customer_id: number
-  status: string
-  total: number
-  created_at: Date
-}
-```
-
-**query-schema.ts** — A Pothos query schema defining the GraphQL type, comparison inputs, and resolver with filtering, sorting, and pagination:
-
-```ts
-import { builder } from "@lakeql/api"
-import { hiveConfig } from "./config"
-
-// Defines: OrdersType, OrdersFilter, OrdersSort, OrdersConnection
-// Registers: Query.orders(filter, sorting, paging) → OrdersConnection
-```
-
-**json-schema.json** — Used at runtime by `@lakeql/response-transformer` to map Trino's array responses into typed objects:
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "id": { "type": "integer" },
-    "customer_id": { "type": "integer" },
-    "status": { "type": "string" },
-    "total": { "type": "number" },
-    "created_at": { "type": "string" }
-  }
-}
-```
-
-## Starting the API Server
-
-With schemas generated, start the server:
+Start the generated dev script:
 
 <Command variant="run">dev</Command>
 
-The server loads all query schemas from the configured `schemaPath` directory and registers them with the Pothos builder. On startup you'll see:
+This runs the scaffolded `dev` script (`node --env-file=.env --import tsx ./src/index.ts`), which loads the generated schema and serves GraphQL at `/graphql`, with a health check at `/live`.
 
-```
-* Server URL: http://localhost:4000/
-* GraphQL Endpoint: http://localhost:4000/graphql
-```
+Check that the server started — a request to `/live` is expected to succeed, and the query below is expected to run against your generated type. (Exact response bodies depend on your data and are not asserted here.)
 
-## Executing a Query
+## Run a Query
 
-Open GraphiQL at `http://localhost:4000/graphql` and run:
+Open the GraphQL endpoint and run a query against your generated type:
 
 ```graphql
 query {
   orders(
-    filter: { and: [{ status: { eq: "shipped" } }] }
-    paging: { limit: 10, offset: 0 }
-    sorting: [{ field: "created_at", direction: "DESC" }]
+    sorting: [{ field: id, direction: ASC }]
+    paging: { page: 1, perPage: 10 }
   ) {
-    totalCount
-    pageInfo {
-      hasNext
-      hasPrevious
-      currentPage
-      maxPages
-      nextPage
-      previousPage
-    }
     nodes {
       id
-      customer_id
       status
-      total
+    }
+    pageInfo {
+      hasNext
+      currentPage
     }
   }
 }
 ```
 
 <Note>
-  If `AUTH_MOCK=true`, include the `Authorization` header with your
-  `AUTH_MOCK_TOKEN` value. You can also set `x-username` to simulate different
-  users.
+  `sorting` is required on every generated query. It gives the engine a
+  deterministic `ORDER BY`, so offset-based paging returns stable results
+  instead of repeating or skipping rows between pages. See [Sorting &
+  Paging](/docs/packages/query-builder/sorting-and-paging) for why.
 </Note>
 
-### Example Response
-
-```json
-{
-  "data": {
-    "orders": {
-      "totalCount": 142,
-      "pageInfo": {
-        "hasNext": true,
-        "hasPrevious": false,
-        "currentPage": 1,
-        "maxPages": 15,
-        "nextPage": 2,
-        "previousPage": null
-      },
-      "nodes": [
-        {
-          "id": 1001,
-          "customer_id": 42,
-          "status": "shipped",
-          "total": 249.99
-        },
-        {
-          "id": 998,
-          "customer_id": 17,
-          "status": "shipped",
-          "total": 89.5
-        }
-      ]
-    }
-  }
-}
-```
-
-## What Happens Under the Hood
-
-1. GraphQL Yoga receives the query and resolves the `orders` field
-2. The resolver extracts selected fields from the GraphQL resolve info
-3. `@lakeql/query-builder` generates a Trino SQL query with two CTEs (`total_count` and `records`)
-4. `@lakeql/trino-client` executes the SQL against your Trino instance
-5. `@lakeql/response-transformer` converts Trino's array response into typed objects using the JSON schema
-6. Pagination metadata is calculated and the connection response is returned
+<Success title="You're running">
+  You now have a type-safe GraphQL API over your data source. From here, add
+  more endpoints with `pull`, or explore the [guides](/docs/lakeql/guides).
+</Success>

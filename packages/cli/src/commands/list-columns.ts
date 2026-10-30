@@ -1,107 +1,107 @@
-import { TrinoClient } from "@lakeql/trino-client"
 import { select } from "@topcli/prompts"
 import { ClimtTable } from "climt"
 
-import { getEnv } from "@/env"
-import { createTrinoConnectionError } from "@/errors"
+import { createDataSourceConnectionError } from "@/errors"
+import { resolveCatalog } from "@/resolve-catalog"
+import { resolveDataSource } from "@/resolve-datasource"
 
 import { buildListColumnsCommandStructure } from "../metadata/list-columns-metadata"
 
 export default function listColumnsCommand() {
   const program = buildListColumnsCommandStructure()
-  program.action(async ({ catalog, schema, table }) => {
-    const env = getEnv()
-    const resolvedCatalog = catalog ?? env.HIVE_CATALOG
-    const trinoClient = new TrinoClient({
-      auth: {
-        password: env.HIVE_PASSWORD,
-        type: "basic",
-        username: env.HIVE_USERNAME,
-      },
-      catalog: resolvedCatalog,
-      host: env.HIVE_HOST,
-      port: env.HIVE_PORT,
-    })
+  program.action(async ({ source, catalog, schema, table }) => {
+    const { instance: dataSource, config } = await resolveDataSource(source)
 
-    let resolvedSchema = schema
-    if (resolvedSchema === undefined) {
-      let remoteSchemas: string[]
-      try {
-        remoteSchemas = await trinoClient.schemas({
-          catalog: resolvedCatalog,
-        })
-      } catch (error) {
-        throw createTrinoConnectionError(
-          "list schemas",
-          `list-columns (catalog=${resolvedCatalog})`,
-          error
-        )
-      }
-
-      resolvedSchema = await select(
-        `Choose a schema from the ${resolvedCatalog} catalog`,
-        {
-          autocomplete: true,
-          choices: remoteSchemas,
-        }
-      )
-    }
-
-    let resolvedTable = table
-    if (resolvedTable === undefined) {
-      let remoteTables: string[]
-      try {
-        remoteTables = await trinoClient.tables({
-          catalog: resolvedCatalog,
-          schema: resolvedSchema,
-        })
-      } catch (error) {
-        throw createTrinoConnectionError(
-          "list tables",
-          `list-columns (catalog=${resolvedCatalog}, schema=${resolvedSchema})`,
-          error
-        )
-      }
-
-      resolvedTable = await select(
-        `Choose a table from "${resolvedCatalog}.${resolvedSchema}"`,
-        {
-          autocomplete: true,
-          choices: remoteTables,
-        }
-      )
-    }
-
-    let columns: [string, string, string, string][]
     try {
-      columns = await trinoClient.columns({
-        catalog: resolvedCatalog,
-        schema: resolvedSchema,
-        table: resolvedTable,
+      const resolvedCatalog = await resolveCatalog({
+        dataSource,
+        catalogFlag: catalog,
+        connectionCatalog: (config.connection as { catalog?: string })?.catalog,
       })
-    } catch (error) {
-      throw createTrinoConnectionError(
-        "list columns",
-        `list-columns (catalog=${resolvedCatalog}, schema=${resolvedSchema}, table=${resolvedTable})`,
-        error
+
+      let resolvedSchema = schema
+      if (resolvedSchema === undefined) {
+        let remoteSchemas: string[]
+        try {
+          remoteSchemas = await dataSource.schemas(resolvedCatalog)
+        } catch (error) {
+          throw createDataSourceConnectionError(
+            "list schemas",
+            `list-columns (catalog=${resolvedCatalog})`,
+            error
+          )
+        }
+
+        resolvedSchema = await select(
+          `Choose a schema from the ${resolvedCatalog} catalog`,
+          {
+            autocomplete: true,
+            choices: remoteSchemas,
+          }
+        )
+      }
+
+      let resolvedTable = table
+      if (resolvedTable === undefined) {
+        let remoteTables: string[]
+        try {
+          remoteTables = await dataSource.tables(
+            resolvedCatalog,
+            resolvedSchema
+          )
+        } catch (error) {
+          throw createDataSourceConnectionError(
+            "list tables",
+            `list-columns (catalog=${resolvedCatalog}, schema=${resolvedSchema})`,
+            error
+          )
+        }
+
+        resolvedTable = await select(
+          `Choose a table from "${resolvedCatalog}.${resolvedSchema}"`,
+          {
+            autocomplete: true,
+            choices: remoteTables,
+          }
+        )
+      }
+
+      let columns: {
+        name: string
+        type: string
+        extra?: string
+        description?: string
+      }[]
+      try {
+        columns = await dataSource.columns(
+          resolvedCatalog,
+          resolvedSchema,
+          resolvedTable
+        )
+      } catch (error) {
+        throw createDataSourceConnectionError(
+          "list columns",
+          `list-columns (catalog=${resolvedCatalog}, schema=${resolvedSchema}, table=${resolvedTable})`,
+          error
+        )
+      }
+
+      const cliTable = new ClimtTable()
+      cliTable.column("Column Name", "name")
+      cliTable.column("Type", "type")
+      cliTable.column("Extra", "extra")
+      cliTable.column("Description", "description")
+      cliTable.render(
+        columns.map((col) => ({
+          name: col.name,
+          type: col.type,
+          extra: col.extra ?? "",
+          description: col.description ?? "",
+        }))
       )
+    } finally {
+      await dataSource.close()
     }
-
-    const transformedColumns = columns.map(
-      ([name, type, extra, description]) => ({
-        description,
-        extra,
-        name,
-        type,
-      })
-    )
-
-    const cliTable = new ClimtTable()
-    cliTable.column("Column Name", "name")
-    cliTable.column("Type", "type")
-    cliTable.column("Extra", "extra")
-    cliTable.column("Description", "description")
-    cliTable.render(transformedColumns)
   })
 
   return program

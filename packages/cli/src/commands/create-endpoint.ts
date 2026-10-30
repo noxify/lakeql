@@ -138,6 +138,8 @@ export default function createEndpointCommand() {
     console.log(info(`catalog: ${definition.catalog}`))
     // oxlint-disable-next-line no-console
     console.log(info(`schema: ${definition.schema}`))
+    // oxlint-disable-next-line no-console
+    console.log(info(`dataSource: ${definition.dataSource ?? "default"}`))
 
     // Display mutation configuration status
     const mutationDisplay = definition.mutation
@@ -182,6 +184,9 @@ export default function createEndpointCommand() {
       outputDir,
       skipRegistry: skipReg,
       sourcePathOverride: sourcePath === process.cwd() ? undefined : sourcePath,
+      ...(definition.dataSource
+        ? { dataSourceName: definition.dataSource }
+        : {}),
     })
 
     // oxlint-disable-next-line no-console

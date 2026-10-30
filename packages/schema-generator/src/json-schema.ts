@@ -1,13 +1,17 @@
 import { isObject } from "@lakeql/helpers/object-helper"
 import type { JSONType } from "json-column-parser/lib/common/types/type.common"
 import type { JSONSchema7, JSONSchema7Definition } from "json-schema"
-import { createRegExp, global, not } from "magic-regexp"
 
 import type {
   ArrayItemDefinition,
   FieldDefinition,
   PrimitiveType,
 } from "./endpoint-schema"
+
+// this regular expression removes everything but a-zA-Z
+// we need this to convert `timestamp(3)` to `timestamp`
+// or `decimal(3,10)` to `decimal`
+const replaceExpression = /[^a-zA-Z]/gu
 
 export function generateJsonSchema(parsedColumns: Record<string, JSONType>) {
   const jsonSchema: JSONSchema7 = {
@@ -20,15 +24,10 @@ export function generateJsonSchema(parsedColumns: Record<string, JSONType>) {
 }
 
 function handlePrimitive(columnType: JSONType): JSONSchema7Definition {
-  // this generates a regular expression which will remove everything but a-zA-Z
-  // we need this to convert `timestamp(3)` to `timestamp``
-  // or `decimal(3,10)` to `decimal`
-  const replaceExpression = createRegExp(not.letter, [global])
-
   // eslint-disable-next-line @typescript-eslint/no-base-to-string
   const normalizedColumnType = columnType
     .toString()
-    .replace(replaceExpression, "")
+    .replaceAll(replaceExpression, "")
 
   switch (normalizedColumnType) {
     case "varchar": {

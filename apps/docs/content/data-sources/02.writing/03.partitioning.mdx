@@ -1,0 +1,33 @@
+---
+title: Partitioning
+navTitle: Partitioning
+description: Control how written files are partitioned in object storage.
+---
+
+The external-storage write strategy can partition the files it writes, producing Hive-style partition paths. Partitioning is controlled by two fields on the write config: `partitioning` and `partitioningFormat`.
+
+## Partitioning Modes
+
+`partitioning` accepts a boolean or a string, resolving to one of four modes:
+
+| Value | Mode | Behavior |
+| --- | --- | --- |
+| `true` (default) | timestamp | Partition by the write timestamp. |
+| `false` | disabled | Write a flat path, no partitioning. |
+| `"fieldName"` | field | Partition by a record field's date value. |
+| `"a:year/b"` | custom | Partition by a custom format string (contains `/` or `:`). |
+
+## Format Granularity
+
+`partitioningFormat` sets the granularity for timestamp and field modes, defaulting to `"year/month/day"` — producing paths like `year=2026/month=08/day=29/<uuid>.parquet`.
+
+## Field and Custom Partitioning
+
+In **field** mode, each record is grouped by the date value of the named field. In **custom** mode, a format string composes the path from one or more fields, optionally extracting a date component per segment (e.g. `event_date:year` extracts the year from an ISO date). Records that share a partition key are written to the same file.
+
+<Warning>
+  A record whose partition field is missing, null, or an unparseable date raises
+  a `PartitionFieldError`, naming the field and the offending record index.
+</Warning>
+
+Partitioning applies to the [external-storage strategy](/docs/data-sources/storage). The INSERT strategy writes rows through SQL and does not partition files.

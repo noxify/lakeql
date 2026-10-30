@@ -6,23 +6,21 @@ import {
 } from "better-themes/rsc"
 import * as React from "react"
 
-function ThemeProvider({
+const ThemeProvider = ({
   children,
   ...props
-}: React.ComponentProps<typeof BetterThemesProvider>) {
-  return (
-    <BetterThemesProvider
-      attribute="class"
-      defaultTheme="system"
-      enableSystem
-      disableTransitionOnChange
-      {...props}
-    >
-      <ThemeHotkey />
-      {children}
-    </BetterThemesProvider>
-  )
-}
+}: React.ComponentProps<typeof BetterThemesProvider>) => (
+  <BetterThemesProvider
+    attribute="class"
+    defaultTheme="system"
+    enableSystem
+    disableTransitionOnChange
+    {...props}
+  >
+    <ThemeHotkey />
+    {children}
+  </BetterThemesProvider>
+)
 
 function isTypingTarget(target: EventTarget | null) {
   if (!(target instanceof HTMLElement)) {
@@ -37,7 +35,7 @@ function isTypingTarget(target: EventTarget | null) {
   )
 }
 
-function ThemeHotkey() {
+const ThemeHotkey = () => {
   const { theme, setTheme } = useTheme()
 
   React.useEffect(() => {

@@ -1,0 +1,12 @@
+---
+title: API Reference
+navTitle: API Reference
+description: Complete reference for the @lakeql/trino-client public API.
+apiReference:
+  - name: "@lakeql/trino-client"
+    file: "trino-client/src/index"
+---
+
+The complete public API of `@lakeql/trino-client`, generated from the package's TypeScript source.
+
+The entry point is the [`TrinoClient`](#trino-client) class — it executes statements ([`query`](#trino-client-query), [`stream`](#trino-client-stream)), cancels them ([`cancelQuery`](#trino-client-cancel-query)), and inspects metadata ([`schemas`](#trino-client-schemas), [`tables`](#trino-client-tables), [`columns`](#trino-client-columns)). The remaining exports are the configuration and result types (including [`RetryConfig`](#retry-config)) and the error classes.

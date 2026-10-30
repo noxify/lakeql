@@ -1,0 +1,34 @@
+---
+title: Template Structure
+navTitle: Template Structure
+description: What create-app generates.
+---
+
+create-app generates a complete, runnable project. The exact files depend on the adapters and authentication strategy you choose, but the shape is consistent:
+
+<FileTree
+  files={[
+    { path: "lakeql.config.ts", description: "Adapters and data sources" },
+    {
+      path: "src/index.ts",
+      description: "Loads config, builds runtime, starts the server",
+    },
+    { path: "src/env.ts", description: "Typed, validated environment" },
+    { path: "src/auth.ts", description: "Token resolver" },
+    {
+      path: "src/permissions.ts",
+      description: "Permission rules (empty by default)",
+    },
+    { path: ".env.example", description: "Copy to .env and fill in" },
+    { path: "package.json", description: "Scripts and dependencies" },
+  ]}
+/>
+
+## How the Pieces Connect
+
+- **`lakeql.config.ts`** declares the adapters and data sources. See [config file](/docs/lakeql/configuration/config-file).
+- **`src/index.ts`** loads the config, composes the runtime, and starts the API server. See [server setup](/docs/api/server-setup).
+- **`src/auth.ts`** / **`src/permissions.ts`** wire [authentication](/docs/api/authentication) and [permissions](/docs/api/authentication/permissions).
+- **`src/schemas/`** is where [`pull`](/docs/cli/commands/pull) writes generated endpoint files.
+
+The generated project uses `workspace:*` dependency versions only in local dev mode (`--local`); a normal run pins published versions.

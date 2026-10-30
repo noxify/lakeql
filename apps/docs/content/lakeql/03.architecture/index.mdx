@@ -1,4 +1,7 @@
 ---
 title: Architecture
-description: Understand how LakeQL's packages connect and how data flows from Trino to your GraphQL API.
+navTitle: Architecture
+description: How LakeQL is layered, how data flows, and the lifecycle of a request.
 ---
+
+LakeQL is layered so the core never depends on a specific query engine. This section walks through the [system overview](/docs/lakeql/architecture/system-overview), how [data flows](/docs/lakeql/architecture/data-flow) from a GraphQL query to SQL and back, and the [lifecycle of a single request](/docs/lakeql/architecture/request-lifecycle).

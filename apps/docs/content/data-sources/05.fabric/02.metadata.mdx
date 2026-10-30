@@ -1,0 +1,29 @@
+---
+title: Metadata
+navTitle: Metadata
+description: How the Fabric adapter exposes catalogs, schemas, tables, and columns.
+---
+
+The Fabric adapter inspects the warehouse's metadata to discover what can be served. The [CLI introspection commands](/docs/cli/commands) work the same way against a Fabric data source as they do against Trino — pass the configured source name:
+
+<Command variant="exec">lakeql-cli list-schemas --source reporting</Command>
+
+<Command variant="exec">
+  lakeql-cli list-tables --source reporting --schema sales
+</Command>
+
+<Command variant="exec">
+  lakeql-cli list-columns --source reporting --schema sales --table orders
+</Command>
+
+Like the Trino adapter, the Fabric adapter builds its own SQL for metadata rather than calling a client convenience method: `sys.databases` for catalogs, and `INFORMATION_SCHEMA.SCHEMATA` / `TABLES` / `COLUMNS` for schemas, tables, views, and columns. The difference is one level down — the standalone [trino-client](/docs/packages/trino-client) package additionally exposes its own `schemas()`/`tables()`/`views()`/`columns()` convenience methods for callers using it directly outside the adapter; [fabric-client](/docs/packages/fabric-client) has no equivalent.
+
+<Warning>
+  Catalog listing filters out the fixed SQL Server system databases (`master`,
+  `tempdb`, `model`, `msdb`). Schema listing filters out `sys`,
+  `INFORMATION_SCHEMA`, `guest`, `queryinsights`, and `_rsc`, plus any schema
+  matching the `db_*` role-schema pattern (e.g. `db_owner`), so only user-facing
+  schemas are returned. Column discovery reports name and type, but the adapter
+  always returns `description: undefined` — unlike Trino, which maps a `comment`
+  column, Fabric's column query has no equivalent mapped in.
+</Warning>

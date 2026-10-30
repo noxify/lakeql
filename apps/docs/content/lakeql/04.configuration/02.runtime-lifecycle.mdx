@@ -1,0 +1,29 @@
+---
+title: Runtime Lifecycle
+navTitle: Runtime Lifecycle
+description: How config is loaded and composed into a runtime.
+---
+
+Loading the config never opens a connection. An application composes a runtime explicitly, in three steps:
+
+```ts
+import { createLakeQLRuntime, loadConfig } from "@lakeql/config"
+
+const project = await loadConfig() // load + validate
+const runtime = await createLakeQLRuntime({
+  // compose
+  config: project.config,
+  adapters: project.adapters,
+  resolveAuth,
+})
+// ... use runtime.getDataSource(name) / getReadStrategy(name)
+await runtime.close() // release on shutdown
+```
+
+1. **Load** — [`loadConfig`](/docs/packages/config/api-reference#load-config) reads the config. Environment values are read by the config module itself as it is evaluated. Per-source validation against the adapter happens in `defineConfig` (at module evaluation) and again in the adapter factory when the data source is created — not in `loadConfig` itself.
+2. **Compose** — [`createLakeQLRuntime`](/docs/packages/config/api-reference#create-lake-ql-runtime) builds the runtime, which owns the data-source instances and their strategies.
+3. **Close** — `runtime.close()` releases all connections, once, idempotently.
+
+Because nothing is global, an application can hold more than one runtime — useful for config reloads (compose the new runtime, then close the old) and tests.
+
+For the full contract, options, and error cases, see the [runtime config reference in `@lakeql/config`](/docs/packages/config/runtime-config). Wire `close()` to your process signals as shown in [server setup](/docs/api/server-setup/create-api-server).

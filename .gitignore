@@ -62,3 +62,17 @@ test-data/
 .renoun/
 apps/docs/public/search-index.json
 apps/docs/public/search-index.msp
+
+# Local create-app scaffolding test output (never committed).
+# Ignore generated projects but keep the directory tracked so pnpm still
+# treats examples/* as workspace members and links their workspace:* deps.
+examples/*
+!examples/.gitkeep
+
+# Workflow/agent scratch artifacts (investigations, designs, reviews).
+.agents/
+
+# Local feature specs (requirements/design/tasks). Planning artifacts, kept
+# out of version control like .agents/. Note: only .kiro/specs/ is ignored —
+# .kiro/steering/, .kiro/hooks/, and .kiro/workflows/ remain tracked.
+.kiro/specs/

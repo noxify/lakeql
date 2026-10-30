@@ -1,63 +1,85 @@
 ---
 title: Permissions
-description: Define table-level permission rules for technical users via the Permission interface.
+navTitle: Permissions
+description: Grant technical users scoped read and write access per table.
 ---
 
-Permissions define which catalogs, schemas, and tables a technical user can access. They act as an application-level allow list on top of Trino's built-in authorization — primarily useful for service accounts that execute queries via a shared system user.
-
-## Permission interface
-
-<ApiReference variant="table" file="api/src/types" name="Permission" />
-
-## Wildcard access
-
-Use `["*"]` in the `tables` array to grant access to all tables within a catalog/schema combination:
+Permissions declare what a technical user may read and write, scoped by data source, schema, and table. You pass an array of `Permission` rules to the server via [`defineApiConfig`](/docs/api/server-setup/define-config).
 
 ```ts
-{
-  catalog: "hive",
-  schema: "analytics",
-  tables: ["*"] // access all tables in hive.analytics
-}
-```
-
-## createPermission helper
-
-For type-safe permission construction that validates against your generated configs, use the `createPermission` helper with `defineConfig`:
-
-```ts path="src/permissions.ts"
-import { createPermission as createPermissionFromApi } from "@lakeql/api/helpers"
-import type { Permission } from "@lakeql/api/types"
-
-import { allConfigs } from "./config-registry"
-
-const createPermission = createPermissionFromApi(allConfigs)
+import type { Permission } from "@lakeql/config"
+import { createPermission } from "@lakeql/api/helpers"
 
 export const permissions: Permission[] = [
   {
-    name: "data-pipeline-service",
-    useSystemUser: true,
+    name: "reporting-user",
+    useSystemUser: false,
     permissions: {
       Query: [
-        createPermission("hive", "raw_data", ["events", "users", "sessions"]),
+        createPermission("warehouse", (rule) => [
+          rule({ schema: "sales", tables: ["orders"] }),
+        ]),
       ],
-      Mutation: [createPermission("hive", "processed", ["aggregated_events"])],
-    },
-  },
-  {
-    name: "reporting-service",
-    useSystemUser: true,
-    permissions: {
-      Query: [createPermission("hive", "analytics", ["*"])],
       Mutation: [],
     },
   },
 ]
 ```
 
-## How permissions are evaluated
+## Building Rules
 
-- **Read (Query):** If no permission entry exists for a user, reads are allowed (Trino handles auth for human users). If rules exist, at least one must match the requested catalog/schema/table.
-- **Write (Mutation):** If no permission entry exists, writes are denied. Rules must explicitly grant access.
+[`createPermission`](/docs/api/api-reference#create-permission) builds a rule scoped to one data source. The callback receives a `rule` builder; each `rule({ schema, tables })` grants access to the listed tables within a schema. Group rules under `Query` (reads) and `Mutation` (writes).
 
-See [Scope Authorization](/docs/api/authentication/scope-authorization) for the full evaluation logic.
+<ApiReference
+  variant="table"
+  file="config/src/auth-types"
+  name="PermissionRule"
+/>
+
+### Wildcards and Scope Matching
+
+Rules support wildcards: `schema` accepts `"*"` to match any schema, `tables` accepts `["*"]` to match any table, and omitting `catalog` matches any catalog.
+
+Scope matching is strict: a rule that names a concrete `catalog` or `schema` matches only a request whose target carries the same value. A target that omits `catalog`/`schema` does not match a rule scoped to one — the rule's scope is never silently ignored. Use `"*"` (schema) or an omitted `catalog` to match broadly on purpose.
+
+<Note>
+  The `name` field matches the resolved user name, and `useSystemUser` is part
+  of the `Permission` shape but currently has no behavioral effect.
+</Note>
+
+## Default
+
+Reads and writes default differently when no matching permission entry exists:
+
+- **Reads** — a human user is allowed (the adapter layer enforces its own access control); a service principal is denied.
+- **Writes** — denied for everyone. Writes require an explicit `Mutation` rule that matches the target; without one, the write is rejected regardless of principal type.
+
+So an empty `permissions` array lets human users read, but no one can write until you add `Mutation` rules.
+
+## Granting Write Access
+
+A positive `Mutation` rule un-denies writes for the tables it names. The shape is identical to `Query`'s — the same `createPermission`/`rule` builder, grouped under `Mutation` instead — and the data source, schema, and table matching rules (wildcards, strict scope matching) from [Building Rules](#building-rules) apply unchanged:
+
+```ts
+import { createPermission } from "@lakeql/api/helpers"
+import type { Permission } from "@lakeql/config"
+
+export const permissions: Permission[] = [
+  {
+    name: "ingestion-service",
+    useSystemUser: false,
+    permissions: {
+      Query: [],
+      Mutation: [
+        createPermission("warehouse", (rule) => [
+          rule({ schema: "sales", tables: ["orders"] }),
+        ]),
+      ],
+    },
+  },
+]
+```
+
+## Custom Resolvers
+
+For logic beyond the declarative rules, provide `hasReadPermission` / `hasWritePermission` resolvers on the config. They override the built-in checks. See [`ReadPermissionResolver`](/docs/api/api-reference#read-permission-resolver) and [`WritePermissionResolver`](/docs/api/api-reference#write-permission-resolver).

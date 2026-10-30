@@ -1,0 +1,64 @@
+{
+  "name": "@lakeql/adapter-fabric",
+  "version": "0.1.0",
+  "description": "Microsoft Fabric adapter for LakeQL",
+  "keywords": [
+    "adapter",
+    "fabric",
+    "lakeql",
+    "mssql"
+  ],
+  "homepage": "https://lakeql.dev",
+  "license": "Apache-2.0",
+  "author": {
+    "name": "Marcus Reinhardt",
+    "url": "https://github.com/noxify"
+  },
+  "contributors": [
+    {
+      "name": "Marcus Reinhardt",
+      "url": "https://github.com/noxify"
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/noxify/lakeql",
+    "directory": "packages/adapter-fabric"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs"
+    }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "clean": "git clean -xdf .cache .turbo dist node_modules dist",
+    "clean:cache": "git clean -xdf .cache .turbo",
+    "clean:dist": "git clean -xdf dist",
+    "dev": "tsdown --watch",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@lakeql/datasource": "workspace:*",
+    "@lakeql/fabric-client": "workspace:*",
+    "@lakeql/query-builder": "workspace:*",
+    "@lakeql/response-transformer": "workspace:*",
+    "@lakeql/sql-read-strategy": "workspace:*",
+    "kysely": "0.29.7"
+  },
+  "devDependencies": {
+    "@lakeql/tsconfig": "workspace:*",
+    "@lakeql/vitest-config": "workspace:*",
+    "@types/node": "24.19.2",
+    "tsdown": "0.23.3",
+    "typescript": "6.0.3",
+    "vitest": "5.0.5"
+  }
+}

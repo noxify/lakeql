@@ -36,8 +36,12 @@
   "sideEffects": false,
   "exports": {
     ".": {
-      "import": "./dist/index.mjs",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs"
+    },
+    "./metadata": {
+      "types": "./dist/command-metadata.d.mts",
+      "import": "./dist/command-metadata.mjs"
     }
   },
   "scripts": {
@@ -46,20 +50,25 @@
     "clean:cache": "git clean -xdf .cache .turbo",
     "clean:dist": "git clean -xdf dist",
     "dev": "tsx src/index.ts",
+    "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@antfu/install-pkg": "2.0.1",
-    "@clack/prompts": "1.7.0",
-    "giget": "3.3.0",
+    "@antfu/install-pkg": "2.1.0",
+    "@clack/prompts": "1.8.1",
+    "@commander-js/extra-typings": "15.0.0",
+    "@lakeql/scaffold": "workspace:*",
+    "dedent": "1.7.2",
+    "giget": "3.3.1",
     "picocolors": "1.1.1",
     "terminal-link": "5.0.0"
   },
   "devDependencies": {
     "@lakeql/tsconfig": "workspace:*",
-    "@types/node": "24.13.3",
-    "tsdown": "0.22.13",
+    "@lakeql/vitest-config": "workspace:*",
+    "@types/node": "24.19.2",
+    "tsdown": "0.23.3",
     "typescript": "6.0.3",
-    "vitest": "4.1.10"
+    "vitest": "5.0.5"
   }
 }

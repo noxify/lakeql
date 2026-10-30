@@ -1,0 +1,68 @@
+---
+title: Filtering
+navTitle: Filtering
+description: Build WHERE conditions with the Where structure and field operators.
+---
+
+A filter is a `Where` structure: a tree of `AND`/`OR` groups whose leaves are field conditions. The query builder turns it into the `WHERE` clause of the generated SQL.
+
+## The Where Structure
+
+`Where` is a recursive shape. At each level you have an `and` or `or` key holding an array of entries, and each entry is either a field condition or a nested group:
+
+```ts
+import type { Where } from "@lakeql/query-builder"
+
+const filter: Where = {
+  and: [
+    { status: { eq: "shipped" } },
+    {
+      or: [{ region: { eq: "eu" } }, { region: { eq: "us" } }],
+    },
+  ],
+}
+```
+
+A field condition is a record mapping a column name to a `FieldOptions` object. Set exactly one operator per field:
+
+```ts
+{
+  total: {
+    gte: "100"
+  }
+}
+```
+
+## Field Operators
+
+`FieldOptions` supports these operators. Comparison values are passed as strings; `is` / `isNot` take a boolean.
+
+| Operator           | Meaning                                   |
+| ------------------ | ----------------------------------------- |
+| `eq`               | equals                                    |
+| `neq`              | not equals                                |
+| `lt` / `lte`       | less than / or equal                      |
+| `gt` / `gte`       | greater than / or equal                   |
+| `in` / `notIn`     | in / not in a set                         |
+| `like` / `notLike` | SQL `LIKE` containing the value / negated |
+| `is` / `isNot`     | boolean equality with `true` / `false`    |
+
+On `FieldOptions`, `in` and `notIn` are typed as a single `string` (not a list).
+
+The query builder also handles `startsWith`, `notStartsWith`, `endsWith`, and `notEndsWith` (anchored `LIKE` patterns), but these are **not** on `FieldOptions` or the GraphQL comparison input types — they are reachable only when calling the query builder directly, not through a GraphQL query.
+
+## Combining Conditions
+
+Use `and` / `or` to combine, and nest them for precedence. A bare filter with several fields and no explicit operator is treated as an implicit `AND` — the builder normalizes it, splitting each field into its own entry under `and` before generating SQL.
+
+```ts
+// Equivalent at runtime (normalizeUserQuery wraps the bare fields in `and`):
+const implicit = { status: { eq: "open" }, region: { eq: "eu" } }
+const explicit: Where = {
+  and: [{ status: { eq: "open" } }, { region: { eq: "eu" } }],
+}
+```
+
+The bare, multi-field form is accepted at runtime but does not satisfy the `Where` type (which only has `and`/`or` keys), so annotate it as `Field` or leave it unannotated.
+
+See [`normalizeFilter`](/docs/packages/query-builder/api-reference#normalize-filter) and [`normalizeUserQuery`](/docs/packages/query-builder/api-reference#normalize-user-query) in the API reference for the exact normalization rules.

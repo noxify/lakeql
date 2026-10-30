@@ -13,7 +13,8 @@ export function useIsMobile(breakpoint?: number) {
       setIsMobile(window.innerWidth < (breakpoint ?? MOBILE_BREAKPOINT))
     }
     mql.addEventListener("change", onChange)
-    // oxlint-disable-next-line react/react-compiler
+    // Sync state with the matchMedia external system on mount.
+    // oxlint-disable-next-line react/react-compiler react/set-state-in-effect
     setIsMobile(window.innerWidth < (breakpoint ?? MOBILE_BREAKPOINT))
     return () => mql.removeEventListener("change", onChange)
   }, [breakpoint])

@@ -1,0 +1,50 @@
+---
+title: Trino User Impersonation
+navTitle: Trino User Impersonation
+description: Run Trino queries as the authenticated user.
+---
+
+Trino impersonation runs each query as the calling user rather than the service account, via Trino's `X-Trino-User` header. The [`trinoUserImpersonation`](/docs/api/api-reference#trino-user-impersonation) helper builds an impersonation resolver that maps a JWT claim to that header.
+
+Set it on the Trino data source in `lakeql.config.ts`:
+
+```ts
+import { trinoUserImpersonation } from "@lakeql/api/trino-user-impersonation"
+
+dataSources: {
+  warehouse: {
+    adapter: "trino",
+    connection: { /* ... */ },
+    impersonationResolver: trinoUserImpersonation(),
+  },
+}
+```
+
+## Choosing the Claim
+
+By default the resolver reads the `userName` claim. Set `nameField` to use a different claim:
+
+```ts
+trinoUserImpersonation({ nameField: "preferred_username" })
+```
+
+## Transforming the Value
+
+When the IdP claim does not match the Trino username verbatim, use `transform`:
+
+```ts
+// Case normalization
+trinoUserImpersonation({
+  nameField: "onpremsamaccountname",
+  transform: "lower",
+})
+
+// Custom mapping, e.g. strip a domain
+trinoUserImpersonation({ transform: (v) => v.split("@")[0] })
+```
+
+`transform` accepts `"lower"`, `"upper"`, or a function. It is applied only to a present, non-empty string claim.
+
+## Fallback Behavior
+
+When the claim is missing, not a string, empty, or transforms to an empty string, the resolver returns `null` — the query runs as the system user instead of failing. Resolution is two-level: a per-data-source resolver takes precedence over a global `auth.impersonationResolver`.

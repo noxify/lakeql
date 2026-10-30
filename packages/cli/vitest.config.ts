@@ -1,8 +1,8 @@
 import path from "node:path"
 
-import { defineConfig } from "vitest/config"
+import { defineLakeqlProject } from "@lakeql/vitest-config"
 
-export default defineConfig({
+export default defineLakeqlProject({
   resolve: {
     alias: {
       "@": path.resolve(import.meta.dirname, "src"),

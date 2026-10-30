@@ -24,11 +24,6 @@ export interface RetryConfig {
    * @default 2
    */
   backoffMultiplier?: number
-  /**
-   * HTTP status codes that trigger a retry.
-   * @default [429, 500, 502, 503, 504]
-   */
-  retryableStatusCodes?: number[]
 }
 
 const DEFAULT_RETRY_CONFIG: Required<RetryConfig> = {
@@ -36,7 +31,6 @@ const DEFAULT_RETRY_CONFIG: Required<RetryConfig> = {
   initialDelay: 1000,
   maxDelay: 30_000,
   backoffMultiplier: 2,
-  retryableStatusCodes: [429, 500, 502, 503, 504],
 }
 
 /**
@@ -57,7 +51,7 @@ export async function withRetry<T>(
     } catch (error) {
       lastError = error as Error
 
-      if (!isRetryable(error, resolved.retryableStatusCodes)) {
+      if (!isRetryable(error)) {
         throw error
       }
 
@@ -75,7 +69,7 @@ export async function withRetry<T>(
   throw lastError ?? new Error("Retry failed")
 }
 
-function isRetryable(error: unknown, retryableStatusCodes: number[]): boolean {
+function isRetryable(error: unknown): boolean {
   // Never retry cancellations
   if (error instanceof TrinoCancellationError) {
     return false
@@ -88,7 +82,7 @@ function isRetryable(error: unknown, retryableStatusCodes: number[]): boolean {
 
   // Retry on specific HTTP status codes
   if (error instanceof TrinoClientError && error.statusCode) {
-    return retryableStatusCodes.includes(error.statusCode)
+    return [429, 500, 502, 503, 504].includes(error.statusCode)
   }
 
   // Retry on network errors (fetch throws TypeError on network failure)

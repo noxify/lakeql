@@ -1,11 +1,11 @@
 // packages/query-builder/tests/normalize-functions.test.ts
-import { describe, expect, test } from "vitest"
+import { describe, expect, it } from "vitest"
 
 import type { Where } from "../src"
 import { normalizeFilter, normalizeUserQuery } from "../src"
 
 describe(normalizeUserQuery, () => {
-  test("should return query with 'and' or 'or' at root level as is", () => {
+  it("should return query with 'and' or 'or' at root level as is", () => {
     const query = { and: [{ field1: { eq: "value1" } }] }
     expect(normalizeUserQuery(query)).toStrictEqual(query)
 
@@ -13,7 +13,7 @@ describe(normalizeUserQuery, () => {
     expect(normalizeUserQuery(orQuery)).toStrictEqual(orQuery)
   })
 
-  test("should wrap flat queries in 'and' array", () => {
+  it("should wrap flat queries in 'and' array", () => {
     const query = {
       field1: { eq: "value1" },
       field2: { eq: "value2" },
@@ -26,7 +26,7 @@ describe(normalizeUserQuery, () => {
 })
 
 describe(normalizeFilter, () => {
-  test("should split fields in a single object into separate objects", () => {
+  it("should split fields in a single object into separate objects", () => {
     const query = {
       and: [{ field1: { eq: "value1" }, field2: { eq: "value2" } }],
     }
@@ -36,7 +36,7 @@ describe(normalizeFilter, () => {
     expect(normalizeFilter(query)).toStrictEqual(expected)
   })
 
-  test("should handle nested logical operators", () => {
+  it("should handle nested logical operators", () => {
     const query = {
       and: [
         {
@@ -56,7 +56,7 @@ describe(normalizeFilter, () => {
     expect(normalizeFilter(query)).toStrictEqual(expected)
   })
 
-  test("should handle complex nested structures", () => {
+  it("should handle complex nested structures", () => {
     const query = {
       and: [
         {
@@ -90,7 +90,7 @@ describe(normalizeFilter, () => {
     expect(normalizeFilter(query)).toStrictEqual(expected)
   })
 
-  test("should handle the example case correctly", () => {
+  it("should handle the example case correctly", () => {
     const query = {
       and: [
         {

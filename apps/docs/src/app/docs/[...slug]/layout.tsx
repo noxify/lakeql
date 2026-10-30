@@ -1,20 +1,22 @@
+import { createSlug } from "renoun"
 import type { ContentSection } from "renoun/file-system"
 import { isFile } from "renoun/file-system"
-import type z from "zod"
 
 import {
   getFileContent,
   getDocumentationEntryBySlug,
-  getApiReferenceExports,
   rootCollections,
   getBreadcrumbItems,
   getMetadata,
 } from "@/collection-helpers"
-import type { ApiReferenceResult } from "@/collection-helpers"
 import { SiteBreadcrumb } from "@/components/breadcrumb"
 import { CollectionChooser } from "@/components/collection-chooser"
 import { DocsLeftRailBackground } from "@/components/docs-left-rail-background"
 import { DocsSidebar } from "@/components/docs-sidebar"
+import {
+  kindToLabel,
+  resolvePackagePath,
+} from "@/components/mdx/api-reference/utils"
 import { MobileDocsHeader } from "@/components/mobile-docs-header"
 import { SidebarToggle } from "@/components/sidebar-toggle"
 import {
@@ -29,8 +31,9 @@ import {
   getCollectionNavigation,
   getFavoriteNavigationItems,
 } from "@/lib/navigation"
+import { analyzeSyntacticExports } from "@/lib/ts-morph-analysis"
+import type { SyntacticExportInfo } from "@/lib/ts-morph-analysis"
 import { cn } from "@/lib/utils"
-import type { frontmatterSchema } from "@/validations"
 
 function createDocsLayoutConfig(input: {
   layoutWidth: string
@@ -85,43 +88,59 @@ const DOCS_LAYOUT = createDocsLayoutConfig({
   tocContentWidth: "250px",
 })
 
-async function fetchApiReferenceSources(
-  references: z.infer<typeof frontmatterSchema>["apiReference"]
+async function fetchApiReferenceTocItems(
+  references: { name: string; file: string }[]
 ) {
-  return getApiReferenceExports(references)
+  const results = await Promise.all(
+    references.map(async (ref) => {
+      try {
+        const filePath = resolvePackagePath(ref.file)
+        const exports = await analyzeSyntacticExports(filePath)
+        return { name: ref.name, exports }
+      } catch {
+        return { name: ref.name, exports: [] as SyntacticExportInfo[] }
+      }
+    })
+  )
+  return results
 }
 
-function flatExportsToTocItems(
-  exports: ApiReferenceResult["exports"],
+function syntacticExportsToTocItems(
+  exports: SyntacticExportInfo[],
   baseDepth: number
 ) {
-  return exports.map((exp) => ({
-    id: exp.slug,
-    title: exp.title,
-    depth: baseDepth,
-    ...(exp.kind
-      ? {
-          jsx: (
-            <span className="inline-flex items-center gap-1.5">
-              <span className="bg-muted text-muted-foreground rounded px-1 py-0.5 text-[10px] leading-none font-medium">
-                {exp.kind.charAt(0)}
+  return exports.map((exp) => {
+    const slug = createSlug(exp.name)
+    const kindLabel = exp.kind ? kindToLabel(exp.kind) : null
+
+    return {
+      depth: baseDepth,
+      id: slug,
+      title: exp.name,
+      ...(kindLabel
+        ? {
+            jsx: (
+              <span className="inline-flex items-center gap-1.5">
+                <span className="bg-muted text-muted-foreground rounded px-1 py-0.5 text-[10px] leading-none font-medium">
+                  {kindLabel.charAt(0)}
+                </span>
+                <span>{exp.name}</span>
               </span>
-              <span>{exp.title}</span>
-            </span>
-          ),
-        }
-      : {}),
-    ...(exp.methods?.length
-      ? {
-          children: exp.methods.map((m) => ({
-            id: m.slug,
-            title: m.title,
-            depth: baseDepth,
-            jsx: <span className="ml-4">{m.title}</span>,
-          })),
-        }
-      : {}),
-  }))
+            ),
+          }
+        : {}),
+      ...(exp.methods?.length
+        ? {
+            children: exp.methods.map((m) => ({
+              depth: baseDepth,
+              id: `${slug}-${createSlug(m)}`,
+              jsx: <span className="ml-4">{m}</span>,
+              title: m,
+            })),
+          }
+        : {}),
+    }
+  })
 }
 
 export default async function DocsSlugLayout({
@@ -168,16 +187,16 @@ export default async function DocsSlugLayout({
     headings = (await fileContent?.getSections()) ?? []
 
     if (frontmatter?.apiReference && frontmatter.apiReference.length > 0) {
-      const results = await fetchApiReferenceSources(frontmatter.apiReference)
+      const results = await fetchApiReferenceTocItems(frontmatter.apiReference)
       const hasMultipleSources = results.length > 1
       const referenceSections = hasMultipleSources
         ? results.map((result) => ({
+            children: syntacticExportsToTocItems(result.exports, 4),
+            depth: 3,
             id: result.name.replaceAll(/[^a-z0-9-]/gu, "-"),
             title: result.name,
-            depth: 3,
-            children: flatExportsToTocItems(result.exports, 4),
           }))
-        : flatExportsToTocItems(
+        : syntacticExportsToTocItems(
             results.flatMap((r) => r.exports),
             3
           )
@@ -188,10 +207,10 @@ export default async function DocsSlugLayout({
         ...(referenceSections.length
           ? [
               {
+                children: referenceSections,
+                depth: 2,
                 id: "api-reference",
                 title: "API Reference",
-                depth: 2,
-                children: referenceSections,
               },
             ]
           : []),
@@ -200,9 +219,12 @@ export default async function DocsSlugLayout({
 
     if (frontmatter?.cliCommand) {
       const cliSections = getCliCommandTocSections(frontmatter.cliCommand)
-      // Replace the static "Options" heading (if any) with the dynamic one
-      // that has the individual options as children
-      headings = [...headings.filter((h) => h.id !== "options"), ...cliSections]
+      // Replace any static "Options"/"Arguments" headings from the MDX
+      // with the dynamic ones that have individual items as children
+      headings = [
+        ...headings.filter((h) => h.id !== "options" && h.id !== "arguments"),
+        ...cliSections,
+      ]
     }
   }
 
@@ -234,7 +256,7 @@ export default async function DocsSlugLayout({
         <SidebarToggle />
         <SidebarInset className="min-w-0 xl:col-start-3">
           <MobileDocsHeader />
-          <MobileTableOfContents sections={headings} />
+          {headings.length > 0 && <MobileTableOfContents sections={headings} />}
           <div className="px-4 py-8 md:px-8">
             <main className="w-full min-w-0 xl:mx-auto xl:max-w-225">
               <SiteBreadcrumb items={breadcrumbItems} />

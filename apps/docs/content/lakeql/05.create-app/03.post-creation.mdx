@@ -1,0 +1,29 @@
+---
+title: Post-Creation
+navTitle: Post-Creation
+description: What to do after scaffolding a project.
+---
+
+After create-app finishes, you have a runnable project that needs your data source details and at least one generated endpoint.
+
+<Steps>
+
+<Step>Install dependencies</Step>
+
+If you ran with `--no-install`, install dependencies now with your package manager.
+
+<Step>Configure the environment</Step>
+
+Copy `.env.example` to `.env` and fill in your data source connection details. See [environment configuration](/docs/lakeql/getting-started/environment-configuration).
+
+<Step>Generate an endpoint</Step>
+
+Introspect a table with [`pull`](/docs/cli/commands/pull) to generate its typed files.
+
+<Step>Start the server</Step>
+
+Run the dev script and make your [first request](/docs/lakeql/getting-started/first-run).
+
+</Steps>
+
+From here, add more endpoints as your schema grows, and explore the [guides](/docs/lakeql/guides) for custom resolvers, schema extensions, mutations, and deployment.

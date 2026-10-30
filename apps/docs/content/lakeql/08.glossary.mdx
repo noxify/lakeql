@@ -1,0 +1,51 @@
+---
+title: Glossary
+navTitle: Glossary
+description: Plain-language definitions of the lakehouse and LakeQL terms the rest of the documentation assumes.
+---
+
+Short, plain-language definitions of the recurring terms in these docs. Each entry links to the page that covers it in depth.
+
+<DescriptionList>
+  <DescriptionListItem label="basePath">
+    The storage root a write pipeline targets inside the configured object
+    store. It is required on every mutation block, even for the INSERT strategy
+    that writes through SQL and never touches that path. See [Write
+    config](/docs/data-sources/trino/write-config).
+  </DescriptionListItem>
+  <DescriptionListItem label="catalog">
+    The top-level namespace in a lakehouse query engine, sitting above schema in
+    the catalog → schema → table hierarchy. A catalog usually maps to one
+    connector or metastore instance. See [Data Sources](/docs/data-sources).
+  </DescriptionListItem>
+  <DescriptionListItem label="dialect">
+    The engine-specific SQL variant an adapter renders LakeQL's neutral query
+    intent into. Each adapter owns its dialect so the same GraphQL query runs
+    correctly on different engines. See [Data
+    Sources](/docs/data-sources/overview/introduction).
+  </DescriptionListItem>
+  <DescriptionListItem label="external table / external catalog">
+    A table or catalog whose data lives in object storage rather than inside the
+    engine, registered with the metastore so the engine can query it in place.
+    The storage write strategy writes to engines backed by this kind of external
+    catalog. See [Write
+    strategies](/docs/data-sources/writing/write-strategies).
+  </DescriptionListItem>
+  <DescriptionListItem label="impersonation">
+    Forwarding the caller's identity to the query engine so it executes under
+    that user instead of a shared service account — for example, Trino user
+    impersonation. See [Per-Request
+    Impersonation](/docs/data-sources/trino/connection#per-request-impersonation).
+  </DescriptionListItem>
+  <DescriptionListItem label="schema">
+    The namespace that groups tables within a catalog, in the lakehouse catalog
+    → schema → table hierarchy. This is distinct from a GraphQL schema, which
+    describes the API's types. See [Data Sources](/docs/data-sources).
+  </DescriptionListItem>
+  <DescriptionListItem label="service principal">
+    A non-interactive technical or machine identity, as opposed to an
+    interactive human user. Writes are denied for a service principal unless a
+    matching permission rule grants access. See
+    [Authentication](/docs/api/authentication).
+  </DescriptionListItem>
+</DescriptionList>

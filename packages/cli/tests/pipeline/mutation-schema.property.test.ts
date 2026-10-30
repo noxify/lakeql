@@ -165,9 +165,9 @@ function buildTestData(
   return { models, fieldDefinitions }
 }
 
-// --- Property Tests ---
+// --- Tests ---
 
-describe("Property 10: Field Required/Nullable GraphQL Mapping", () => {
+describe("Field Required/Nullable GraphQL Mapping", () => {
   it("marks fields as required (non-nullable) if and only if options.required is true", () => {
     fc.assert(
       fc.property(fieldsArb, (fields) => {
@@ -178,8 +178,6 @@ describe("Property 10: Field Required/Nullable GraphQL Mapping", () => {
           mutationName: "createTestModel",
           mutationConfig: {
             loadStrategy: "full_load",
-            type: "s3",
-            bucket: "test-bucket",
             basePath: "test/path",
           },
           fieldDefinitions,
@@ -218,8 +216,6 @@ describe("Property 10: Field Required/Nullable GraphQL Mapping", () => {
           mutationName: "createTestModel",
           mutationConfig: {
             loadStrategy: "full_load",
-            type: "s3",
-            bucket: "test-bucket",
             basePath: "test/path",
           },
           fieldDefinitions,

@@ -1,0 +1,14 @@
+---
+title: list-schemas
+navTitle: list-schemas
+description: List the schemas available in a catalog.
+cliCommand: list-schemas
+---
+
+`list-schemas` prints the schemas available in a catalog, through a configured data source. Use it to discover what you can introspect before running [`pull`](/docs/cli/commands/pull).
+
+<Command variant="exec">lakeql-cli list-schemas --source warehouse</Command>
+
+Pass `--catalog` to target a catalog other than the source's default.
+
+<CliCommandDetails command="list-schemas" />

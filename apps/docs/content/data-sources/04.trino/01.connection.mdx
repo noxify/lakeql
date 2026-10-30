@@ -1,0 +1,66 @@
+---
+title: Connection
+navTitle: Connection
+description: Configure the connection to a Trino coordinator.
+---
+
+A Trino data source's `connection` is a [`TrinoConnectionConfig`](/docs/data-sources/trino/api-reference#trino-connection-config). It mirrors the standalone [trino-client](/docs/packages/trino-client) options.
+
+```ts
+dataSources: {
+  warehouse: {
+    adapter: "trino",
+    connection: {
+      host: "https://trino.example.com",
+      port: 8080,
+      catalog: "hive",
+      auth: { type: "basic", username: "svc", password: "..." },
+    },
+  },
+}
+```
+
+## Required Fields
+
+- `host` — coordinator hostname including protocol (e.g. `https://trino.example.com`).
+- `port` — coordinator port (1–65535).
+- `catalog` — default catalog for queries.
+- `auth` — [`TrinoAuth`](/docs/data-sources/trino/api-reference#trino-auth), see below.
+
+## Authentication
+
+```ts
+// Basic auth
+auth: { type: "basic", username: "svc", password: "..." }
+
+// Bearer token
+auth: { type: "bearer", token: "..." }
+```
+
+## Optional Fields
+
+- `schema` — a default schema.
+- `source` — identifier sent as `X-Trino-Source`.
+- `timeout` — default query timeout in milliseconds.
+- `retry` — forwarded unchanged to the Trino client.
+
+<Note>
+  The config is validated at both the `defineConfig` boundary and when the data
+  source is created, using the same rules. Validation errors name the offending
+  field but never include passwords or tokens.
+</Note>
+
+## Troubleshooting
+
+<Note title="Common setup issues">
+- **Coordinator unreachable** — check that `host` includes the protocol (`https://` or `http://`) and that `port` matches the coordinator's HTTP(S) port; a connection failure usually points to network/firewall reachability rather than a config typo.
+
+- **Authentication rejected** — check that `auth.type` matches what the coordinator expects (`basic` vs. `bearer`) and that the credentials have not expired or been rotated.
+
+- **Catalog or schema not visible** — check that the configured `catalog` (and `schema`, if set) exist on the coordinator and that the authenticated user has access to them.
+
+</Note>
+
+## Per-Request Impersonation
+
+A Trino data source can run queries as the calling user by setting an `impersonationResolver` on the data source. See [Trino user impersonation](/docs/api/authentication/trino-user-impersonation).

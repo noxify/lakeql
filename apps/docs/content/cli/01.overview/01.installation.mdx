@@ -1,62 +1,22 @@
 ---
 title: Installation
-description: How to install and run the LakeQL CLI for schema introspection and code generation.
+navTitle: Installation
+description: Install the LakeQL CLI in your project.
 ---
 
-The LakeQL CLI (`@lakeql/cli`) orchestrates schema introspection from Trino and generates TypeScript code — interfaces, query schemas, and configs — that power type-safe GraphQL query endpoints in your project.
+Install `@lakeql/cli` as a development dependency — it is a build-time tool, not a runtime dependency:
 
-## Install globally
+<Command variant="install-dev">@lakeql/cli</Command>
 
-<Command variant="install">-g @lakeql/cli</Command>
+This provides the `lakeql-cli` binary. Run it through your package manager:
 
-## Run without installing
+<Command variant="exec">lakeql-cli init</Command>
 
-Use `npx` or `pnpm dlx` to invoke the CLI without a global install:
+If you scaffolded with [create-app](/docs/lakeql/create-app), the CLI is already installed and a `lakeql.config.ts` already exists.
 
-<Command variant="exec">lakeql-cli</Command>
-
-## Run within the monorepo
-
-If you're working inside the LakeQL monorepo:
-
-```bash
-pnpm -F cli cli
-```
-
-## Environment variables
-
-The CLI connects to Trino for schema introspection. Set the following environment variables before running any command:
-
-| Variable        | Required | Description                       |
-| --------------- | -------- | --------------------------------- |
-| `HIVE_HOST`     | Yes      | Trino host URL including protocol |
-| `HIVE_PORT`     | Yes      | Trino port                        |
-| `HIVE_USERNAME` | Yes      | Authentication username           |
-| `HIVE_PASSWORD` | Yes      | Authentication password           |
-| `HIVE_CATALOG`  | Yes      | Default catalog name              |
-
-Create a `.env` file in your project root:
-
-```bash
-# .env.example
-HIVE_HOST=https://trino.example.com
-HIVE_PORT=443
-HIVE_USERNAME=your-username
-HIVE_PASSWORD=your-password
-HIVE_CATALOG=hive
-```
-
-The CLI does not auto-load `.env` files. Load variables into the process environment before invocation.
-
-```bash
-# Option 1: export in your shell
-export HIVE_HOST=https://trino.example.com
-export HIVE_PORT=443
-export HIVE_USERNAME=your-username
-export HIVE_PASSWORD=your-password
-export HIVE_CATALOG=hive
-lakeql-cli pull
-
-# Option 2: use dotenv-cli
-dotenv -e ./.env -- lakeql-cli pull
-```
+<Note>
+  The CLI reads `lakeql.config.ts` and connects to your data source, so it needs
+  your environment set. Pass
+  [`--env`](/docs/cli/configuration/environment-variables) to load an env file
+  before the config is read.
+</Note>

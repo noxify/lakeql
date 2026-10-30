@@ -1,84 +1,126 @@
 ---
 title: Package Map
-description: All packages in the LakeQL monorepo and how they relate to each other.
+navTitle: Package Map
+description: Every package in the LakeQL monorepo, which ones you import directly, and how they relate.
 ---
 
-## Packages
+LakeQL is a monorepo of focused, single-responsibility packages. This page maps them into the layers of the [architecture](/docs/lakeql/architecture) and marks which ones an application imports directly.
 
-LakeQL is organized as a monorepo with focused, single-responsibility packages.
+## Packages You Import Directly
+
+These are the packages a typical application depends on.
+
+### @lakeql/config
+
+Loads `lakeql.config.ts`, validates it, and composes the runtime that owns your data sources. Exposes `defineConfig`, `loadConfig`, and `createLakeQLRuntime`.
+
+<Command variant="install">@lakeql/config</Command>
 
 ### @lakeql/api
 
-GraphQL API server built on Hono, GraphQL Yoga, and Pothos. Handles HTTP serving, schema loading, authentication, and permission checks.
+The GraphQL/API runtime. Composes the schema from your generated endpoints, handles request authorization, and serves the endpoint. Exposes `defineApiConfig` and auth helpers.
 
-### @lakeql/cli
+<Command variant="install">@lakeql/api</Command>
 
-Command-line tool for schema introspection and code generation. Connects to Trino, discovers tables, and writes TypeScript source files.
+### @lakeql/adapter-trino
+
+Trino adapter: connection, read and write strategies, SQL dialect, and Trino-specific errors.
+
+<Command variant="install">@lakeql/adapter-trino</Command>
+
+### @lakeql/adapter-fabric
+
+Microsoft Fabric adapter: connection, strategies, dialect, and Fabric-specific errors.
+
+<Command variant="install">@lakeql/adapter-fabric</Command>
 
 ### @lakeql/query-builder
 
-Kysely-based SQL query generation. Translates GraphQL resolve info (selected fields, filters, sorting, pagination) into Trino-compatible SQL with CTEs.
+Builds adapter-neutral query conditions — filters, sorting, and paging — that the adapters render into their own SQL dialect.
 
-### @lakeql/trino-client
+<Command variant="install">@lakeql/query-builder</Command>
 
-HTTP client for the Trino REST API. Handles statement submission, polling for results, and authentication (Basic and Bearer).
+### @lakeql/cli
 
-### @lakeql/schema-generator
+Introspects your data source and generates the typed endpoint files. Installed as a development dependency.
 
-Generates GraphQL model definitions, Hive table DDL, and JSON schemas from parsed column metadata.
-
-### @lakeql/column-parser
-
-Parses Trino column type strings (e.g. `varchar`, `array(row(id bigint, name varchar))`) into structured type objects.
-
-### @lakeql/response-transformer
-
-Transforms Trino's array-based responses into typed JavaScript objects using JSON Schema definitions.
-
-### @lakeql/file-generator
-
-Generates TypeScript source files — config, interfaces, and query schemas — from schema-generator output.
-
-### @lakeql/helpers
-
-Shared utilities for pagination calculation, code formatting, and object manipulation.
-
-### @lakeql/logger
-
-Structured logging with loglayer and winston. Includes sensitive field redaction.
+<Command variant="install-dev">@lakeql/cli</Command>
 
 ### @lakeql/create-app
 
-Project scaffolding tool (`@lakeql/create-app`). Downloads a starter template via giget and configures dependencies.
+Project scaffolding. Run it once to create a new LakeQL project.
+
+<Command variant="create">@lakeql/app my-api</Command>
+
+## Contracts and Composition
+
+These define the interfaces everything else implements. You rarely import them directly, but they shape the public types.
+
+| Package | Role |
+| --- | --- |
+| `@lakeql/datasource` | The core contracts — data source, strategies, factories, auth, capabilities, and errors. The primary contract package. |
+| `@lakeql/sql-read-strategy` | Adapter-neutral SQL read orchestration and validation. |
+| `@lakeql/response-transformer` | Schema-aware transformation of decoded records into typed objects. |
+
+`@lakeql/config` sits in the composition layer: it consumes the contracts and the registered adapters, and must not depend on a concrete adapter.
+
+## Standalone Clients
+
+These talk to a query engine directly, below the data source abstraction. They can be used on their own. See [packages](/docs/packages).
+
+| Package | Role |
+| --- | --- |
+| `@lakeql/trino-client` | Trino REST protocol client — statement submission, polling, auth, introspection. |
+| `@lakeql/fabric-client` | Microsoft Fabric client — authentication and query execution. |
+
+## Internal Packages
+
+Used internally by the framework. You do not install these directly.
+
+| Package | Role |
+| --- | --- |
+| `@lakeql/schema-generator` | Generates endpoint and mutation schemas from parsed metadata. |
+| `@lakeql/file-generator` | Writes the generated TypeScript endpoint and config files. |
+| `@lakeql/column-parser` | Parses engine column type strings into structured type objects. |
+| `@lakeql/storage` | External-storage write pipeline, serializers, and table managers. |
+| `@lakeql/parquet` | Parquet schema and serialization. |
+| `@lakeql/helpers` | Shared low-level utilities. |
+| `@lakeql/logger` | Shared structured logging with field redaction. |
 
 ## Dependency Flow
 
-The packages connect through two main flows:
+The packages connect through two main workflows.
 
-### CLI Flow (Introspection + Generation)
+An arrow means "depends on". The edges below are the actual `@lakeql` dependencies declared in each package.
 
-```mermaid preview
+### Generation (CLI)
+
+```mermaid
 flowchart LR
-    cli["@lakeql/cli"] --> tc["@lakeql/trino-client"]
-    tc --> cp["@lakeql/column-parser"]
-    cp --> sg["@lakeql/schema-generator"]
-    sg --> fg["@lakeql/file-generator"]
-    cli --> fg
+    cli["@lakeql/cli"] --> ds["@lakeql/datasource"]
+    cli --> cfg["@lakeql/config"]
+    cli --> cp["@lakeql/column-parser"]
+    cli --> sg["@lakeql/schema-generator"]
+    cli --> fg["@lakeql/file-generator"]
+    fg --> ds
+    fg --> sg
+    cfg --> ds
 ```
 
-### API Flow (Serving + Querying)
+The CLI fans out to the generation packages directly. `@lakeql/column-parser` and the standalone clients have no `@lakeql` dependencies of their own.
 
-```mermaid preview
+### Serving (API)
+
+```mermaid
 flowchart LR
-    api["@lakeql/api"] --> qb["@lakeql/query-builder"]
-    qb --> tc["@lakeql/trino-client"]
-    tc --> rt["@lakeql/response-transformer"]
-    api --> rt
+    api["@lakeql/api"] --> cfg["@lakeql/config"]
+    cfg --> ds["@lakeql/datasource"]
+    at["@lakeql/adapter-trino"] --> ds
+    af["@lakeql/adapter-fabric"] --> ds
+    at --> qb["@lakeql/query-builder"]
+    at --> tc["@lakeql/trino-client"]
+    at --> st["@lakeql/storage"]
+    af --> fc["@lakeql/fabric-client"]
 ```
 
-### Shared Packages
-
-Both flows use these shared packages:
-
-- `@lakeql/helpers` — Pagination math, formatting utilities
-- `@lakeql/logger` — Structured logging with redaction
+Adapter packages depend on the core contracts (`@lakeql/datasource`) and on the infrastructure for the strategy they provide — they never depend on `@lakeql/config`. This keeps the core free of any engine-specific code.

@@ -1,5 +1,6 @@
 ---
 services:
+
   minitrino:
     volumes:
       - ./modules/catalog/mysql/resources/cluster/mysql.properties:/mnt/etc/catalog/mysql.properties:ro

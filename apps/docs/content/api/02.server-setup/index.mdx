@@ -1,4 +1,45 @@
 ---
 title: Server Setup
-description: Create and configure the LakeQL API server with defineConfig, createApiServer, and startApiServer.
+navTitle: Server Setup
+description: Compose and start the LakeQL GraphQL server.
 ---
+
+Setting up the server is a small amount of explicit wiring: load the config, build the runtime, derive the auth resolver, then compose and start the API server. The application owns the runtime lifecycle; the API server is composed around it.
+
+```ts
+import { defineApiConfig } from "@lakeql/api/config"
+import { createApiResolveAuth } from "@lakeql/api/resolve-auth"
+import { createLakeQLRuntime, loadConfig } from "@lakeql/config"
+
+const project = await loadConfig()
+
+const resolveAuth = createApiResolveAuth({
+  sources: Object.fromEntries(
+    Object.entries(project.config.dataSources).map(([name, def]) => [
+      name,
+      {
+        adapter: def.adapter,
+        impersonationResolver: def.impersonationResolver,
+      },
+    ])
+  ),
+  globalImpersonationResolver: project.config.auth?.impersonationResolver,
+})
+
+const runtime = await createLakeQLRuntime({
+  config: project.config,
+  adapters: project.adapters,
+  resolveAuth,
+})
+
+const server = defineApiConfig({
+  runtime,
+  tokenResolver,
+  permissions,
+  schemaPath: "./schemas",
+})
+
+await server.startServer()
+```
+
+This section walks through [creating the server](/docs/api/server-setup/create-api-server), [defining the config](/docs/api/server-setup/define-config), and [configuring Yoga](/docs/api/server-setup/yoga-configuration).

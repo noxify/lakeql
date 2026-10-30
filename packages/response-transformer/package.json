@@ -1,13 +1,13 @@
 {
   "name": "@lakeql/response-transformer",
   "version": "0.1.7",
-  "description": "Transforms Trino array responses into typed JavaScript objects",
+  "description": "Adapter-neutral, schema-aware transformation of keyed records for LakeQL",
   "keywords": [
     "lakeql",
     "mapping",
     "response",
-    "transform",
-    "trino"
+    "schema",
+    "transform"
   ],
   "homepage": "https://lakeql.dev",
   "license": "Apache-2.0",
@@ -44,20 +44,18 @@
     "clean:cache": "git clean -xdf .cache .turbo",
     "clean:dist": "git clean -xdf dist",
     "dev": "tsdown --watch",
+    "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@formkit/tempo": "1.1.0"
+    "@lakeql/datasource": "workspace:*"
   },
   "devDependencies": {
-    "@faker-js/faker": "10.5.0",
     "@lakeql/tsconfig": "workspace:*",
-    "@types/node": "24.13.3",
-    "@valibot/to-json-schema": "1.7.1",
-    "tsdown": "0.22.13",
-    "tsx": "4.23.1",
+    "@lakeql/vitest-config": "workspace:*",
+    "@types/node": "24.19.2",
+    "tsdown": "0.23.3",
     "typescript": "6.0.3",
-    "valibot": "1.4.2",
-    "vitest": "4.1.10"
+    "vitest": "5.0.5"
   }
 }

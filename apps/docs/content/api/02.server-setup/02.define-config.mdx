@@ -1,78 +1,30 @@
 ---
-title: defineConfig
-navTitle: defineConfig
-description: Type-safe configuration wrapper that provides createYogaServer and startServer methods.
+title: Define the Config
+navTitle: Define Config
+description: The options accepted by defineApiConfig.
 ---
 
-`defineConfig` is the recommended way to configure your LakeQL API server. It provides full type safety for permissions by inferring catalog, schema, and table names from your generated configs.
+[`defineApiConfig`](/docs/api/api-reference#define-api-config) accepts an [`ApiRuntimeConfig`](/docs/api/api-reference#api-runtime-config). Every field is optional — but a `runtime` must be provided for the generated resolvers to work: without it, `context.getReadStrategy` throws on each request.
 
-## Signature
+## Common Options
 
-```ts
-function defineConfig<const TConfig extends readonly SchemaConfigEntry[]>(
-  input: TConfig | DefineConfigOptions<TConfig>
-): DefinedApiConfig<TConfig>
-```
+- `runtime` — the [`LakeQLRuntime`](/docs/packages/config/api-reference#lake-ql-runtime) resolvers execute against. Required in practice.
+- `tokenResolver` — validates the request token into a current user. See [JWT authentication](/docs/api/authentication/jwt-authentication). **Defaults to a development mock** that accepts any request when `AUTH_MOCK=true` and the `authorization` header equals `AUTH_MOCK_TOKEN`, taking the username from the `x-username` header. Provide a real resolver for anything beyond local development.
+- `identityResolver` — maps the JWT payload to a resolved identity. Defaults to the Entra ID resolver.
+- `permissions` — technical-user [permission rules](/docs/api/authentication/permissions).
+- `hasReadPermission` / `hasWritePermission` — custom permission resolvers.
 
-## Configuration options
+## Paths and Server
 
-The `DefineConfigOptions` interface extends `ApiRuntimeConfig` with a required `allConfigs` field:
+- `baseDir` — base directory for resolving relative paths. Defaults to the current working directory.
+- `schemaPath` — where the generated query schema files live, relative to `baseDir`.
+- `graphqlPath` — the path the server mounts the GraphQL handler at. Defaults to `/graphql`.
+- `healthCheckEndpoint` — the health check path. Defaults to `/live`.
+- `port` — the server port. Defaults to `4000`.
 
-<ApiReference variant="table" file="api/src/config" name="ApiRuntimeConfig" />
+## Limits and Hooks
 
-## Return type
-
-`defineConfig` returns a `DefinedApiConfig` object that includes all your config options plus two convenience methods:
-
-```ts
-interface DefinedApiConfig<TConfig> {
-  // ...all config options
-  allConfigs: TConfig
-  createYogaServer: (logger) => Promise<ApiYoga>
-  startServer: () => Promise<void>
-}
-```
-
-## Usage
-
-### Minimal — pass only configs
-
-```ts path="src/config.ts"
-import { defineConfig } from "@lakeql/api/config"
-import { allConfigs } from "./config-registry"
-
-export const config = defineConfig(allConfigs)
-```
-
-### Full configuration (matching the template)
-
-```ts path="src/config.ts"
-import { defineConfig } from "@lakeql/api/config"
-
-import { getUser } from "./auth"
-import { allConfigs } from "./config-registry"
-import { permissions } from "./permissions"
-
-const baseDir = import.meta.dirname
-
-export const config = defineConfig({
-  allConfigs,
-  baseDir,
-  getUser,
-  graphqlPath: "/graphql",
-  healthCheckEndpoint: "/live",
-  permissions,
-  port: 4000,
-  schemaPath: "./schemas",
-})
-```
-
-### Using startServer
-
-```ts path="src/index.ts"
-import { config } from "./config"
-
-await config.startServer()
-```
-
-This calls `startApiServer` internally with your defined configuration.
+- `maxRecordsPerPage` — caps rows per paginated response. Defaults to `2000`.
+- `yogaConfig` — override GraphQL Yoga options and plugins. See [Yoga configuration](/docs/api/server-setup/yoga-configuration).
+- `cors` — CORS options for the GraphQL route, applied by the Hono layer. Off by default. See [CORS configuration](/docs/api/customization/cors-configuration).
+- `onError` — a hook invoked for every execution error after logging. See [error handling](/docs/api/customization/error-handling).

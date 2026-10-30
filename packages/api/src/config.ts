@@ -1,25 +1,38 @@
+import type {
+  IdentityResolver,
+  LakeQLRuntime,
+  Permission,
+  TokenResolver,
+} from "@lakeql/config"
 import type { createLogger } from "@lakeql/logger"
+import type { cors } from "hono/cors"
 
-import type { SchemaConfigEntry } from "./helpers"
+import type { ApiErrorHook } from "./error-logging-plugin"
 import { startApiServer } from "./server"
 import type {
-  GetUserResolver,
-  Permission,
   ReadPermissionResolver,
   WritePermissionResolver,
   YogaConfigOverrides,
 } from "./types"
 import { createYogaServer } from "./yoga"
 
+/** Options for the GraphQL route's CORS middleware (Hono's `cors`). */
+export type CorsOptions = Parameters<typeof cors>[0]
+
 /**
  * Runtime configuration options for the LakeQL API server.
  */
 export interface ApiRuntimeConfig {
   /**
-   * Custom JWT authentication resolver.
+   * Custom JWT token resolver.
    * @default built-in mock auth
    */
-  getUser?: GetUserResolver
+  tokenResolver?: TokenResolver
+  /**
+   * Maps a JWT payload to a ResolvedIdentity.
+   * @default entraIdIdentityResolver
+   */
+  identityResolver?: IdentityResolver
   /**
    * Custom read permission resolver.
    * @default built-in read permission check
@@ -31,21 +44,35 @@ export interface ApiRuntimeConfig {
    */
   hasWritePermission?: WritePermissionResolver
   /**
-   * Maximum records per paginated response.
-   * @default 2000
-   */
-  maxRecordsPerPage?: number
-  /**
    * Override GraphQL Yoga options.
    *
    * @see {@link https://the-guild.dev/graphql/yoga-server/docs | GraphQL Yoga Docs}
    */
   yogaConfig?: YogaConfigOverrides
   /**
+   * CORS options for the GraphQL route, applied by the Hono layer that wraps
+   * Yoga. When omitted, CORS is not enabled (same-origin only). Set `origin` to
+   * the front-ends allowed to call the API.
+   *
+   * A wildcard origin (`"*"`) cannot be combined with `credentials: true` — the
+   * browser rejects that pairing — so there is no permissive default.
+   *
+   * @see {@link https://hono.dev/docs/middleware/builtin/cors | Hono CORS}
+   */
+  cors?: CorsOptions
+  /**
    * Permission rules for technical users.
    * @default []
    */
   permissions?: Permission[]
+  /**
+   * The LakeQL runtime that owns data sources and read/write strategies.
+   *
+   * Built by the application (via `createLakeQLRuntime`) and passed in so
+   * resolvers can resolve read strategies through the GraphQL context. The
+   * API does not construct or own the runtime lifecycle.
+   */
+  runtime?: LakeQLRuntime
   /**
    * Base directory for resolving relative paths.
    * @default process.cwd()
@@ -68,75 +95,43 @@ export interface ApiRuntimeConfig {
    * @default 4000
    */
   port?: number
+  /**
+   * Hook invoked for every GraphQL execution error after it is logged. Use it
+   * to forward errors to external telemetry (OpenTelemetry, Sentry, metrics)
+   * without this package depending on any of them. Thrown errors from the hook
+   * are swallowed so telemetry never breaks a response.
+   */
+  onError?: ApiErrorHook
 }
 
 /**
- * Configuration options for `defineConfig`. Extends `ApiRuntimeConfig` with a required `allConfigs` field.
+ * Configuration options for `defineApiConfig`.
  */
-export interface DefineConfigOptions<
-  TConfig extends readonly SchemaConfigEntry[],
-> extends ApiRuntimeConfig {
-  allConfigs: TConfig
-}
+export type DefineConfigOptions = ApiRuntimeConfig
 
-function isDefineConfigOptions(
-  input:
-    | readonly SchemaConfigEntry[]
-    | DefineConfigOptions<readonly SchemaConfigEntry[]>
-): input is DefineConfigOptions<readonly SchemaConfigEntry[]> {
-  return !Array.isArray(input)
-}
-
-export interface DefinedApiConfig<
-  TConfig extends readonly SchemaConfigEntry[],
-> {
-  getUser?: GetUserResolver
-  hasReadPermission?: ReadPermissionResolver
-  hasWritePermission?: WritePermissionResolver
-  maxRecordsPerPage?: number
-  yogaConfig?: YogaConfigOverrides
-  permissions?: Permission[]
-  baseDir?: string
-  schemaPath?: string
-  graphqlPath?: string
-  healthCheckEndpoint?: string
-  port?: number
-  allConfigs: TConfig
+/**
+ * The resolved API configuration returned by `defineApiConfig`. Carries every
+ * {@link ApiRuntimeConfig} field through unchanged and adds the server helpers.
+ */
+export interface DefinedApiConfig extends ApiRuntimeConfig {
   createYogaServer: (
     logger: ReturnType<typeof createLogger>
   ) => ReturnType<typeof createYogaServer>
   startServer: () => ReturnType<typeof startApiServer>
 }
 
-export function defineConfig<
-  const TConfig extends readonly SchemaConfigEntry[],
->(input: TConfig | DefineConfigOptions<TConfig>): DefinedApiConfig<TConfig> {
-  let allConfigs: readonly SchemaConfigEntry[]
-  let runtimeConfig: ApiRuntimeConfig
-
-  if (isDefineConfigOptions(input)) {
-    ;({ allConfigs } = input)
-    runtimeConfig = {
-      baseDir: input.baseDir,
-      getUser: input.getUser,
-      graphqlPath: input.graphqlPath,
-      hasReadPermission: input.hasReadPermission,
-      hasWritePermission: input.hasWritePermission,
-      healthCheckEndpoint: input.healthCheckEndpoint,
-      maxRecordsPerPage: input.maxRecordsPerPage,
-      permissions: input.permissions,
-      port: input.port,
-      schemaPath: input.schemaPath,
-      yogaConfig: input.yogaConfig,
-    }
-  } else {
-    allConfigs = input
-    runtimeConfig = {}
-  }
+/**
+ * Defines the API server configuration with convenience methods
+ * for creating a Yoga server or starting the full HTTP server.
+ *
+ * @param input - API runtime configuration options.
+ * @returns A resolved configuration with `createYogaServer` and `startServer` helpers.
+ */
+export function defineApiConfig(input: DefineConfigOptions): DefinedApiConfig {
+  const runtimeConfig: ApiRuntimeConfig = { ...input }
 
   return {
     ...runtimeConfig,
-    allConfigs: allConfigs as TConfig,
     createYogaServer(logger: ReturnType<typeof createLogger>) {
       return createYogaServer(logger, runtimeConfig)
     },
@@ -145,7 +140,3 @@ export function defineConfig<
     },
   }
 }
-
-export type ConfigEntry<
-  T extends DefinedApiConfig<readonly SchemaConfigEntry[]>,
-> = T["allConfigs"][number]

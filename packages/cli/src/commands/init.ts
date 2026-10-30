@@ -5,7 +5,6 @@ import path from "node:path"
 import { info, success } from "@lakeql/logger/console"
 import { question, select } from "@topcli/prompts"
 
-import type { LakeQLConfig } from "@/config"
 import { getInvocationCwd } from "@/path-utils"
 
 import { buildInitCommandStructure } from "./init-metadata"
@@ -16,12 +15,21 @@ const CONFIG_FILES = [
   "lakeql.config.json",
 ] as const
 
-function serializeMjsConfig(config: LakeQLConfig): string {
-  const entries = Object.entries(config)
-    .map(([key, value]) => `  ${key}: ${JSON.stringify(value)},`)
-    .join("\n")
+interface InitConfig {
+  sourcePath: string
+}
 
-  return `/** @type {import('@lakeql/cli').LakeQLConfig} */\nexport default {\n${entries}\n}\n`
+function serializeMjsConfig(config: InitConfig): string {
+  return [
+    `import { defineConfig } from "@lakeql/config"`,
+    ``,
+    `export default defineConfig({`,
+    `  sourcePath: ${JSON.stringify(config.sourcePath)},`,
+    `  adapters: [],`,
+    `  dataSources: {},`,
+    `})`,
+    ``,
+  ].join("\n")
 }
 
 function findExistingConfig(cwd: string): string | null {
@@ -98,7 +106,7 @@ export default function initCommand() {
       }
     }
 
-    const config: LakeQLConfig = {
+    const config: InitConfig = {
       sourcePath: resolvedSourcePath,
     }
 
@@ -109,7 +117,7 @@ export default function initCommand() {
     const content =
       format === "mjs"
         ? serializeMjsConfig(config)
-        : `${JSON.stringify(config, null, 2)}\n`
+        : `${JSON.stringify({ sourcePath: config.sourcePath, adapters: [], dataSources: {} }, null, 2)}\n`
 
     await writeFile(configPath, content)
 

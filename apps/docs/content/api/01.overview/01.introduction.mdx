@@ -1,76 +1,27 @@
 ---
 title: Introduction
-description: What @lakeql/api provides and how it fits into the LakeQL ecosystem.
+navTitle: Introduction
+description: The role of the API package in a LakeQL project.
 ---
 
-`@lakeql/api` is the runtime GraphQL server package in the LakeQL ecosystem. It exposes a fully typed GraphQL API that queries data from Trino — a distributed SQL query engine — and returns structured, paginated results to clients.
+`@lakeql/api` sits at the top of the stack. It does not own the runtime or the data sources — the application composes those with [`@lakeql/config`](/docs/packages/config) and passes the runtime in. The API package is responsible for the GraphQL surface: schema, request handling, and HTTP serving.
 
-The package combines three core libraries into a cohesive server stack:
+## What It Does
 
-- **Hono** — A lightweight, high-performance HTTP framework that handles routing, CORS, and middleware.
-- **GraphQL Yoga** — A spec-compliant GraphQL server with built-in support for subscriptions, file uploads, and health checks.
-- **Pothos** — A code-first, type-safe GraphQL schema builder that generates the schema from TypeScript definitions.
+- **Schema composition** — builds a GraphQL schema from the generated endpoint files under your schema path.
+- **Authentication** — resolves a token into a current user and identity.
+- **Authorization** — checks per-table read/write permissions before a query runs.
+- **Execution** — runs the query through the runtime's read strategy for the target data source.
+- **Serving** — exposes the GraphQL endpoint and a health check over HTTP, built on GraphQL Yoga.
 
-## How it connects
+## Subpath Exports
 
-`@lakeql/api` sits at the center of the LakeQL architecture. It depends on several sibling packages:
+The package publishes subpath exports rather than a single root. You import each piece from its module — for example:
 
-| Package | Role |
-| --- | --- |
-| `@lakeql/trino-client` | Executes SQL queries against Trino |
-| `@lakeql/query-builder` | Constructs SQL from GraphQL arguments (filters, pagination) |
-| `@lakeql/response-transformer` | Transforms raw Trino responses into GraphQL-compatible shapes |
-| `@lakeql/helpers` | Shared utility functions |
-| `@lakeql/logger` | Structured logging |
-
-## Schema loading
-
-Query and mutation schemas are loaded automatically at startup using glob patterns. The server scans for files matching `schemas/**/{query,mutation}-schema.{ts,js,mjs}` in the configured schema directory. Each schema file registers its types and resolvers on the shared Pothos builder — no manual wiring required.
-
-## Quick start
-
-Install the required packages:
-
-<Command variant="install">
-  @lakeql/api @lakeql/query-builder @lakeql/trino-client @t3-oss/env-core zod
-</Command>
-
-Set up the configuration (`src/config.ts`):
-
-```ts path="src/config.ts"
-import { defineConfig } from "@lakeql/api/config"
-
-import { getUser } from "./auth"
-import { allConfigs } from "./config-registry"
-import { permissions } from "./permissions"
-
-const baseDir = import.meta.dirname
-
-export const config = defineConfig({
-  allConfigs,
-  baseDir,
-  getUser,
-  graphqlPath: "/graphql",
-  healthCheckEndpoint: "/live",
-  permissions,
-  port: 4000,
-  schemaPath: "./schemas",
-})
+```ts
+import { defineApiConfig } from "@lakeql/api/config"
+import { createApiResolveAuth } from "@lakeql/api/resolve-auth"
+import { trinoUserImpersonation } from "@lakeql/api/trino-user-impersonation"
 ```
 
-Create the entry point (`src/index.ts`):
-
-```ts path="src/index.ts"
-import { config } from "./config"
-
-await config.startServer()
-```
-
-The server starts on `http://localhost:4000` with GraphiQL available at `/graphql` in development mode.
-
-<Note title="Use @lakeql/create-app for a ready-to-go setup">
-  Instead of wiring everything manually, use
-  [`@lakeql/create-app`](/docs/lakeql/create-app/usage) to scaffold a fully
-  functional project with auth, permissions, environment validation, and CLI
-  integration pre-configured.
-</Note>
+The [API reference](/docs/api/api-reference) lists every export; each lives under the subpath matching its source module.

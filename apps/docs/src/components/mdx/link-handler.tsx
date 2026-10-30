@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils"
 
 type AnchorProps = ComponentPropsWithoutRef<"a">
 
-export function LinkHandler({ href, children, ...props }: AnchorProps) {
+export const LinkHandler = ({ href, children, ...props }: AnchorProps) => {
   if (!href) {
     return (
       <Link

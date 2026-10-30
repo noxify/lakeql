@@ -1,189 +1,41 @@
 ---
-title: "lakeql-cli pull"
-navTitle: "pull"
-description: Interactive query endpoint generation based on a remote table.
-cliCommand: "pull"
+title: pull
+navTitle: pull
+description: Interactively generate a query endpoint from a remote table.
+cliCommand: pull
 ---
 
-Connects to Trino, introspects table columns, and generates a full set of TypeScript files for type-safe query endpoints. When run without flags, the command walks you through interactive prompts to select a schema and tables.
+`pull` introspects a remote table through its data source and generates the typed endpoint files for it — the interface, query schema, config, and JSON schema. Run interactively, it prompts for the source, catalog, schema, and table; pass those as options to skip the prompts.
 
-## Usage
+<Command variant="exec">lakeql-cli pull</Command>
 
-```bash
-lakeql-cli pull [options]
-```
+To run non-interactively, provide the target directly:
 
-```bash
-lakeql-cli pull --catalog hive --schema myschema --table users
-```
+<Command variant="exec">
+  lakeql-cli pull --source warehouse --catalog hive --schema sales --table
+  orders
+</Command>
 
-```
-› Pulling 1 item(s) from hive.myschema into ./src/schemas/generated...
-❯ Pull 1 item(s)
-  ✓ hive.myschema.users
-✓ Pull 1 item(s)
-✓ Create registry
-✔ Pull completed: 1 item(s) generated under ./src/schemas/generated/hive/myschema
-```
+Generated files are written under your configured source path, organized by data source, catalog, and schema. See [Key Concepts](/docs/lakeql/introduction/key-concepts) for the generated-file layout. For generating many endpoints at once, use `--bulk` with a bulk config.
 
-The registry is generated once after all selected items are processed.
+<Note>
+  `pull` always generates a read-only endpoint (`mutation: false`): it does not
+  add a `Mutation` root field or otherwise make the endpoint writable. To enable
+  writes, add a `mutation` block to the generated `endpoint.json` and regenerate
+  — see [Mutations](/docs/lakeql/endpoints/mutations).
+</Note>
 
-When more than 10 tables are selected in non-bulk mode, `pull` switches to a compact live progress view (`Completed X/Y | Active A/B`) with active load preview, instead of rendering one task line per table. Use `--concurrency <count>` to override the default limit of `8` concurrent pull operations.
+<Warning>
+  `pull` recreates the endpoint's output directory: it recursively deletes the
+  target table's generated folder before writing. Do not keep hand-edited files
+  inside a generated endpoint directory — put customizations in your own
+  modules.
+</Warning>
 
-## Bulk mode
-
-When `--bulk` is specified, the command reads a config file and processes multiple schemas and tables in parallel — instead of using interactive prompts.
-
-### Syntax
-
-```bash
-lakeql-cli pull --bulk [options]
-```
-
-### Config file
-
-The config file is automatically detected by looking for `import.config.{mjs,ts,js,json}` in the current directory (powered by [c12](https://github.com/unjs/c12)). You can override this with `--bulk-config`.
-
-Use the `@type` JSDoc annotation for type-safety and autocomplete:
-
-```javascript
-// import.config.mjs
-
-/** @type {import('@lakeql/cli').BulkPullConfig} */
-export default [
-  {
-    schema: "sales",
-    tables: ["orders", "customers", "products"],
-    views: ["daily_revenue"],
-  },
-  {
-    schema: "analytics",
-    tables: ["events", "sessions"],
-  },
-  {
-    schema: "inventory",
-    catalog: "warehouse", // optional catalog override per entry
-    tables: ["stock_levels"],
-    views: ["low_stock_alerts"],
-  },
-]
-```
-
-#### Supported formats
-
-The config file can be any of the following (in precedence order):
-
-1. `import.config.mjs`
-2. `import.config.ts`
-3. `import.config.js`
-4. `import.config.json`
-
-### Config schema
-
-Each entry in the array has the following shape:
-
-| Field     | Type       | Required | Description                      |
-| --------- | ---------- | -------- | -------------------------------- |
-| `schema`  | `string`   | Yes      | The schema to pull from          |
-| `catalog` | `string`   | No       | Catalog override for this entry  |
-| `tables`  | `string[]` | No       | Non-empty list of tables to pull |
-| `views`   | `string[]` | No       | Non-empty list of views to pull  |
-
-At least one non-empty list (`tables` or `views`) must be provided per entry. Entries with both lists missing or empty fail validation before execution.
-
-### Catalog precedence
-
-The catalog is resolved in the following order (first match wins):
-
-1. `--catalog` CLI flag (highest priority)
-2. `catalog` field in the config entry
-3. `HIVE_CATALOG` environment variable (fallback)
-
-### Execution behavior
-
-- All schema entries are processed **in parallel** for faster execution.
-- Tables and views within a single entry are processed sequentially for small entries.
-- Bulk item pulls are capped globally at 8 concurrent operations across the whole bulk run by default.
-- Bulk entries with more than 10 items switch to bounded parallel item processing under that global cap.
-- Use `--concurrency <count>` to raise or lower that limit for both bulk and non-bulk multi-item pulls.
-- The config registry is generated **once** at the end (not per entry).
-- If one entry fails, the remaining entries continue to execute.
-- Progress is displayed using a structured task list in the terminal.
-- Bulk entries with more than 10 items switch to the same compact live progress view used by large non-bulk pulls.
-
-### Usage
-
-```bash
-# Auto-detect config file (import.config.mjs, .ts, .js, or .json)
-lakeql-cli pull --bulk
-
-# Using a custom config file
-lakeql-cli pull --bulk --bulk-config=./my-import.config.mjs
-
-# With global catalog override
-lakeql-cli pull --bulk --catalog my_catalog
-
-# With a custom concurrency limit
-lakeql-cli pull --bulk --concurrency 5
-
-# Skip registry generation
-lakeql-cli pull --bulk --skip-registry
-```
-
-### Terminal output
-
-```
-⠋ Pull data
-  ✓ hive/sales — 4 item(s) pulled
-  ⠋ hive/analytics — 11 item(s)
-    › Completed 6/11 | Active 5/8
-    ›   - hive.analytics.events_6
-    ›   - hive.analytics.events_7
-    ›   - hive.analytics.events_8
-    ›   - hive.analytics.events_9
-    ›   - hive.analytics.events_10
-  ✓ warehouse/inventory — 2 item(s) pulled
-✓ Pull data
-✓ Create registry
-```
-
-## Error output
-
-When a request fails, the CLI prints structured output with context and hints:
-
-```text
-✖ LakeQL CLI failed.
-› Reason: Failed to list schemas.
-› Context: list-schemas (catalog=hive)
-› Root cause: fetch failed
-› Error code: ECONNREFUSED
-› Hint: Verify HIVE_HOST/HIVE_PORT, credentials and network reachability to Trino.
-```
-
-For non-error aborts (for example prompt cancellation), the headline is shown as a warning and the command exits with code `0`.
-
-### Type export
-
-The `BulkPullConfig` and `BulkPullEntry` types are exported from `@lakeql/cli` for use in your config file:
-
-```ts
-import type { BulkPullConfig, BulkPullEntry } from "@lakeql/cli"
-```
-
-## Generated files
-
-For each selected table, the following files are created under `schemas/generated/{catalog}/{schema}/{table}/`:
-
-- `config.ts` — Endpoint configuration
-- `interface.ts` — TypeScript interface for the table columns
-- `query-schema.ts` — GraphQL query schema definition
-- `json-schema.json` — JSON Schema representation
-- `endpoint.json` — Endpoint definition for re-generation
-
-`pull` generates query-only endpoints, so `mutation-schema.ts` is not created for pulled tables.
-
-Field names from source schemas are normalized to valid identifier names during generation (for example, spaces become underscores). If two source fields normalize to the same generated name, generation fails with a clear collision error instead of producing ambiguous output.
-
-## Options
+<Note>
+  `pull` updates the config registry by default so new endpoints are type-safe.
+  Pass `--skip-registry` to skip that step, then run
+  [`create-registry`](/docs/cli/commands/create-registry) later.
+</Note>
 
 <CliCommandDetails command="pull" />

@@ -1,7 +1,7 @@
 {
   "name": "@lakeql/schema-generator",
   "version": "0.4.6",
-  "description": "Generates GraphQL schemas, Hive table definitions, and JSON schemas from Trino metadata",
+  "description": "Generates GraphQL schemas, Hive table definitions, and JSON schemas from data source metadata",
   "keywords": [
     "codegen",
     "graphql",
@@ -60,21 +60,21 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@lakeql/datasource": "workspace:*",
     "@lakeql/helpers": "workspace:*",
-    "kysely": "0.29.4",
     "lodash-es": "4.18.1",
-    "magic-regexp": "0.11.0",
-    "zod": "4.4.3"
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "@lakeql/tsconfig": "workspace:*",
+    "@lakeql/vitest-config": "workspace:*",
     "@types/json-schema": "7.0.15",
     "@types/lodash-es": "4.17.12",
-    "@types/node": "24.13.3",
-    "fast-check": "^4.9.0",
+    "@types/node": "24.19.2",
+    "fast-check": "4.10.2",
     "json-column-parser": "2.0.0",
-    "tsdown": "0.22.13",
+    "tsdown": "0.23.3",
     "typescript": "6.0.3",
-    "vitest": "4.1.10"
+    "vitest": "5.0.5"
   }
 }

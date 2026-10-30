@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest"
+import { describe, expect, it } from "vitest"
 
 import { generateJsonSchema } from "../src/json-schema"
 
@@ -72,7 +72,7 @@ const primitives = [
 ]
 
 describe("simple", () => {
-  test("boolean type", () => {
+  it("boolean type", () => {
     const generatedSchema = generateJsonSchema({
       fieldName: "boolean",
     })
@@ -90,7 +90,7 @@ describe("simple", () => {
     expect(generatedSchema).toMatchObject(expectedSchema)
   })
 
-  test.each(primitives)("$type", ({ type, expected }) => {
+  it.each(primitives)("$type", ({ type, expected }) => {
     const generatedSchema = generateJsonSchema({
       fieldName: type,
     })
@@ -109,8 +109,35 @@ describe("simple", () => {
   })
 })
 
+describe("type normalization (native regex)", () => {
+  // Locks in behavior equivalence after dropping magic-regexp: parameterized
+  // SQL type strings are normalized to their base type word before the switch.
+  const normalizationCases = [
+    { type: "timestamp(3)", expected: { format: "date-time", type: "string" } },
+    { type: "decimal(3,10)", expected: { type: "number" } },
+    { type: "varchar", expected: { type: "string" } },
+    { type: "integer", expected: { type: "integer" } },
+  ]
+
+  it.each(normalizationCases)("normalizes $type", ({ type, expected }) => {
+    const generatedSchema = generateJsonSchema({
+      fieldName: type,
+    })
+
+    expect(generatedSchema).toMatchObject({
+      $schema: "https://json-schema.org/draft-07/schema#",
+      properties: {
+        fieldName: {
+          ...expected,
+        },
+      },
+      type: "object",
+    })
+  })
+})
+
 describe("error cases", () => {
-  test("array with multiple elements", () => {
+  it("array with multiple elements", () => {
     expect(() =>
       generateJsonSchema({
         arrayField: ["varchar", "integer"],
@@ -121,7 +148,7 @@ describe("error cases", () => {
     )
   })
 
-  test("array of arrays", () => {
+  it("array of arrays", () => {
     expect(() =>
       generateJsonSchema({
         fieldName: "varchar",
@@ -132,7 +159,7 @@ describe("error cases", () => {
     )
   })
 
-  test("unexpected array content", () => {
+  it("unexpected array content", () => {
     expect(() =>
       generateJsonSchema({
         badArray: [123], // Neither string nor object
@@ -143,7 +170,7 @@ describe("error cases", () => {
 })
 
 describe("complex", () => {
-  test("object", () => {
+  it("object", () => {
     const generatedSchema = generateJsonSchema({
       fieldName: "varchar",
       objField: {
@@ -176,7 +203,7 @@ describe("complex", () => {
     expect(generatedSchema).toMatchObject(expectedSchema)
   })
 
-  test("object with unknown type", () => {
+  it("object with unknown type", () => {
     expect(() =>
       generateJsonSchema({
         fieldName: "varchar",
@@ -185,7 +212,7 @@ describe("complex", () => {
     ).toThrow("Type unknowntype is unknown.")
   })
 
-  test("array of object", () => {
+  it("array of object", () => {
     const generatedSchema = generateJsonSchema({
       arrObjField: [
         {
@@ -223,7 +250,7 @@ describe("complex", () => {
     expect(generatedSchema).toMatchObject(expectedSchema)
   })
 
-  test("object with error in nested object", () => {
+  it("object with error in nested object", () => {
     expect(() =>
       generateJsonSchema({
         fieldName: "varchar",
@@ -235,7 +262,7 @@ describe("complex", () => {
     ).toThrow("Type unknowntype is unknown.")
   })
 
-  test("nested array of object", () => {
+  it("nested array of object", () => {
     const generatedSchema = generateJsonSchema({
       arrObjField: [
         {

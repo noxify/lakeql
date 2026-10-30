@@ -1,0 +1,62 @@
+{
+  "name": "@lakeql/config",
+  "version": "0.1.0",
+  "description": "Adapter-factory registry and composition layer for LakeQL runtimes",
+  "keywords": [
+    "adapter",
+    "config",
+    "lakeql",
+    "registry"
+  ],
+  "homepage": "https://lakeql.dev",
+  "license": "Apache-2.0",
+  "author": {
+    "name": "Marcus Reinhardt",
+    "url": "https://github.com/noxify"
+  },
+  "contributors": [
+    {
+      "name": "Marcus Reinhardt",
+      "url": "https://github.com/noxify"
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/noxify/lakeql",
+    "directory": "packages/config"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs"
+    }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "clean": "git clean -xdf .cache .turbo dist node_modules dist",
+    "clean:cache": "git clean -xdf .cache .turbo",
+    "clean:dist": "git clean -xdf dist",
+    "dev": "tsdown --watch",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@lakeql/datasource": "workspace:*",
+    "c12": "4.0.0-rc.4",
+    "jiti": "2.7.0"
+  },
+  "devDependencies": {
+    "@lakeql/tsconfig": "workspace:*",
+    "@lakeql/vitest-config": "workspace:*",
+    "@types/node": "24.19.2",
+    "fast-check": "4.10.2",
+    "tsdown": "0.23.3",
+    "typescript": "6.0.3",
+    "vitest": "5.0.5"
+  }
+}

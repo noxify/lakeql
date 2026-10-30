@@ -11,6 +11,8 @@ import { pathToFileURL } from "node:url"
 import type { Listr } from "listr2"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
+import { makeResolvedDataSource } from "../support/mock-datasource"
+
 // --- Mocks ---
 
 const taskOutputs: string[] = []
@@ -73,7 +75,21 @@ vi.mock(import("@/path-utils"), () => ({
 
 vi.mock(import("@/config"), () => ({
   resolveSourcePath: async (override?: string) => override ?? testDir,
-  loadConfig: async () => ({ sourcePath: "." }),
+  loadConfig: async () => ({
+    config: { dataSources: {}, sourcePath: "." },
+    adapters: [],
+  }),
+}))
+
+// Pull/bulk-pull now resolve a live data source and catalog up-front.
+const mockResolveCatalog = vi.fn(async () => "default_catalog")
+
+vi.mock(import("@/resolve-datasource"), () => ({
+  resolveDataSource: async () => makeResolvedDataSource({ name: "default" }),
+}))
+
+vi.mock(import("@/resolve-catalog"), () => ({
+  resolveCatalog: () => mockResolveCatalog(),
 }))
 
 // Mock c12 to do a simple file import (like our previous implementation)
@@ -190,6 +206,8 @@ describe("bulk-pull (integration)", () => {
     mockExecutePull.mockReset()
     setDefaultExecutePullMock()
     mockRunConfigRegistryGeneration.mockClear()
+    mockResolveCatalog.mockClear()
+    mockResolveCatalog.mockResolvedValue("default_catalog")
     taskOutputs.length = 0
   })
 
@@ -385,7 +403,12 @@ describe("bulk-pull (integration)", () => {
   })
 
   describe("catalog precedence", () => {
-    it("should use CLI catalog over config catalog and ENV", async () => {
+    // In bulk mode the per-entry `catalog` is the most specific level and wins
+    // over the resolved catalog (`resolveCatalog`, which itself applies
+    // CLI-flag > connection-catalog > prompt). When an entry omits `catalog`,
+    // the resolved catalog is used as the fallback.
+    it("uses the per-entry catalog over the resolved catalog", async () => {
+      mockResolveCatalog.mockResolvedValue("resolved_catalog")
       await writeConfig([
         { schema: "schema1", catalog: "config_catalog", tables: ["t1"] },
       ])
@@ -398,29 +421,13 @@ describe("bulk-pull (integration)", () => {
 
       expect(mockExecutePull).toHaveBeenCalledWith(
         expect.objectContaining({
-          catalog: "cli_catalog",
-        })
-      )
-    })
-
-    it("should use config catalog over ENV when no CLI catalog", async () => {
-      await writeConfig([
-        { schema: "schema1", catalog: "config_catalog", tables: ["t1"] },
-      ])
-
-      await executeBulkPull({
-        configPath: "import.config.mjs",
-        skipRegistry: true,
-      })
-
-      expect(mockExecutePull).toHaveBeenCalledWith(
-        expect.objectContaining({
           catalog: "config_catalog",
         })
       )
     })
 
-    it("should fall back to ENV catalog when neither CLI nor config provides one", async () => {
+    it("falls back to the resolved catalog when the entry omits one", async () => {
+      mockResolveCatalog.mockResolvedValue("resolved_catalog")
       await writeConfig([{ schema: "schema1", tables: ["t1"] }])
 
       await executeBulkPull({
@@ -430,7 +437,7 @@ describe("bulk-pull (integration)", () => {
 
       expect(mockExecutePull).toHaveBeenCalledWith(
         expect.objectContaining({
-          catalog: "default_catalog",
+          catalog: "resolved_catalog",
         })
       )
     })

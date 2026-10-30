@@ -1,0 +1,78 @@
+---
+title: Nested Fields
+navTitle: Nested Fields
+description: Object and Array field types, including recursive nesting.
+---
+
+Beyond the six primitives in [Field Types](/docs/lakeql/endpoints/field-types), a field can be an `Object` or an `Array`.
+
+## Object
+
+An `Object` field nests its own `fields` array, with the same shape as the top-level `fields` array — including further `Object` or `Array` fields. At least one field is required.
+
+```json
+{
+  "version": "1.0",
+  "catalog": "hive",
+  "schema": "sales",
+  "tableName": "customers",
+  "fields": [
+    { "name": "id", "type": "Integer", "options": { "required": true } },
+    { "name": "name", "type": "String" },
+    {
+      "name": "address",
+      "type": "Object",
+      "fields": [
+        { "name": "street", "type": "String" },
+        { "name": "city", "type": "String" },
+        { "name": "postalCode", "type": "String" },
+        { "name": "country", "type": "String" }
+      ]
+    }
+  ]
+}
+```
+
+## Array
+
+An `Array` field has an `items` definition instead of `fields`. `items` is either a bare primitive type:
+
+```json
+{
+  "name": "tags",
+  "type": "Array",
+  "items": { "type": "String" }
+}
+```
+
+or an `Object` with its own `fields` array:
+
+```json
+{
+  "version": "1.0",
+  "catalog": "hive",
+  "schema": "sales",
+  "tableName": "orders",
+  "fields": [
+    { "name": "id", "type": "Integer", "options": { "required": true } },
+    {
+      "name": "lineItems",
+      "type": "Array",
+      "items": {
+        "type": "Object",
+        "fields": [
+          { "name": "sku", "type": "String", "options": { "required": true } },
+          {
+            "name": "quantity",
+            "type": "Integer",
+            "options": { "required": true }
+          },
+          { "name": "unitPrice", "type": "Float" }
+        ]
+      }
+    }
+  ]
+}
+```
+
+`Object` and `Array` fields nest recursively: an `Object` field inside an `Array`'s `items` can itself contain further `Object` or `Array` fields, to whatever depth your table structure needs.

@@ -1,5 +1,6 @@
 ---
 services:
+
   minitrino:
     environment:
       SPOOLING_PROTOCOL_CONFIG_PROPERTIES: |-

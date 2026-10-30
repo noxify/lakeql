@@ -1,0 +1,72 @@
+---
+title: Runtime Config
+navTitle: Runtime Config
+description: How configuration is loaded, validated, and composed into a runtime.
+---
+
+`@lakeql/config` keeps three things separate: the config file you author, the validated data it produces, and the live runtime objects composed from it. Loading the config never opens a connection — composition is an explicit, separate step.
+
+## Three Phases
+
+```text
+defineConfig()   author the config file
+loadConfig()     load + resolve → neutral project object
+createLakeQLRuntime()   compose runtime that owns the data sources
+```
+
+### Author
+
+[`defineConfig`](/docs/packages/config/api-reference#define-config) declares the registered adapters and the named data sources. The adapter list provides the available adapter types; each data source picks one and supplies its connection config.
+
+```ts
+import { defineConfig } from "@lakeql/config"
+import { trinoAdapterDefinition } from "@lakeql/adapter-trino"
+
+export default defineConfig({
+  sourcePath: "src",
+  adapters: [trinoAdapterDefinition],
+  dataSources: {
+    warehouse: {
+      adapter: "trino",
+      connection: {
+        host: "trino.internal",
+        port: 8080,
+        catalog: "hive",
+        auth: { type: "basic", username: "svc", password: "..." },
+      },
+    },
+  },
+})
+```
+
+### Load
+
+[`loadConfig`](/docs/packages/config/api-reference#load-config) reads the config. It returns a `LoadedLakeQLProject`: the normalized `config` (serializable data-source metadata) plus the `adapters` factory list. The adapter-owned `connection` and `writeConfig` values stay opaque — they are passed through to the adapter untouched, never cloned or serialized.
+
+Per-source validation against the adapter is not done by `loadConfig`. It runs in `defineConfig` when the config module is evaluated, and again in the adapter factory when the data source is created. A config not authored with `defineConfig` therefore gets no per-source validation until composition.
+
+### Compose
+
+[`createLakeQLRuntime`](/docs/packages/config/api-reference#create-lake-ql-runtime) takes the loaded config, the adapter factories, and a `resolveAuth` function, and builds the runtime. The runtime owns the instances it creates and exposes accessors by source name:
+
+```ts
+const runtime = await createLakeQLRuntime({ config, adapters, resolveAuth })
+
+const dataSource = runtime.getDataSource("warehouse")
+const readStrategy = runtime.getReadStrategy("warehouse")
+```
+
+## Ownership and Lifecycle
+
+The runtime is not global. Because composition is explicit, an application can create more than one runtime with different configs — useful for config reloads and tests.
+
+`runtime.close()` releases all resources: it invokes `close()` on every owned data source exactly once and is safe to call repeatedly. Wire it to your process's shutdown signals:
+
+```ts
+process.on("SIGTERM", async () => {
+  await runtime.close()
+  process.exit(0)
+})
+```
+
+Accessing an unknown source throws `UnknownDataSourceError`; requesting a write strategy from a source that has none throws `WriteStrategyNotConfiguredError`. See the [API reference](/docs/packages/config/api-reference) for the full error list.

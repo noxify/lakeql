@@ -1,0 +1,58 @@
+---
+title: Config File
+navTitle: Config File
+description: The structure of lakeql.config.ts.
+---
+
+`lakeql.config.ts` declares the adapters your project uses and the named data sources it connects to. Author it with [`defineConfig`](/docs/packages/config/api-reference#define-config) for full type inference.
+
+```ts
+import { defineConfig } from "@lakeql/config"
+import { trinoAdapterDefinition } from "@lakeql/adapter-trino"
+import { fabricAdapterDefinition } from "@lakeql/adapter-fabric"
+
+import { env } from "./src/env"
+
+export default defineConfig({
+  sourcePath: "src",
+  adapters: [trinoAdapterDefinition, fabricAdapterDefinition],
+  dataSources: {
+    warehouse: {
+      adapter: "trino",
+      connection: {
+        host: env.TRINO_HOST,
+        port: env.TRINO_PORT,
+        catalog: env.TRINO_CATALOG,
+        auth: {
+          type: "basic",
+          username: env.TRINO_USERNAME,
+          password: env.TRINO_PASSWORD,
+        },
+      },
+    },
+  },
+})
+```
+
+## Fields
+
+- **`adapters`** — the adapter definitions the project may use. The registered list provides the available adapter types.
+- **`dataSources`** — named sources, each selecting a registered `adapter` and supplying its `connection` (and optional `writeConfig`, `overrides`, and `impersonationResolver`).
+- **`sourcePath`** — base path for generated code. Defaults to `"."`.
+- **`auth`** / **`permissions`** — optional identity/impersonation config and technical-user permission rules, passed through untouched.
+
+Connection shapes are adapter-specific — see [Trino connection](/docs/data-sources/trino/connection) and [Fabric connection](/docs/data-sources/fabric/connection).
+
+## Config Merge Precedence
+
+A data source's effective connection is merged from three layers, lowest to highest precedence:
+
+1. the adapter's registration defaults,
+2. the data source's own `connection`,
+3. the data source's `overrides`.
+
+So `overrides` wins over `connection`, which wins over the adapter defaults. Each layer must be a plain-object record of serializable values, or the merge throws a `DataSourceConfigError`.
+
+## Multiple Adapters
+
+A single project can register both adapters and route each data source to a different engine — for example a Trino `warehouse` and a Fabric `reporting` source side by side.
