@@ -3,33 +3,40 @@
 </p>
 
 <h1 align="center" style="border-width:0px;margin-bottom:0px">LakeQL</h1>
-<div align="center" style="margin-bottom:50px;">Streamlined Data Access Layer for Data Platforms</div>
+<div align="center" style="margin-bottom:50px;">Universal Data Access Layer for Modern Platforms</div>
 
 <p align="center">
-  <a href="https://npmx.dev/package/@lakeql/api"><img src="https://img.shields.io/npm/v/@lakeql/api?label=%40lakeql%2Fapi&color=blue" alt="@lakeql/api on npm" /></a>
-  <a href="https://npmx.dev/package/@lakeql/cli"><img src="https://img.shields.io/npm/v/@lakeql/cli?label=%40lakeql%2Fcli&color=blue" alt="@lakeql/cli on npm" /></a>
-  <a href="https://npmx.dev/package/@lakeql/trino-client"><img src="https://img.shields.io/npm/v/@lakeql/trino-client?label=%40lakeql%2Ftrino-client&color=blue" alt="@lakeql/trino-client on npm" /></a>
-  <a href="https://npmx.dev/package/@lakeql/query-builder"><img src="https://img.shields.io/npm/v/@lakeql/query-builder?label=%40lakeql%2Fquery-builder&color=blue" alt="@lakeql/query-builder on npm" /></a>
-  <a href="https://npmx.dev/package/@lakeql/create-app"><img src="https://img.shields.io/npm/v/@lakeql/create-app?label=%40lakeql%2Fcreate-app&color=blue" alt="@lakeql/create-app on npm" /></a>
+  <a href="https://npmx.dev/org/lakeql"><img src="https://img.shields.io/badge/npm-%40lakeql-blue?logo=npm" alt="@lakeql packages on npm" /></a>
 </p>
 
-LakeQL is a monorepo that provides a type-safe GraphQL access layer for Trino-powered data platforms. It combines a backend runtime with a CLI that generates schema and query files from your existing data model.
+LakeQL is an adapter-agnostic data access layer that lets you query across your entire data stack through one type-safe GraphQL client and a single, powerful CLI. It combines a backend runtime with a CLI that generates schema and query files from your existing data model.
 
-The goal is to reduce manual boilerplate while keeping your API predictable, secure, and easy to extend.
+The goal is to reduce manual boilerplate while keeping your API predictable, secure, and easy to extend — no matter which data platform sits underneath.
+
+## Supported adapters
+
+One interface, many platforms. Connect LakeQL to the data engines your team already runs on.
+
+| Adapter | Status | Description |
+| --- | --- | --- |
+| **Trino** | Available | Query federated data across Trino clusters, with pushdown for joins, aggregations, and filters. |
+| **Microsoft Fabric** | Available | Connect to Fabric warehouses and lakehouses, with Entra ID / On-Behalf-Of authentication. |
+| **ClickHouse** | Coming soon | Sub-second analytical queries against ClickHouse clusters. |
+| **DuckDB** | Coming soon | Query local or in-memory DuckDB files and Parquet datasets. |
 
 ## Features
 
-- Type-safe GraphQL APIs for Trino-powered data platforms
-- CLI-based schema generation from existing Trino metadata and table structures
-- Built-in filtering, sorting, and pagination for generated queries
-- Extensible response transformation with reusable helper packages
-- Trino authentication with Basic Auth and OAuth flows
-- Monorepo setup with reusable packages and a ready-to-use app template
+- **Type-safe GraphQL APIs** — adapter-agnostic query generation with full TypeScript support, so you get autocomplete and compile-time checks across your data layer.
+- **CLI-based schema generation** — pull live catalog metadata from your sources and generate typed schemas that stay in sync as upstream tables evolve.
+- **Filtering, sorting & pagination** — built-in support for expressive filters, sorting, and pagination, rendered to each engine's SQL dialect.
+- **Adapter-agnostic permissions** — define access rules per data source and table, enforced consistently across every connected adapter.
+- **OpenTelemetry tracing** — optional per-data-source tracing out of the box for query latency, errors, and throughput.
+- **Flexible authentication** — OAuth2, Basic Auth, and Bearer token auth with configurable impersonation strategies per data source.
 
 ## Requirements
 
 - Node.js 24
-- pnpm 11+
+- pnpm 12+
 
 ## Getting started
 
@@ -53,6 +60,28 @@ Run the interactive CLI to generate your schemas.
 pnpm cli pull --source-path ./src
 ```
 
+### Run a query
+
+Start the server and query your generated types over GraphQL:
+
+```graphql
+query {
+  orders(
+    sorting: [{ field: id, direction: ASC }]
+    paging: { page: 1, perPage: 10 }
+  ) {
+    nodes {
+      id
+      status
+    }
+    pageInfo {
+      hasNext
+      currentPage
+    }
+  }
+}
+```
+
 ### Local development
 
 To start local development, run:
@@ -69,18 +98,17 @@ Use `pnpm build` to generate the production `dist` output, which you can then us
 
 ## Learn more
 
-Full docs and examples are available at https://lakeql.dev
+Full docs, guides, and examples are available at https://lakeql.dev
 
 ## Contributing
 
-- [Local Development](./apps/docs/content/lakeql/07.contributing/01.local-development.mdx) — set up minitrino, seed test data, run queries
-- [Contribution Guide](./apps/docs/content/lakeql/07.contributing/02.contribution-guide.mdx) — code style, changesets, project structure
+Contributions are welcome — see the [contribution guide](https://lakeql.dev/docs/lakeql/contributing/contribution-guide) to get started.
 
 ## Project background
 
 This project has its roots in the original [datalake-graphql-wrapper](https://github.com/dbsystel/datalake-graphql-wrapper).
 
-LakeQL was later rebuilt from the ground up as a fully type-safe monorepo, with a complete refactoring of the codebase and architecture.
+LakeQL was later rebuilt from the ground up as a fully type-safe, adapter-agnostic monorepo, with a complete refactoring of the codebase and architecture.
 
 ## Special thanks
 

@@ -22,8 +22,13 @@ const sorting: SortInput<OrdersTable>[] = [
 The `field` type is constrained to the columns of the table definition passed as the type parameter, so an invalid column name is a compile-time error.
 
 <Note>
-  Provide at least one sort field when paging. Without a stable order, two
-  requests for the same page can return different rows.
+  In the generated GraphQL API, `sorting` is a **required** argument. A
+  deterministic `ORDER BY` is the only way a SQL engine guarantees a stable row
+  order across pages — without it, offset-based paging can repeat or skip rows
+  between requests, so the same page can return different results. This is not
+  engine-specific (it was first observed with Trino, but any engine applying
+  `LIMIT`/`OFFSET` without an `ORDER BY` can exhibit it), which is why the
+  generated queries always require at least one sort field.
 </Note>
 
 ## Paging

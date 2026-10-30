@@ -30,7 +30,10 @@ Open the GraphQL endpoint and run a query against your generated type:
 
 ```graphql
 query {
-  orders(paging: { page: 1, perPage: 10 }) {
+  orders(
+    sorting: [{ field: id, direction: ASC }]
+    paging: { page: 1, perPage: 10 }
+  ) {
     nodes {
       id
       status
@@ -42,6 +45,13 @@ query {
   }
 }
 ```
+
+<Note>
+  `sorting` is required on every generated query. It gives the engine a
+  deterministic `ORDER BY`, so offset-based paging returns stable results
+  instead of repeating or skipping rows between pages. See [Sorting &
+  Paging](/docs/packages/query-builder/sorting-and-paging) for why.
+</Note>
 
 <Success title="You're running">
   You now have a type-safe GraphQL API over your data source. From here, add

@@ -91,6 +91,7 @@ The API server composes a GraphQL schema from the generated endpoint files. When
 query {
   orders(
     filter: { status: { eq: "shipped" } }
+    sorting: [{ field: id, direction: ASC }]
     paging: { page: 1, perPage: 10 }
   ) {
     nodes {

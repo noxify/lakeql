@@ -74,5 +74,8 @@
   },
   "oxc.enable.oxlint": true,
   "oxc.fixKind": "safe_fix_or_suggestion",
-  "oxc.requireConfig": true
+  "oxc.requireConfig": true,
+  "[dockerfile]": {
+    "editor.defaultFormatter": "ms-azuretools.vscode-containers"
+  }
 }
