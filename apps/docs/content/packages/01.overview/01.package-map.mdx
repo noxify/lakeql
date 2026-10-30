@@ -26,8 +26,8 @@ Used below the data-source abstraction, or on their own:
 | `@lakeql/trino-client` | Trino REST client | [packages/trino-client](/docs/packages/trino-client) |
 | `@lakeql/fabric-client` | Fabric SQL client | [packages/fabric-client](/docs/packages/fabric-client) |
 
-## Internal
+## Internal packages
 
-These are dependencies of the packages above. You do not install them directly: `@lakeql/datasource` (the core contracts), `@lakeql/sql-read-strategy`, `@lakeql/response-transformer`, `@lakeql/schema-generator`, `@lakeql/file-generator`, `@lakeql/column-parser`, `@lakeql/storage`, `@lakeql/parquet`, `@lakeql/helpers`, and `@lakeql/logger`.
+Most apps get these transitively through the packages above rather than installing them directly — but they are published with public, documented APIs, so you can depend on them on their own when it helps: `@lakeql/datasource` (the core contracts), `@lakeql/sql-read-strategy`, `@lakeql/response-transformer`, `@lakeql/schema-generator`, `@lakeql/file-generator`, `@lakeql/column-parser`, `@lakeql/storage`, `@lakeql/parquet`, `@lakeql/helpers`, and `@lakeql/logger`.
 
 `@lakeql/datasource` is the one internal package whose contracts you will see in type signatures — its reference lives under [data-sources](/docs/data-sources/overview/api-reference).
