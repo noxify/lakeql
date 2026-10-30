@@ -63,7 +63,6 @@
     "@lakeql/datasource": "workspace:*",
     "@lakeql/helpers": "workspace:*",
     "lodash-es": "4.18.1",
-    "magic-regexp": "0.11.2",
     "zod": "4.6.7"
   },
   "devDependencies": {

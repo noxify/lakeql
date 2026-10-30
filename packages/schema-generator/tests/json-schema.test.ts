@@ -109,6 +109,33 @@ describe("simple", () => {
   })
 })
 
+describe("type normalization (native regex)", () => {
+  // Locks in behavior equivalence after dropping magic-regexp: parameterized
+  // SQL type strings are normalized to their base type word before the switch.
+  const normalizationCases = [
+    { type: "timestamp(3)", expected: { format: "date-time", type: "string" } },
+    { type: "decimal(3,10)", expected: { type: "number" } },
+    { type: "varchar", expected: { type: "string" } },
+    { type: "integer", expected: { type: "integer" } },
+  ]
+
+  it.each(normalizationCases)("normalizes $type", ({ type, expected }) => {
+    const generatedSchema = generateJsonSchema({
+      fieldName: type,
+    })
+
+    expect(generatedSchema).toMatchObject({
+      $schema: "https://json-schema.org/draft-07/schema#",
+      properties: {
+        fieldName: {
+          ...expected,
+        },
+      },
+      type: "object",
+    })
+  })
+})
+
 describe("error cases", () => {
   it("array with multiple elements", () => {
     expect(() =>
