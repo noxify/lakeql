@@ -533,7 +533,7 @@ importers:
         version: 4.10.2
       files-sdk:
         specifier: 3.1.2
-        version: 3.1.2(@aws-sdk/client-s3@3.1159.0)(@aws-sdk/lib-storage@3.1119.0(@aws-sdk/client-s3@3.1159.0))(@aws-sdk/s3-presigned-post@3.1159.0)(@aws-sdk/s3-request-presigner@3.1159.0)(@azure/core-auth@1.11.0(supports-color@10.2.2))(@azure/identity@4.14.0(supports-color@10.2.2))(hono@4.13.14)(next@16.4.3(@babel/core@7.29.7(supports-color@10.2.2))(@types/node@24.19.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@10.2.2)(zod@4.6.7)
+        version: 3.1.2(@aws-sdk/client-s3@3.1159.0)(@aws-sdk/lib-storage@3.1119.0(@aws-sdk/client-s3@3.1159.0))(@aws-sdk/s3-presigned-post@3.1159.0)(@aws-sdk/s3-request-presigner@3.1159.0)(@azure/core-auth@1.11.0(supports-color@10.2.2))(@azure/identity@4.14.1(supports-color@10.2.2))(hono@4.13.14)(next@16.4.3(@babel/core@7.29.7(supports-color@10.2.2))(@types/node@24.19.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@10.2.2)(zod@4.6.7)
       msw:
         specifier: 3.0.3
         version: 3.0.3(@types/node@24.19.2)(graphql@17.0.2)(supports-color@10.2.2)(typescript@6.0.3)(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))
@@ -843,8 +843,8 @@ importers:
   packages/fabric-client:
     dependencies:
       '@azure/identity':
-        specifier: 4.14.0
-        version: 4.14.0(supports-color@10.2.2)
+        specifier: 4.14.1
+        version: 4.14.1(supports-color@10.2.2)
       mssql:
         specifier: 12.7.13
         version: 12.7.13(supports-color@10.2.2)
@@ -1220,7 +1220,7 @@ importers:
         version: 4.10.2
       files-sdk:
         specifier: 3.1.2
-        version: 3.1.2(@aws-sdk/client-s3@3.1159.0)(@aws-sdk/lib-storage@3.1119.0(@aws-sdk/client-s3@3.1159.0))(@aws-sdk/s3-presigned-post@3.1159.0)(@aws-sdk/s3-request-presigner@3.1159.0)(@azure/core-auth@1.11.0(supports-color@10.2.2))(@azure/identity@4.14.0(supports-color@10.2.2))(hono@4.13.14)(next@16.4.3(@babel/core@7.29.7(supports-color@10.2.2))(@types/node@24.19.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@10.2.2)(zod@4.6.7)
+        version: 3.1.2(@aws-sdk/client-s3@3.1159.0)(@aws-sdk/lib-storage@3.1119.0(@aws-sdk/client-s3@3.1159.0))(@aws-sdk/s3-presigned-post@3.1159.0)(@aws-sdk/s3-request-presigner@3.1159.0)(@azure/core-auth@1.11.0(supports-color@10.2.2))(@azure/identity@4.14.1(supports-color@10.2.2))(hono@4.13.14)(next@16.4.3(@babel/core@7.29.7(supports-color@10.2.2))(@types/node@24.19.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@10.2.2)(zod@4.6.7)
       tsdown:
         specifier: 0.23.3
         version: 0.23.3(tsx@4.23.15)(typescript@6.0.3)
@@ -1323,7 +1323,7 @@ importers:
         version: 2.7.0
       files-sdk:
         specifier: 3.1.2
-        version: 3.1.2(@aws-sdk/client-s3@3.1159.0)(@aws-sdk/lib-storage@3.1119.0(@aws-sdk/client-s3@3.1159.0))(@aws-sdk/s3-presigned-post@3.1159.0)(@aws-sdk/s3-request-presigner@3.1159.0)(@azure/core-auth@1.11.0(supports-color@10.2.2))(@azure/identity@4.14.0(supports-color@10.2.2))(hono@4.13.14)(next@16.4.3(@babel/core@7.29.7(supports-color@10.2.2))(@types/node@24.19.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@10.2.2)(zod@4.6.7)
+        version: 3.1.2(@aws-sdk/client-s3@3.1159.0)(@aws-sdk/lib-storage@3.1119.0(@aws-sdk/client-s3@3.1159.0))(@aws-sdk/s3-presigned-post@3.1159.0)(@aws-sdk/s3-request-presigner@3.1159.0)(@azure/core-auth@1.11.0(supports-color@10.2.2))(@azure/identity@4.14.1(supports-color@10.2.2))(hono@4.13.14)(next@16.4.3(@babel/core@7.29.7(supports-color@10.2.2))(@types/node@24.19.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@10.2.2)(zod@4.6.7)
       hyparquet-writer:
         specifier: 0.17.0
         version: 0.17.0
@@ -1510,8 +1510,8 @@ packages:
     resolution: {integrity: sha512-9n2pWK61veAuN0V20t9lOuoV4CFMdyAZ1ygZzvBGk/pBBJRib/PjL9PLXa/aI2CcPpyHfqVsxxqLCYl6uZlfDw==}
     engines: {node: '>=22.0.0'}
 
-  '@azure/identity@4.14.0':
-    resolution: {integrity: sha512-8utCLdTZn14CiAe0HW4JbtzUMsc0mdDwnjUvStFMrR4IxQP8S2eL9zVAdplpfORVJGYmidZElpeXRYjJQ4UyUw==}
+  '@azure/identity@4.14.1':
+    resolution: {integrity: sha512-HHuuFrmN1uuF9D5A6aAo5eHzNFNX4Q+P4SksZqDKse5YaJFFy/zDLG3wXHEV2FVGgetZ3QM8jGURNBtnQYf1NQ==}
     engines: {node: '>=22.0.0'}
 
   '@azure/keyvault-common@2.1.0':
@@ -7020,7 +7020,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@azure/identity@4.14.0(supports-color@10.2.2)':
+  '@azure/identity@4.14.1(supports-color@10.2.2)':
     dependencies:
       '@azure/abort-controller': 2.2.0
       '@azure/core-auth': 1.11.0(supports-color@10.2.2)
@@ -9532,7 +9532,7 @@ snapshots:
     dependencies:
       is-unicode-supported: 2.1.0
 
-  files-sdk@3.1.2(@aws-sdk/client-s3@3.1159.0)(@aws-sdk/lib-storage@3.1119.0(@aws-sdk/client-s3@3.1159.0))(@aws-sdk/s3-presigned-post@3.1159.0)(@aws-sdk/s3-request-presigner@3.1159.0)(@azure/core-auth@1.11.0(supports-color@10.2.2))(@azure/identity@4.14.0(supports-color@10.2.2))(hono@4.13.14)(next@16.4.3(@babel/core@7.29.7(supports-color@10.2.2))(@types/node@24.19.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@10.2.2)(zod@4.6.7):
+  files-sdk@3.1.2(@aws-sdk/client-s3@3.1159.0)(@aws-sdk/lib-storage@3.1119.0(@aws-sdk/client-s3@3.1159.0))(@aws-sdk/s3-presigned-post@3.1159.0)(@aws-sdk/s3-request-presigner@3.1159.0)(@azure/core-auth@1.11.0(supports-color@10.2.2))(@azure/identity@4.14.1(supports-color@10.2.2))(hono@4.13.14)(next@16.4.3(@babel/core@7.29.7(supports-color@10.2.2))(@types/node@24.19.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@10.2.2)(zod@4.6.7):
     dependencies:
       aws4fetch: 1.0.20
       commander: 15.0.0
@@ -9547,7 +9547,7 @@ snapshots:
       '@aws-sdk/s3-presigned-post': 3.1159.0
       '@aws-sdk/s3-request-presigner': 3.1159.0
       '@azure/core-auth': 1.11.0(supports-color@10.2.2)
-      '@azure/identity': 4.14.0(supports-color@10.2.2)
+      '@azure/identity': 4.14.1(supports-color@10.2.2)
       '@modelcontextprotocol/sdk': 1.32.2(supports-color@10.2.2)(zod@4.6.7)
       hono: 4.13.14
       next: 16.4.3(@babel/core@7.29.7(supports-color@10.2.2))(@types/node@24.19.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -11790,7 +11790,7 @@ snapshots:
   tedious@20.0.0(supports-color@10.2.2):
     dependencies:
       '@azure/core-auth': 1.11.0(supports-color@10.2.2)
-      '@azure/identity': 4.14.0(supports-color@10.2.2)
+      '@azure/identity': 4.14.1(supports-color@10.2.2)
       '@azure/keyvault-keys': 4.10.2(supports-color@10.2.2)
       '@js-joda/core': 6.1.0
       '@types/node': 24.19.2

@@ -58,7 +58,7 @@ describe("fabric-obo build", () => {
     const { ops } = fabricOboTemplate.build(context(fabricDeps))
     const deps = ops.find((op): op is AddDepsOp => op.type === "addDeps")
 
-    expect(deps?.deps).toStrictEqual({ "@azure/identity": "4.14.0" })
+    expect(deps?.deps).toStrictEqual({ "@azure/identity": "4.14.1" })
   })
 
   it("declares the OBO_* env vars and schema with the Warehouse scope default", () => {

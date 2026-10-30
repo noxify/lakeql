@@ -47,7 +47,7 @@ describe("applying a feature into an existing project", () => {
       writePackageJson({ zod: "3.0.0" })
 
       const outcome = applyFeature(
-        result([{ type: "addDeps", deps: { "@azure/identity": "4.14.0" } }]),
+        result([{ type: "addDeps", deps: { "@azure/identity": "4.14.1" } }]),
         { projectDir }
       )
 
@@ -57,7 +57,7 @@ describe("applying a feature into an existing project", () => {
         "zod",
       ])
       expect(outcome.applied).toContain(
-        "added dependencies @azure/identity@4.14.0"
+        "added dependencies @azure/identity@4.14.1"
       )
     })
 
@@ -65,7 +65,7 @@ describe("applying a feature into an existing project", () => {
       writePackageJson({ "@azure/identity": "4.0.0" })
 
       const outcome = applyFeature(
-        result([{ type: "addDeps", deps: { "@azure/identity": "4.14.0" } }]),
+        result([{ type: "addDeps", deps: { "@azure/identity": "4.14.1" } }]),
         { projectDir }
       )
 
@@ -79,7 +79,7 @@ describe("applying a feature into an existing project", () => {
     it("throws InvalidProjectError when package.json is missing", () => {
       expect(() =>
         applyFeature(
-          result([{ type: "addDeps", deps: { "@azure/identity": "4.14.0" } }]),
+          result([{ type: "addDeps", deps: { "@azure/identity": "4.14.1" } }]),
           { projectDir }
         )
       ).toThrow(InvalidProjectError)
@@ -247,7 +247,7 @@ describe("applying a feature into an existing project", () => {
 
       const feature = result(
         [
-          { type: "addDeps", deps: { "@azure/identity": "4.14.0" } },
+          { type: "addDeps", deps: { "@azure/identity": "4.14.1" } },
           {
             type: "addEnvVars",
             group: "OBO",
@@ -262,7 +262,7 @@ describe("applying a feature into an existing project", () => {
       const outcome = applyFeature(feature, { projectDir, mode: "dry-run" })
 
       expect(outcome.applied).toStrictEqual([
-        "would add dependencies @azure/identity@4.14.0",
+        "would add dependencies @azure/identity@4.14.1",
         "would append env OBO_CLIENT_ID to .env.example",
         "would create src/resolver.ts",
       ])
@@ -285,7 +285,7 @@ describe("applying a feature into an existing project", () => {
 
       const feature = result(
         [
-          { type: "addDeps", deps: { "@azure/identity": "4.14.0" } },
+          { type: "addDeps", deps: { "@azure/identity": "4.14.1" } },
           {
             type: "addEnvVars",
             group: "OBO",

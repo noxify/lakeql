@@ -18,7 +18,7 @@ import type { FeatureContext, FeatureResult, FeatureTemplate } from "./types"
 const FABRIC_ADAPTER_PACKAGE = "@lakeql/adapter-fabric"
 
 /** Exact `@azure/identity` version pinned to match the workspace (no caret). */
-const AZURE_IDENTITY_VERSION = "4.14.0"
+const AZURE_IDENTITY_VERSION = "4.14.1"
 
 /** Default OBO scope for a Fabric Warehouse (Azure SQL Database). */
 const DEFAULT_OBO_SCOPE = "https://database.windows.net/.default"

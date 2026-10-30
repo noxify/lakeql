@@ -49,7 +49,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@azure/identity": "4.14.0",
+    "@azure/identity": "4.14.1",
     "mssql": "12.7.13"
   },
   "devDependencies": {

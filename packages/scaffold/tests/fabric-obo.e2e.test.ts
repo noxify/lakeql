@@ -137,7 +137,7 @@ describe("fabric-obo end-to-end", () => {
     const pkg = JSON.parse(
       readFileSync(path.join(projectDir, "package.json"), "utf-8")
     ) as { dependencies: Record<string, string> }
-    expect(pkg.dependencies["@azure/identity"]).toBe("4.14.0")
+    expect(pkg.dependencies["@azure/identity"]).toBe("4.14.1")
 
     const envExample = readFileSync(
       path.join(projectDir, ".env.example"),

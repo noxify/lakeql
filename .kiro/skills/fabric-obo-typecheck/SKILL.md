@@ -58,7 +58,7 @@ Expect output resembling:
 ```
 ✔ Applied feature "fabric-obo"
 Changes
-  • added dependencies @azure/identity@4.14.0
+  • added dependencies @azure/identity@4.14.1
   • appended env OBO_CLIENT_ID to .env.example
   • appended env OBO_CLIENT_SECRET to .env.example
   • appended env OBO_FABRIC_SCOPE to .env.example
