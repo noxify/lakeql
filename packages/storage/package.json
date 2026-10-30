@@ -69,6 +69,11 @@
     "vitest": "5.0.5"
   },
   "peerDependencies": {
-    "files-sdk": "2.6.0"
+    "files-sdk": "^3.1.2"
+  },
+  "peerDependenciesMeta": {
+    "files-sdk": {
+      "optional": true
+    }
   }
 }
