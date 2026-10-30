@@ -1,5 +1,3 @@
-// @lakeql/fabric-client — public exports
-
 export { FabricClient } from "./client"
 
 export { withRetry } from "./retry"

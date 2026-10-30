@@ -1,5 +1,3 @@
-// @lakeql/adapter-fabric — public exports
-
 /** Fabric adapter factory implementing the neutral AdapterFactory contract. */
 export { fabricAdapterFactory } from "./adapter"
 

@@ -1,5 +1,3 @@
-// @lakeql/adapter-trino — public exports
-
 /** Trino adapter factory implementing the neutral AdapterFactory contract. */
 export { trinoAdapterFactory } from "./adapter"
 

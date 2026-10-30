@@ -24,9 +24,11 @@ export { escapeLiteral, isPlainObject } from "@lakeql/datasource"
  *
  * @example
  * ```ts
- * quoteIdentifier("my_table")       // => '[my_table]'
- * quoteIdentifier('has]bracket')     // => '[has]]bracket]'
- * quoteIdentifier("catalog.with.dot") // => '[catalog.with.dot]'
+ * quoteIdentifier("my_table") // => "[my_table]"
+ * // A literal "]" is escaped by doubling it ("]]"), per T-SQL bracket quoting:
+ * quoteIdentifier("has]bracket") // => "[has]]bracket]"
+ * // Dots stay part of the single segment, they are not treated as separators:
+ * quoteIdentifier("catalog.with.dot") // => "[catalog.with.dot]"
  * ```
  */
 export function quoteIdentifier(segment: string): string {

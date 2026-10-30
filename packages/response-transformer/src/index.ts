@@ -1,5 +1,3 @@
-// @lakeql/response-transformer — public exports
-
 // Schema-aware, adapter-neutral record transformation.
 export { transformRecords } from "./transform-records"
 export type {
