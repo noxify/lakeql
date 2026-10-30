@@ -1,6 +1,6 @@
 # @lakeql/api
 
-GraphQL API server built on Hono and Yoga with Pothos schema builder, supporting auth scopes, pagination, and Trino query execution.
+GraphQL API server built on Hono and Yoga with Pothos schema builder, supporting auth scopes, pagination, and query execution across your data sources.
 
 ## Installation
 

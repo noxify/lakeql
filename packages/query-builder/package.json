@@ -1,7 +1,7 @@
 {
   "name": "@lakeql/query-builder",
   "version": "0.2.0",
-  "description": "Kysely-based SQL query builder that translates GraphQL queries into Trino SQL",
+  "description": "Kysely-based SQL query builder that translates GraphQL queries into adapter SQL",
   "keywords": [
     "graphql",
     "kysely",

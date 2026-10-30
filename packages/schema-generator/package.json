@@ -1,7 +1,7 @@
 {
   "name": "@lakeql/schema-generator",
   "version": "0.4.6",
-  "description": "Generates GraphQL schemas, Hive table definitions, and JSON schemas from Trino metadata",
+  "description": "Generates GraphQL schemas, Hive table definitions, and JSON schemas from data source metadata",
   "keywords": [
     "codegen",
     "graphql",

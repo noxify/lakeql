@@ -1,7 +1,7 @@
 {
   "name": "@lakeql/file-generator",
   "version": "0.2.0",
-  "description": "Generates TypeScript source files from Trino table metadata",
+  "description": "Generates TypeScript source files from data source table metadata",
   "keywords": [
     "ast",
     "codegen",

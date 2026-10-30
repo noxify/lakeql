@@ -1,6 +1,6 @@
 # @lakeql/cli
 
-CLI tool for generating query endpoints by pulling table schemas from Trino and scaffolding type-safe GraphQL resolvers.
+CLI tool for generating query endpoints by pulling table schemas from your data sources and scaffolding type-safe GraphQL resolvers.
 
 ## Installation
 

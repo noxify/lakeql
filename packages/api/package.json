@@ -1,7 +1,7 @@
 {
   "name": "@lakeql/api",
   "version": "0.3.2",
-  "description": "GraphQL API server using Hono, GraphQL Yoga, and Pothos over Trino",
+  "description": "GraphQL API server using Hono, GraphQL Yoga, and Pothos over your data sources",
   "keywords": [
     "api",
     "graphql",
