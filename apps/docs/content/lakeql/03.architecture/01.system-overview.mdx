@@ -32,4 +32,4 @@ Infrastructure
 
 ## Why It's Layered This Way
 
-A new adapter provides its own connection, read, write, SQL, and response logic without changing any core package. The registration is explicit — adapters are passed into `defineConfig`, never discovered implicitly and never augmenting the config package through module augmentation. See the [package map](/docs/lakeql/introduction/package-map) for how the packages map onto these layers.
+A new adapter provides its own connection, read, write, SQL, and response logic without changing any core package. The registration is explicit — adapters are passed into `defineConfig`, never discovered implicitly and never augmenting the config package through module augmentation. See [Package Architecture](/docs/lakeql/contributing/architecture) for how the packages map onto these layers.

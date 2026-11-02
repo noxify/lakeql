@@ -4,7 +4,7 @@ navTitle: Package Map
 description: Public vs. internal packages and how they relate.
 ---
 
-LakeQL is a monorepo of focused packages. For the full dependency flow, see the [package map in the introduction](/docs/lakeql/introduction/package-map). This page focuses on what an application touches directly.
+LakeQL is a monorepo of focused packages. This page focuses on what an application touches directly. For how the packages depend on each other, see [Package Architecture](/docs/lakeql/contributing/architecture) in the contributing section.
 
 ## Imported Directly
 
@@ -28,6 +28,6 @@ Used below the data-source abstraction, or on their own:
 
 ## Internal packages
 
-Most apps get these transitively through the packages above rather than installing them directly — but they are published with public, documented APIs, so you can depend on them on their own when it helps: `@lakeql/datasource` (the core contracts), `@lakeql/sql-read-strategy`, `@lakeql/response-transformer`, `@lakeql/schema-generator`, `@lakeql/file-generator`, `@lakeql/column-parser`, `@lakeql/storage`, `@lakeql/parquet`, `@lakeql/helpers`, and `@lakeql/logger`.
+Most apps get these transitively through the packages above rather than installing them directly: `@lakeql/datasource` (the core contracts), `@lakeql/sql-read-strategy`, `@lakeql/response-transformer`, `@lakeql/schema-generator`, `@lakeql/file-generator`, `@lakeql/column-parser`, `@lakeql/storage`, `@lakeql/parquet`, `@lakeql/helpers`, and `@lakeql/logger`.
 
-`@lakeql/datasource` is the one internal package whose contracts you will see in type signatures — its reference lives under [data-sources](/docs/data-sources/overview/api-reference).
+`@lakeql/datasource` is the one internal package whose contracts you will see in type signatures. Its reference lives under [data-sources](/docs/data-sources/overview/api-reference).
