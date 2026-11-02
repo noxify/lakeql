@@ -2,11 +2,32 @@ import type { CodeBlockProps } from "renoun/components"
 import { Markdown } from "renoun/components"
 
 import { Kbd } from "@/components/ui/kbd"
+import type { SymbolIndex } from "@/lib/api-reference-symbol-index"
+import { resolveJsDocLinkHref } from "@/lib/resolve-jsdoc-link"
 
 import { LinkHandler } from "../link-handler"
 import type { AnchorProps } from "./utils"
 
-export const DescriptionBlock = ({ children }: { children: string }) => (
+interface DescriptionBlockProps {
+  children: string
+  /**
+   * Symbol → page/anchor index used to resolve inline JSDoc `{@link}` targets.
+   * When omitted, bare-symbol hrefs are passed through unchanged (e.g. in
+   * contexts that do not carry an api-reference page).
+   */
+  symbolIndex?: SymbolIndex
+  /**
+   * Absolute route of the page currently rendering, used to decide between an
+   * absolute cross-page href and a same-page fragment for `{@link}` targets.
+   */
+  currentPageHref?: string
+}
+
+export const DescriptionBlock = ({
+  children,
+  symbolIndex,
+  currentPageHref,
+}: DescriptionBlockProps) => (
   <div className="prose dark:prose-invert text-muted-foreground max-w-none text-sm">
     <Markdown
       components={{
@@ -23,7 +44,11 @@ export const DescriptionBlock = ({ children }: { children: string }) => (
         // oxlint-disable-next-line react/no-unstable-nested-components
         a: ({ href, children: linkChildren, ...props }: AnchorProps) => (
           <LinkHandler
-            href={href}
+            href={
+              href && symbolIndex && currentPageHref
+                ? resolveJsDocLinkHref(href, symbolIndex, currentPageHref)
+                : href
+            }
             {...props}
             className="border-border bg-muted/60 hover:bg-muted inline-flex rounded border px-1.5 py-0.5 font-mono text-xs underline decoration-dotted underline-offset-2"
           >

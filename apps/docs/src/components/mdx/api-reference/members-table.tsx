@@ -7,8 +7,19 @@ import {
   TableRow as UITableRow,
   TableCell,
 } from "@/components/ui/table"
+import type { SymbolIndex } from "@/lib/api-reference-symbol-index"
 
 import { DescriptionBlock } from "./description-block"
+
+/**
+ * Context threaded to every {@link DescriptionBlock} so inline JSDoc `{@link}`
+ * references in member/parameter descriptions resolve to the right page +
+ * anchor.
+ */
+interface LinkResolutionProps {
+  symbolIndex?: SymbolIndex
+  currentPageHref?: string
+}
 
 export interface MemberRow {
   name: string
@@ -33,10 +44,12 @@ export interface MemberRow {
 export const MembersTable = ({
   sectionSlug,
   rows,
+  symbolIndex,
+  currentPageHref,
 }: {
   sectionSlug: string
   rows: MemberRow[]
-}) => (
+} & LinkResolutionProps) => (
   <UITable variant="outline">
     <thead>
       <UITableRow>
@@ -59,6 +72,8 @@ export const MembersTable = ({
             row={row}
             cellId={cellId}
             hasSubRow={hasSubRow}
+            symbolIndex={symbolIndex}
+            currentPageHref={currentPageHref}
           />
         )
       })}
@@ -70,11 +85,13 @@ const MemberRowGroup = ({
   row,
   cellId,
   hasSubRow,
+  symbolIndex,
+  currentPageHref,
 }: {
   row: MemberRow
   cellId: string
   hasSubRow: boolean
-}) => {
+} & LinkResolutionProps) => {
   const hasTypeMembers = row.typeMembers && row.typeMembers.length > 0
 
   return (
@@ -120,7 +137,12 @@ const MemberRowGroup = ({
           >
             <div className="ml-4 flex flex-col gap-1.5">
               {row.description && (
-                <DescriptionBlock>{row.description}</DescriptionBlock>
+                <DescriptionBlock
+                  symbolIndex={symbolIndex}
+                  currentPageHref={currentPageHref}
+                >
+                  {row.description}
+                </DescriptionBlock>
               )}
               {row.defaultValue && (
                 <span className="text-muted-foreground inline-flex items-center gap-1 text-xs">
@@ -187,7 +209,10 @@ const MemberRowGroup = ({
                             className="text-muted-foreground whitespace-normal"
                           >
                             <div className="ml-4">
-                              <DescriptionBlock>
+                              <DescriptionBlock
+                                symbolIndex={symbolIndex}
+                                currentPageHref={currentPageHref}
+                              >
                                 {m.description}
                               </DescriptionBlock>
                             </div>

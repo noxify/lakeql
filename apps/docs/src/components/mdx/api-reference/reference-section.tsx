@@ -8,6 +8,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
+import type { SymbolIndex } from "@/lib/api-reference-symbol-index"
 import type { ResolvedExport } from "@/lib/ts-morph-analysis"
 
 import { DescriptionBlock } from "./description-block"
@@ -16,6 +17,15 @@ import { TypeParamsTable } from "./type-params-table"
 import { extractSeeLinks, kindToLabel } from "./utils"
 
 const spaceGrotesk = Space_Grotesk({ subsets: ["latin"] })
+
+/**
+ * Context threaded to every {@link DescriptionBlock} so inline JSDoc `{@link}`
+ * targets resolve against the global symbol index and the page being rendered.
+ */
+interface LinkResolutionProps {
+  symbolIndex?: SymbolIndex
+  currentPageHref?: string
+}
 
 // ---------------------------------------------------------------------------
 // Sub-sections extracted to reduce complexity
@@ -49,10 +59,12 @@ const SeeLinks = ({ tags }: { tags?: { name: string; text?: string }[] }) => {
 const FunctionSignatures = ({
   source,
   slug,
+  symbolIndex,
+  currentPageHref,
 }: {
   source: ResolvedExport
   slug: string
-}) => {
+} & LinkResolutionProps) => {
   if (!source.signatures || source.signatures.length === 0) {
     return null
   }
@@ -82,6 +94,8 @@ const FunctionSignatures = ({
               </h4>
               <MembersTable
                 sectionSlug={slug}
+                symbolIndex={symbolIndex}
+                currentPageHref={currentPageHref}
                 rows={sig.params.map((p) => ({
                   name: `${p.name}${p.isOptional ? "?" : ""}`,
                   type: p.type,
@@ -112,7 +126,12 @@ const FunctionSignatures = ({
                 </CodeBlock>
               )}
               {sig.returnsDescription && (
-                <DescriptionBlock>{sig.returnsDescription}</DescriptionBlock>
+                <DescriptionBlock
+                  symbolIndex={symbolIndex}
+                  currentPageHref={currentPageHref}
+                >
+                  {sig.returnsDescription}
+                </DescriptionBlock>
               )}
             </div>
           )}
@@ -169,10 +188,12 @@ const TypeDefinition = ({ source }: { source: ResolvedExport }) => {
 const MethodDetail = ({
   method,
   parentSlug,
+  symbolIndex,
+  currentPageHref,
 }: {
   method: ResolvedExport
   parentSlug: string
-}) => {
+} & LinkResolutionProps) => {
   const sig = method.signatures?.[0]
   const methodSlug = `${parentSlug}-${createSlug(method.name)}`
 
@@ -190,7 +211,12 @@ const MethodDetail = ({
       </div>
 
       {method.description && (
-        <DescriptionBlock>{method.description}</DescriptionBlock>
+        <DescriptionBlock
+          symbolIndex={symbolIndex}
+          currentPageHref={currentPageHref}
+        >
+          {method.description}
+        </DescriptionBlock>
       )}
 
       {/* Method type parameters */}
@@ -213,6 +239,8 @@ const MethodDetail = ({
           <h5 className="text-foreground text-xs font-semibold">Parameters</h5>
           <MembersTable
             sectionSlug={methodSlug}
+            symbolIndex={symbolIndex}
+            currentPageHref={currentPageHref}
             rows={sig.params.map((p) => ({
               name: `${p.name}${p.isOptional ? "?" : ""}`,
               type: p.type,
@@ -244,7 +272,12 @@ const MethodDetail = ({
               </CodeBlock>
             )}
             {sig.returnsDescription && (
-              <DescriptionBlock>{sig.returnsDescription}</DescriptionBlock>
+              <DescriptionBlock
+                symbolIndex={symbolIndex}
+                currentPageHref={currentPageHref}
+              >
+                {sig.returnsDescription}
+              </DescriptionBlock>
             )}
           </div>
         )}
@@ -258,8 +291,17 @@ const MethodDetail = ({
 
 /**
  * Renders a single ResolvedExport as a collapsible section with full details.
+ *
+ * @param symbolIndex - Global symbol → page/anchor index used to resolve inline
+ *   JSDoc `{@link}` references in description text.
+ * @param currentPageHref - Absolute route of the page rendering this section,
+ *   used to emit same-page fragments for symbols documented on this page.
  */
-export const ReferenceSection = ({ source }: { source: ResolvedExport }) => {
+export const ReferenceSection = ({
+  source,
+  symbolIndex,
+  currentPageHref,
+}: { source: ResolvedExport } & LinkResolutionProps) => {
   const slug = createSlug(source.name)
 
   return (
@@ -289,7 +331,12 @@ export const ReferenceSection = ({ source }: { source: ResolvedExport }) => {
         <CollapsibleContent className="px-6 pt-0 pb-4">
           <div className="space-y-4">
             {source.description && (
-              <DescriptionBlock>{source.description}</DescriptionBlock>
+              <DescriptionBlock
+                symbolIndex={symbolIndex}
+                currentPageHref={currentPageHref}
+              >
+                {source.description}
+              </DescriptionBlock>
             )}
 
             <SeeLinks tags={source.tags} />
@@ -310,7 +357,12 @@ export const ReferenceSection = ({ source }: { source: ResolvedExport }) => {
                 </div>
               )}
 
-            <FunctionSignatures source={source} slug={slug} />
+            <FunctionSignatures
+              source={source}
+              slug={slug}
+              symbolIndex={symbolIndex}
+              currentPageHref={currentPageHref}
+            />
 
             {/* Class constructor */}
             {source.classConstructor &&
@@ -320,12 +372,17 @@ export const ReferenceSection = ({ source }: { source: ResolvedExport }) => {
                     Constructor
                   </h4>
                   {source.classConstructor.description && (
-                    <DescriptionBlock>
+                    <DescriptionBlock
+                      symbolIndex={symbolIndex}
+                      currentPageHref={currentPageHref}
+                    >
                       {source.classConstructor.description}
                     </DescriptionBlock>
                   )}
                   <MembersTable
                     sectionSlug={slug}
+                    symbolIndex={symbolIndex}
+                    currentPageHref={currentPageHref}
                     rows={source.classConstructor.params.map((p) => ({
                       name: `${p.name}${p.isOptional ? "?" : ""}`,
                       type: p.type,
@@ -347,6 +404,8 @@ export const ReferenceSection = ({ source }: { source: ResolvedExport }) => {
                 </h4>
                 <MembersTable
                   sectionSlug={slug}
+                  symbolIndex={symbolIndex}
+                  currentPageHref={currentPageHref}
                   rows={source.members.map((m) => ({
                     name: `${m.name}${m.isOptional ? "?" : ""}`,
                     type: m.type,
@@ -373,6 +432,8 @@ export const ReferenceSection = ({ source }: { source: ResolvedExport }) => {
                     key={method.name}
                     method={method}
                     parentSlug={slug}
+                    symbolIndex={symbolIndex}
+                    currentPageHref={currentPageHref}
                   />
                 ))}
               </div>
@@ -382,6 +443,8 @@ export const ReferenceSection = ({ source }: { source: ResolvedExport }) => {
             {source.enumMembers && source.enumMembers.length > 0 && (
               <MembersTable
                 sectionSlug={slug}
+                symbolIndex={symbolIndex}
+                currentPageHref={currentPageHref}
                 rows={source.enumMembers.map((m) => ({
                   name: m.name,
                   type: m.value ?? "",

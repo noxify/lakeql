@@ -1,4 +1,5 @@
 // oxlint-disable react/react-compiler
+import { buildSymbolIndex } from "@/lib/api-reference-symbol-index"
 import { resolveFileExports } from "@/lib/ts-morph-analysis"
 import type {
   ResolvedExport,
@@ -48,6 +49,13 @@ interface ApiReferenceProps {
    * @example "/docs/api-reference/core/types"
    */
   referenceBaseUrl?: string
+  /**
+   * Absolute route of the page rendering this reference (e.g.
+   * `/docs/data-sources/fabric/api-reference`). Used to resolve inline JSDoc
+   * `{@link}` references to the correct page + anchor. When omitted, bare
+   * `{@link}` symbols are not rewritten.
+   */
+  currentPageHref?: string
 }
 
 /**
@@ -164,6 +172,7 @@ export const ApiReference = async ({
   variant = "full",
   resolveTypeLinksInline: resolveInlineProp,
   referenceBaseUrl,
+  currentPageHref,
 }: ApiReferenceProps) => {
   // Resolve and filter the exports first. Rendering JSX inside a try/catch
   // would not catch render-time errors (React constructs JSX lazily), so the
@@ -233,11 +242,21 @@ export const ApiReference = async ({
     )
   }
 
-  // Full mode (default)
+  // Full mode (default). Build the global symbol index once so inline JSDoc
+  // `{@link}` references in description text resolve to the right page + anchor.
+  // Resolution is skipped entirely when the caller does not supply the current
+  // page href (e.g. ad-hoc inline usage outside a docs page).
+  const symbolIndex = currentPageHref ? await buildSymbolIndex() : undefined
+
   return (
     <div className="not-prose my-6 flex flex-col">
       {exports.map((exp) => (
-        <ReferenceSection key={exp.name} source={exp} />
+        <ReferenceSection
+          key={exp.name}
+          source={exp}
+          symbolIndex={symbolIndex}
+          currentPageHref={currentPageHref}
+        />
       ))}
     </div>
   )
