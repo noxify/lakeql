@@ -8,7 +8,7 @@ Writes go through a data source's [writing](/docs/data-sources/writing). A mutat
 
 ## Write Strategy Availability
 
-A write strategy is only available when the adapter reports the capabilities it needs. The Trino adapter ships two strategies, selected by the data source's `writeConfig`. The storage strategy serializes, uploads, then registers via DDL. The INSERT strategy runs `INSERT INTO` with no object storage. The Fabric adapter is read-only. See [Trino write config](/docs/data-sources/trino/write-config) and [writing](/docs/data-sources/writing).
+A write strategy is only available when the adapter reports the capabilities it needs. For the strategies themselves and how they compare, see [write strategies](/docs/data-sources/writing/write-strategies). For how a write combines with existing data, see [load strategies](/docs/data-sources/writing/load-strategies).
 
 A data source configured without a `writeConfig` has no write strategy. In that case, `runtime.getWriteStrategy(name)` throws `WriteStrategyNotConfiguredError`.
 

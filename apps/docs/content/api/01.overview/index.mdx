@@ -4,7 +4,15 @@ navTitle: Overview
 description: What @lakeql/api provides and how it fits into a project.
 ---
 
-`@lakeql/api` is the GraphQL server layer. It composes a schema from your generated endpoint files, authenticates and authorizes requests, runs the resulting queries through the runtime, and serves the result over HTTP.
+`@lakeql/api` is the GraphQL server layer. It composes a schema from your generated endpoint files, authenticates and authorizes requests, runs the resulting queries through the runtime, and serves the result over HTTP. It does not own the runtime or the data sources. The application composes those with [`@lakeql/config`](/docs/packages/config) and passes the runtime in.
+
+The package publishes subpath exports rather than a single root. You import each piece from its module:
+
+```ts
+import { defineApiConfig } from "@lakeql/api/config"
+import { createApiResolveAuth } from "@lakeql/api/resolve-auth"
+import { trinoUserImpersonation } from "@lakeql/api/trino-user-impersonation"
+```
 
 This section covers:
 
@@ -18,4 +26,4 @@ This section covers:
   ]}
 />
 
-The full surface is in the [API reference](/docs/api/api-reference).
+The full surface is in the [API reference](/docs/api/api-reference). Each export lives under the subpath matching its source module.
