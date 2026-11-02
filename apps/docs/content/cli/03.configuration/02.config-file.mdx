@@ -4,7 +4,7 @@ navTitle: Config File
 description: How the CLI reads lakeql.config.ts.
 ---
 
-The CLI reads the project's `lakeql.config.ts` — the same config the server uses — through [`@lakeql/config`](/docs/packages/config). There is no CLI-specific config file; the data sources, adapters, and source path all come from `lakeql.config.ts`.
+The CLI reads the project's `lakeql.config.ts` through [`@lakeql/config`](/docs/packages/config). This is the same config the server uses. There is no CLI-specific config file. The data sources, adapters, and source path all come from `lakeql.config.ts`.
 
 ```ts
 import { defineConfig } from "@lakeql/config"

@@ -5,7 +5,7 @@ description: List the columns of a table.
 cliCommand: list-columns
 ---
 
-`list-columns` prints the columns of a table — their names and types — through a configured data source. Use it to inspect a table's shape before generating an endpoint with [`pull`](/docs/cli/commands/pull).
+`list-columns` prints a table's columns and their types, through a configured data source. Use it to inspect a table's shape before you generate an endpoint with [`pull`](/docs/cli/commands/pull).
 
 <Command variant="exec">
   lakeql-cli list-columns --source warehouse --schema sales --table orders

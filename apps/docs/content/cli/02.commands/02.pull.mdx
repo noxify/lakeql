@@ -5,35 +5,34 @@ description: Interactively generate a query endpoint from a remote table.
 cliCommand: pull
 ---
 
-`pull` introspects a remote table through its data source and generates the typed endpoint files for it — the interface, query schema, config, and JSON schema. Run interactively, it prompts for the source, catalog, schema, and table; pass those as options to skip the prompts.
+Run `pull` to introspect a remote table and generate its typed endpoint files. It writes the interface, query schema, config, and JSON schema. Run it with no options and it prompts for the source, catalog, schema, and table.
 
 <Command variant="exec">lakeql-cli pull</Command>
 
-To run non-interactively, provide the target directly:
+Pass those values as options to skip the prompts:
 
 <Command variant="exec">
   lakeql-cli pull --source warehouse --catalog hive --schema sales --table
   orders
 </Command>
 
-Generated files are written under your configured source path, organized by data source, catalog, and schema. See [Key Concepts](/docs/lakeql/introduction/key-concepts) for the generated-file layout. For generating many endpoints at once, use `--bulk` with a bulk config.
+Generated files land under your configured source path, organized by data source, catalog, and schema. See [Key Concepts](/docs/lakeql/introduction/key-concepts) for the layout. To generate many endpoints at once, use `--bulk` with a bulk config.
 
 <Note>
-  `pull` always generates a read-only endpoint (`mutation: false`): it does not
+  `pull` always generates a read-only endpoint (`mutation: false`). It does not
   add a `Mutation` root field or otherwise make the endpoint writable. To enable
-  writes, add a `mutation` block to the generated `endpoint.json` and regenerate
-  — see [Mutations](/docs/lakeql/endpoints/mutations).
+  writes, add a `mutation` block to the generated `endpoint.json` and
+  regenerate. See [Mutations](/docs/lakeql/endpoints/mutations).
 </Note>
 
 <Warning>
-  `pull` recreates the endpoint's output directory: it recursively deletes the
+  `pull` recreates the endpoint's output directory. It recursively deletes the
   target table's generated folder before writing. Do not keep hand-edited files
-  inside a generated endpoint directory — put customizations in your own
-  modules.
+  inside a generated endpoint directory. Put customizations in your own modules.
 </Warning>
 
 <Note>
-  `pull` updates the config registry by default so new endpoints are type-safe.
+  `pull` updates the config registry by default, so new endpoints are type-safe.
   Pass `--skip-registry` to skip that step, then run
   [`create-registry`](/docs/cli/commands/create-registry) later.
 </Note>

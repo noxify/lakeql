@@ -4,7 +4,7 @@ navTitle: Environment Variables
 description: The environment the CLI reads, and the --env option.
 ---
 
-The CLI needs the same environment your `lakeql.config.ts` references — data source hosts, credentials, and so on — because it connects to the data source to introspect and generate.
+The CLI connects to the data source to introspect and generate. It needs the same environment your `lakeql.config.ts` references: data source hosts, credentials, and so on.
 
 ## Loading an Env File
 
@@ -14,12 +14,12 @@ Every command accepts the global `--env [path]` option. It loads an env file int
 
 - Given without a value, `--env` defaults to `.env`.
 - Relative paths resolve against the directory you ran the command from.
-- Loading uses Node's built-in `.env` parser — no extra dependency.
-- A missing or unreadable file is a hard error, since you asked for it explicitly. Omit `--env` to use the ambient environment instead.
+- Loading uses Node's built-in `.env` parser, so there is no extra dependency.
+- A missing or unreadable file is a hard error, because you asked for it explicitly. Omit `--env` to use the ambient environment instead.
 
 ## CLI Log Level
 
-The CLI's own verbosity is controlled by `LOG_LEVEL`, one of `debug`, `info`, `warn`, or `error`. It defaults to `warn`.
+`LOG_LEVEL` controls the CLI's own verbosity. Set it to `debug`, `info`, `warn`, or `error`. It defaults to `warn`.
 
 ```bash
 LOG_LEVEL=debug lakeql-cli pull --env .env

@@ -5,10 +5,10 @@ description: Regenerate the config registry that keeps createPermission type-saf
 cliCommand: create-registry
 ---
 
-`create-registry` regenerates the config registry — the aggregated list of every generated endpoint config in your project. The registry is what gives `createPermission` its type-safety: it knows the available data sources, adapters, and table names at compile time.
+`create-registry` regenerates the config registry. The registry is the aggregated list of every generated endpoint config in your project. It gives `createPermission` its type-safety, because it knows the available data sources, adapters, and table names at compile time.
 
 <Command variant="exec">lakeql-cli create-registry</Command>
 
-You normally do not run this by hand — [`pull`](/docs/cli/commands/pull) updates the registry as it generates endpoints. Run `create-registry` when you pulled with `--skip-registry`, removed generated endpoints manually, or the registry has otherwise drifted from the files on disk.
+You normally do not run this by hand. [`pull`](/docs/cli/commands/pull) updates the registry as it generates endpoints. Run `create-registry` when you pulled with `--skip-registry`, removed generated endpoints manually, or the registry has otherwise drifted from the files on disk.
 
 <CliCommandDetails command="create-registry" />

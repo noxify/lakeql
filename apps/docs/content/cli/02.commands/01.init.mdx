@@ -5,9 +5,11 @@ description: Initialize a LakeQL config file in the current project.
 cliCommand: init
 ---
 
-`init` creates a starter `lakeql.config.ts` in the current project. Run it once, at the root of a new project, before introspecting any tables. If you scaffolded with [create-app](/docs/lakeql/create-app), a config file already exists and you do not need to run `init`.
+Run `init` once at the root of a new project, before you introspect any tables. It creates a starter `lakeql.config.ts` in the current directory.
 
 <Command variant="exec">lakeql-cli init</Command>
+
+If you scaffolded with [create-app](/docs/lakeql/create-app), a config file already exists. You do not need to run `init`.
 
 After the file is created, register your adapters and declare your data sources. See [Configuration](/docs/lakeql/configuration) for the config file structure.
 
