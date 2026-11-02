@@ -14,7 +14,7 @@ const rows = await client.query<{ id: number; status: string }>({
 
 ## On-Behalf-Of
 
-Pass a `bearerToken` per query to run it as another identity (OBO flow). The client uses a short-lived connection for that query instead of the shared pool:
+Pass a `bearerToken` per query to run it as another identity (OBO flow). The client then uses a short-lived connection for that query instead of the shared pool:
 
 ```ts
 await client.query({ sql: "SELECT 1", bearerToken: userAccessToken })
@@ -30,4 +30,4 @@ const promise = client.query({ sql: longRunningSql, signal: controller.signal })
 controller.abort()
 ```
 
-An aborted query throws a `FabricCancellationError`. Server-rejected statements throw a `FabricQueryError`; connection and other client failures throw a `FabricClientError`.
+An aborted query throws a `FabricCancellationError`. A server-rejected statement throws a `FabricQueryError`. Connection and other client failures throw a `FabricClientError`.

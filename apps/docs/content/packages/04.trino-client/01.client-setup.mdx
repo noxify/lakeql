@@ -4,7 +4,7 @@ navTitle: Client Setup
 description: Create and configure a TrinoClient.
 ---
 
-Create a client by constructing [`TrinoClient`](/docs/packages/trino-client/api-reference#trino-client) with connection and authentication details.
+Construct a [`TrinoClient`](/docs/packages/trino-client/api-reference#trino-client) with connection and authentication details to create a client.
 
 ```ts
 import { TrinoClient } from "@lakeql/trino-client"
@@ -19,7 +19,7 @@ const client = new TrinoClient({
 
 ## Authentication
 
-Two auth types are supported:
+The client supports two auth types:
 
 ```ts
 // Basic auth

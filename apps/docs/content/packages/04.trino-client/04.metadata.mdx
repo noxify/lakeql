@@ -4,7 +4,7 @@ navTitle: Metadata
 description: Inspect catalogs, schemas, tables, and columns.
 ---
 
-The client exposes metadata helpers that wrap the relevant Trino queries and return parsed results.
+The client exposes metadata helpers. Each one wraps the relevant Trino query and returns parsed results.
 
 ```ts
 const schemas = await client.schemas({ catalog: "hive" })
@@ -16,7 +16,7 @@ See [`schemas`](/docs/packages/trino-client/api-reference#trino-client-schemas),
 
 ## Columns
 
-[`columns`](/docs/packages/trino-client/api-reference#trino-client-columns) returns a table's columns. Pass `asObject: true` for typed `ColumnInfo` objects, or omit it for raw `[name, type, extra, description]` tuples:
+[`columns`](/docs/packages/trino-client/api-reference#trino-client-columns) returns a table's columns. Pass `asObject: true` for typed `ColumnInfo` objects. Omit it for raw `[name, type, extra, description]` tuples:
 
 ```ts
 const columns = await client.columns({

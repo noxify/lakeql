@@ -4,9 +4,9 @@ navTitle: query-builder
 description: Build type-safe filters, sorting, and paging with @lakeql/query-builder.
 ---
 
-`@lakeql/query-builder` turns GraphQL query intent into SQL. It takes a set of selected fields, a filter, sorting, and paging, and produces a compiled, adapter-neutral query that the data source's dialect renders into engine-specific SQL.
+`@lakeql/query-builder` turns GraphQL query intent into SQL. You give it selected fields, a filter, sorting, and paging. It produces a compiled, adapter-neutral query that the data source's dialect renders into engine-specific SQL.
 
-You rarely call it directly — the generated query schemas use it under the hood. But understanding its inputs helps when writing custom resolvers or debugging a generated query.
+You rarely call it directly. The generated query schemas use it under the hood. Knowing its inputs still helps when you write custom resolvers or debug a generated query.
 
 ```ts
 import { generateQuery } from "@lakeql/query-builder"
@@ -23,4 +23,4 @@ const compiled = generateQuery({
 })
 ```
 
-This section covers [filtering](/docs/packages/query-builder/filtering) and [sorting and paging](/docs/packages/query-builder/sorting-and-paging), with the full [API reference](/docs/packages/query-builder/api-reference) at the end.
+This section covers [filtering](/docs/packages/query-builder/filtering) and [sorting and paging](/docs/packages/query-builder/sorting-and-paging). The full [API reference](/docs/packages/query-builder/api-reference) comes at the end.

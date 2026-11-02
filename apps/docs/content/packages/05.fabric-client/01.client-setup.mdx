@@ -4,7 +4,7 @@ navTitle: Client Setup
 description: Create and configure a FabricClient.
 ---
 
-Create a client by constructing [`FabricClient`](/docs/packages/fabric-client/api-reference#fabric-client) with the endpoint, catalog, and authentication.
+Construct a [`FabricClient`](/docs/packages/fabric-client/api-reference#fabric-client) with the endpoint, catalog, and authentication to create a client.
 
 ```ts
 import { FabricClient } from "@lakeql/fabric-client"
@@ -24,7 +24,7 @@ const client = new FabricClient({
 
 ## Authentication
 
-Two auth types are supported, both resolving to an Azure AD access token:
+The client supports two auth types. Both resolve to an Azure AD access token:
 
 ```ts
 // OAuth2 client credentials
@@ -34,11 +34,11 @@ auth: { type: "oauth2", tenantId: "...", clientId: "...", clientSecret: "..." }
 auth: { type: "bearer", token: "..." }
 ```
 
-The `oauth2` form accepts an optional `scope` field, but it currently has no effect — the token is always acquired for the Fabric SQL scope (`https://database.windows.net/.default`).
+The `oauth2` form accepts an optional `scope` field, but it currently has no effect. The token is always acquired for the Fabric SQL scope (`https://database.windows.net/.default`).
 
 ## Retry
 
-The constructor takes an optional second argument, a [`RetryConfig`](/docs/packages/fabric-client/api-reference#retry-config), applied to each query:
+The constructor takes an optional second argument, a [`RetryConfig`](/docs/packages/fabric-client/api-reference#retry-config). It applies to each query:
 
 ```ts
 const client = new FabricClient(props, { maxRetries: 3 })
@@ -46,7 +46,7 @@ const client = new FabricClient(props, { maxRetries: 3 })
 
 ## Connection Lifecycle
 
-The client manages a TDS connection pool internally. Call [`close`](/docs/packages/fabric-client/api-reference#fabric-client-close) to release it when you are done:
+The client manages a TDS connection pool internally. When you are done, call [`close`](/docs/packages/fabric-client/api-reference#fabric-client-close) to release it:
 
 ```ts
 await client.close()
