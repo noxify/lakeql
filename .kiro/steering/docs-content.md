@@ -556,6 +556,24 @@ Use these terms consistently; do not mix synonyms across pages.
 - **Adapter** — a data-source backend (Trino, Fabric). **Capability** — a thing an adapter supports (Reads / Writes / DDL / Metadata introspection), shown via the capability block.
 - **Data source** — a configured instance of an adapter in a user's config.
 
+## Prose Style — plain language, short sentences
+
+All hand-written prose follows a plain-language, minimalist technical-writing voice (the Fumadocs house style). This governs how sentences read; the Diátaxis section below governs what a page contains. Apply both.
+
+Rules:
+
+- **One idea per sentence.** Write short, declarative sentences. Split a long compound sentence into two or three.
+- **Dissolve em-dash insertion clauses.** Do not use the em-dash (`—`) as a sentence connector or to bolt an aside onto a sentence. Make the aside its own sentence. (An em-dash is fine inside a table cell, or where it reads as "not applicable / none", e.g. a capability cell `No — read-only adapter`.)
+- **Second person, imperative for instructions.** Address the reader as "you". Give instructions as commands: "Run it once.", "Put `<X />` at the end of the file."
+- **Present tense, active voice.** "The server loads the schema at startup.", not "The schema will be loaded by the server."
+- **State the why right after the how, briefly.** Put the reason in its own short sentence or a short `because …` clause, next to the instruction it explains. Example: "Set it where you run the build, because the build reads the value then."
+- **Cut filler.** Remove words that add no information ("simply", "just", "in order to", "it should be noted that", "basically"). Keep only what the reader needs.
+- **Lead with the action in a how-to.** State what to do first, then the context. Do not bury the instruction after a paragraph of setup.
+
+Reference feel (Fumadocs): sentences like "The widget loads after the page's load event." and "Set it where you run `next build`, because Next.js reads `NEXT_PUBLIC_` values at build time." Short, direct, each sentence carrying one fact.
+
+When editing an existing page for style, you MAY restructure freely: reorder paragraphs, merge or drop sentences that repeat, and recast the sentence shape. You MUST preserve the facts, the code blocks, the MDX components and their props, every link and anchor, the frontmatter, and the set and order of `##` headings. Style edits change how it reads, never what it states or links to.
+
 ## Writing Style — explain, don't paraphrase the code
 
 The API reference is generated from source (`ApiReference`, `CliCommandDetails`). Hand-written prose must add what generated reference cannot: the _why_, the _when_, and the _what-goes-wrong_. A page that only restates type signatures or option names in sentences has no reason to exist — link to the generated reference instead.
