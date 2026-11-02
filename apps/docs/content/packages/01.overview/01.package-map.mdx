@@ -28,6 +28,19 @@ Used below the data-source abstraction, or on their own:
 
 ## Internal packages
 
-Most apps get these transitively through the packages above rather than installing them directly: `@lakeql/datasource` (the core contracts), `@lakeql/sql-read-strategy`, `@lakeql/response-transformer`, `@lakeql/schema-generator`, `@lakeql/file-generator`, `@lakeql/column-parser`, `@lakeql/storage`, `@lakeql/parquet`, `@lakeql/helpers`, and `@lakeql/logger`.
+Most apps get these transitively through the packages above rather than installing them directly.
+
+| Package | Role |
+| --- | --- |
+| `@lakeql/datasource` | The core contracts: data source, strategies, factories, auth, capabilities, and errors. |
+| `@lakeql/sql-read-strategy` | Adapter-neutral SQL read orchestration and validation. |
+| `@lakeql/response-transformer` | Schema-aware transformation of decoded records into typed objects. |
+| `@lakeql/schema-generator` | Generates endpoint and mutation schemas from parsed metadata. |
+| `@lakeql/file-generator` | Writes the generated TypeScript endpoint and config files. |
+| `@lakeql/column-parser` | Parses engine column type strings into structured type objects. |
+| `@lakeql/storage` | External-storage write pipeline, serializers, and table managers. |
+| `@lakeql/parquet` | Parquet schema and serialization. |
+| `@lakeql/helpers` | Shared low-level utilities. |
+| `@lakeql/logger` | Shared structured logging with field redaction. |
 
 `@lakeql/datasource` is the one internal package whose contracts you will see in type signatures. Its reference lives under [data-sources](/docs/data-sources/overview/api-reference).
