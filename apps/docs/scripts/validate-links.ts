@@ -24,6 +24,14 @@ import {
  * "api-reference", title: "API Reference" }` wrapping the per-symbol reference
  * sections. Linking to `#api-reference` therefore targets this container, so
  * the validator must treat it as a valid anchor on those pages.
+ *
+ * The anchor is allowed only when at least one reference export resolves,
+ * mirroring the renderer's single-source guard. In the degenerate multi-source
+ * case (2+ `apiReference` entries that all resolve to zero exports) the layout
+ * still renders the container but the validator withholds it. That divergence
+ * is intentionally fail-closed: it would flag a real anchor, never admit a
+ * bogus one. Such a page documents nothing, so the case does not arise in
+ * practice.
  */
 const API_REFERENCE_SECTION_ID = "api-reference"
 
