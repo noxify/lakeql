@@ -32,6 +32,8 @@ overrides:
   # postcss-selector-parser <7.1.6
   postcss-selector-parser: ">=7.1.6"
 permissions:
+  "@vvago/vale":
+    build: false
   cleye:
     skills: false
   ultracite:
