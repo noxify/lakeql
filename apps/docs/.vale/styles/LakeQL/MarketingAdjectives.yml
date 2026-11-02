@@ -1,0 +1,18 @@
+extends: existence
+message: "Avoid the marketing word '%s'. State what it does; let the reader judge."
+link: https://diataxis.fr/
+level: warning
+ignorecase: true
+tokens:
+  - powerful
+  - powerfully
+  - seamless
+  - seamlessly
+  - robust
+  - blazing[- ]?fast
+  - lightning[- ]?fast
+  - effortless
+  - effortlessly
+  - cutting[- ]edge
+  - state[- ]of[- ]the[- ]art
+  - world[- ]class

@@ -34,3 +34,8 @@ pnpm-debug.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Vale: synced rule packages (pulled by `vale sync`), but keep our own styles + config
+/.vale/styles/*
+!/.vale/styles/LakeQL/
+!/.vale/styles/config/
