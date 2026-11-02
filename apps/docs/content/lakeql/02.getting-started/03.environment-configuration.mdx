@@ -4,7 +4,7 @@ navTitle: Environment
 description: Point your project at a data source through the environment.
 ---
 
-A scaffolded project reads its connection details from environment variables, referenced in `lakeql.config.ts`. Copy the generated `.env.example` to `.env` and fill in your data source details:
+A scaffolded project reads its connection details from environment variables. The `lakeql.config.ts` file references them. Copy the generated `.env.example` to `.env` and fill in your data source details:
 
 ```bash
 cp .env.example .env
@@ -19,7 +19,7 @@ TRINO_USERNAME=svc
 TRINO_PASSWORD=...
 ```
 
-The config references these via a typed `env` object, so a missing or malformed value is caught early rather than failing mid-request.
+The config reads these through a typed `env` object. This catches a missing or malformed value early, instead of failing mid-request.
 
 ```ts
 // lakeql.config.ts (excerpt)
@@ -33,13 +33,13 @@ connection: {
 
 ## Loading the Env File
 
-The server loads the env file on start (the generated `dev` script passes it to Node). The CLI loads it when you pass [`--env`](/docs/cli/configuration/environment-variables):
+The server loads the env file on start. The generated `dev` script passes it to Node. The CLI loads it when you pass [`--env`](/docs/cli/configuration/environment-variables):
 
 <Command variant="exec">lakeql-cli pull --env .env</Command>
 
 <Warning>
-  Keep `.env` out of version control — it holds credentials. The scaffolded
-  project gitignores it by default.
+  Keep `.env` out of version control, because it holds credentials. The
+  scaffolded project gitignores it by default.
 </Warning>
 
 For the full configuration surface, see [Configuration](/docs/lakeql/configuration).
