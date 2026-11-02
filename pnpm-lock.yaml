@@ -433,6 +433,9 @@ importers:
       mdast-util-mdx-jsx:
         specifier: 3.2.0
         version: 3.2.0(supports-color@10.2.2)
+      next-validate-link:
+        specifier: 1.6.7
+        version: 1.6.7(@types/mdast@4.0.4)(@types/unist@3.0.3)(supports-color@10.2.2)
       postcss:
         specifier: 8.5.32
         version: 8.5.32
@@ -5394,6 +5397,20 @@ packages:
     resolution: {integrity: sha512-NMPBRMJgiQHjbd8phG3Vebdx4kZ1H121rbl5IkMqeOsahptB9BKo/d7oJ3zTXqTgagn2bWlNSXkh0QUGM31RYg==}
     engines: {node: '>=18'}
 
+  next-validate-link@1.6.7:
+    resolution: {integrity: sha512-ypJzO4Vj7PFgEmi0ZycpIF4K1n2KFVNTjHlrbO5KNR89mEzWlnN1Xa6iLjXG0OJjqDLavmI/UGZEEhmwRWzb0w==}
+    peerDependencies:
+      '@react-router/dev': 7.x.x
+      '@types/mdast': '*'
+      '@types/unist': '*'
+    peerDependenciesMeta:
+      '@react-router/dev':
+        optional: true
+      '@types/mdast':
+        optional: true
+      '@types/unist':
+        optional: true
+
   next@16.4.3:
     resolution: {integrity: sha512-OqxKTGi9u80FydydsMNYNjnuje9Au+kvHlt2GZ//ftdpDHm1dxKqAaENoOOTX5wKzn+9vaKUNIfZeyZUuLhCnA==}
     engines: {node: '>=20.9.0'}
@@ -5810,6 +5827,9 @@ packages:
 
   remark-strip-badges@7.0.0:
     resolution: {integrity: sha512-m6hr3qTUReyg0vl/fcsDREeh4y1//GjOpm7HCoDWdmF6JmnVnWeJmBYzJO20tCiXLvHjK8Rdt1CaKLXCeHXBuw==}
+
+  remark@15.0.1:
+    resolution: {integrity: sha512-Eht5w30ruCXgFmxVUSlNWQ9iiimq07URKeFS3hNc8cUWy1llX4KDWfyEDZRycMc+znsN9Ux5/tJ/BFdgdOwA3A==}
 
   renoun@11.7.1:
     resolution: {integrity: sha512-asRHW+tHIFaMdjAYgUG7jXSy4yCwrof51zB1YDzXfRfM2iVg5ZKM7cWcMzfkC+y1epu6SBxwdVdcMLu98t9BoA==}
@@ -10866,6 +10886,22 @@ snapshots:
       content-type: 2.1.0
     optional: true
 
+  next-validate-link@1.6.7(@types/mdast@4.0.4)(@types/unist@3.0.3)(supports-color@10.2.2):
+    dependencies:
+      picocolors: 1.1.1
+      remark: 15.0.1(supports-color@10.2.2)
+      remark-gfm: 4.0.1(supports-color@10.2.2)
+      remark-mdx: 3.1.1(supports-color@10.2.2)
+      tinyglobby: 0.2.17
+      unified: 11.0.5
+      unist-util-visit: 5.1.0
+      yaml: 2.9.1
+    optionalDependencies:
+      '@types/mdast': 4.0.4
+      '@types/unist': 3.0.3
+    transitivePeerDependencies:
+      - supports-color
+
   next@16.4.3(@babel/core@7.29.7(supports-color@10.2.2))(@types/node@24.19.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
     dependencies:
       '@next/env': 16.4.3
@@ -11386,6 +11422,15 @@ snapshots:
       is-badge: 2.1.1
       mdast-util-definitions: 6.0.0
       unist-util-visit: 5.1.0
+
+  remark@15.0.1(supports-color@10.2.2):
+    dependencies:
+      '@types/mdast': 4.0.4
+      remark-parse: 11.0.0(supports-color@10.2.2)
+      remark-stringify: 11.0.0
+      unified: 11.0.5
+    transitivePeerDependencies:
+      - supports-color
 
   renoun@11.7.1(prettier@3.9.10)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@10.2.2)(tm-grammars@1.32.22)(tm-themes@1.12.12):
     dependencies:
