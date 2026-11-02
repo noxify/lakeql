@@ -15,7 +15,7 @@ description: The Microsoft Fabric adapter — connection, metadata, and capabili
 
 For writes, see the Trino adapter and [Writing](/docs/data-sources/writing). For metadata introspection, see [Metadata](/docs/data-sources/fabric/metadata).
 
-`@lakeql/adapter-fabric` connects LakeQL to a Microsoft Fabric SQL endpoint. It implements the datasource contract over TDS (via the standalone [fabric-client](/docs/packages/fabric-client)), provides the T-SQL dialect, and authenticates with Azure AD.
+`@lakeql/adapter-fabric` connects LakeQL to a Microsoft Fabric SQL endpoint. It implements the datasource contract over TDS, via the standalone [fabric-client](/docs/packages/fabric-client). It provides the T-SQL dialect and authenticates with Azure AD.
 
 Register it in your config:
 
@@ -44,4 +44,4 @@ export default defineConfig({
 })
 ```
 
-This section covers the [connection](/docs/data-sources/fabric/connection) and [metadata](/docs/data-sources/fabric/metadata), with the full [API reference](/docs/data-sources/fabric/api-reference) at the end. For how a read executes end to end, see [data flow](/docs/lakeql/architecture/data-flow).
+This section covers the [connection](/docs/data-sources/fabric/connection) and [metadata](/docs/data-sources/fabric/metadata). The full [API reference](/docs/data-sources/fabric/api-reference) closes the section. For how a read executes end to end, see [data flow](/docs/lakeql/architecture/data-flow).

@@ -47,12 +47,12 @@ auth: { type: "bearer", token: "..." }
 ```
 
 <Note>
-  The config is validated at both the `defineConfig` boundary and when the data
-  source is created, using the same rules. Validation errors name the offending
-  field but never include secrets or tokens.
+  The config is validated twice, at the `defineConfig` boundary and when the
+  data source is created, using the same rules. Validation errors name the
+  offending field but never include secrets or tokens.
 </Note>
 
-The `oauth2` form accepts an optional `scope` field. It is validated but currently has no effect — the token is always acquired for the Fabric SQL scope (`https://database.windows.net/.default`).
+The `oauth2` form accepts an optional `scope` field. It is validated but currently has no effect. The token is always acquired for the Fabric SQL scope (`https://database.windows.net/.default`).
 
 ## Troubleshooting
 
@@ -67,4 +67,4 @@ The `oauth2` form accepts an optional `scope` field. It is validated but current
 
 ## Per-Request Identity
 
-The Fabric client supports an on-behalf-of flow: a per-query bearer token runs a statement as the calling identity rather than the service credential. A Fabric data source wires this through its `impersonationResolver`. See [authentication](/docs/api/authentication).
+The Fabric client supports an on-behalf-of flow. A per-query bearer token runs a statement as the calling identity rather than the service credential. A Fabric data source wires this through its `impersonationResolver`. See [authentication](/docs/api/authentication).

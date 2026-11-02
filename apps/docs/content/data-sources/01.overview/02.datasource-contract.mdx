@@ -4,7 +4,7 @@ navTitle: Datasource Contract
 description: The neutral contracts in @lakeql/datasource that adapters implement.
 ---
 
-`@lakeql/datasource` defines the adapter-neutral contracts. It imports nothing engine-specific — no Trino, Fabric, GraphQL, or Kysely — so the core stays independent of any backend.
+`@lakeql/datasource` defines the adapter-neutral contracts. It imports nothing engine-specific: no Trino, Fabric, GraphQL, or Kysely. The core stays independent of any backend.
 
 ## The Core Interfaces
 
@@ -15,12 +15,12 @@ description: The neutral contracts in @lakeql/datasource that adapters implement
 
 ## Normalized Errors
 
-Adapters translate engine errors into a common hierarchy rooted at [`DataSourceError`](/docs/data-sources/overview/api-reference#data-source-error), each carrying a `category`: `auth`, `query`, `network`, `timeout`, `cancelled`, or `unsupported`. The API layer maps those categories to GraphQL error codes and HTTP statuses, so clients see consistent errors regardless of the engine.
+Adapters translate engine errors into a common hierarchy rooted at [`DataSourceError`](/docs/data-sources/overview/api-reference#data-source-error). Each error carries a `category`: `auth`, `query`, `network`, `timeout`, `cancelled`, or `unsupported`. The API layer maps those categories to GraphQL error codes and HTTP statuses, so clients see consistent errors regardless of the engine.
 
-`DataSourceValidationError` is a separate `Error` subclass (not a `DataSourceError`) carrying `field`/`value` rather than a category; it falls through to the generic 500 mapping. See [error handling](/docs/api/customization/error-handling).
+`DataSourceValidationError` is a separate `Error` subclass, not a `DataSourceError`. It carries `field`/`value` rather than a category and falls through to the generic 500 mapping. See [error handling](/docs/api/customization/error-handling).
 
 ## Capabilities
 
-An adapter reports its [`DataSourceCapabilities`](/docs/data-sources/overview/api-reference#data-source-capabilities). A write strategy is only offered when the adapter reports the capabilities it needs — for example, DDL support is not implied by the ability to run `INSERT`.
+An adapter reports its [`DataSourceCapabilities`](/docs/data-sources/overview/api-reference#data-source-capabilities). A write strategy is only offered when the adapter reports the capabilities it needs. DDL support, for example, is not implied by the ability to run `INSERT`.
 
 For the complete contract, see the [API reference](/docs/data-sources/overview/api-reference).

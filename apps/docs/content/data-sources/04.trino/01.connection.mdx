@@ -45,9 +45,9 @@ auth: { type: "bearer", token: "..." }
 - `retry` — forwarded unchanged to the Trino client.
 
 <Note>
-  The config is validated at both the `defineConfig` boundary and when the data
-  source is created, using the same rules. Validation errors name the offending
-  field but never include passwords or tokens.
+  The config is validated twice, at the `defineConfig` boundary and when the
+  data source is created, using the same rules. Validation errors name the
+  offending field but never include passwords or tokens.
 </Note>
 
 ## Troubleshooting
@@ -63,4 +63,4 @@ auth: { type: "bearer", token: "..." }
 
 ## Per-Request Impersonation
 
-A Trino data source can run queries as the calling user by setting an `impersonationResolver` on the data source. See [Trino user impersonation](/docs/api/authentication/trino-user-impersonation).
+Set an `impersonationResolver` on a Trino data source to run queries as the calling user. See [Trino user impersonation](/docs/api/authentication/trino-user-impersonation).

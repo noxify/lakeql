@@ -4,12 +4,12 @@ navTitle: Writing
 description: How LakeQL persists data — the two choices that define a write.
 ---
 
-When LakeQL writes records to a table, two independent choices decide what happens. Getting them straight up front makes the rest of this section easy to read:
+When LakeQL writes records to a table, two independent choices decide what happens. Get them straight up front and the rest of this section reads easily:
 
-1. **Where and how the data is written** — the **write strategy**. Does it go into object storage as files (Parquet), or straight into a table via SQL?
-2. **How the write combines with data already there** — the **load strategy**. Replace everything, append, or both?
+1. **Where and how the data is written** is the **write strategy**. It goes into object storage as files (Parquet), or straight into a table via SQL.
+2. **How the write combines with data already there** is the **load strategy**. It replaces everything, appends, or both.
 
-These are orthogonal. You pick one write strategy per data source and a load strategy per write, and any combination is valid — `append` works the same whether the bytes land as Parquet files or as `INSERT INTO` rows.
+The two axes are orthogonal. You pick one write strategy per data source and a load strategy per write. Any combination is valid. `append` works the same whether the bytes land as Parquet files or as `INSERT INTO` rows.
 
 ## Choosing a write strategy
 
@@ -20,7 +20,7 @@ You configure this once, on the data source's `writeConfig`.
 | **External storage** (default) | You back your tables with object storage (a data lake — S3/MinIO/GCS/Azure) and register them through an external table catalog. | Serializes records to a file format, uploads the files, and registers them via table DDL. Needs a `files-sdk` instance, a serializer, and a `basePath`. |
 | **INSERT INTO** | You want rows written directly into an existing engine table, with no object storage. | Writes rows through batched `INSERT INTO` SQL. Supports batching, optional table creation, and a staging-and-swap for full loads. |
 
-For the Trino adapter, the storage strategy is the default; opt into the SQL path with `writeConfig: { strategy: "insert" }`. See [Trino write config](/docs/data-sources/trino/write-config) for both `writeConfig` shapes side by side.
+For the Trino adapter, the storage strategy is the default. Opt into the SQL path with `writeConfig: { strategy: "insert" }`. See [Trino write config](/docs/data-sources/trino/write-config) for both `writeConfig` shapes side by side.
 
 ## Choosing a load strategy
 
@@ -34,7 +34,7 @@ This is passed per write (and, for generated endpoints, baked into the endpoint'
 
 ## How they fit together
 
-A single write is one cell in the grid of (write strategy × load strategy). For example, a Trino **storage** write with **append** serializes the records to Parquet, uploads them under the configured `basePath`, and registers them without touching existing files; a Trino **INSERT** write with **full_load** stages rows in a pending table and swaps it into place. Same load semantics, different mechanics underneath.
+A single write is one cell in the grid of (write strategy × load strategy). Take two examples. A Trino **storage** write with **append** serializes the records to Parquet, uploads them under the configured `basePath`, and registers them without touching existing files. A Trino **INSERT** write with **full_load** stages rows in a pending table and swaps it into place. Same load semantics, different mechanics underneath.
 
 The rest of this section goes one layer deeper:
 
