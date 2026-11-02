@@ -47,7 +47,7 @@ For the storage strategy the shape is identical. You swap `writeConfig` for the 
 
 ## Author the Endpoint Definition
 
-Write an `endpoint.json` that sets `dataSource` explicitly and adds a `mutation` block. The schema requires both `loadStrategy` and `basePath`, even for the INSERT strategy. INSERT ignores `basePath`, but the definition will not validate without it.
+Write an `endpoint.json` that sets `dataSource` explicitly and adds a `mutation` block. The schema requires both `loadStrategy` and `basePath`, even for the INSERT strategy. INSERT ignores `basePath`, but the definition does not validate without it.
 
 ```json
 {
