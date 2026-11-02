@@ -544,7 +544,7 @@ separator: true
 
 - Content is organized by USER TASK, not by package name
 - When multiple packages are used together for a task, write a combined guide
-- Internal packages (`@lakeql/helpers`, `@lakeql/logger`, `@lakeql/column-parser`, `@lakeql/parquet`, `@lakeql/file-generator`, `@lakeql/response-transformer`, `@lakeql/schema-generator`) do NOT get dedicated pages — reference inline only. `@lakeql/config` is NOT internal: it is a public, imported-directly package (you author `lakeql.config.ts` with `defineConfig`) and keeps its dedicated page under `packages/config`.
+- Internal packages (`@lakeql/helpers`, `@lakeql/logger`, `@lakeql/column-parser`, `@lakeql/parquet`, `@lakeql/file-generator`, `@lakeql/response-transformer`, `@lakeql/schema-generator`) do NOT get dedicated pages — reference inline only
 - Section `index.mdx` files typically only contain frontmatter (title, description, separator)
 
 ## Terminology
