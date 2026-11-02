@@ -4,7 +4,7 @@ navTitle: Architecture
 description: How the LakeQL monorepo packages depend on each other, shown as generation and serving dependency graphs.
 ---
 
-LakeQL is a monorepo of focused, single-responsibility packages. This page shows how those packages depend on each other. It is here to help contributors understand the monorepo layering. For what an application imports, see the [package map](/docs/packages/overview/package-map).
+LakeQL is a monorepo of focused, single-responsibility packages. This page shows how those packages depend on each other, to help contributors understand the monorepo layering. For what an application imports, see the [package map](/docs/packages/overview/package-map).
 
 ## Layering
 
@@ -17,9 +17,7 @@ The packages fall into a few layers:
 
 ## Dependency Flow
 
-The packages connect through two main workflows.
-
-An arrow means "depends on". The edges below are the actual `@lakeql` dependencies declared in each package.
+The packages connect through two main workflows. An arrow means "depends on". The edges below are the actual `@lakeql` dependencies declared in each package.
 
 ### Generation (CLI)
 
@@ -35,7 +33,7 @@ flowchart LR
     cfg --> ds
 ```
 
-The CLI fans out to the generation packages directly. `@lakeql/column-parser` and the standalone clients have no `@lakeql` dependencies of their own.
+The CLI fans out to the generation packages directly. `@lakeql/column-parser` and the standalone clients carry no `@lakeql` dependencies of their own.
 
 ### Serving (API)
 
@@ -51,4 +49,4 @@ flowchart LR
     af --> fc["@lakeql/fabric-client"]
 ```
 
-Adapter packages depend on the core contracts (`@lakeql/datasource`) and on the infrastructure for the strategy they provide. They never depend on `@lakeql/config`. This keeps the core free of any engine-specific code.
+Adapter packages depend on the core contracts (`@lakeql/datasource`) and on the infrastructure for the strategy they provide. They never depend on `@lakeql/config`, which keeps the core free of any engine-specific code.

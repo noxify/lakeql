@@ -4,7 +4,7 @@ navTitle: System Overview
 description: The layers of LakeQL and what each is responsible for.
 ---
 
-LakeQL is organized into layers. Each depends only on the layer below, and the core contracts depend on nothing engine-specific.
+LakeQL is organized into layers. Each layer depends only on the one below it, and the core contracts depend on nothing engine-specific.
 
 ```text
 Application layer
@@ -32,4 +32,4 @@ Infrastructure
 
 ## Why It's Layered This Way
 
-A new adapter provides its own connection, read, write, SQL, and response logic without changing any core package. The registration is explicit — adapters are passed into `defineConfig`, never discovered implicitly and never augmenting the config package through module augmentation. See [Package Architecture](/docs/lakeql/contributing/architecture) for how the packages map onto these layers.
+A new adapter provides its own connection, read, write, SQL, and response logic without changing any core package. Registration is explicit. You pass adapters into `defineConfig`. They are never discovered implicitly, and they never augment the config package through module augmentation. See [Package Architecture](/docs/lakeql/contributing/architecture) for how the packages map onto these layers.

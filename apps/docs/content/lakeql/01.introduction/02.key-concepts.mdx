@@ -4,23 +4,23 @@ navTitle: Key Concepts
 description: Data sources and adapters, schema generation, the runtime, and GraphQL-to-SQL translation.
 ---
 
-This page introduces the concepts that the rest of the documentation assumes. Each links to the section that covers it in depth.
+This page introduces the concepts the rest of the documentation assumes. Each one links to the section that covers it in depth.
 
 ## Data Lakehouse
 
-A data lakehouse combines open storage with structured query capabilities. In a typical LakeQL deployment:
+A data lakehouse combines open storage with structured query capabilities. A typical LakeQL deployment has three parts:
 
 - **Storage** — data lives in object storage (S3, MinIO, GCS, Azure, and the like) in open formats such as Parquet.
 - **Metastore** — a catalog service tracks table metadata, partitions, and file locations.
 - **Query engine** — Trino or Microsoft Fabric provides SQL access across catalogs and schemas.
 
-LakeQL sits on top of this stack and exposes the data through GraphQL, without a separate hand-written application layer.
+LakeQL sits on top of this stack and exposes the data through GraphQL, with no separate hand-written application layer.
 
 ## Data Sources and Adapters
 
-A **data source** is a named connection to a query engine, declared in `lakeql.config.ts`. An **adapter** is the package that teaches LakeQL how to talk to a particular engine. It owns connection handling, the SQL **[dialect](/docs/lakeql/glossary)**, authentication forwarding, and response decoding.
+A **data source** is a named connection to a query engine, declared in `lakeql.config.ts`. An **adapter** teaches LakeQL how to talk to a particular engine. It owns connection handling, the SQL **[dialect](/docs/lakeql/glossary)**, authentication forwarding, and response decoding.
 
-You register the adapters a project may use, then declare named data sources that pick one:
+Register the adapters a project may use, then declare named data sources that each pick one:
 
 ```ts
 import { defineConfig } from "@lakeql/config"
@@ -44,11 +44,11 @@ export default defineConfig({
 })
 ```
 
-A single project can register multiple adapters and route each named data source to a different engine. Adapters are covered in [Data Sources](/docs/data-sources).
+A single project can register multiple adapters and route each named data source to a different engine. See [Data Sources](/docs/data-sources) for adapter details.
 
 ## Schema Introspection and Generation
 
-LakeQL discovers table structures by querying the data source through its adapter. When you run the CLI introspection command, it reads each table's columns, types, and nullability, parses complex type strings (such as `array(row(...))`) into structured definitions, and writes typed files per table:
+LakeQL discovers table structures by querying the data source through its adapter. Run the CLI introspection command, and it reads each table's columns, types, and nullability, parses complex type strings (such as `array(row(...))`) into structured definitions, and writes typed files per table:
 
 <FileTree
   files={[
@@ -61,13 +61,13 @@ LakeQL discovers table structures by querying the data source through its adapte
   ]}
 />
 
-`mutation-schema.ts` is generated only when the endpoint defines a mutation; its presence is what makes the API register a `Mutation` root type.
+`mutation-schema.ts` is generated only when the endpoint defines a mutation. Its presence is what makes the API register a `Mutation` root type.
 
-Generated files are organized by data source, catalog, and schema (here `warehouse` is the configured data-source name) so that tables from different data sources never collide. They are committed to your repository and regenerated when a table changes. See the [CLI commands](/docs/cli/commands).
+Generated files are organized by data source, catalog, and schema (here `warehouse` is the configured data-source name), so tables from different data sources never collide. Commit them to your repository and regenerate them when a table changes. See the [CLI commands](/docs/cli/commands).
 
 ## The Runtime
 
-LakeQL separates configuration from the live objects that use it. Loading the config never opens a connection on its own. Instead, an application composes a **runtime** explicitly:
+LakeQL separates configuration from the live objects that use it. Loading the config never opens a connection on its own. An application composes a **runtime** explicitly:
 
 ```ts
 import { createLakeQLRuntime, loadConfig } from "@lakeql/config"
@@ -81,11 +81,11 @@ const runtime = await createLakeQLRuntime({
 })
 ```
 
-The runtime owns the data-source instances and their read and write strategies, and it exposes a `close()` method for graceful shutdown. Because nothing is global, an application can create more than one runtime — useful for reloads and tests. This lifecycle is covered in [Runtime Lifecycle](/docs/lakeql/configuration/runtime-lifecycle).
+The runtime owns the data-source instances and their read and write strategies, and exposes a `close()` method for graceful shutdown. Nothing is global, so an application can create more than one runtime. That helps with reloads and tests. See [Runtime Lifecycle](/docs/lakeql/configuration/runtime-lifecycle).
 
 ## GraphQL-to-SQL Translation
 
-The API server composes a GraphQL schema from the generated endpoint files. When a query arrives, LakeQL derives the SQL from the GraphQL resolve info — selected fields, filters, sorting, and pagination — and runs it through the data source's adapter.
+The API server composes a GraphQL schema from the generated endpoint files. When a query arrives, LakeQL derives the SQL from the GraphQL resolve info. It reads the selected fields, filters, sorting, and pagination, then runs the query through the data source's adapter.
 
 ```graphql
 query {
@@ -107,11 +107,11 @@ query {
 }
 ```
 
-The query builder constructs the field selection, the `WHERE` clause, ordering, and pagination, then the adapter renders them in its own SQL dialect. See the [Schema Builder](/docs/api/schema-builder) and [query-builder](/docs/packages/query-builder).
+The query builder constructs the field selection, the `WHERE` clause, ordering, and pagination. The adapter then renders them in its own SQL dialect. See the [Schema Builder](/docs/api/schema-builder) and [query-builder](/docs/packages/query-builder).
 
 ## Authentication and Permissions
 
-The API server validates an incoming token, resolves the authenticated user, and checks per-table read and write permissions before any query runs. A data source can additionally forward the caller's identity to the engine — for example, Trino user **[impersonation](/docs/lakeql/glossary)**. See [Authentication](/docs/api/authentication).
+Before any query runs, the API server validates an incoming token, resolves the authenticated user, and checks per-table read and write permissions. A data source can also forward the caller's identity to the engine. Trino user **[impersonation](/docs/lakeql/glossary)** is one example. See [Authentication](/docs/api/authentication).
 
 ## Where to Next
 

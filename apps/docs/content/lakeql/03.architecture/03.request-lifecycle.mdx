@@ -10,29 +10,29 @@ A single GraphQL request moves through these stages:
 
 <Step>Authenticate</Step>
 
-The [token resolver](/docs/api/authentication/jwt-authentication) validates the request's token into a current user, and the identity resolver maps it to a resolved identity (including whether the caller is a service principal).
+The [token resolver](/docs/api/authentication/jwt-authentication) validates the request's token into a current user. The identity resolver then maps it to a resolved identity, including whether the caller is a service principal.
 
 <Step>Authorize</Step>
 
-[Scope authorization](/docs/api/authentication/scope-authorization) checks the field's required scopes — authenticated, read permission, write permission — against the context before the resolver runs.
+Before the resolver runs, [scope authorization](/docs/api/authentication/scope-authorization) checks the field's required scopes against the context. Those scopes are authenticated, read permission, and write permission.
 
 <Step>Resolve credentials</Step>
 
-The runtime's auth resolver produces request-scoped credentials for the target data source, applying any [impersonation resolver](/docs/api/authentication/trino-user-impersonation) (per-source, then global).
+The runtime's auth resolver produces request-scoped credentials for the target data source. It applies any [impersonation resolver](/docs/api/authentication/trino-user-impersonation), per-source first, then global.
 
 <Step>Build and run</Step>
 
-The [query builder](/docs/packages/query-builder) builds the SQL from the GraphQL selection; the adapter renders and executes it against the engine.
+The [query builder](/docs/packages/query-builder) builds the SQL from the GraphQL selection. The adapter renders it and executes it against the engine.
 
 <Step>Transform and respond</Step>
 
-The response is decoded and transformed into typed records, and returned with pagination metadata.
+LakeQL decodes the response, transforms it into typed records, and returns it with pagination metadata.
 
 </Steps>
 
 ## Errors
 
-Anything that fails along the way becomes a normalized error: the adapter throws a typed `DataSourceError`, which the API maps to a GraphQL error with a stable code and HTTP status, logs server-side, and forwards to the `onError` hook. See [error handling](/docs/api/customization/error-handling).
+Anything that fails along the way becomes a normalized error. The adapter throws a typed `DataSourceError`. The API maps it to a GraphQL error with a stable code and HTTP status, logs it server-side, and forwards it to the `onError` hook. See [error handling](/docs/api/customization/error-handling).
 
 ## Shutdown
 

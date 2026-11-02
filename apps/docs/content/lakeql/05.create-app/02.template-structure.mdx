@@ -4,7 +4,7 @@ navTitle: Template Structure
 description: What create-app generates.
 ---
 
-create-app generates a complete, runnable project. The exact files depend on the adapters and authentication strategy you choose, but the shape is consistent:
+create-app generates a complete, runnable project. The exact files depend on the adapters and authentication strategy you choose, but the shape stays consistent:
 
 <FileTree
   files={[
@@ -31,4 +31,4 @@ create-app generates a complete, runnable project. The exact files depend on the
 - **`src/auth.ts`** / **`src/permissions.ts`** wire [authentication](/docs/api/authentication) and [permissions](/docs/api/authentication/permissions).
 - **`src/schemas/`** is where [`pull`](/docs/cli/commands/pull) writes generated endpoint files.
 
-The generated project uses `workspace:*` dependency versions only in local dev mode (`--local`); a normal run pins published versions.
+The generated project uses `workspace:*` dependency versions only in local dev mode (`--local`). A normal run pins published versions.

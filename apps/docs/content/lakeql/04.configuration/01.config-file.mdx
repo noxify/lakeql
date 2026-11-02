@@ -41,11 +41,11 @@ export default defineConfig({
 - **`sourcePath`** — base path for generated code. Defaults to `"."`.
 - **`auth`** / **`permissions`** — optional identity/impersonation config and technical-user permission rules, passed through untouched.
 
-Connection shapes are adapter-specific — see [Trino connection](/docs/data-sources/trino/connection) and [Fabric connection](/docs/data-sources/fabric/connection).
+Connection shapes are adapter-specific. See [Trino connection](/docs/data-sources/trino/connection) and [Fabric connection](/docs/data-sources/fabric/connection).
 
 ## Config Merge Precedence
 
-A data source's effective connection is merged from three layers, lowest to highest precedence:
+LakeQL merges a data source's effective connection from three layers, lowest to highest precedence:
 
 1. the adapter's registration defaults,
 2. the data source's own `connection`,
@@ -55,4 +55,4 @@ So `overrides` wins over `connection`, which wins over the adapter defaults. Eac
 
 ## Multiple Adapters
 
-A single project can register both adapters and route each data source to a different engine — for example a Trino `warehouse` and a Fabric `reporting` source side by side.
+A single project can register both adapters and route each data source to a different engine. You might run a Trino `warehouse` and a Fabric `reporting` source side by side.

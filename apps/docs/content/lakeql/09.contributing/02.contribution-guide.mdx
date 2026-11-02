@@ -60,7 +60,7 @@ lakeql/
 
 ### Building
 
-The monorepo uses [tsdown](https://tsdown.dev) for package builds and [Turbo](https://turbo.build) for task orchestration:
+The monorepo builds packages with [tsdown](https://tsdown.dev) and orchestrates tasks with [Turbo](https://turbo.build):
 
 ```bash
 # Build all packages
@@ -96,7 +96,7 @@ pnpm typecheck
 
 ### Linting and Formatting
 
-The project uses [oxlint](https://oxc.rs/docs/guide/usage/linter) for linting and [oxfmt](https://oxc.rs/docs/guide/usage/formatter) for formatting. The shared rule presets come from [Ultracite](https://ultracite.ai):
+The project lints with [oxlint](https://oxc.rs/docs/guide/usage/linter) and formats with [oxfmt](https://oxc.rs/docs/guide/usage/formatter). The shared rule presets come from [Ultracite](https://ultracite.ai):
 
 ```bash
 # Lint all files
@@ -118,7 +118,7 @@ pnpm format:fix
 
 ## Commits
 
-Use clear, descriptive commit messages. Conventional commit format is encouraged:
+Write clear, descriptive commit messages. Prefer the conventional commit format:
 
 ```bash
 feat(api): add cursor-based pagination
@@ -132,19 +132,19 @@ Keep each commit focused on a single logical change.
 
 LakeQL uses [Tegami](https://tegami.fuma-nama.dev) for versioning and changelogs. When your change affects a published `@lakeql/*` package, add a changelog file under `.tegami/`.
 
-The quickest way is the interactive TUI, which prompts you for the affected packages and bump level and writes the file for you:
+The fastest way is the interactive TUI. It prompts you for the affected packages and bump level, then writes the file for you:
 
 ```bash
 pnpm tegami
 ```
 
-If you prefer to write the file by hand, create it under `.tegami/` following the naming convention:
+To write the file by hand, create it under `.tegami/` following the naming convention:
 
 ```bash
 # File: .tegami/YYYY-MM-DD-<short-description>.md
 ```
 
-Either way, the file uses YAML frontmatter to declare affected packages and a markdown body for user-facing release notes:
+Either way, the file declares affected packages in YAML frontmatter and carries user-facing release notes in a markdown body:
 
 ```yaml
 ---
@@ -173,7 +173,7 @@ Return an empty array instead of throwing when Trino returns zero rows.
 
 ## Testing create-app on a Feature Branch
 
-When a pull request touches `packages/**`, CI publishes a [pkg.pr.new](https://pkg.pr.new) preview build of every package, including `@lakeql/create-app`. That preview build of `create-app` is self-consistent: it downloads the starter template from the PR's own branch and resolves `@lakeql/*` dependencies to that same commit's pkg.pr.new preview versions, instead of the `main` template and npm `latest` packages.
+When a pull request touches `packages/**`, CI publishes a [pkg.pr.new](https://pkg.pr.new) preview build of every package, including `@lakeql/create-app`. That preview build of `create-app` is self-consistent. It downloads the starter template from the PR's own branch and resolves `@lakeql/*` dependencies to that same commit's pkg.pr.new preview versions, instead of the `main` template and npm `latest` packages.
 
 <Note>
   This means a maintainer can e2e-test `create-app` end to end against a feature
@@ -182,20 +182,20 @@ When a pull request touches `packages/**`, CI publishes a [pkg.pr.new](https://p
   against `main` + npm `latest`.
 </Note>
 
-This behavior is CI-only infrastructure, driven by build-time environment variables the pipeline sets; the released `create-lakeql-app` is unaffected and keeps resolving the template from `main` and dependencies from npm `latest`.
+This behavior is CI-only infrastructure, driven by build-time environment variables the pipeline sets. The released `create-lakeql-app` is unaffected and keeps resolving the template from `main` and dependencies from npm `latest`.
 
 ### Running a preview build
 
-The PR comment from pkg.pr.new lists an install URL for each package. To scaffold with the `create-app` preview, run its URL as a one-off (use `pnpm dlx` or `npx` with the full URL — not `pnpm create`, which expects a package specifier rather than a URL):
+The PR comment from pkg.pr.new lists an install URL for each package. To scaffold with the `create-app` preview, run its URL as a one-off with `pnpm dlx` or `npx`. Don't use `pnpm create`, which expects a package specifier rather than a URL:
 
 ```bash
 pnpm dlx --config.block-exotic-subdeps=false \
   https://pkg.pr.new/noxify/lakeql/@lakeql/create-app@<sha> my-app
 ```
 
-The `--config.block-exotic-subdeps=false` flag is required with pnpm: the preview build of `create-app` carries its own `@lakeql/scaffold` dependency as a pkg.pr.new URL, and recent pnpm versions block URL dependencies nested inside a package by default (`ERR_PNPM_EXOTIC_SUBDEP`). `npx` does not need the flag.
+The `--config.block-exotic-subdeps=false` flag is required with pnpm. The preview build of `create-app` carries its own `@lakeql/scaffold` dependency as a pkg.pr.new URL, and recent pnpm versions block URL dependencies nested inside a package by default (`ERR_PNPM_EXOTIC_SUBDEP`). `npx` does not need the flag.
 
-To confirm the self-consistency, check the generated project's `package.json`: every `@lakeql/*` dependency should point at `https://pkg.pr.new/noxify/lakeql/<package>@<sha>` (the same commit), while non-`@lakeql/*` dependencies keep their normal npm versions.
+To confirm the self-consistency, check the generated project's `package.json`. Every `@lakeql/*` dependency should point at `https://pkg.pr.new/noxify/lakeql/<package>@<sha>` (the same commit), while non-`@lakeql/*` dependencies keep their normal npm versions.
 
 ## Pull Requests
 
@@ -233,7 +233,7 @@ Respond to review comments and push additional commits. Avoid force-pushing unle
 
 ## Workspace Validation
 
-The project uses [sherif](https://github.com/nicolo-ribaudo/sherif) to validate workspace constraints (consistent dependency versions, proper workspace references):
+The project validates workspace constraints with [sherif](https://github.com/nicolo-ribaudo/sherif), checking for consistent dependency versions and proper workspace references:
 
 ```bash
 pnpm lint:ws

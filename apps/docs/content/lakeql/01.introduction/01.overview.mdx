@@ -6,28 +6,28 @@ description: LakeQL generates type-safe GraphQL APIs over your data lakehouse �
 
 ## What is LakeQL?
 
-LakeQL is a framework that generates a type-safe GraphQL API on top of data lakehouse query engines. You point its CLI at a data source, generate typed schema files from the real table metadata, and serve them through a GraphQL server that you compose from explicit building blocks.
+LakeQL generates a type-safe GraphQL API on top of data lakehouse query engines. You point its CLI at a data source, generate typed schema files from the real table metadata, and serve them through a GraphQL server you compose from explicit building blocks.
 
-LakeQL supports [Trino](https://trino.io/) and [Microsoft Fabric](https://www.microsoft.com/en-us/microsoft-fabric) through adapters. A single project can register multiple adapters and route queries to different engines from one API.
+Adapters connect LakeQL to [Trino](https://trino.io/) and [Microsoft Fabric](https://www.microsoft.com/en-us/microsoft-fabric). A single project can register multiple adapters and route queries to different engines from one API.
 
 ## The Problem
 
-Building a GraphQL API over lakehouse tables is repetitive. Every table needs a TypeScript interface, resolver logic, filter and sort definitions, pagination, and permission checks. When a table changes — a new column, a renamed field, an altered type — you update all of those layers by hand. Schema drift and broken types accumulate quickly across dozens of tables and several schemas.
+Building a GraphQL API over lakehouse tables is repetitive. Every table needs a TypeScript interface, resolver logic, filter and sort definitions, pagination, and permission checks. Change a table — add a column, rename a field, alter a type — and you update all of those layers by hand. Across dozens of tables and several schemas, schema drift and broken types pile up fast.
 
 ## How LakeQL Solves It
 
-LakeQL inverts the workflow. Instead of writing resolvers by hand, you introspect the data source and generate the typed layer:
+LakeQL inverts the workflow. You introspect the data source and generate the typed layer instead of writing resolvers by hand:
 
 - **TypeScript interfaces** derived from column metadata
 - **GraphQL query schemas** with filtering, sorting, and pagination built in
 - **JSON schemas** that drive runtime response transformation
 - **Config files** that register each generated endpoint
 
-The generated code is committed to your repository and loaded by the API server at startup. When a table changes, you re-run the introspection command and the typed layer is regenerated.
+You commit the generated code to your repository, and the API server loads it at startup. When a table changes, re-run the introspection command to regenerate the typed layer.
 
 ## The Shape of a Project
 
-A LakeQL project is an ordinary TypeScript application with three moving parts:
+A LakeQL project is an ordinary TypeScript application with three parts:
 
 <FileTree
   files={[
@@ -44,7 +44,7 @@ A LakeQL project is an ordinary TypeScript application with three moving parts:
 2. **`src/index.ts`** loads that config, builds a runtime that owns the data source connections, and starts the GraphQL server. See [Server Setup](/docs/api/server-setup).
 3. **`src/schemas/generated/`** holds the typed files the CLI writes when you introspect a table. See the [CLI commands](/docs/cli/commands).
 
-The fastest way to get all three is to scaffold a project:
+Scaffold a project to get all three at once:
 
 <Command variant="create">@lakeql/app my-api</Command>
 

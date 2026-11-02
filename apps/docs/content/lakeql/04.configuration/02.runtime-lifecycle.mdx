@@ -24,6 +24,6 @@ await runtime.close() // release on shutdown
 2. **Compose** — [`createLakeQLRuntime`](/docs/packages/config/api-reference#create-lake-ql-runtime) builds the runtime, which owns the data-source instances and their strategies.
 3. **Close** — `runtime.close()` releases all connections, once, idempotently.
 
-Because nothing is global, an application can hold more than one runtime — useful for config reloads (compose the new runtime, then close the old) and tests.
+Nothing is global, so an application can hold more than one runtime. That helps with config reloads (compose the new runtime, then close the old) and tests.
 
 For the full contract, options, and error cases, see the [runtime config reference in `@lakeql/config`](/docs/packages/config/runtime-config). Wire `close()` to your process signals as shown in [server setup](/docs/api/server-setup/create-api-server).

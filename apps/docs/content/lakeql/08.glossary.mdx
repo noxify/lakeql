@@ -20,7 +20,7 @@ Short, plain-language definitions of the recurring terms in these docs. Each ent
   </DescriptionListItem>
   <DescriptionListItem label="dialect">
     The engine-specific SQL variant an adapter renders LakeQL's neutral query
-    intent into. Each adapter owns its dialect so the same GraphQL query runs
+    intent into. Each adapter owns its dialect, so the same GraphQL query runs
     correctly on different engines. See [Data
     Sources](/docs/data-sources/overview/introduction).
   </DescriptionListItem>
@@ -33,8 +33,8 @@ Short, plain-language definitions of the recurring terms in these docs. Each ent
   </DescriptionListItem>
   <DescriptionListItem label="impersonation">
     Forwarding the caller's identity to the query engine so it executes under
-    that user instead of a shared service account — for example, Trino user
-    impersonation. See [Per-Request
+    that user instead of a shared service account. Trino user impersonation is
+    one example. See [Per-Request
     Impersonation](/docs/data-sources/trino/connection#per-request-impersonation).
   </DescriptionListItem>
   <DescriptionListItem label="schema">

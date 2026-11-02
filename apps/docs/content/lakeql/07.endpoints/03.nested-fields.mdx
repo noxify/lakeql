@@ -8,7 +8,7 @@ Beyond the six primitives in [Field Types](/docs/lakeql/endpoints/field-types), 
 
 ## Object
 
-An `Object` field nests its own `fields` array, with the same shape as the top-level `fields` array — including further `Object` or `Array` fields. At least one field is required.
+An `Object` field nests its own `fields` array. That array has the same shape as the top-level `fields` array, including further `Object` or `Array` fields. At least one field is required.
 
 ```json
 {
@@ -75,4 +75,4 @@ or an `Object` with its own `fields` array:
 }
 ```
 
-`Object` and `Array` fields nest recursively: an `Object` field inside an `Array`'s `items` can itself contain further `Object` or `Array` fields, to whatever depth your table structure needs.
+`Object` and `Array` fields nest recursively. An `Object` field inside an `Array`'s `items` can itself contain further `Object` or `Array` fields, to whatever depth your table structure needs.

@@ -4,7 +4,7 @@ navTitle: Environment Variables
 description: How environment values feed the config.
 ---
 
-LakeQL does not impose a fixed set of environment variable names. Your `lakeql.config.ts` decides which variables it reads — typically through a typed `env` object — and those values are read directly when the config module is evaluated at load time.
+LakeQL does not impose a fixed set of environment variable names. Your `lakeql.config.ts` decides which variables it reads, typically through a typed `env` object. Those values are read directly when the config module is evaluated at load time.
 
 ```ts
 // lakeql.config.ts — reads from a typed env module (e.g. @t3-oss/env-core + zod)
@@ -20,7 +20,7 @@ export default defineConfig({
 })
 ```
 
-A scaffolded project ships an `env` module and a `.env.example` file with the variables its chosen adapters need; copy it to `.env` and fill it in. Validating the env with a schema means a missing or malformed value fails fast at load time, with a clear message, rather than surfacing as a connection error later.
+A scaffolded project ships an `env` module and a `.env.example` file with the variables its chosen adapters need. Copy it to `.env` and fill it in. Validating the env with a schema makes a missing or malformed value fail fast at load time, with a clear message, instead of surfacing as a connection error later.
 
 ## Loading the Env File
 
@@ -29,7 +29,7 @@ A scaffolded project ships an `env` module and a `.env.example` file with the va
 
 ## Server Runtime Variables
 
-Beyond your connection variables, the API server reads its own environment variables, all optional with defaults:
+Beyond your connection variables, the API server reads its own environment variables. All are optional with defaults:
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
