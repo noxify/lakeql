@@ -15,6 +15,19 @@ import {
 } from "@/collection-helpers"
 
 /**
+ * Id of the synthetic "API Reference" container section the docs layout injects
+ * into a page's table of contents when the page carries resolvable
+ * `apiReference` frontmatter.
+ *
+ * This is a hardcoded literal in the renderer, not a computed slug: see
+ * `docs/[...slug]/layout.tsx`, which pushes a section `{ depth: 2, id:
+ * "api-reference", title: "API Reference" }` wrapping the per-symbol reference
+ * sections. Linking to `#api-reference` therefore targets this container, so
+ * the validator must treat it as a valid anchor on those pages.
+ */
+const API_REFERENCE_SECTION_ID = "api-reference"
+
+/**
  * Validates internal documentation links and anchor fragments in the docs
  * content against the routes and heading anchors the app actually renders.
  *
@@ -33,7 +46,9 @@ import {
  *   the raw text is the identical fallback renoun uses internally.)
  * - For api-reference pages, anchors also come from {@link getApiReferenceExports}
  *   — the identical `createSlug` anchors the reference sections render,
- *   including class-method anchors.
+ *   including class-method anchors — plus the synthetic
+ *   {@link API_REFERENCE_SECTION_ID} container anchor the layout adds to the
+ *   on-page TOC.
  *
  * Scope: this validates the `docs/[...slug]` URL space, which is where
  * author-written internal links and `#fragment` anchors point. The `llms/`,
@@ -115,14 +130,24 @@ async function collectAllowedHashes(slug: string[]): Promise<string[]> {
   if (references.length > 0) {
     const apiExports = await getApiReferenceExports(references).catch(() => [])
 
+    let hasResolvedExport = false
+
     for (const reference of apiExports) {
       for (const exportInfo of reference.exports) {
+        hasResolvedExport = true
         hashes.add(exportInfo.slug)
 
         for (const method of exportInfo.methods ?? []) {
           hashes.add(method.slug)
         }
       }
+    }
+
+    // The layout only emits the synthetic container section when at least one
+    // reference export resolves (its `referenceSections.length` guard), so mirror
+    // that: `#api-reference` is a valid anchor exactly when symbols are rendered.
+    if (hasResolvedExport) {
+      hashes.add(API_REFERENCE_SECTION_ID)
     }
   }
 

@@ -40,6 +40,9 @@ jobs:
       - name: Generate next routes
         run: pnpm -F docs typegen
 
+      - name: Validate doc links
+        run: pnpm -F docs lint:links
+
       - name: Lint
         run: pnpm lint
 
