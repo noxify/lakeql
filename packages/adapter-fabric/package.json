@@ -51,13 +51,13 @@
     "@lakeql/query-builder": "workspace:*",
     "@lakeql/response-transformer": "workspace:*",
     "@lakeql/sql-read-strategy": "workspace:*",
-    "kysely": "0.29.7"
+    "kysely": "0.29.8"
   },
   "devDependencies": {
     "@lakeql/tsconfig": "workspace:*",
     "@lakeql/vitest-config": "workspace:*",
     "@types/node": "24.19.2",
-    "tsdown": "0.23.3",
+    "tsdown": "0.23.4",
     "typescript": "6.0.3",
     "vitest": "5.0.5"
   }
