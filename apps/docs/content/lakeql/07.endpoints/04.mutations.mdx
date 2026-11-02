@@ -22,9 +22,13 @@ See [Writing data](/docs/data-sources/writing) for how the storage write strateg
 
 ## Load strategies
 
-- **`append`** adds the written records to the target without touching existing data.
-- **`full_load`** replaces the target completely: records are written to a pending table, the original is dropped, and the pending table is renamed into place.
-- **`full_load_append`** maintains two targets: a `_latest` table that's fully replaced on every write (same swap as `full_load`), and an `_all` table that every write appends to, so history accumulates alongside the latest snapshot.
+Set `loadStrategy` to one of three values. Each one picks how a write combines with the data already in the table.
+
+- **`append`** — keep the existing data and add the new records.
+- **`full_load`** — replace the existing data with the new records.
+- **`full_load_append`** — replace the latest snapshot and keep an appended history alongside it.
+
+These are the config-facing meanings. For the full runtime behavior of each value — ordering, atomicity, partial writes, retries, and failure modes — see [Load strategies](/docs/data-sources/writing/load-strategies).
 
 <Note>
   `basePath` is required by the `mutation` schema regardless of which write
