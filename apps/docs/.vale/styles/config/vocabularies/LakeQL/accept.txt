@@ -18,3 +18,8 @@ Parquet
 Pothos
 lakehouse
 metastore
+CLI
+[Aa]pplications?
+OAuth2?
+disabled
+touch
