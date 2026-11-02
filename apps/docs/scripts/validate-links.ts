@@ -71,10 +71,11 @@ async function checkLinks() {
 /**
  * Removes a leading YAML frontmatter block from MDX source.
  *
- * renoun's MDX pipeline strips frontmatter (via `remark-frontmatter`) before
- * parsing headings. When extracting sections from raw text directly we must do
- * the same, otherwise the frontmatter lines are misread as a heading. This only
- * removes the delimited block and never touches heading text or slugging.
+ * renoun's MDX pipeline parses frontmatter separately from the document body.
+ * When we feed raw file text to `getMDXSections` directly, the leading `---`
+ * fenced block is still present. Removing it keeps the section extractor
+ * aligned with what the renderer parses as body content. This only removes the
+ * delimited block and never touches heading text or slugging.
  */
 function stripFrontmatter(source: string): string {
   const match = /^---\r?\n[\s\S]*?\r?\n---\r?\n?/u.exec(source)
