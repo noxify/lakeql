@@ -4,7 +4,7 @@ navTitle: Extending Core
 description: Augment the generated types with additional fields.
 ---
 
-Generated object types are defined on the shared [`builder`](/docs/api/api-reference#builder), so you can extend them rather than only adding standalone fields. Use the builder's object-field extension to add computed or related fields to a generated type.
+Generated object types are defined on the shared [`builder`](/docs/api/api-reference#builder), so you can extend them rather than only add standalone fields. Use the builder's object-field extension to add computed or related fields to a generated type.
 
 ```ts
 import { builder } from "@lakeql/api/builder"
@@ -17,6 +17,6 @@ builder.objectField(OrderRef, "displayName", (t) =>
 )
 ```
 
-Extended fields participate in the same schema as the generated ones: they share the scope-auth scopes, the scalars, and the validation plugin. Keep extensions additive — the generated types are regenerated when a table changes, so put your additions in your own modules rather than editing generated files.
+Extended fields participate in the same schema as the generated ones. They share the scope-auth scopes, the scalars, and the validation plugin. Keep extensions additive. The generated types are regenerated when a table changes, so put your additions in your own modules rather than editing generated files.
 
 For entirely new root fields rather than extensions of existing types, see [custom queries and mutations](/docs/api/customization/custom-queries-mutations).

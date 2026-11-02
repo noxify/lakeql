@@ -4,7 +4,7 @@ navTitle: Permissions
 description: Grant technical users scoped read and write access per table.
 ---
 
-Permissions declare what a technical user may read and write, scoped by data source, schema, and table. You pass an array of `Permission` rules to the server via [`defineApiConfig`](/docs/api/server-setup/define-config).
+Permissions declare what a technical user may read and write, scoped by data source, schema, and table. Pass an array of `Permission` rules to the server via [`defineApiConfig`](/docs/api/server-setup/define-config).
 
 ```ts
 import type { Permission } from "@lakeql/config"
@@ -28,7 +28,7 @@ export const permissions: Permission[] = [
 
 ## Building Rules
 
-[`createPermission`](/docs/api/api-reference#create-permission) builds a rule scoped to one data source. The callback receives a `rule` builder; each `rule({ schema, tables })` grants access to the listed tables within a schema. Group rules under `Query` (reads) and `Mutation` (writes).
+[`createPermission`](/docs/api/api-reference#create-permission) builds a rule scoped to one data source. The callback receives a `rule` builder. Each `rule({ schema, tables })` grants access to the listed tables within a schema. Group rules under `Query` for reads and `Mutation` for writes.
 
 <ApiReference
   variant="table"
@@ -40,7 +40,7 @@ export const permissions: Permission[] = [
 
 Rules support wildcards: `schema` accepts `"*"` to match any schema, `tables` accepts `["*"]` to match any table, and omitting `catalog` matches any catalog.
 
-Scope matching is strict: a rule that names a concrete `catalog` or `schema` matches only a request whose target carries the same value. A target that omits `catalog`/`schema` does not match a rule scoped to one — the rule's scope is never silently ignored. Use `"*"` (schema) or an omitted `catalog` to match broadly on purpose.
+Scope matching is strict. A rule that names a concrete `catalog` or `schema` matches only a request whose target carries the same value. A target that omits `catalog`/`schema` does not match a rule scoped to one. The rule's scope is never silently ignored. To match broadly on purpose, use `"*"` for the schema or omit the `catalog`.
 
 <Note>
   The `name` field matches the resolved user name, and `useSystemUser` is part
@@ -58,7 +58,7 @@ So an empty `permissions` array lets human users read, but no one can write unti
 
 ## Granting Write Access
 
-A positive `Mutation` rule un-denies writes for the tables it names. The shape is identical to `Query`'s — the same `createPermission`/`rule` builder, grouped under `Mutation` instead — and the data source, schema, and table matching rules (wildcards, strict scope matching) from [Building Rules](#building-rules) apply unchanged:
+A positive `Mutation` rule un-denies writes for the tables it names. The shape is identical to `Query`'s: the same `createPermission`/`rule` builder, grouped under `Mutation` instead. The matching rules from [Building Rules](#building-rules) apply unchanged, including wildcards and strict scope matching across data source, schema, and table:
 
 ```ts
 import { createPermission } from "@lakeql/api/helpers"

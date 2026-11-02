@@ -4,7 +4,7 @@ navTitle: Define Config
 description: The options accepted by defineApiConfig.
 ---
 
-[`defineApiConfig`](/docs/api/api-reference#define-api-config) accepts an [`ApiRuntimeConfig`](/docs/api/api-reference#api-runtime-config). Every field is optional — but a `runtime` must be provided for the generated resolvers to work: without it, `context.getReadStrategy` throws on each request.
+[`defineApiConfig`](/docs/api/api-reference#define-api-config) accepts an [`ApiRuntimeConfig`](/docs/api/api-reference#api-runtime-config). Every field is optional, but the generated resolvers need a `runtime`. Without it, `context.getReadStrategy` throws on each request.
 
 ## Common Options
 

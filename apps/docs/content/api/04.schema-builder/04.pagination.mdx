@@ -33,8 +33,8 @@ type PageInfo {
 }
 ```
 
-`nextPage` and `previousPage` are the values to pass back in `paging` to move between pages; they are null at the ends. The total used to compute `maxPages` comes from the query builder's count CTE, so pagination metadata is accurate in a single round trip. See [sorting and paging](/docs/packages/query-builder/sorting-and-paging).
+Pass `nextPage` and `previousPage` back in `paging` to move between pages. They are null at the ends. The total used to compute `maxPages` comes from the query builder's count CTE, so pagination metadata is accurate in a single round trip. See [sorting and paging](/docs/packages/query-builder/sorting-and-paging).
 
 ## Total Count
 
-Alongside `nodes` and `pageInfo`, the generated connection type exposes a `totalCount` — the total number of matching rows before paging. It comes from the same count CTE, so you get it without a second query.
+Alongside `nodes` and `pageInfo`, the generated connection type exposes a `totalCount`. This is the total number of matching rows before paging. It comes from the same count CTE, so you get it without a second query.

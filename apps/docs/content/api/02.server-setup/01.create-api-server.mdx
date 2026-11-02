@@ -4,7 +4,7 @@ navTitle: Create Server
 description: Compose the server with defineApiConfig and start it.
 ---
 
-[`defineApiConfig`](/docs/api/api-reference#define-api-config) takes the runtime config and returns a resolved config with convenience methods. Call `startServer()` to run the full HTTP server.
+Pass your runtime config to [`defineApiConfig`](/docs/api/api-reference#define-api-config). It returns a resolved config with convenience methods. Call `startServer()` to run the full HTTP server.
 
 ```ts
 import { defineApiConfig } from "@lakeql/api/config"
@@ -22,7 +22,7 @@ await server.startServer()
 
 ## The Runtime
 
-The API server does not build the runtime — the application does, with [`createLakeQLRuntime`](/docs/packages/config/api-reference#create-lake-ql-runtime), and passes it in as `runtime`. Resolvers reach read strategies through it. This keeps the API out of the runtime lifecycle; your code owns shutdown.
+The API server does not build the runtime. Your application builds it with [`createLakeQLRuntime`](/docs/packages/config/api-reference#create-lake-ql-runtime) and passes it in as `runtime`. Resolvers reach read strategies through it. This keeps the API out of the runtime lifecycle, so your code owns shutdown.
 
 ## Graceful Shutdown
 
@@ -39,4 +39,4 @@ process.on("SIGINT", shutdown)
 
 ## Lower-Level Entry Points
 
-`defineApiConfig` also exposes `createYogaServer(logger)` if you need the Yoga instance without starting an HTTP listener. The package additionally exports [`createApiServer`](/docs/api/api-reference#create-api-server) and [`startApiServer`](/docs/api/api-reference#start-api-server) for direct use.
+Need the Yoga instance without starting an HTTP listener? `defineApiConfig` also exposes `createYogaServer(logger)`. For direct use, the package exports [`createApiServer`](/docs/api/api-reference#create-api-server) and [`startApiServer`](/docs/api/api-reference#start-api-server).

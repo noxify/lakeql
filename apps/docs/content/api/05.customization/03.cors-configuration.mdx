@@ -4,7 +4,7 @@ navTitle: CORS Configuration
 description: Control cross-origin access to the GraphQL endpoint.
 ---
 
-CORS for the GraphQL route is controlled by the `cors` option on [`defineApiConfig`](/docs/api/server-setup/define-config). The option is applied by the Hono layer that wraps the GraphQL server.
+The `cors` option on [`defineApiConfig`](/docs/api/server-setup/define-config) controls CORS for the GraphQL route. The Hono layer that wraps the GraphQL server applies it.
 
 ```ts
 const server = defineApiConfig({
@@ -17,14 +17,14 @@ const server = defineApiConfig({
 })
 ```
 
-The option shape is [Hono's CORS middleware](https://hono.dev/docs/middleware/builtin/cors) config — `origin`, `allowMethods`, `allowHeaders`, `credentials`, and so on.
+The option shape is [Hono's CORS middleware](https://hono.dev/docs/middleware/builtin/cors) config, with `origin`, `allowMethods`, `allowHeaders`, `credentials`, and so on.
 
 ## Default
 
-When `cors` is omitted, CORS is **not** enabled — the GraphQL route is same-origin only, and no `Access-Control-Allow-Origin` header is sent. Set `origin` to opt in.
+When `cors` is omitted, CORS is **not** enabled. The GraphQL route is same-origin only, and no `Access-Control-Allow-Origin` header is sent. Set `origin` to opt in.
 
 <Warning>
-  A wildcard origin (`"*"`) cannot be combined with `credentials: true` —
-  browsers reject that pairing, so there is no permissive-with-credentials
+  A wildcard origin (`"*"`) cannot be combined with `credentials: true`.
+  Browsers reject that pairing, so there is no permissive-with-credentials
   default. List the exact front-end origins that should reach the API.
 </Warning>

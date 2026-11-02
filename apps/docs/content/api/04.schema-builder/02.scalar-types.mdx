@@ -12,9 +12,9 @@ The builder registers these scalars in addition to GraphQL's built-ins (`Int`, `
 | `DateTime` | Timestamp, backed by `graphql-scalars`' `DateTimeResolver`. |
 | `File`     | Upload input scalar — usable only as an input type.         |
 
-Generated interfaces map column types to these scalars so the GraphQL types match the underlying table. Date and timestamp columns surface as `Date` / `DateTime`, giving clients proper typing instead of raw strings.
+Generated interfaces map column types to these scalars, so the GraphQL types match the underlying table. Date and timestamp columns surface as `Date` / `DateTime`. Clients get proper typing instead of raw strings.
 
 <Note>
-  `File` serializes only as input. Using it as an output type throws — it exists
+  `File` serializes only as input. Using it as an output type throws. It exists
   for upload arguments, not for returning file contents.
 </Note>

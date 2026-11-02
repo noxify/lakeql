@@ -4,7 +4,7 @@ navTitle: Comparison Types
 description: The per-type filter input types used in queries.
 ---
 
-For each scalar, the builder generates a comparison input type that defines the operators available when filtering a field of that type. Generated query schemas use these as the field types inside a filter argument.
+For each scalar, the builder generates a comparison input type. It defines the operators available when you filter a field of that type. Generated query schemas use these as the field types inside a filter argument.
 
 | Comparison type           | Applies to         |
 | ------------------------- | ------------------ |
@@ -26,4 +26,4 @@ Each comparison type exposes only the operators that make sense for its scalar:
 | `Date`, `DateTime` | `eq`, `neq`, `lt`, `lte`, `gt`, `gte` (no `in`/`notIn`) |
 | `Boolean`          | `is`, `isNot` only                                      |
 
-So a `Date` filter has no `in`, and a `Boolean` filter uses `is`/`isNot` rather than `eq`/`neq`. The operators map to the [query-builder](/docs/packages/query-builder/filtering) field operators that become the SQL `WHERE` clause.
+So a `Date` filter has no `in`, and a `Boolean` filter uses `is`/`isNot` rather than `eq`/`neq`. These operators map to the [query-builder](/docs/packages/query-builder/filtering) field operators that become the SQL `WHERE` clause.

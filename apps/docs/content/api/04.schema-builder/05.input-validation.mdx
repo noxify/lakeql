@@ -4,12 +4,12 @@ navTitle: Input Validation
 description: How argument values are validated before a query runs.
 ---
 
-The builder enables Pothos's validation plugin, so input arguments are validated with [Zod](https://zod.dev) schemas before a resolver runs. A failing validation is turned into a GraphQL error rather than reaching the data source.
+The builder enables Pothos's validation plugin. Input arguments are validated with [Zod](https://zod.dev) schemas before a resolver runs. A failing validation becomes a GraphQL error rather than reaching the data source.
 
 ## Built-In Validation
 
-The `perPage` paging argument is validated out of the box: it must be at least `1` and no more than the configured maximum. A request asking for more rows than allowed is rejected with a clear message instead of silently capping.
+The `perPage` paging argument is validated out of the box. It must be at least `1` and no more than the configured maximum. A request asking for more rows than allowed is rejected with a clear message instead of silently capping.
 
 ## Adding Validation
 
-When you define [custom queries or mutations](/docs/api/customization/custom-queries-mutations), attach a Zod schema to an argument through the field's `validate` option, the same way the built-in paging input does. Validation errors are collected and surfaced as a single GraphQL error through LakeQL's [error handling](/docs/api/customization/error-handling).
+When you define [custom queries or mutations](/docs/api/customization/custom-queries-mutations), attach a Zod schema to an argument through the field's `validate` option. This is the same way the built-in paging input works. Validation errors are collected and surfaced as a single GraphQL error through LakeQL's [error handling](/docs/api/customization/error-handling).

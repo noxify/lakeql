@@ -4,7 +4,7 @@ navTitle: Custom Queries & Mutations
 description: Add your own fields alongside the generated schema.
 ---
 
-The generated endpoints attach to the shared [`builder`](/docs/api/api-reference#builder). You add custom queries and mutations the same way — define fields on the builder, and they join the schema the server serves.
+The generated endpoints attach to the shared [`builder`](/docs/api/api-reference#builder). You add custom queries and mutations the same way. Define fields on the builder, and they join the schema the server serves.
 
 ```ts
 import { builder } from "@lakeql/api/builder"
@@ -16,13 +16,13 @@ builder.queryField("ping", (t) =>
 )
 ```
 
-Because it is the same builder, your custom fields get the same facilities as the generated ones: the scope-auth scopes, the validation plugin, and the registered scalar and comparison types.
+Because it is the same builder, your custom fields get the same facilities as the generated ones. That covers the scope-auth scopes, the validation plugin, and the registered scalar and comparison types.
 
 ## Two Prerequisites
 
 Custom fields do not reach the served schema by themselves:
 
-1. **Import your module before `startServer()`.** The server discovers schema modules by globbing the generated `query-schema`/`mutation-schema` files under its schema path — it does not import arbitrary files. A module like `src/custom-fields.ts` is only included if your entry point imports it before starting the server (or you name it to match the glob).
+1. **Import your module before `startServer()`.** The server discovers schema modules by globbing the generated `query-schema`/`mutation-schema` files under its schema path. It does not import arbitrary files. A module like `src/custom-fields.ts` is only included if your entry point imports it before starting the server, or if you name it to match the glob.
 
    ```ts
    import "./custom-fields" // registers the builder fields
@@ -33,7 +33,7 @@ Custom fields do not reach the served schema by themselves:
 
 ## Authorization
 
-Declare the scopes a custom field requires through Pothos's `authScopes` field option — for example, require an authenticated user, or a read permission on a particular table. See [scope authorization](/docs/api/authentication/scope-authorization).
+Declare the scopes a custom field requires through Pothos's `authScopes` field option. For example, require an authenticated user, or a read permission on a particular table. See [scope authorization](/docs/api/authentication/scope-authorization).
 
 ## Validation
 
@@ -41,7 +41,7 @@ Attach a Zod schema to an argument via its `validate` option to validate input b
 
 ## Accessing Data
 
-Resolvers reach the runtime through the GraphQL context, which exposes `getReadStrategy(name)` and `getWriteStrategy(name)` — there is no `context.runtime`.
+Resolvers reach the runtime through the GraphQL context. It exposes `getReadStrategy(name)` and `getWriteStrategy(name)`. There is no `context.runtime`.
 
 ```ts
 builder.queryField("orderCount", (t) =>

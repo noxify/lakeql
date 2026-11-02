@@ -4,7 +4,7 @@ navTitle: Error Handling
 description: How LakeQL maps, logs, and forwards errors.
 ---
 
-LakeQL normalizes errors end to end: adapters throw typed [`DataSourceError`](/docs/data-sources/overview/api-reference#data-source-error)s, the API maps them to GraphQL errors with a stable code and HTTP status, logs them server-side, and offers a hook to forward them to telemetry.
+LakeQL normalizes errors end to end. Adapters throw typed [`DataSourceError`](/docs/data-sources/overview/api-reference#data-source-error)s. The API maps them to GraphQL errors with a stable code and HTTP status, logs them server-side, and offers a hook to forward them to telemetry.
 
 ## Error Mapping
 
@@ -20,17 +20,17 @@ LakeQL normalizes errors end to end: adapters throw typed [`DataSourceError`](/d
 | `unsupported`   | `UNSUPPORTED_OPERATION` | 400         |
 | _anything else_ | `UNKNOWN`               | 500         |
 
-Errors that are not a `DataSourceError` — including `DataSourceValidationError`, which is a plain `Error` subclass — fall through to the `UNKNOWN` / 500 branch.
+Errors that are not a `DataSourceError` fall through to the `UNKNOWN` / 500 branch. This includes `DataSourceValidationError`, which is a plain `Error` subclass.
 
 The original error is preserved on the GraphQL error so server-side logging and telemetry keep the full context.
 
 ## Server-Side Logging
 
-A built-in Yoga plugin logs every execution error with a severity matched to its category — network and timeout errors at `error` level, auth and query errors at `warn`, and anything that is not a `DataSourceError` at `error`. This runs regardless of what the client sees, so operational issues are visible in your logs.
+A built-in Yoga plugin logs every execution error with a severity matched to its category. Network and timeout errors log at `error` level, auth and query errors at `warn`, and anything that is not a `DataSourceError` at `error`. This runs regardless of what the client sees, so operational issues stay visible in your logs.
 
 ## The onError Hook
 
-To forward errors to external telemetry — OpenTelemetry, Sentry, metrics — without the package depending on any of them, provide an `onError` hook on [`defineApiConfig`](/docs/api/server-setup/define-config):
+Forward errors to external telemetry like OpenTelemetry, Sentry, or metrics without the package depending on any of them. Provide an `onError` hook on [`defineApiConfig`](/docs/api/server-setup/define-config):
 
 ```ts
 const server = defineApiConfig({

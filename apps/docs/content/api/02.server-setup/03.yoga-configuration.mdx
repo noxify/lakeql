@@ -4,7 +4,7 @@ navTitle: Yoga Configuration
 description: Override GraphQL Yoga options and add plugins.
 ---
 
-LakeQL's server is built on [GraphQL Yoga](https://the-guild.dev/graphql/yoga-server). The `yogaConfig` option passes overrides and plugins straight through, so you can tune the underlying Yoga instance without the API package depending on your additions.
+LakeQL's server runs on [GraphQL Yoga](https://the-guild.dev/graphql/yoga-server). The `yogaConfig` option passes overrides and plugins straight through. You tune the underlying Yoga instance, and the API package stays independent of your additions.
 
 ```ts
 const server = defineApiConfig({
@@ -17,7 +17,7 @@ const server = defineApiConfig({
 })
 ```
 
-Use this for Yoga-level concerns — additional envelope plugins, GraphiQL settings, and so on. CORS is **not** configured here; it is a dedicated [`cors`](/docs/api/customization/cors-configuration) option applied by the Hono layer. For forwarding execution errors to telemetry, prefer the dedicated [`onError`](/docs/api/customization/error-handling) hook over a plugin.
+Use this for Yoga-level concerns like additional envelope plugins or GraphiQL settings. CORS is **not** configured here. It is a dedicated [`cors`](/docs/api/customization/cors-configuration) option applied by the Hono layer. To forward execution errors to telemetry, prefer the dedicated [`onError`](/docs/api/customization/error-handling) hook over a plugin.
 
 <Note>
   `yogaConfig` is applied on top of LakeQL's own Yoga setup. Plugins you add run
@@ -26,4 +26,4 @@ Use this for Yoga-level concerns — additional envelope plugins, GraphiQL setti
 
 ## Built-In Defaults
 
-A few Yoga defaults are worth knowing: GraphQL errors are masked (`maskedErrors: true`), and GraphiQL is served only when `NODE_ENV` is `development`. Both can be overridden through `yogaConfig`.
+Two Yoga defaults are worth knowing. GraphQL errors are masked (`maskedErrors: true`). GraphiQL is served only when `NODE_ENV` is `development`. Override either through `yogaConfig`.

@@ -19,4 +19,4 @@ On top of the plugins, the builder registers the [scalar types](/docs/api/schema
 
 ## Max Records Per Page
 
-The builder reads a maximum page size from the environment, overridable at runtime with [`setMaxRecordsPerPage`](/docs/api/api-reference#set-max-records-per-page). `defineApiConfig`'s `maxRecordsPerPage` option (default `2000`) drives this. The `perPage` paging argument is validated against it.
+The builder reads a maximum page size from the environment. Override it at runtime with [`setMaxRecordsPerPage`](/docs/api/api-reference#set-max-records-per-page). `defineApiConfig`'s `maxRecordsPerPage` option drives this, defaulting to `2000`. The `perPage` paging argument is validated against it.
