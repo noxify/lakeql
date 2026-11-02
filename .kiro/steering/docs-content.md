@@ -568,7 +568,12 @@ Rules:
 - **Present tense, active voice.** "The server loads the schema at startup.", not "The schema will be loaded by the server."
 - **State the why right after the how, briefly.** Put the reason in its own short sentence or a short `because …` clause, next to the instruction it explains. Example: "Set it where you run the build, because the build reads the value then."
 - **Cut filler.** Remove words that add no information ("simply", "just", "in order to", "it should be noted that", "basically"). Keep only what the reader needs.
+- **No marketing adjectives.** Do not sell the product with words like "powerful", "easy", "seamless", "robust", "blazing-fast", or "simply". State what it does; let the reader judge.
+- **No exclamation points** in body text. Technical docs stay even in tone.
+- **Do not anthropomorphize** the engine, adapter, query, or server. Write "the query builder renders the WHERE clause", not "the query builder wants" or "the server decides it needs". Software executes; it does not want, think, or feel.
+- **Avoid rot-words.** Do not write "currently", "new", "recently", "at the moment", "soon", or "for now". They go stale and silently become wrong. State the behavior as it is.
 - **Lead with the action in a how-to.** State what to do first, then the context. Do not bury the instruction after a paragraph of setup.
+- **Headings use Title Case.** This is a deliberate project convention, not Google/Microsoft sentence-case. Keep it consistent; do NOT "correct" existing headings to sentence case. Heading text also derives the anchor IDs that cross-page links depend on, so changing heading wording would break those links.
 
 Reference feel (Fumadocs): sentences like "The widget loads after the page's load event." and "Set it where you run `next build`, because Next.js reads `NEXT_PUBLIC_` values at build time." Short, direct, each sentence carrying one fact.
 
@@ -578,7 +583,7 @@ When editing an existing page for style, you MAY restructure freely: reorder par
 
 The API reference is generated from source (`ApiReference`, `CliCommandDetails`). Hand-written prose must add what generated reference cannot: the _why_, the _when_, and the _what-goes-wrong_. A page that only restates type signatures or option names in sentences has no reason to exist — link to the generated reference instead.
 
-Follow a light Diátaxis split; know which mode a page is in:
+Follow a light [Diátaxis](https://diataxis.fr/start-here/) split; know which mode a page is in. Diátaxis is a guide to work, not a rigid taxonomy: do not create empty tutorial/how-to/reference/explanation sections to fill out the structure. Classify a page by the reader need it serves, and let the content decide the shape.
 
 - **Explanation** — concepts, the two write/load axes, trade-offs, decision guidance ("use INSERT when …, external-storage when …"), and failure modes (staging failures, partial writes, retries/idempotency, batch-size limits). This is where most hand-written value lives.
 - **How-to** — task-focused, example-first. Lead with a realistic, runnable snippet, then explain. Cite the generated reference rather than repeating it.
