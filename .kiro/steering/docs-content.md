@@ -544,7 +544,7 @@ separator: true
 
 - Content is organized by USER TASK, not by package name
 - When multiple packages are used together for a task, write a combined guide
-- Internal packages (`@lakeql/helpers`, `@lakeql/logger`, `@lakeql/column-parser`, `@lakeql/parquet`, `@lakeql/file-generator`, `@lakeql/response-transformer`, `@lakeql/config`, `@lakeql/schema-generator`) do NOT get dedicated pages — reference inline only
+- Internal packages (`@lakeql/helpers`, `@lakeql/logger`, `@lakeql/column-parser`, `@lakeql/parquet`, `@lakeql/file-generator`, `@lakeql/response-transformer`, `@lakeql/schema-generator`) do NOT get dedicated pages — reference inline only. `@lakeql/config` is NOT internal: it is a public, imported-directly package (you author `lakeql.config.ts` with `defineConfig`) and keeps its dedicated page under `packages/config`.
 - Section `index.mdx` files typically only contain frontmatter (title, description, separator)
 
 ## Terminology
@@ -608,8 +608,8 @@ These are verified behaviors of the codebase. When a page touches one of them, i
 The write/mutation story is split across several pages by Diátaxis mode. Respect these ownership boundaries; a new page LINKS to the owner instead of restating its content, so no two pages explain the same mechanic.
 
 - `lakeql/guides/mutations` (Explanation) — owns the mutation-resolver ↔ write-strategy concept, the permission model at the conceptual level, and custom mutation fields.
-- `lakeql/endpoints/mutations` (Reference) — owns the full `mutation` block field table (`loadStrategy`, `basePath`, `partitioning`, `partitioningFormat`), the load-strategy definitions, and the "`basePath` is required even for INSERT" note.
-- `data-sources/writing/*` (Explanation, adapter-neutral) — owns the two-axes model (write strategy × load strategy), the per-strategy pipeline mechanics, the cross-adapter capability matrix, and the general "choosing a write strategy" table.
+- `lakeql/endpoints/mutations` (Reference) — owns the full `mutation` block field table (`loadStrategy`, `basePath`, `partitioning`, `partitioningFormat`) and the "`basePath` is required even for INSERT" note. For load strategies it gives the config-facing gloss (what each `loadStrategy` value means when set in `endpoint.json`) and links to `data-sources/writing/load-strategies` for the runtime behavior; it does NOT restate the runtime mechanics.
+- `data-sources/writing/*` (Explanation, adapter-neutral) — owns the two-axes model (write strategy × load strategy), the per-strategy pipeline mechanics, the cross-adapter capability matrix, and the general "choosing a write strategy" table. `data-sources/writing/load-strategies` is the single owner of the canonical load-strategy runtime behavior and edge cases (append / full_load / full_load_append).
 - `data-sources/trino/write-config` (Reference, adapter-specific) — owns the concrete `writeConfig` shapes and full option list, plus the `basePath`-before-upload warning.
 - `lakeql/guides/set-up-a-trino-mutation` (How-to) — owns only the end-to-end task sequencing (writeConfig → endpoint definition → generate → permission → replace a pulled endpoint) and a condensed, Trino-scoped decision table. It links to each page above for the mechanics rather than re-explaining them.
 
