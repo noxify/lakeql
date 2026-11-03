@@ -110,6 +110,37 @@ function inlineTypeLinks(
 }
 
 /**
+ * Drops `typeLink`s that point to an excluded export so a member row does not
+ * deep-link to a section anchor the page no longer renders. The type text is
+ * preserved (the link simply degrades to plain text), matching the
+ * dead-link fallback {@link inlineTypeLinks} already uses.
+ *
+ * @param exports - The exports being rendered.
+ * @param excluded - The set of excluded export names.
+ */
+function stripExcludedTypeLinks(
+  exports: ResolvedExport[],
+  excluded: ReadonlySet<string>
+): ResolvedExport[] {
+  function stripMemberLinks(
+    members: ResolvedExportMember[] | undefined
+  ): ResolvedExportMember[] | undefined {
+    if (!members) {
+      return undefined
+    }
+
+    return members.map((m) =>
+      m.typeLink && excluded.has(m.typeLink) ? { ...m, typeLink: undefined } : m
+    )
+  }
+
+  return exports.map((exp) => ({
+    ...exp,
+    members: stripMemberLinks(exp.members),
+  }))
+}
+
+/**
  * Rewrites typeLink values to point to a base URL with an anchor fragment.
  * E.g. typeLink "Job" + baseUrl "/docs/api-reference/core/types" → "/docs/api-reference/core/types#job"
  */
@@ -196,7 +227,11 @@ export const ApiReference = async ({
 
     // Exclude filter
     if (exclude && exclude.length > 0) {
-      resolved = resolved.filter((exp) => !exclude.includes(exp.name))
+      const excluded = new Set(exclude)
+      resolved = resolved.filter((exp) => !excluded.has(exp.name))
+      // A member row may link to an excluded type's anchor; degrade those links
+      // to plain text so the page never deep-links to a section it dropped.
+      resolved = stripExcludedTypeLinks(resolved, excluded)
     }
 
     // Type link resolution strategy:

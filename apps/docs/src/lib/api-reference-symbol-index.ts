@@ -88,7 +88,16 @@ export const buildSymbolIndex = cache(async (): Promise<SymbolIndex> =>
           resolvePackagePath(reference.file)
         ).catch(() => [])
 
+        // Symbols excluded from the page's reference are not documented there,
+        // so they must not be indexed to it; a `{@link}` to one would otherwise
+        // resolve to a dead anchor on a page that no longer renders it.
+        const excluded = new Set(reference.exclude)
+
         for (const info of exportInfos) {
+          if (excluded.has(info.name)) {
+            continue
+          }
+
           // First page in iteration order wins for duplicate symbol names.
           if (index.has(info.name)) {
             continue

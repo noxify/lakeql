@@ -223,7 +223,11 @@ export default async function DocsPage({
   // Collect apiReference entries from frontmatter for rendering below content
   const apiReferenceEntries =
     frontmatter?.apiReference && Array.isArray(frontmatter.apiReference)
-      ? (frontmatter.apiReference as { name: string; file: string }[])
+      ? (frontmatter.apiReference as {
+          name: string
+          file: string
+          exclude?: string[]
+        }[])
       : []
 
   const rawHref = toRawHref(slug)
@@ -323,6 +327,7 @@ export default async function DocsPage({
                 <ApiReference
                   key={ref.file}
                   file={ref.file}
+                  exclude={ref.exclude}
                   currentPageHref={docsPath}
                 />
               ))}

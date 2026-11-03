@@ -19,6 +19,13 @@ export interface ApiReferenceAttrs {
   file: string
   /** Optional single-export filter; only honored on the inline tag path. */
   name?: string
+  /**
+   * Export names to omit, mirroring the React `ApiReference` `exclude` prop and
+   * the frontmatter `apiReference[].exclude`. Keeps the raw/llms Markdown (and
+   * thus the search index that builds from it) in parity with the rendered
+   * page so an excluded symbol never leaks. Absent or empty excludes nothing.
+   */
+  exclude?: string[]
 }
 
 /** A table row mirroring {@link MemberRow} from the React `MembersTable`. */
@@ -473,7 +480,9 @@ function renderExport(source: ResolvedExport): string[] {
  * always rendered as plain type text (full-variant, anchors-as-text form).
  *
  * @param attrs - The resolved string attributes. `name` applies a single-export
- *   filter and is only forwarded on the inline tag path.
+ *   filter and is only forwarded on the inline tag path; `exclude` omits the
+ *   named exports (parity with the rendered page and the frontmatter
+ *   `apiReference[].exclude`).
  * @returns The Markdown for the matched exports, or a one-line fallback note
  *   when resolution throws.
  */
@@ -484,9 +493,16 @@ export async function apiReferenceToMarkdown(
 
   try {
     const all = await resolveFileExports(resolvePackagePath(attrs.file))
-    exports = attrs.name
+    const filtered = attrs.name
       ? all.filter((exp) => exp.name === attrs.name)
       : [...all]
+
+    // Drop excluded exports so the appended Markdown matches the rendered page.
+    const excluded = new Set(attrs.exclude)
+    exports =
+      excluded.size > 0
+        ? filtered.filter((exp) => !excluded.has(exp.name))
+        : filtered
   } catch (error) {
     // oxlint-disable-next-line no-console
     console.warn(

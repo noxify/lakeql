@@ -89,14 +89,21 @@ const DOCS_LAYOUT = createDocsLayoutConfig({
 })
 
 async function fetchApiReferenceTocItems(
-  references: { name: string; file: string }[]
+  references: { name: string; file: string; exclude?: string[] }[]
 ) {
   const results = await Promise.all(
     references.map(async (ref) => {
       try {
         const filePath = resolvePackagePath(ref.file)
         const exports = await analyzeSyntacticExports(filePath)
-        return { name: ref.name, exports }
+        // Drop excluded exports so the TOC never lists a symbol the page does
+        // not render (which would otherwise point at a missing anchor).
+        const excluded = new Set(ref.exclude)
+        const visibleExports =
+          excluded.size > 0
+            ? exports.filter((exp) => !excluded.has(exp.name))
+            : exports
+        return { name: ref.name, exports: visibleExports }
       } catch {
         return { name: ref.name, exports: [] as SyntacticExportInfo[] }
       }

@@ -720,13 +720,35 @@ export function kindToLabel(kind: string): string {
   )
 }
 
+/**
+ * Resolves the exported symbols documented by a page's `apiReference`
+ * frontmatter, mirroring the anchors the rendered reference sections produce.
+ *
+ * Each entry's optional `exclude` list removes the named top-level exports from
+ * the result, so callers (notably the link validator's allowed-anchor set) stay
+ * in parity with the rendered page: an excluded symbol's anchor is never
+ * treated as valid. Entries without `exclude` behave exactly as before.
+ *
+ * @param references - The frontmatter `apiReference` entries. `exclude` is
+ *   optional per entry; an absent or empty list excludes nothing.
+ * @returns One {@link ApiReferenceResult} per successfully resolved file, with
+ *   excluded exports omitted. Files that fail to resolve are dropped.
+ */
 export const getApiReferenceExports = cache(
   async (
-    references: { name: string; file: string }[]
+    references: { name: string; file: string; exclude?: string[] }[]
   ): Promise<ApiReferenceResult[]> => {
     const results = await Promise.all(
-      references.map((ref) =>
-        cachePromise(_apiReferenceCache, ref.file, async () => {
+      references.map((ref) => {
+        const excluded = new Set(ref.exclude)
+        // Key the cache by file + exclude so two pages referencing the same
+        // file with different exclusions do not share a filtered result.
+        const cacheKey =
+          excluded.size > 0
+            ? `${ref.file}::exclude=${[...excluded].toSorted().join(",")}`
+            : ref.file
+
+        return cachePromise(_apiReferenceCache, cacheKey, async () => {
           try {
             const filePath = path.resolve(
               process.cwd(),
@@ -738,33 +760,35 @@ export const getApiReferenceExports = cache(
             const syntacticExports = await analyzeSyntacticExports(filePath)
 
             // Build export metadata purely from ts-morph analysis (no renoun getExports)
-            const exports = syntacticExports.map((info) => {
-              const slug = createSlug(info.name)
+            const exports = syntacticExports
+              .filter((info) => !excluded.has(info.name))
+              .map((info) => {
+                const slug = createSlug(info.name)
 
-              const methods =
-                info.kind === "Class" && info.methods
-                  ? info.methods.map((methodName) => ({
-                      slug: `${slug}-${createSlug(methodName)}`,
-                      name: methodName,
-                      title: methodName,
-                    }))
-                  : undefined
+                const methods =
+                  info.kind === "Class" && info.methods
+                    ? info.methods.map((methodName) => ({
+                        slug: `${slug}-${createSlug(methodName)}`,
+                        name: methodName,
+                        title: methodName,
+                      }))
+                    : undefined
 
-              return {
-                slug,
-                name: info.name,
-                title: info.name,
-                kind: info.kind ? kindToLabel(info.kind) : null,
-                methods,
-              }
-            })
+                return {
+                  slug,
+                  name: info.name,
+                  title: info.name,
+                  kind: info.kind ? kindToLabel(info.kind) : null,
+                  methods,
+                }
+              })
 
             return { name: ref.name, exports }
           } catch {
             return null
           }
         })
-      )
+      })
     )
     return results.filter((r): r is ApiReferenceResult => r !== null)
   }

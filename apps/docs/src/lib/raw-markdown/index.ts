@@ -5,6 +5,13 @@ import { runPipeline } from "./pipeline"
 export interface ApiReferenceFrontmatterEntry {
   name: string
   file: string
+  /**
+   * Export names to omit from the appended Markdown, mirroring the rendered
+   * page's `apiReference[].exclude`. Forwarded to {@link apiReferenceToMarkdown}
+   * so the raw/llms output and the search index (which builds from this path)
+   * never surface a symbol the page hides. Absent or empty excludes nothing.
+   */
+  exclude?: string[]
 }
 
 /** Options for {@link mdxToMarkdown}. */
@@ -25,7 +32,8 @@ export interface MdxToMarkdownOptions {
  * string concatenation on the already-serialized body, so generated sections
  * land after the source content while the frontmatter block stays on top.
  * `entry.name` is intentionally not forwarded, matching the docs page which
- * renders the whole file's exports.
+ * renders the whole file's exports; `entry.exclude` is forwarded so excluded
+ * symbols are omitted here exactly as on the rendered page.
  *
  * @param source - The raw MDX document text.
  * @param options - Optional frontmatter API references to append.
@@ -45,7 +53,7 @@ export async function mdxToMarkdown(
 
   const appended = await Promise.all(
     appendApiReferences.map((entry) =>
-      apiReferenceToMarkdown({ file: entry.file })
+      apiReferenceToMarkdown({ file: entry.file, exclude: entry.exclude })
     )
   )
 

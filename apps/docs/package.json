@@ -15,6 +15,7 @@
     "lint:prose:sync": "vale sync",
     "preview": "npx serve out/",
     "start": "next start",
+    "test": "vitest",
     "typecheck": "next typegen && tsc --noEmit",
     "typegen": "next typegen"
   },
