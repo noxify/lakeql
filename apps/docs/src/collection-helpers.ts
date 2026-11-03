@@ -5,6 +5,7 @@ import { createSlug } from "renoun"
 import { isDirectory, isFile } from "renoun/file-system"
 import type { z } from "zod"
 
+import { resolvePackagePath } from "@/components/mdx/api-reference/utils"
 import { cachePromise } from "@/lib/cache-promise"
 import { analyzeSyntacticExports } from "@/lib/ts-morph-analysis"
 
@@ -750,11 +751,7 @@ export const getApiReferenceExports = cache(
 
         return cachePromise(_apiReferenceCache, cacheKey, async () => {
           try {
-            const filePath = path.resolve(
-              process.cwd(),
-              "../../packages",
-              `${ref.file}.ts`
-            )
+            const filePath = resolvePackagePath(ref.file)
 
             // Use lightweight syntactic analysis instead of full type resolution
             const syntacticExports = await analyzeSyntacticExports(filePath)
