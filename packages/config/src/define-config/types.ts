@@ -11,6 +11,37 @@ import type {
 import type { ResolvedPaging } from "./resolve-paging"
 
 /**
+ * Resolves the compile-time type of an `overrides` field from an adapter's
+ * registration-level options type.
+ *
+ * An adapter that declares real registration options (a concrete object type
+ * with at least one key) gets `Partial<TOptions>`, preserving per-field
+ * autocomplete and type-checking. An adapter that declares no meaningful
+ * options collapses to `never`, so `overrides` offers no keys and assigning
+ * an arbitrary object is a type error instead of a silent no-op.
+ *
+ * "No meaningful options" covers three cases, all mapped to `never`:
+ * - `unknown` — the default third type parameter of {@link AdapterDefinition},
+ *   used by adapters (e.g. Trino, Fabric) that receive a complete explicit
+ *   connection and declare no `registrationOptions`. Guarded by the
+ *   `[keyof TOptions] extends [never]` check, since `keyof unknown` is `never`.
+ *   The surrounding tuple (`[keyof TOptions]`) suppresses the special
+ *   distributive behavior of a bare `unknown` in a conditional type.
+ * - `never` — guarded first via `[TOptions] extends [never]`, because
+ *   `keyof never` is `string | number | symbol` (not `never`) and would
+ *   otherwise slip through as a has-keys type.
+ * - an empty object type (`{}`-like) — `keyof {}` is `never`, so it maps to
+ *   `never` as well; an empty options bag cannot carry real overrides.
+ *
+ * @template TOptions - The adapter's registration-level options type.
+ */
+export type OverridesFor<TOptions> = [TOptions] extends [never]
+  ? never
+  : [keyof TOptions] extends [never]
+    ? never
+    : Partial<TOptions>
+
+/**
  * Input shape passed to an adapter's `mergeDataSourceConfig()` function.
  *
  * Contains the data-source connection value, optional write configuration,
@@ -27,8 +58,15 @@ export interface DataSourceConfigInput<
   connection: TConnection
   /** Optional adapter-owned write configuration passed through unchanged. */
   writeConfig?: unknown
-  /** Optional overrides scoped to registration-level option fields. */
-  overrides?: Partial<TRegistrationOptions>
+  /**
+   * Optional overrides scoped to registration-level option fields.
+   *
+   * Typed via {@link OverridesFor}: an adapter with real registration options
+   * accepts `Partial<TRegistrationOptions>`, while an adapter that declares no
+   * options (`TRegistrationOptions` is `unknown`, `never`, or an empty object)
+   * collapses this field to `never`, so no meaningful override can be set.
+   */
+  overrides?: OverridesFor<TRegistrationOptions>
 }
 
 /**
@@ -146,8 +184,17 @@ export type DataSourceEntry<
         connection: TConnection
         /** Optional adapter-owned write configuration, typed per adapter. */
         writeConfig?: TWriteConfig
-        /** Optional overrides scoped to the adapter's registration-level option fields. */
-        overrides?: Partial<TOptions>
+        /**
+         * Optional overrides scoped to the adapter's registration-level option
+         * fields.
+         *
+         * Typed via {@link OverridesFor}: an adapter with real registration
+         * options accepts `Partial<TOptions>`, while an adapter that declares
+         * no options (`TOptions` is `unknown`, `never`, or an empty object)
+         * collapses this field to `never` so assigning an arbitrary object is a
+         * type error rather than a silent no-op.
+         */
+        overrides?: OverridesFor<TOptions>
         /** Optional per-data-source impersonation resolver, taking precedence over the global one. */
         impersonationResolver?: ImpersonationResolver
         /** Optional page size used when a request omits `perPage`. Must be a positive integer. */

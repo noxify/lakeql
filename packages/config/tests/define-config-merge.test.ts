@@ -25,8 +25,15 @@ function makeAdapterWithOptions(name: string, registrationOptions?: unknown) {
     validateDataSourceConfig: () => {},
     // Widen TWriteConfig to unknown so this fixture's entries can carry a
     // writeConfig value; the pass-through test asserts runtime behavior, not
-    // per-adapter write typing.
-  } as unknown as AdapterDefinition<string, unknown, unknown, unknown>
+    // per-adapter write typing. TOptions is Record<string, unknown> (not
+    // unknown) so these default-merge runtime tests can set arbitrary
+    // `overrides`; `OverridesFor` only collapses optionless adapters to never.
+  } as unknown as AdapterDefinition<
+    string,
+    unknown,
+    Record<string, unknown>,
+    unknown
+  >
 }
 
 describe("defineConfig() - default merge and opaque value detection", () => {

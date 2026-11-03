@@ -37,6 +37,7 @@ export type {
   MergedDataSourceConfig,
   NormalizedDataSourceEntry,
   NormalizedDataSourcesFor,
+  OverridesFor,
   ResolvedPaging,
   TypedLakeQLConfig,
 } from "./define-config"

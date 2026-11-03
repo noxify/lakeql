@@ -39,8 +39,15 @@ function makeAdapterDefinition(
 
   // Widen TWriteConfig to unknown so this fixture's entries can carry a
   // writeConfig value; these tests assert runtime pass-through, not per-adapter
-  // write typing.
-  return def as unknown as AdapterDefinition<string, unknown, unknown, unknown>
+  // write typing. TOptions is Record<string, unknown> (not unknown) so these
+  // runtime tests can set arbitrary `overrides`; `OverridesFor` only collapses
+  // optionless adapters to never.
+  return def as unknown as AdapterDefinition<
+    string,
+    unknown,
+    Record<string, unknown>,
+    unknown
+  >
 }
 
 /** Stable module-scope resolver used to assert reference identity. */
