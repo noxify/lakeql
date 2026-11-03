@@ -37,7 +37,7 @@ export default defineConfig({
 ## Fields
 
 - **`adapters`** — the adapter definitions the project may use. The registered list provides the available adapter types.
-- **`dataSources`** — named sources, each selecting a registered `adapter` and supplying its `connection` (and optional `writeConfig`, `overrides`, and `impersonationResolver`).
+- **`dataSources`** — named sources, each selecting a registered `adapter` and supplying its `connection` (and optional `writeConfig`, `overrides`, and `impersonationResolver`). `overrides` applies only to adapters that declare registration-level options. The Trino and Fabric adapters declare none, so the field is typed `never` for them and you leave it out.
 - **`sourcePath`** — base path for generated code. Defaults to `"."`.
 - **`auth`** / **`permissions`** — optional identity/impersonation config and technical-user permission rules, passed through untouched.
 
