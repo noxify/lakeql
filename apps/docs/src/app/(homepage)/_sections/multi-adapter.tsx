@@ -84,17 +84,17 @@ export const MultiAdapterSection = () => (
                 <div className="border-border bg-background mb-5 flex size-14 items-center justify-center rounded-xl border shadow-sm">
                   {adapter.icon}
                 </div>
-                <h3 className="text-foreground text-base font-semibold">
-                  {adapter.name}
-                </h3>
-                <p className="text-muted-foreground mt-2 flex-1 text-sm leading-relaxed">
-                  {adapter.description}
-                </p>
-                <div className="mt-5">
-                  <span className="text-muted-foreground/70 bg-muted inline-flex items-center rounded-md px-2.5 py-1 text-xs font-medium">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-foreground text-base font-semibold">
+                    {adapter.name}
+                  </h3>
+                  <span className="text-muted-foreground/50 bg-muted inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium">
                     Coming soon
                   </span>
                 </div>
+                <p className="text-muted-foreground mt-2 flex-1 text-sm leading-relaxed">
+                  {adapter.description}
+                </p>
               </div>
             </div>
           ) : (

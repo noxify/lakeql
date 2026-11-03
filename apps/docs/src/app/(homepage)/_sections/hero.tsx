@@ -130,7 +130,7 @@ export const HeroSection = () => (
 
       <div className="relative mx-auto flex max-w-6xl flex-col items-center px-4 pt-20 pb-16 text-center sm:px-6 sm:pt-28">
         {/* Badge */}
-        <span className="border-border bg-card/70 text-muted-foreground hover:text-foreground mb-7 inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium backdrop-blur transition-colors">
+        <span className="border-border bg-card/70 text-muted-foreground mb-7 inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium backdrop-blur">
           <SparkleIcon className="text-brand size-3.5" />
           New: Version 1.0 is now adapter agnostic
         </span>
