@@ -78,8 +78,8 @@ export const SiteHeader = ({
 
         {/* Right: search + github + theme */}
         <div className="ml-auto flex items-center gap-1">
-          <SearchCommand>
-            <Tooltip>
+          <Tooltip>
+            <SearchCommand>
               <TooltipTrigger
                 render={
                   <Button
@@ -91,14 +91,14 @@ export const SiteHeader = ({
                   </Button>
                 }
               />
-              <TooltipContent>
-                Open search{" "}
-                <Kbd>
-                  <PlatformModifierKey />K
-                </Kbd>
-              </TooltipContent>
-            </Tooltip>
-          </SearchCommand>
+            </SearchCommand>
+            <TooltipContent>
+              Open search{" "}
+              <Kbd>
+                <PlatformModifierKey />K
+              </Kbd>
+            </TooltipContent>
+          </Tooltip>
 
           <ThemeToggle />
 
