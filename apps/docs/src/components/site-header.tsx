@@ -10,8 +10,11 @@ import { Button, buttonVariants } from "@/components/ui/button"
 import { useScrollVisibility } from "@/hooks/use-scroll-visibility"
 import { cn } from "@/lib/utils"
 
+import PlatformModifierKey from "./platform-modifier-key"
 import { SearchCommand } from "./search-command"
 import ThemeToggle from "./theme-toggle"
+import { Kbd } from "./ui/kbd"
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip"
 
 const spaceGrotesk = Space_Grotesk({ subsets: ["latin"] })
 
@@ -76,14 +79,28 @@ export const SiteHeader = ({
         {/* Right: search + github + theme */}
         <div className="ml-auto flex items-center gap-1">
           <SearchCommand>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-muted-foreground size-8"
-            >
-              <Search className="size-4" />
-            </Button>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-muted-foreground size-8"
+                  >
+                    <Search className="size-4" />
+                  </Button>
+                }
+              />
+              <TooltipContent>
+                Open search{" "}
+                <Kbd>
+                  <PlatformModifierKey />K
+                </Kbd>
+              </TooltipContent>
+            </Tooltip>
           </SearchCommand>
+
+          <ThemeToggle />
 
           <a
             href="https://github.com/noxify/lakeql"
@@ -97,8 +114,6 @@ export const SiteHeader = ({
           >
             <Github className="size-4" />
           </a>
-
-          <ThemeToggle />
         </div>
       </div>
     </header>
