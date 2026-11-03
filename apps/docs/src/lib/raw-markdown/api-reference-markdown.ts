@@ -498,10 +498,24 @@ export async function apiReferenceToMarkdown(
       : [...all]
 
     // Drop excluded exports so the appended Markdown matches the rendered page.
+    // Also drop excluded names from any surviving export's `referencedTypes`
+    // so the "See:" list under a type definition does not name a symbol the
+    // page no longer documents (parity with the rendered `stripExcludedTypeLinks`).
     const excluded = new Set(attrs.exclude)
     exports =
       excluded.size > 0
-        ? filtered.filter((exp) => !excluded.has(exp.name))
+        ? filtered
+            .filter((exp) => !excluded.has(exp.name))
+            .map((exp) =>
+              exp.referencedTypes
+                ? {
+                    ...exp,
+                    referencedTypes: exp.referencedTypes.filter(
+                      (ref) => !excluded.has(ref)
+                    ),
+                  }
+                : exp
+            )
         : filtered
   } catch (error) {
     // oxlint-disable-next-line no-console

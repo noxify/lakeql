@@ -28,6 +28,11 @@ function isBareSymbolHref(href: string): boolean {
  * Only bare symbol hrefs are rewritten; real URLs, absolute paths, and
  * same-page fragments pass through unchanged. For a bare symbol:
  *
+ * - If the base symbol is in `excluded`, `null` is returned to signal that the
+ *   target is not documented on this page, so the renderer degrades the link to
+ *   plain text instead of emitting a dead same-page anchor. This keeps the
+ *   rendered page in parity with every other consumer that drops excluded
+ *   symbols.
  * - If the symbol is in `symbolIndex` and lives on a different page, an
  *   absolute `${pageHref}/#${anchor}` href is returned (fixes the cross-package
  *   wrong-page case).
@@ -47,19 +52,31 @@ function isBareSymbolHref(href: string): boolean {
  * @param symbolIndex - Process-scoped export-name → page/anchor index.
  * @param currentPageHref - Absolute route of the page currently rendering, used
  *   to decide between an absolute cross-page href and a same-page fragment.
- * @returns The resolved href.
+ * @param excluded - Base symbol names excluded from the current page's
+ *   reference. A `{@link}` to one of these resolves to `null` so the renderer
+ *   drops the link rather than pointing at a section the page no longer renders.
+ * @returns The resolved href, or `null` when the target is excluded from the
+ *   current page and should render as plain text.
  */
 export function resolveJsDocLinkHref(
   href: string,
   symbolIndex: SymbolIndex,
-  currentPageHref: string
-): string {
+  currentPageHref: string,
+  excluded?: ReadonlySet<string>
+): string | null {
   if (!isBareSymbolHref(href)) {
     return href
   }
 
   // Split a possible member reference: `Class.method` → ["Class", "method"].
   const [base = href, member] = href.split(".")
+
+  // A symbol excluded from this page is not documented here; drop the link so
+  // it never resolves to a removed section's anchor.
+  if (excluded?.has(base)) {
+    return null
+  }
+
   const location = symbolIndex.get(base)
 
   if (!location) {

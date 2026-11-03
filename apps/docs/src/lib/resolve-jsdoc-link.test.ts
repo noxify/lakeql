@@ -55,6 +55,30 @@ describe(resolveJsDocLinkHref, () => {
     )
   })
 
+  it("returns null for a symbol excluded from the current page", () => {
+    // An excluded symbol is not documented on the page, so a same-page
+    // `{@link}` to it must not fall back to a dead `#overrides-for` anchor;
+    // null signals the renderer to degrade the link to plain text.
+    const excluded = new Set(["OverridesFor"])
+
+    expect(
+      resolveJsDocLinkHref("OverridesFor", index, FABRIC_PAGE, excluded)
+    ).toBeNull()
+  })
+
+  it("resolves normally when the excluded set does not contain the symbol", () => {
+    const excluded = new Set(["SomethingElse"])
+
+    expect(
+      resolveJsDocLinkHref(
+        "FabricConnectionConfig",
+        index,
+        FABRIC_PAGE,
+        excluded
+      )
+    ).toBe("#fabric-connection-config")
+  })
+
   it("resolves a Class.method member reference to the method anchor", () => {
     expect(
       resolveJsDocLinkHref("FabricDataSource.schemas", index, FABRIC_PAGE)

@@ -37,6 +37,57 @@ export type SymbolIndex = ReadonlyMap<string, SymbolLocation>
 const _symbolIndexCache = new Map<string, Promise<SymbolIndex>>()
 
 /**
+ * A single exported symbol as returned by the syntactic export analysis: only
+ * its `name` is needed to key the symbol index.
+ */
+interface IndexableExport {
+  name: string
+}
+
+/**
+ * Inserts a page's exported symbols into the accumulating symbol index,
+ * honoring the page's `exclude` list and first-match-wins for duplicate names.
+ *
+ * Symbols named in `exclude` are not documented on the page, so they are
+ * skipped: indexing one would let a `{@link}` resolve to a dead anchor on a
+ * page that no longer renders that section. A name already present in `index`
+ * (documented on an earlier page in traversal order) is left untouched so
+ * resolution stays deterministic across builds.
+ *
+ * Mutates `index` in place; it is the per-build accumulator shared across pages.
+ *
+ * @param index - The accumulating export-name → location map to extend.
+ * @param exportInfos - The exported symbols discovered for this reference.
+ * @param pageHref - Absolute docs route of the page that documents the exports.
+ * @param exclude - Export names excluded from this page's reference. An absent
+ *   or empty list excludes nothing.
+ */
+export function indexReferenceExports(
+  index: Map<string, SymbolLocation>,
+  exportInfos: readonly IndexableExport[],
+  pageHref: string,
+  exclude?: readonly string[]
+): void {
+  const excluded = new Set(exclude)
+
+  for (const info of exportInfos) {
+    if (excluded.has(info.name)) {
+      continue
+    }
+
+    // First page in iteration order wins for duplicate symbol names.
+    if (index.has(info.name)) {
+      continue
+    }
+
+    index.set(info.name, {
+      pageHref,
+      anchor: createSlug(info.name),
+    })
+  }
+}
+
+/**
  * Builds a process-scoped index mapping every exported symbol rendered on an
  * api-reference page to its page route and section anchor.
  *
@@ -91,23 +142,7 @@ export const buildSymbolIndex = cache(async (): Promise<SymbolIndex> =>
         // Symbols excluded from the page's reference are not documented there,
         // so they must not be indexed to it; a `{@link}` to one would otherwise
         // resolve to a dead anchor on a page that no longer renders it.
-        const excluded = new Set(reference.exclude)
-
-        for (const info of exportInfos) {
-          if (excluded.has(info.name)) {
-            continue
-          }
-
-          // First page in iteration order wins for duplicate symbol names.
-          if (index.has(info.name)) {
-            continue
-          }
-
-          index.set(info.name, {
-            pageHref,
-            anchor: createSlug(info.name),
-          })
-        }
+        indexReferenceExports(index, exportInfos, pageHref, reference.exclude)
       }
     }
 

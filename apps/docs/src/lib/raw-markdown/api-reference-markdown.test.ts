@@ -37,6 +37,31 @@ describe("apiReferenceToMarkdown exclude", () => {
     expect(markdown).toContain("### loadConfig")
   })
 
+  it("drops the excluded symbol from a `See:` referenced-types line", async () => {
+    const withExclude = await apiReferenceToMarkdown({
+      file: CONFIG_FILE,
+      exclude: [EXCLUDED],
+    })
+    const without = await apiReferenceToMarkdown({ file: CONFIG_FILE })
+
+    // Baseline: some type definition's `See:` list names OverridesFor, matching
+    // the rendered page's referenced-types links.
+    expect(
+      without
+        .split("\n")
+        .some((line) => line.startsWith("See:") && line.includes(EXCLUDED))
+    ).toBeTruthy()
+
+    // After exclusion no `See:` line may name the dropped symbol, so the raw
+    // Markdown (and the search index) never deep-links to a removed section —
+    // the same guarantee the rendered page now makes via stripExcludedTypeLinks.
+    expect(
+      withExclude
+        .split("\n")
+        .some((line) => line.startsWith("See:") && line.includes(EXCLUDED))
+    ).toBeFalsy()
+  })
+
   it("is a no-op for an empty exclude list", async () => {
     const withEmpty = await apiReferenceToMarkdown({
       file: CONFIG_FILE,

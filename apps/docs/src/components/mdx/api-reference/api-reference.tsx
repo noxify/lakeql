@@ -110,10 +110,16 @@ function inlineTypeLinks(
 }
 
 /**
- * Drops `typeLink`s that point to an excluded export so a member row does not
- * deep-link to a section anchor the page no longer renders. The type text is
- * preserved (the link simply degrades to plain text), matching the
- * dead-link fallback {@link inlineTypeLinks} already uses.
+ * Drops every link to an excluded export so the page never deep-links to a
+ * section anchor it no longer renders, while keeping the type text intact:
+ *
+ * - member `typeLink`s pointing at an excluded type are cleared (the type text
+ *   stays, the link degrades to plain text), and
+ * - excluded names are removed from each export's `referencedTypes` so the
+ *   "See:" list under a type definition drops the dead anchor.
+ *
+ * This matches the dead-link fallback {@link inlineTypeLinks} already uses and
+ * keeps the rendered page in parity with every other consumer.
  *
  * @param exports - The exports being rendered.
  * @param excluded - The set of excluded export names.
@@ -134,9 +140,20 @@ function stripExcludedTypeLinks(
     )
   }
 
+  function stripReferencedTypes(
+    referencedTypes: string[] | undefined
+  ): string[] | undefined {
+    if (!referencedTypes) {
+      return undefined
+    }
+
+    return referencedTypes.filter((ref) => !excluded.has(ref))
+  }
+
   return exports.map((exp) => ({
     ...exp,
     members: stripMemberLinks(exp.members),
+    referencedTypes: stripReferencedTypes(exp.referencedTypes),
   }))
 }
 
@@ -283,6 +300,12 @@ export const ApiReference = async ({
   // page href (e.g. ad-hoc inline usage outside a docs page).
   const symbolIndex = currentPageHref ? await buildSymbolIndex() : undefined
 
+  // The excluded names are not documented on this page, so an inline JSDoc
+  // `{@link}` in surviving exports' descriptions that points at one must
+  // degrade to plain text rather than a dead same-page anchor.
+  const excludedSet =
+    exclude && exclude.length > 0 ? new Set(exclude) : undefined
+
   return (
     <div className="not-prose my-6 flex flex-col">
       {exports.map((exp) => (
@@ -291,6 +314,7 @@ export const ApiReference = async ({
           source={exp}
           symbolIndex={symbolIndex}
           currentPageHref={currentPageHref}
+          excluded={excludedSet}
         />
       ))}
     </div>

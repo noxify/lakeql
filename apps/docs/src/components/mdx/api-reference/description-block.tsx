@@ -21,12 +21,19 @@ interface DescriptionBlockProps {
    * absolute cross-page href and a same-page fragment for `{@link}` targets.
    */
   currentPageHref?: string
+  /**
+   * Export names excluded from this page's reference. A bare `{@link}` to one
+   * of them is rendered as plain text instead of a link, so an excluded symbol
+   * never produces a dead same-page anchor.
+   */
+  excluded?: ReadonlySet<string>
 }
 
 export const DescriptionBlock = ({
   children,
   symbolIndex,
   currentPageHref,
+  excluded,
 }: DescriptionBlockProps) => (
   <div className="prose dark:prose-invert text-muted-foreground max-w-none text-sm">
     <Markdown
@@ -42,19 +49,37 @@ export const DescriptionBlock = ({
         // oxlint-disable-next-line react/no-unstable-nested-components no-shadow
         code: ({ children }: CodeBlockProps) => <Kbd>{children}</Kbd>,
         // oxlint-disable-next-line react/no-unstable-nested-components
-        a: ({ href, children: linkChildren, ...props }: AnchorProps) => (
-          <LinkHandler
-            href={
-              href && symbolIndex && currentPageHref
-                ? resolveJsDocLinkHref(href, symbolIndex, currentPageHref)
-                : href
-            }
-            {...props}
-            className="border-border bg-muted/60 hover:bg-muted inline-flex rounded border px-1.5 py-0.5 font-mono text-xs underline decoration-dotted underline-offset-2"
-          >
-            {linkChildren}
-          </LinkHandler>
-        ),
+        a: ({ href, children: linkChildren, ...props }: AnchorProps) => {
+          const resolvedHref =
+            href && symbolIndex && currentPageHref
+              ? resolveJsDocLinkHref(
+                  href,
+                  symbolIndex,
+                  currentPageHref,
+                  excluded
+                )
+              : href
+
+          // An excluded same-page `{@link}` target resolves to null; render it
+          // as plain code so the page never deep-links to a dropped section.
+          if (resolvedHref === null) {
+            return (
+              <code className="border-border bg-muted/60 inline-flex rounded border px-1.5 py-0.5 font-mono text-xs">
+                {linkChildren}
+              </code>
+            )
+          }
+
+          return (
+            <LinkHandler
+              href={resolvedHref}
+              {...props}
+              className="border-border bg-muted/60 hover:bg-muted inline-flex rounded border px-1.5 py-0.5 font-mono text-xs underline decoration-dotted underline-offset-2"
+            >
+              {linkChildren}
+            </LinkHandler>
+          )
+        },
       }}
     >
       {children}

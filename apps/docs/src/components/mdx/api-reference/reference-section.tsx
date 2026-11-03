@@ -25,6 +25,11 @@ const spaceGrotesk = Space_Grotesk({ subsets: ["latin"] })
 interface LinkResolutionProps {
   symbolIndex?: SymbolIndex
   currentPageHref?: string
+  /**
+   * Export names excluded from this page's reference, so inline `{@link}`
+   * targets pointing at a dropped same-page symbol degrade to plain text.
+   */
+  excluded?: ReadonlySet<string>
 }
 
 // ---------------------------------------------------------------------------
@@ -61,6 +66,7 @@ const FunctionSignatures = ({
   slug,
   symbolIndex,
   currentPageHref,
+  excluded,
 }: {
   source: ResolvedExport
   slug: string
@@ -96,6 +102,7 @@ const FunctionSignatures = ({
                 sectionSlug={slug}
                 symbolIndex={symbolIndex}
                 currentPageHref={currentPageHref}
+                excluded={excluded}
                 rows={sig.params.map((p) => ({
                   name: `${p.name}${p.isOptional ? "?" : ""}`,
                   type: p.type,
@@ -129,6 +136,7 @@ const FunctionSignatures = ({
                 <DescriptionBlock
                   symbolIndex={symbolIndex}
                   currentPageHref={currentPageHref}
+                  excluded={excluded}
                 >
                   {sig.returnsDescription}
                 </DescriptionBlock>
@@ -190,6 +198,7 @@ const MethodDetail = ({
   parentSlug,
   symbolIndex,
   currentPageHref,
+  excluded,
 }: {
   method: ResolvedExport
   parentSlug: string
@@ -214,6 +223,7 @@ const MethodDetail = ({
         <DescriptionBlock
           symbolIndex={symbolIndex}
           currentPageHref={currentPageHref}
+          excluded={excluded}
         >
           {method.description}
         </DescriptionBlock>
@@ -241,6 +251,7 @@ const MethodDetail = ({
             sectionSlug={methodSlug}
             symbolIndex={symbolIndex}
             currentPageHref={currentPageHref}
+            excluded={excluded}
             rows={sig.params.map((p) => ({
               name: `${p.name}${p.isOptional ? "?" : ""}`,
               type: p.type,
@@ -275,6 +286,7 @@ const MethodDetail = ({
               <DescriptionBlock
                 symbolIndex={symbolIndex}
                 currentPageHref={currentPageHref}
+                excluded={excluded}
               >
                 {sig.returnsDescription}
               </DescriptionBlock>
@@ -296,11 +308,14 @@ const MethodDetail = ({
  *   JSDoc `{@link}` references in description text.
  * @param currentPageHref - Absolute route of the page rendering this section,
  *   used to emit same-page fragments for symbols documented on this page.
+ * @param excluded - Export names excluded from this page's reference, so a
+ *   `{@link}` to a dropped same-page symbol degrades to plain text.
  */
 export const ReferenceSection = ({
   source,
   symbolIndex,
   currentPageHref,
+  excluded,
 }: { source: ResolvedExport } & LinkResolutionProps) => {
   const slug = createSlug(source.name)
 
@@ -334,6 +349,7 @@ export const ReferenceSection = ({
               <DescriptionBlock
                 symbolIndex={symbolIndex}
                 currentPageHref={currentPageHref}
+                excluded={excluded}
               >
                 {source.description}
               </DescriptionBlock>
@@ -362,6 +378,7 @@ export const ReferenceSection = ({
               slug={slug}
               symbolIndex={symbolIndex}
               currentPageHref={currentPageHref}
+              excluded={excluded}
             />
 
             {/* Class constructor */}
@@ -375,6 +392,7 @@ export const ReferenceSection = ({
                     <DescriptionBlock
                       symbolIndex={symbolIndex}
                       currentPageHref={currentPageHref}
+                      excluded={excluded}
                     >
                       {source.classConstructor.description}
                     </DescriptionBlock>
@@ -383,6 +401,7 @@ export const ReferenceSection = ({
                     sectionSlug={slug}
                     symbolIndex={symbolIndex}
                     currentPageHref={currentPageHref}
+                    excluded={excluded}
                     rows={source.classConstructor.params.map((p) => ({
                       name: `${p.name}${p.isOptional ? "?" : ""}`,
                       type: p.type,
@@ -406,6 +425,7 @@ export const ReferenceSection = ({
                   sectionSlug={slug}
                   symbolIndex={symbolIndex}
                   currentPageHref={currentPageHref}
+                  excluded={excluded}
                   rows={source.members.map((m) => ({
                     name: `${m.name}${m.isOptional ? "?" : ""}`,
                     type: m.type,
@@ -434,6 +454,7 @@ export const ReferenceSection = ({
                     parentSlug={slug}
                     symbolIndex={symbolIndex}
                     currentPageHref={currentPageHref}
+                    excluded={excluded}
                   />
                 ))}
               </div>
@@ -445,6 +466,7 @@ export const ReferenceSection = ({
                 sectionSlug={slug}
                 symbolIndex={symbolIndex}
                 currentPageHref={currentPageHref}
+                excluded={excluded}
                 rows={source.enumMembers.map((m) => ({
                   name: m.name,
                   type: m.value ?? "",

@@ -19,6 +19,12 @@ import { DescriptionBlock } from "./description-block"
 interface LinkResolutionProps {
   symbolIndex?: SymbolIndex
   currentPageHref?: string
+  /**
+   * Export names excluded from this page's reference, so a `{@link}` in a
+   * member/parameter description that points at a dropped same-page symbol
+   * renders as plain text instead of a dead anchor.
+   */
+  excluded?: ReadonlySet<string>
 }
 
 export interface MemberRow {
@@ -46,6 +52,7 @@ export const MembersTable = ({
   rows,
   symbolIndex,
   currentPageHref,
+  excluded,
 }: {
   sectionSlug: string
   rows: MemberRow[]
@@ -74,6 +81,7 @@ export const MembersTable = ({
             hasSubRow={hasSubRow}
             symbolIndex={symbolIndex}
             currentPageHref={currentPageHref}
+            excluded={excluded}
           />
         )
       })}
@@ -87,6 +95,7 @@ const MemberRowGroup = ({
   hasSubRow,
   symbolIndex,
   currentPageHref,
+  excluded,
 }: {
   row: MemberRow
   cellId: string
@@ -140,6 +149,7 @@ const MemberRowGroup = ({
                 <DescriptionBlock
                   symbolIndex={symbolIndex}
                   currentPageHref={currentPageHref}
+                  excluded={excluded}
                 >
                   {row.description}
                 </DescriptionBlock>
@@ -212,6 +222,7 @@ const MemberRowGroup = ({
                               <DescriptionBlock
                                 symbolIndex={symbolIndex}
                                 currentPageHref={currentPageHref}
+                                excluded={excluded}
                               >
                                 {m.description}
                               </DescriptionBlock>
