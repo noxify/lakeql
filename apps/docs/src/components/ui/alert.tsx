@@ -56,7 +56,7 @@ const AlertDescription = ({
   <div
     data-slot="alert-description"
     className={cn(
-      "text-muted-foreground [&_a]:hover:text-foreground text-sm text-balance md:text-pretty [&_a]:underline [&_a]:underline-offset-3 [&_p:not(:last-child)]:mb-4 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0",
+      "text-muted-foreground [&_a]:hover:text-foreground text-sm text-balance md:text-pretty [&_a]:underline [&_a]:underline-offset-3 [&_p]:text-[length:inherit] [&_p]:leading-[inherit] [&_p:not(:last-child)]:mb-4 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0",
       className
     )}
     {...props}
