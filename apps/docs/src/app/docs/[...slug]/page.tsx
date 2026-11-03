@@ -38,8 +38,6 @@ export async function generateMetadata(
 ): Promise<Metadata> {
   const { slug } = await params.params
 
-  const [collection] = slug
-
   let entry: EntryType | null = null
 
   try {
@@ -53,19 +51,7 @@ export async function generateMetadata(
 
   const titles = breadcrumbItems.map((ele) => ele.title)
 
-  const alternateTypes: NonNullable<Metadata["alternates"]>["types"] = {
-    "application/x-ndjson": "/docs.snapshot.jsonl",
-  }
-
-  if (collection) {
-    alternateTypes["application/x-ndjson+collection"] =
-      `/docs.snapshot/${collection}.jsonl`
-  }
-
   return {
-    alternates: {
-      types: alternateTypes,
-    },
     description: metadata?.description ?? "",
     title: `${titles.join(" - ")}`,
   }

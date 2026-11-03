@@ -21,11 +21,6 @@ export const metadata: Metadata = {
     statusBarStyle: "default",
     title: "LakeQL",
   },
-  alternates: {
-    types: {
-      "application/x-ndjson": "/docs.snapshot.jsonl",
-    },
-  },
   description:
     "Universal data access layer for modern platforms. Query across your entire data stack through one type-safe GraphQL client and a single CLI.",
   icons: {
