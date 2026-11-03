@@ -17,6 +17,12 @@ For writes, see the Trino adapter and [Writing](/docs/data-sources/writing). For
 
 `@lakeql/adapter-fabric` connects LakeQL to a Microsoft Fabric SQL endpoint. It implements the datasource contract over TDS, via the standalone [fabric-client](/docs/packages/fabric-client). It provides the T-SQL dialect and authenticates with Azure AD.
 
+Install the adapter:
+
+<Command variant="install">@lakeql/adapter-fabric</Command>
+
+If you scaffolded with create-app and selected Fabric, the adapter is already installed.
+
 Register it in your config:
 
 ```ts

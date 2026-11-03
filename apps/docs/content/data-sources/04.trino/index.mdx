@@ -17,6 +17,12 @@ For how writing works across adapters, see [Writing](/docs/data-sources/writing)
 
 `@lakeql/adapter-trino` connects LakeQL to a Trino coordinator. It implements the datasource contract over the Trino REST API and provides the Trino SQL dialect.
 
+Install the adapter:
+
+<Command variant="install">@lakeql/adapter-trino</Command>
+
+If you scaffolded with create-app and selected Trino, the adapter is already installed.
+
 Register it in your config:
 
 ```ts
