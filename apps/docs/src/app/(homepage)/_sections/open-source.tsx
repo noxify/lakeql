@@ -25,7 +25,7 @@ export const OpenSourceSection = () => (
 
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
           <Link
-            href="/docs"
+            href="/docs/lakeql/getting-started/quickstart"
             prefetch={false}
             className={buttonVariants({ size: "lg" })}
           >

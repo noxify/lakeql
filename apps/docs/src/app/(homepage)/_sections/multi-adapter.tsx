@@ -18,7 +18,7 @@ const adapters = [
     icon: <TrinoLogo className="size-8" />,
     description:
       "Query federated data across Trino clusters, with pushdown for joins, aggregations, and filters.",
-    href: "/docs/datasources/setup/adapters/trino",
+    href: "/docs/data-sources/trino",
     accent: "from-pink-500/10 to-transparent",
     comingSoon: false,
   },
@@ -27,7 +27,7 @@ const adapters = [
     icon: <MicrosoftFabricLogo className="size-8" />,
     description:
       "Connect directly to Fabric warehouses and lakehouses using OneLake shortcuts and managed identity.",
-    href: "/docs/datasources/setup/adapters/fabric",
+    href: "/docs/data-sources/fabric",
     accent: "from-emerald-500/10 to-transparent",
     comingSoon: false,
   },
