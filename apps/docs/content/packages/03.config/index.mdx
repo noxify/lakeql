@@ -6,6 +6,12 @@ description: Load configuration and compose a runtime with @lakeql/config.
 
 `@lakeql/config` is the composition layer. It loads your `lakeql.config.ts`, validates the data-source definitions against the registered adapters, and composes a runtime that owns the live data-source instances.
 
+Install it:
+
+<Command variant="install">@lakeql/config</Command>
+
+If you scaffolded with create-app, `@lakeql/config` is already installed.
+
 Three functions span the lifecycle:
 
 - [`defineConfig`](/docs/packages/config/api-reference#define-config) — author the config file with full type inference.
