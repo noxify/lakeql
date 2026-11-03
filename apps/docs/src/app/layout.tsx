@@ -27,7 +27,7 @@ export const metadata: Metadata = {
     },
   },
   description:
-    "An adapter-agnostic data access layer for modern platforms. Type-safe queries across any supported data engine.",
+    "Universal data access layer for modern platforms. Query across your entire data stack through one type-safe GraphQL client and a single CLI.",
   icons: {
     apple: [
       { sizes: "180x180", type: "image/png", url: "/apple-touch-icon.png" },

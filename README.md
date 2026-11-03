@@ -9,7 +9,7 @@
   <a href="https://npmx.dev/org/lakeql"><img src="https://img.shields.io/badge/npm-%40lakeql-blue?logo=npm" alt="@lakeql packages on npm" /></a>
 </p>
 
-LakeQL is an adapter-agnostic data access layer that lets you query across your entire data stack through one type-safe GraphQL client and a single, powerful CLI. It combines a backend runtime with a CLI that generates schema and query files from your existing data model.
+LakeQL is a universal data access layer that lets you query across your entire data stack through one type-safe GraphQL client and a single CLI. It combines a backend runtime with a CLI that generates schema and query files from your existing data model.
 
 The goal is to reduce manual boilerplate while keeping your API predictable, secure, and easy to extend — no matter which data platform sits underneath.
 

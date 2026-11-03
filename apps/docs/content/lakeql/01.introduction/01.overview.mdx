@@ -1,18 +1,18 @@
 ---
 title: Overview
 navTitle: Overview
-description: LakeQL generates type-safe GraphQL APIs over your data lakehouse — no hand-written resolvers.
+description: LakeQL is a universal data access layer that generates type-safe GraphQL APIs across your data stack. No hand-written resolvers.
 ---
 
 ## What is LakeQL?
 
-LakeQL generates a type-safe GraphQL API on top of data lakehouse query engines. You point its CLI at a data source, generate typed schema files from the real table metadata, and serve them through a GraphQL server you compose from explicit building blocks.
+LakeQL is a universal data access layer for modern platforms. It generates a type-safe GraphQL API across your data stack. You point its CLI at a data source, generate typed schema files from the real table metadata, and serve them through a GraphQL server you compose from explicit building blocks.
 
-Adapters connect LakeQL to [Trino](https://trino.io/) and [Microsoft Fabric](https://www.microsoft.com/en-us/microsoft-fabric). A single project can register multiple adapters and route queries to different engines from one API.
+LakeQL is adapter-agnostic. An adapter teaches it how to talk to one query engine. Adapters for [Trino](https://trino.io/) and [Microsoft Fabric](https://www.microsoft.com/en-us/microsoft-fabric) are available today. ClickHouse and DuckDB are on the roadmap. A single project can register multiple adapters and route queries to different engines from one API.
 
 ## The Problem
 
-Building a GraphQL API over lakehouse tables is repetitive. Every table needs a TypeScript interface, resolver logic, filter and sort definitions, pagination, and permission checks. Change a table — add a column, rename a field, alter a type — and you update all of those layers by hand. Across dozens of tables and several schemas, schema drift and broken types pile up fast.
+Building a GraphQL API over your data tables is repetitive. Every table needs a TypeScript interface, resolver logic, filter and sort definitions, pagination, and permission checks. Change a table — add a column, rename a field, alter a type — and you update all of those layers by hand. Across dozens of tables and several schemas, schema drift and broken types pile up fast.
 
 ## How LakeQL Solves It
 
