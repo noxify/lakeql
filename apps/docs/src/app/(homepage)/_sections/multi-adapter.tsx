@@ -88,7 +88,7 @@ export const MultiAdapterSection = () => (
                   <h3 className="text-foreground text-base font-semibold">
                     {adapter.name}
                   </h3>
-                  <span className="text-muted-foreground/50 bg-muted inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium">
+                  <span className="text-foreground bg-primary/20 inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium">
                     Coming soon
                   </span>
                 </div>
