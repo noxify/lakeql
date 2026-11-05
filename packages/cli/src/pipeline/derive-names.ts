@@ -1,4 +1,4 @@
-import { camelCase, upperFirst } from "lodash-es"
+import { toCamelCase, toUpperFirst } from "@lakeql/helpers/string-case"
 
 import { CliError } from "@/errors"
 
@@ -26,14 +26,14 @@ const GRAPHQL_NAME = /^[_A-Za-z][_0-9A-Za-z]*$/u
  * `deriveNames` camel-cases it, and throws a descriptive {@link CliError} when
  * it does not.
  *
- * The check runs the exact same `lodash` `camelCase` that {@link deriveNames}
- * uses to build the generated names, then validates the result against the
- * GraphQL name grammar `/^[_A-Za-z][_0-9A-Za-z]*$/`. Because the validator and
- * the generator share one casing function, the two cannot drift. `deriveNames`
- * also applies `upperFirst` to the type and mutation segments, but `upperFirst`
- * only changes the case of the first character (a letter stays a letter, a digit
- * stays a digit), so validating the plain `camelCase` result covers every
- * generated segment.
+ * The check runs the exact same `toCamelCase` ({@link @lakeql/helpers} `deburr`
+ * then strict `camelCase`) that {@link deriveNames} uses to build the generated
+ * names, then validates the result against the GraphQL name grammar
+ * `/^[_A-Za-z][_0-9A-Za-z]*$/`. Because the validator and the generator share
+ * one casing function, the two cannot drift. `deriveNames` also applies
+ * `toUpperFirst` to the type and mutation segments, but it only changes the case
+ * of the first character (a letter stays a letter, a digit stays a digit), so
+ * validating the plain `toCamelCase` result covers every generated segment.
  *
  * Rejected cases include, for example:
  *
@@ -42,10 +42,13 @@ const GRAPHQL_NAME = /^[_A-Za-z][_0-9A-Za-z]*$/u
  * - A prefix whose camel-cased form starts with a digit (e.g. `"1x"`→`"1X"`,
  *   `"123"`), which is not a valid GraphQL name.
  * - A prefix whose camel-cased form retains non-ASCII letters that `camelCase`
- *   cannot fold (e.g. `"a日"`→`"a日"`, `"Ωmega"`→`"ωmega"`, `"x_€"`→`"x€"`).
+ *   cannot fold (e.g. `"a日"`→`"a日"`, `"Ωmega"`→`"ωmega"`).
  *
- * Deburrable prefixes are accepted because `camelCase` folds them to ASCII first
- * (e.g. `"é1"`→`"e1"`, `"über"`→`"uber"`, `"ß"`→`"ss"`).
+ * Deburrable prefixes are accepted because `toCamelCase` folds Latin diacritics
+ * and ligatures to ASCII first (e.g. `"é1"`→`"e1"`, `"über"`→`"uber"`,
+ * `"ß"`→`"ss"`). Strict `camelCase` also drops symbol/currency characters as
+ * non-word (e.g. `"x_€"`→`"x"`, accepted), whereas `lodash` kept them (`"x€"`,
+ * which was never a valid GraphQL name and was rejected).
  *
  * @param prefix - The trimmed, non-empty prefix to validate.
  * @param normalized - The `camelCase(prefix)` result (passed in to avoid a
@@ -79,8 +82,9 @@ function assertValidPrefix(
  *
  * A prefix is trimmed; an empty or whitespace-only value is treated as unset
  * and passes without a check. A non-empty prefix is camel-cased with the same
- * `camelCase` the generator uses and validated against the GraphQL name grammar,
- * so an up-front call and the later generate-time call can never disagree.
+ * `toCamelCase` the generator uses and validated against the GraphQL name
+ * grammar, so an up-front call and the later generate-time call can never
+ * disagree.
  *
  * Callers use this to reject an invalid prefix once, before any pull work and
  * before any network I/O, so the user sees the clear {@link CliError} instead of
@@ -101,7 +105,7 @@ export function assertValidNamePrefix(
     return
   }
 
-  assertValidPrefix(raw, camelCase(raw), sourceName)
+  assertValidPrefix(raw, toCamelCase(raw), sourceName)
 }
 
 /**
@@ -111,13 +115,13 @@ export function assertValidNamePrefix(
  * context — to each generated name so sources that expose same-named tables
  * no longer collide:
  *
- * - **Type name** (`baseClassName`): `UpperFirst(camelCase(prefix))` prepended
- *   as a new leading `_`-separated segment (e.g. `Trino_Tier1OpenLake_…`).
- * - **Query name**: `camelCase(prefix)` prepended seamlessly; the schema
+ * - **Type name** (`baseClassName`): `toUpperFirst(toCamelCase(prefix))`
+ *   prepended as a new leading `_`-separated segment (e.g. `Trino_Tier1OpenLake_…`).
+ * - **Query name**: `toCamelCase(prefix)` prepended seamlessly; the schema
  *   segment is upper-cased at the seam so it reads `trinoTier1…`, not
  *   `trinotier1…`.
  * - **Mutation name**: the `create` verb stays leading, then
- *   `UpperFirst(camelCase(prefix))`, then the rest (`createTrinoTier1…`).
+ *   `toUpperFirst(toCamelCase(prefix))`, then the rest (`createTrinoTier1…`).
  *
  * The prefix is trimmed; an empty or whitespace-only value is treated as unset.
  * When unset, the returned names are byte-for-byte identical to the output
@@ -145,22 +149,22 @@ export function deriveNames(
   const raw = namePrefix?.trim()
   const hasPrefix = Boolean(raw)
 
-  const schemaSegment = upperFirst(camelCase(schema))
-  const tableSegment = upperFirst(camelCase(tableName))
+  const schemaSegment = toUpperFirst(toCamelCase(schema))
+  const tableSegment = toUpperFirst(toCamelCase(tableName))
 
   if (!hasPrefix) {
     return {
       baseClassName: `${schemaSegment}_${tableSegment}`,
-      queryName: `${camelCase(schema)}${tableSegment}`,
-      mutationName: `create${camelCase(schema)}${tableSegment}`,
+      queryName: `${toCamelCase(schema)}${tableSegment}`,
+      mutationName: `create${toCamelCase(schema)}${tableSegment}`,
     }
   }
 
-  const querySegment = camelCase(raw)
+  const querySegment = toCamelCase(raw as string)
   // Validate the actual camel-cased prefix against the GraphQL name grammar
-  // using the same camelCase that produces the names, so there is zero drift.
+  // using the same toCamelCase that produces the names, so there is zero drift.
   assertValidPrefix(raw as string, querySegment, sourceName)
-  const typeSegment = upperFirst(querySegment)
+  const typeSegment = toUpperFirst(querySegment)
 
   return {
     baseClassName: `${typeSegment}_${schemaSegment}_${tableSegment}`,

@@ -1,7 +1,7 @@
 // oxlint-disable eslint/no-template-curly-in-string
 
+import { toCamelCase, toUpperFirst } from "@lakeql/helpers/string-case"
 import * as fc from "fast-check"
-import { camelCase, upperFirst } from "lodash-es"
 import { describe, expect, it } from "vitest"
 
 import { deriveNames } from "@/pipeline/derive-names"
@@ -23,14 +23,14 @@ describe("Name derivation produces correct transformations", () => {
     )
     .map(([first, rest]) => first + rest.join(""))
 
-  it("baseClassName equals ${upperFirst(camelCase(schema))}_${upperFirst(camelCase(tableName))}", () => {
+  it("baseClassName equals ${toUpperFirst(toCamelCase(schema))}_${toUpperFirst(toCamelCase(tableName))}", () => {
     fc.assert(
       fc.property(
         validMetadataField,
         validMetadataField,
         (schema, tableName) => {
           const result = deriveNames(schema, tableName)
-          const expected = `${upperFirst(camelCase(schema))}_${upperFirst(camelCase(tableName))}`
+          const expected = `${toUpperFirst(toCamelCase(schema))}_${toUpperFirst(toCamelCase(tableName))}`
           expect(result.baseClassName).toBe(expected)
         }
       ),
@@ -38,14 +38,14 @@ describe("Name derivation produces correct transformations", () => {
     )
   })
 
-  it("queryName equals ${camelCase(schema)}${upperFirst(camelCase(tableName))}", () => {
+  it("queryName equals ${toCamelCase(schema)}${toUpperFirst(toCamelCase(tableName))}", () => {
     fc.assert(
       fc.property(
         validMetadataField,
         validMetadataField,
         (schema, tableName) => {
           const result = deriveNames(schema, tableName)
-          const expected = `${camelCase(schema)}${upperFirst(camelCase(tableName))}`
+          const expected = `${toCamelCase(schema)}${toUpperFirst(toCamelCase(tableName))}`
           expect(result.queryName).toBe(expected)
         }
       ),
@@ -53,14 +53,14 @@ describe("Name derivation produces correct transformations", () => {
     )
   })
 
-  it("mutationName equals create${camelCase(schema)}${upperFirst(camelCase(tableName))}", () => {
+  it("mutationName equals create${toCamelCase(schema)}${toUpperFirst(toCamelCase(tableName))}", () => {
     fc.assert(
       fc.property(
         validMetadataField,
         validMetadataField,
         (schema, tableName) => {
           const result = deriveNames(schema, tableName)
-          const expected = `create${camelCase(schema)}${upperFirst(camelCase(tableName))}`
+          const expected = `create${toCamelCase(schema)}${toUpperFirst(toCamelCase(tableName))}`
           expect(result.mutationName).toBe(expected)
         }
       ),
