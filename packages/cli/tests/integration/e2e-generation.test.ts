@@ -476,6 +476,87 @@ describe("end-to-end generation (integration)", () => {
     })
   })
 
+  describe("namePrefix propagates to generated names end to end", () => {
+    const prefixDefinition: EndpointDefinitionFormat = {
+      version: "1.0",
+      tableName: "itaps_v2_itaps_latest",
+      catalog: "analytics",
+      schema: "tier1_open_lake",
+      fields: [{ name: "event_id", type: "String" }],
+    }
+
+    it("carries the prefixed type name into interface.ts", async () => {
+      await generateEndpoint({
+        definition: prefixDefinition,
+        outputDir,
+        skipRegistry: true,
+        namePrefix: "trino",
+      })
+
+      const interfaceContent = await readFile(
+        path.join(outputDir, "interface.ts"),
+        "utf-8"
+      )
+
+      expect(interfaceContent).toContain(
+        "Trino_Tier1OpenLake_ItapsV2ItapsLatest"
+      )
+    })
+
+    it("carries the prefixed query name into query-schema.ts", async () => {
+      await generateEndpoint({
+        definition: prefixDefinition,
+        outputDir,
+        skipRegistry: true,
+        namePrefix: "trino",
+      })
+
+      const querySchemaContent = await readFile(
+        path.join(outputDir, "query-schema.ts"),
+        "utf-8"
+      )
+
+      expect(querySchemaContent).toContain(
+        "trinoTier1OpenLakeItapsV2ItapsLatest"
+      )
+    })
+
+    it("carries the prefixed query and mutation names into config.ts", async () => {
+      await generateEndpoint({
+        definition: prefixDefinition,
+        outputDir,
+        skipRegistry: true,
+        namePrefix: "trino",
+      })
+
+      const configContent = await readFile(
+        path.join(outputDir, "config.ts"),
+        "utf-8"
+      )
+
+      expect(configContent).toContain("trinoTier1OpenLakeItapsV2ItapsLatest")
+      expect(configContent).toContain(
+        "createTrinoTier1OpenLakeItapsV2ItapsLatest"
+      )
+    })
+
+    it("leaves generated names unprefixed when namePrefix is unset", async () => {
+      await generateEndpoint({
+        definition: prefixDefinition,
+        outputDir,
+        skipRegistry: true,
+      })
+
+      const interfaceContent = await readFile(
+        path.join(outputDir, "interface.ts"),
+        "utf-8"
+      )
+
+      expect(interfaceContent).toContain("Tier1OpenLake_ItapsV2ItapsLatest")
+      expect(interfaceContent).not.toContain("Trino_")
+    })
+  })
+
   describe("config.ts includes partitioning fields for non-full_load strategies", () => {
     it("should include partitioning and partitioningFormat in config.ts when loadStrategy is append", async () => {
       await generateEndpoint({

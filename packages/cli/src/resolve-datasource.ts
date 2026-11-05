@@ -13,8 +13,8 @@ export interface ResolvedDataSource {
   name: string
   /** Live data source instance created by the adapter factory. */
   instance: DataSource
-  /** Adapter identifier and opaque connection configuration. */
-  config: { adapter: string; connection: unknown }
+  /** Adapter identifier, opaque connection configuration, and optional name prefix. */
+  config: { adapter: string; connection: unknown; namePrefix?: string }
 }
 
 /**
@@ -90,6 +90,12 @@ export async function resolveDataSource(
   return {
     name: selectedName,
     instance,
-    config: { adapter: definition.adapter, connection: definition.connection },
+    config: {
+      adapter: definition.adapter,
+      connection: definition.connection,
+      ...(definition.namePrefix === undefined
+        ? {}
+        : { namePrefix: definition.namePrefix }),
+    },
   }
 }

@@ -34,6 +34,12 @@ export interface GeneratePipelineOptions {
   adapter?: string
   /** The DataSource name referencing a configured DataSource. Defaults to `"default"`. */
   dataSourceName?: string
+  /**
+   * Optional per-data-source prefix prepended to every generated name.
+   * Case-normalized per target context by {@link deriveNames}. When unset,
+   * generated names are identical to the output without a prefix.
+   */
+  namePrefix?: string
 }
 
 /**
@@ -71,13 +77,15 @@ export async function generateEndpoint(
     sourcePathOverride,
     adapter = "trino",
     dataSourceName = "default",
+    namePrefix,
   } = options
   const { catalog, schema, tableName, fields } = definition
 
-  // 1. Derive names from schema and tableName
+  // 1. Derive names from schema and tableName (optionally prefixed)
   const { baseClassName, queryName, mutationName } = deriveNames(
     schema,
-    tableName
+    tableName,
+    namePrefix
   )
 
   // 2. Convert FieldDefinition[] → JSON Schema

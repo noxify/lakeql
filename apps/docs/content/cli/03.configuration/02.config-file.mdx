@@ -27,6 +27,47 @@ export default defineConfig({
 - **`dataSources`** — introspection and generation commands target a source by name (the `--source` option), or prompt you to pick one.
 - **`sourcePath`** — the base path under which generated files are written; commands can override it with `--source-path`.
 
+## Name Prefix
+
+Generated GraphQL names come from a table's `schema` and name only, so two data sources that expose a table with the same `schema.tableName` produce colliding type, query, and mutation names. Set an optional `namePrefix` on a data-source entry to disambiguate them — when present, it is prepended to every generated name for tables pulled from that source.
+
+```ts
+dataSources: {
+  warehouse: {
+    adapter: "trino",
+    namePrefix: "trino",
+    connection: {/* ... */},
+  },
+}
+```
+
+`namePrefix` is a sibling of `adapter` and `connection` (not part of the adapter-owned `connection`). You write it in any casing; it is normalized per target context at generation time:
+
+- **Type names** (PascalCase, `_`-separated segments) — the prefix becomes a new leading segment joined with `_`.
+- **Query names** (lowerCamelCase, seamless) — the prefix is prepended with no separator.
+- **Mutation names** — the `create` verb stays leading, then the prefix, then the rest, with no separator.
+
+### Worked example
+
+For `schema = tier1_open_lake` and `table = itaps_v2_itaps_latest`, setting `namePrefix: "trino"` changes the generated names as follows:
+
+| Name | Without prefix | With `namePrefix: "trino"` |
+| --- | --- | --- |
+| Type | `Tier1OpenLake_ItapsV2ItapsLatest` | `Trino_Tier1OpenLake_ItapsV2ItapsLatest` |
+| Query | `tier1OpenLakeItapsV2ItapsLatest` | `trinoTier1OpenLakeItapsV2ItapsLatest` |
+| Mutation | `createtier1OpenLakeItapsV2ItapsLatest` | `createTrinoTier1OpenLakeItapsV2ItapsLatest` |
+
+Mixed-case values (`"trino"`, `"Trino"`, `"TRINO"`) normalize identically, and an empty or whitespace-only value is treated as unset. When `namePrefix` is omitted, generated names are identical to before.
+
+<Note>
+  `namePrefix` applies to the `pull` and `bulk-pull` commands, which read the
+  resolved data-source config. The `create-endpoint` command builds from an
+  endpoint JSON file and is prefix-unaware. The prefix takes effect only at
+  generation time: changing it and re-pulling writes renamed files, and stale
+  files from the previous prefix are not removed automatically — delete them
+  yourself.
+</Note>
+
 ## Loading Order
 
 The CLI loads any [`--env`](/docs/cli/configuration/environment-variables) file first, then reads `lakeql.config.ts`, so a config that reads `env.*` sees the loaded values. The loaded config is cached for the duration of a command.

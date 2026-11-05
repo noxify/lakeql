@@ -16,6 +16,8 @@ export interface PullActionParams {
   resolvedTargetPath: string
   skipRegistry: boolean
   sourcePathOverride?: string
+  /** Optional per-data-source prefix forwarded to the generation pipeline. */
+  namePrefix?: string
   onItemStart?: (itemName: string) => void
   onItemFinish?: (itemName: string, success: boolean) => void
 }
@@ -34,6 +36,7 @@ export async function executePull(params: PullActionParams): Promise<void> {
     resolvedTargetPath,
     skipRegistry,
     sourcePathOverride,
+    namePrefix,
     onItemStart,
     onItemFinish,
   } = params
@@ -82,6 +85,7 @@ export async function executePull(params: PullActionParams): Promise<void> {
         sourcePathOverride,
         adapter: dataSource.adapter,
         dataSourceName,
+        namePrefix,
       })
 
       succeeded = true

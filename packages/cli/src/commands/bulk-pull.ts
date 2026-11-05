@@ -255,6 +255,7 @@ export async function executeBulkPull(options: BulkPullOptions): Promise<void> {
                             resolvedTargetPath,
                             skipRegistry: true,
                             sourcePathOverride,
+                            namePrefix: dsConfig.namePrefix,
                           })
                         )
                       } catch (error) {
@@ -364,6 +365,7 @@ export async function executeBulkPull(options: BulkPullOptions): Promise<void> {
                             resolvedTargetPath,
                             skipRegistry: true,
                             sourcePathOverride,
+                            namePrefix: dsConfig.namePrefix,
                           })
                         )
                       } catch (error) {
@@ -389,6 +391,7 @@ export async function executeBulkPull(options: BulkPullOptions): Promise<void> {
                             resolvedTargetPath,
                             skipRegistry: true,
                             sourcePathOverride,
+                            namePrefix: dsConfig.namePrefix,
                           })
                         )
                       } catch (error) {

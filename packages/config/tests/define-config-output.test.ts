@@ -183,6 +183,73 @@ describe("defineConfig() - output shape and identity", () => {
     )
   })
 
+  it("passes a per-source namePrefix through to the normalized entry", () => {
+    const trino = makeAdapterDefinition("trino")
+
+    const result = defineConfig({
+      adapters: [trino],
+      dataSources: {
+        warehouse: {
+          adapter: "trino",
+          connection: { host: "localhost" },
+          namePrefix: "trino",
+        },
+      },
+    })
+
+    expect(result.dataSources.warehouse!.namePrefix).toBe("trino")
+  })
+
+  it("trims a per-source namePrefix", () => {
+    const trino = makeAdapterDefinition("trino")
+
+    const result = defineConfig({
+      adapters: [trino],
+      dataSources: {
+        warehouse: {
+          adapter: "trino",
+          connection: { host: "localhost" },
+          namePrefix: "  trino  ",
+        },
+      },
+    })
+
+    expect(result.dataSources.warehouse!.namePrefix).toBe("trino")
+  })
+
+  it("omits namePrefix when not provided", () => {
+    const trino = makeAdapterDefinition("trino")
+
+    const result = defineConfig({
+      adapters: [trino],
+      dataSources: {
+        warehouse: {
+          adapter: "trino",
+          connection: { host: "localhost" },
+        },
+      },
+    })
+
+    expect(result.dataSources.warehouse).not.toHaveProperty("namePrefix")
+  })
+
+  it("omits an empty or whitespace-only namePrefix", () => {
+    const trino = makeAdapterDefinition("trino")
+
+    const result = defineConfig({
+      adapters: [trino],
+      dataSources: {
+        warehouse: {
+          adapter: "trino",
+          connection: { host: "localhost" },
+          namePrefix: "   ",
+        },
+      },
+    })
+
+    expect(result.dataSources.warehouse).not.toHaveProperty("namePrefix")
+  })
+
   it("preserves connection identity through custom merge that passes it through", () => {
     const connectionObj = { host: "localhost", port: 8080 }
 

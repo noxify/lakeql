@@ -40,6 +40,16 @@ export interface RuntimeDataSourceDefinition {
    */
   impersonationResolver?: ImpersonationResolver
 
+  /**
+   * Optional prefix prepended to every generated GraphQL name for this source.
+   *
+   * Case-normalized per target context at generation time (type names in
+   * PascalCase, query/mutation names in lowerCamelCase). Used to disambiguate
+   * sources that expose same-named tables. Unset leaves generated names
+   * unchanged.
+   */
+  namePrefix?: string
+
   /** The resolved per-data-source paging limits passed to the read strategy. */
   paging: ResolvedPaging
 }

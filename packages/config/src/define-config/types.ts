@@ -197,6 +197,13 @@ export type DataSourceEntry<
         overrides?: OverridesFor<TOptions>
         /** Optional per-data-source impersonation resolver, taking precedence over the global one. */
         impersonationResolver?: ImpersonationResolver
+        /**
+         * Optional prefix prepended to every generated GraphQL name for this
+         * source, case-normalized per target context at generation time. Used
+         * to disambiguate sources that expose same-named tables. Unset leaves
+         * generated names unchanged.
+         */
+        namePrefix?: string
         /** Optional page size used when a request omits `perPage`. Must be a positive integer. */
         defaultPerPage?: number
         /** Optional upper bound a request's `perPage` may not exceed. Must be a positive integer. */
@@ -242,6 +249,8 @@ export type NormalizedDataSourceEntry<
         readonly writeConfig?: TWriteConfig
         /** Optional per-data-source impersonation resolver, taking precedence over the global one. */
         readonly impersonationResolver?: ImpersonationResolver
+        /** Optional prefix prepended to every generated GraphQL name for this source. */
+        readonly namePrefix?: string
         /** The resolved per-data-source paging limits. */
         readonly paging: ResolvedPaging
       }

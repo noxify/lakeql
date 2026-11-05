@@ -61,6 +61,24 @@ function validateMergedConfig(
 }
 
 /**
+ * Normalizes a raw per-source `namePrefix` value.
+ *
+ * Returns the trimmed string when it is a non-empty string, otherwise
+ * `undefined` so an absent, non-string, empty, or whitespace-only value is
+ * treated as unset and never injects a stray separator into generated names.
+ *
+ * @param raw - The raw `namePrefix` value from the data-source entry.
+ * @returns The trimmed prefix, or `undefined` when it should be treated as unset.
+ */
+function normalizeNamePrefix(raw: unknown): string | undefined {
+  if (typeof raw !== "string") {
+    return undefined
+  }
+  const trimmed = raw.trim()
+  return trimmed.length > 0 ? trimmed : undefined
+}
+
+/**
  * Processes each data source in definition order: resolves its adapter,
  * merges configuration (via custom merge or default shallow merge), validates
  * the merged connection, and stores the normalized result.
@@ -91,6 +109,7 @@ export function processDataSources(
     connection: unknown
     writeConfig?: unknown
     impersonationResolver?: unknown
+    namePrefix?: string
     paging: ResolvedPaging
   }
 > {
@@ -111,6 +130,7 @@ export function processDataSources(
       connection: unknown
       writeConfig?: unknown
       impersonationResolver?: unknown
+      namePrefix?: string
       paging: ResolvedPaging
     }
   > = {}
@@ -246,6 +266,7 @@ export function processDataSources(
       connection: unknown
       writeConfig?: unknown
       impersonationResolver?: unknown
+      namePrefix?: string
       paging: ResolvedPaging
     } = {
       adapter: adapterName,
@@ -261,6 +282,13 @@ export function processDataSources(
     // runtime object (never merged, cloned, or serialized).
     if (sourceEntry.impersonationResolver !== undefined) {
       normalized.impersonationResolver = sourceEntry.impersonationResolver
+    }
+
+    // Pass the per-source name prefix through, trimmed; an empty or
+    // whitespace-only value is treated as unset (never injects a separator).
+    const normalizedNamePrefix = normalizeNamePrefix(sourceEntry.namePrefix)
+    if (normalizedNamePrefix !== undefined) {
+      normalized.namePrefix = normalizedNamePrefix
     }
 
     result[sourceName] = normalized

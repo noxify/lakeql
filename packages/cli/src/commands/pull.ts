@@ -167,6 +167,7 @@ export default function PullCommand() {
                         // Generate registry once at the end, not per endpoint.
                         skipRegistry: true,
                         sourcePathOverride: cliOverride,
+                        namePrefix: dsConfig.namePrefix,
                       })
                     },
                   })),
@@ -220,6 +221,7 @@ export default function PullCommand() {
                     resolvedTargetPath,
                     skipRegistry: true,
                     sourcePathOverride: cliOverride,
+                    namePrefix: dsConfig.namePrefix,
                   })
 
                   activeLoads.delete(table)
