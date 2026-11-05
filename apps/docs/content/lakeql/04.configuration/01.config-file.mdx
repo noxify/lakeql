@@ -38,11 +38,45 @@ export default defineConfig({
 
 - **`adapters`** — the adapter definitions the project may use. The registered list provides the available adapter types.
 - **`dataSources`** — named sources, each selecting a registered `adapter` and supplying its `connection` (and optional `writeConfig`, `overrides`, `impersonationResolver`, and `namePrefix`). `overrides` applies only to adapters that declare registration-level options. The Trino and Fabric adapters declare none, so the field is typed `never` for them and you leave it out.
-- **`namePrefix`** — optional per-source string prepended to every generated GraphQL name, so two sources exposing the same `schema.tableName` no longer collide. It is a sibling of `adapter` and `connection`, written in any casing (e.g. `namePrefix: "trino"`). See [Name Prefix](/docs/cli/configuration/config-file#name-prefix) for how it is cased per target and a worked example.
+- **`namePrefix`** — optional per-source string prepended to every generated GraphQL name, so two sources exposing the same `schema.tableName` no longer collide. It is a sibling of `adapter` and `connection`, written in any casing. See [Name Prefix](#name-prefix) for how it is cased per target and a worked example.
 - **`sourcePath`** — base path for generated code. Defaults to `"."`.
 - **`auth`** — optional auth block grouping all config-level auth concerns, passed through untouched. It carries `auth.impersonationResolver` (the global impersonation fallback) and `auth.permissions` (technical-user permission rules).
 
 Connection shapes are adapter-specific. See [Trino connection](/docs/data-sources/trino/connection) and [Fabric connection](/docs/data-sources/fabric/connection).
+
+## Name Prefix
+
+Generated GraphQL names come from a table's `schema` and name only, so two data sources that expose a table with the same `schema.tableName` produce colliding type, query, and mutation names. Set an optional `namePrefix` on a data-source entry to disambiguate them — when present, it is prepended to every generated name for tables pulled from that source.
+
+```ts
+dataSources: {
+  warehouse: {
+    adapter: "trino",
+    namePrefix: "warehouse",
+    connection: {/* ... */},
+  },
+}
+```
+
+`namePrefix` is a sibling of `adapter` and `connection` (not part of the adapter-owned `connection`). You write it in any casing; it is normalized per target context at generation time:
+
+- **Type names** (PascalCase, `_`-separated segments) — the prefix becomes a new leading segment joined with `_`.
+- **Query names** (lowerCamelCase, seamless) — the prefix is prepended with no separator.
+- **Mutation names** — the `create` verb stays leading, then the prefix, then the rest, with no separator.
+
+### Worked example
+
+For `schema = analytics_sales` and `table = order_line_items`, setting `namePrefix: "warehouse"` changes the generated names as follows:
+
+| Name | Without prefix | With `namePrefix: "warehouse"` |
+| --- | --- | --- |
+| Type | `AnalyticsSales_OrderLineItems` | `Warehouse_AnalyticsSales_OrderLineItems` |
+| Query | `analyticsSalesOrderLineItems` | `warehouseAnalyticsSalesOrderLineItems` |
+| Mutation | `createanalyticsSalesOrderLineItems` | `createWarehouseAnalyticsSalesOrderLineItems` |
+
+Mixed-case values (`"warehouse"`, `"Warehouse"`, `"WAREHOUSE"`) normalize identically, and an empty or whitespace-only value is treated as unset. When `namePrefix` is omitted, generated names are identical to before.
+
+The prefix takes effect only at generation time: it is applied by the [`pull` and `bulk-pull`](/docs/cli/configuration/config-file#name-prefix) commands and intentionally not by `create-endpoint`. Changing it and re-pulling writes renamed files, and stale files from the previous prefix are not removed automatically — delete them yourself.
 
 ## Config Merge Precedence
 

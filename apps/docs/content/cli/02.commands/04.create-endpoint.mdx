@@ -15,10 +15,10 @@ Each table that [`pull`](/docs/cli/commands/pull) generates includes an `endpoin
 
 <Note>
   Unlike `pull` and `bulk-pull`, `create-endpoint` does not apply a data
-  source's [`namePrefix`](/docs/cli/configuration/config-file#name-prefix). This
-  is by design: `create-endpoint` builds from a manually authored definition
-  with no live source config to read, whereas `pull` generates read-only schemas
-  whose names it owns. See [Prefix
+  source's [`namePrefix`](/docs/lakeql/configuration/config-file#name-prefix).
+  This is by design: `create-endpoint` builds from a manually authored
+  definition with no live source config to read, whereas `pull` generates
+  read-only schemas whose names it owns. See [Prefix
   scope](/docs/cli/configuration/config-file#prefix-scope) for the full
   rationale.
 </Note>

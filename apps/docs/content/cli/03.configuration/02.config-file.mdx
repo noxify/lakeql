@@ -29,45 +29,9 @@ export default defineConfig({
 
 ## Name Prefix
 
-Generated GraphQL names come from a table's `schema` and name only, so two data sources that expose a table with the same `schema.tableName` produce colliding type, query, and mutation names. Set an optional `namePrefix` on a data-source entry to disambiguate them — when present, it is prepended to every generated name for tables pulled from that source.
+An optional per-source `namePrefix` disambiguates generated GraphQL names when two data sources expose a table with the same `schema.tableName`. It is a `defineConfig` field — see [Name Prefix](/docs/lakeql/configuration/config-file#name-prefix) in the config file reference for its definition, per-target casing rules, and a worked example.
 
-```ts
-dataSources: {
-  warehouse: {
-    adapter: "trino",
-    namePrefix: "trino",
-    connection: {/* ... */},
-  },
-}
-```
-
-`namePrefix` is a sibling of `adapter` and `connection` (not part of the adapter-owned `connection`). You write it in any casing; it is normalized per target context at generation time:
-
-- **Type names** (PascalCase, `_`-separated segments) — the prefix becomes a new leading segment joined with `_`.
-- **Query names** (lowerCamelCase, seamless) — the prefix is prepended with no separator.
-- **Mutation names** — the `create` verb stays leading, then the prefix, then the rest, with no separator.
-
-### Worked example
-
-For `schema = analytics_sales` and `table = order_line_items`, setting `namePrefix: "warehouse"` changes the generated names as follows:
-
-| Name | Without prefix | With `namePrefix: "warehouse"` |
-| --- | --- | --- |
-| Type | `AnalyticsSales_OrderLineItems` | `Warehouse_AnalyticsSales_OrderLineItems` |
-| Query | `analyticsSalesOrderLineItems` | `warehouseAnalyticsSalesOrderLineItems` |
-| Mutation | `createanalyticsSalesOrderLineItems` | `createWarehouseAnalyticsSalesOrderLineItems` |
-
-Mixed-case values (`"warehouse"`, `"Warehouse"`, `"WAREHOUSE"`) normalize identically, and an empty or whitespace-only value is treated as unset. When `namePrefix` is omitted, generated names are identical to before.
-
-<Note>
-  `namePrefix` applies to the `pull` and `bulk-pull` commands, which read the
-  resolved data-source config. The
-  [`create-endpoint`](/docs/cli/commands/create-endpoint) command is
-  deliberately prefix-unaware — see [Prefix scope](#prefix-scope) below. The
-  prefix takes effect only at generation time: changing it and re-pulling writes
-  renamed files, and stale files from the previous prefix are not removed
-  automatically — delete them yourself.
-</Note>
+The `pull` and `bulk-pull` commands read the resolved data-source config and apply its `namePrefix`; the [`create-endpoint`](/docs/cli/commands/create-endpoint) command is deliberately prefix-unaware (see [Prefix scope](#prefix-scope) below). The prefix takes effect only at generation time: changing it and re-pulling writes renamed files, and stale files from the previous prefix are not removed automatically — delete them yourself.
 
 ### Prefix scope
 
