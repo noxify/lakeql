@@ -846,11 +846,24 @@ function resolveNamedExportFromSource(
 /**
  * Extracts property members from a TypeLiteral node.
  * Recursively resolves nested TypeLiterals into typeMembers.
+ *
+ * When a member has no inline `typeMembers` (its type is not a nested object
+ * literal), its named-type reference is resolved via {@link resolveParamTypeInfo}
+ * — exactly as interface/type-alias members are — so a bare named type like
+ * `AuthConfig` carries a `typeLink` for on-page anchoring. The owning
+ * `sourceFile` is threaded through so the re-export resolution path (and the
+ * `_currentEntrySourceFile` barrel fallback) keeps working.
+ *
+ * @param literalNode - The TypeLiteral node whose members are extracted.
+ * @param sourceFile - The source file owning the literal, used to resolve
+ *   named-type links for members. When omitted, members are not linked.
  */
 // oxlint-disable-next-line typescript/no-explicit-any
 function extractTypeLiteralMembers(
   // oxlint-disable-next-line typescript/no-explicit-any
-  literalNode: any
+  literalNode: any,
+  // oxlint-disable-next-line typescript/no-explicit-any
+  sourceFile?: any
 ): ResolvedExportMember[] | undefined {
   const litMembers = literalNode
     .getMembers?.()
@@ -866,7 +879,19 @@ function extractTypeLiteralMembers(
   // oxlint-disable-next-line typescript/no-explicit-any
   return litMembers.map((m: any) => {
     const memberTypeNode = m.getTypeNode?.()
-    const { type, typeMembers } = resolvePropertyTypeText(memberTypeNode)
+    const { type, typeMembers } = resolvePropertyTypeText(
+      memberTypeNode,
+      sourceFile
+    )
+
+    // Inline object-literal members already carry expanded `typeMembers`;
+    // for a bare named type, resolve a link (or internal members) the same
+    // way interface/type-alias members do.
+    const typeInfo = typeMembers
+      ? { typeMembers }
+      : sourceFile
+        ? resolveParamTypeInfo(type, sourceFile)
+        : {}
 
     return {
       name: m.getName(),
@@ -875,7 +900,7 @@ function extractTypeLiteralMembers(
       isReadonly: m.isReadonly(),
       description: getJsDocDescription(m),
       tags: getJsDocTags(m),
-      typeMembers,
+      ...typeInfo,
     }
   })
 }
@@ -888,9 +913,18 @@ function extractTypeLiteralMembers(
  * - If the type is an ArrayType wrapping a TypeLiteral `{ ... }[]`, extracts its
  *   members and returns "Object[]".
  * - Otherwise returns the raw text (stripped of JSDoc comments for safety).
+ *
+ * @param typeNode - The property's TypeNode to resolve.
+ * @param sourceFile - The owning source file, threaded into nested literal
+ *   extraction so named-type members resolve their `typeLink`.
  */
 // oxlint-disable-next-line typescript/no-explicit-any
-function resolvePropertyTypeText(typeNode: any): {
+function resolvePropertyTypeText(
+  // oxlint-disable-next-line typescript/no-explicit-any
+  typeNode: any,
+  // oxlint-disable-next-line typescript/no-explicit-any
+  sourceFile?: any
+): {
   type: string
   typeMembers?: ResolvedExportMember[]
 } {
@@ -902,7 +936,7 @@ function resolvePropertyTypeText(typeNode: any): {
 
   // Direct TypeLiteral: { foo: string; bar: number }
   if (kind === SyntaxKind.TypeLiteral) {
-    const resolved = extractTypeLiteralMembers(typeNode)
+    const resolved = extractTypeLiteralMembers(typeNode, sourceFile)
 
     if (resolved) {
       return { type: "Object", typeMembers: resolved }
@@ -914,7 +948,7 @@ function resolvePropertyTypeText(typeNode: any): {
     const elementType = typeNode.getElementTypeNode?.()
 
     if (elementType?.getKind?.() === SyntaxKind.TypeLiteral) {
-      const resolved = extractTypeLiteralMembers(elementType)
+      const resolved = extractTypeLiteralMembers(elementType, sourceFile)
 
       if (resolved) {
         return { type: "Object[]", typeMembers: resolved }
@@ -939,8 +973,10 @@ function resolveInterfaceExport(decl: any, filePath: string): ResolvedExport {
     // oxlint-disable-next-line typescript/no-explicit-any
     (prop: any) => {
       const typeNode = prop.getTypeNode()
-      const { type, typeMembers: inlineMembers } =
-        resolvePropertyTypeText(typeNode)
+      const { type, typeMembers: inlineMembers } = resolvePropertyTypeText(
+        typeNode,
+        sourceFile
+      )
       const typeInfo = inlineMembers
         ? { typeMembers: inlineMembers }
         : resolveParamTypeInfo(type, sourceFile)
@@ -984,8 +1020,10 @@ function resolveTypeAliasExport(decl: any, filePath: string): ResolvedExport {
       // oxlint-disable-next-line typescript/no-explicit-any
       .map((prop: any) => {
         const propTypeNode = prop.getTypeNode()
-        const { type, typeMembers: inlineMembers } =
-          resolvePropertyTypeText(propTypeNode)
+        const { type, typeMembers: inlineMembers } = resolvePropertyTypeText(
+          propTypeNode,
+          sourceFile
+        )
         const typeInfo = inlineMembers
           ? { typeMembers: inlineMembers }
           : resolveParamTypeInfo(type, sourceFile)
@@ -1031,7 +1069,7 @@ function resolveFunctionExport(decl: any, filePath: string): ResolvedExport {
       // Without this, an inline type literal renders as one raw blob that
       // still carries its JSDoc comments.
       const { type: literalType, typeMembers: inlineMembers } = typeNode
-        ? resolvePropertyTypeText(typeNode)
+        ? resolvePropertyTypeText(typeNode, decl.getSourceFile())
         : { type: undefined, typeMembers: undefined }
 
       let type = literalType ?? typeNode?.getText().trim()

@@ -42,6 +42,8 @@ export interface MemberRow {
     type: string
     isOptional: boolean
     description?: string
+    /** Anchor link to another section (for exported types in same file) */
+    typeLink?: string
   }[]
   /** External @see links */
   seeLinks?: { url: string; label: string }[]
@@ -207,9 +209,23 @@ const MemberRowGroup = ({
                           {m.isOptional ? "?" : ""}
                         </TableCell>
                         <TableCell className="text-muted-foreground max-w-75 font-mono text-xs break-all whitespace-normal">
-                          <code className="border-border bg-muted/60 inline-flex rounded border px-1.5 py-0.5 font-mono text-xs">
-                            {m.type}
-                          </code>
+                          {m.typeLink ? (
+                            <a
+                              href={
+                                m.typeLink.startsWith("/") ||
+                                m.typeLink.includes("#")
+                                  ? m.typeLink
+                                  : `#${createSlug(m.typeLink)}`
+                              }
+                              className="border-border bg-muted/60 hover:bg-muted inline-flex rounded border px-1.5 py-0.5 font-mono text-xs underline decoration-dotted underline-offset-2"
+                            >
+                              {m.type}
+                            </a>
+                          ) : (
+                            <code className="border-border bg-muted/60 inline-flex rounded border px-1.5 py-0.5 font-mono text-xs">
+                              {m.type}
+                            </code>
+                          )}
                         </TableCell>
                       </UITableRow>
                       {m.description && (
