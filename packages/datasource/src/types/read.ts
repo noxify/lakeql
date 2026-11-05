@@ -37,7 +37,7 @@ export interface DataSourceReadInput<
    * One-based page number and the requested page size. `perPage` is
    * optional; the strategy substitutes the resolved default when omitted.
    */
-  paging: { page: number; perPage?: number }
+  paging: { page: number; perPage?: number | null }
   /** Adapter- or API-specific sort definitions. */
   sorting: readonly unknown[]
   /** Mapping from source field names to their result aliases. */
