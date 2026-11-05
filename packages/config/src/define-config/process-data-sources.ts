@@ -61,21 +61,75 @@ function validateMergedConfig(
 }
 
 /**
- * Normalizes a raw per-source `namePrefix` value.
+ * Matches an ASCII letter — the only character class that can validly lead a
+ * GraphQL name once a prefix has been camel-cased (camel-casing strips every
+ * non-alphanumeric separator, so a leading underscore can never survive).
+ */
+const ASCII_LETTER = /[A-Za-z]/u
+/** Matches an ASCII alphanumeric character. */
+const ASCII_ALNUM = /[0-9A-Za-z]/u
+
+/**
+ * Normalizes a raw per-source `namePrefix` value and validates that it yields a
+ * usable GraphQL name once case-normalized.
  *
  * Returns the trimmed string when it is a non-empty string, otherwise
  * `undefined` so an absent, non-string, empty, or whitespace-only value is
  * treated as unset and never injects a stray separator into generated names.
  *
+ * A non-empty prefix is validated against the `camelCase` normalization the
+ * name-derivation step (`deriveNames`) applies when it builds the generated
+ * GraphQL names. That normalization strips every non-alphanumeric separator and
+ * joins the remaining alphanumeric runs, so the validity of the resulting
+ * GraphQL name is decided entirely by its first character:
+ *
+ * - A prefix with no alphanumeric characters (e.g. `"---"`, `"_"`) camel-cases
+ *   to `""`, which the `hasPrefix` guard still treats as set and would turn into
+ *   a leading-underscore type name.
+ * - A prefix whose first alphanumeric character is a digit (e.g. `"1x"`, `"123"`)
+ *   camel-cases to a digit-leading token, which is not a valid GraphQL name.
+ *
+ * Both cases are rejected fail-fast at config-load time rather than silently
+ * dropped, because dropping the prefix would reintroduce the name collision the
+ * prefix exists to prevent.
+ *
  * @param raw - The raw `namePrefix` value from the data-source entry.
+ * @param sourceName - The configured data-source name, for error context.
+ * @param adapterName - The adapter name, for error context.
  * @returns The trimmed prefix, or `undefined` when it should be treated as unset.
+ * @throws {DataSourceConfigError} When a non-empty prefix does not normalize to
+ *   a valid GraphQL name.
  */
-function normalizeNamePrefix(raw: unknown): string | undefined {
+function normalizeNamePrefix(
+  raw: unknown,
+  sourceName: string,
+  adapterName: string
+): string | undefined {
   if (typeof raw !== "string") {
     return undefined
   }
   const trimmed = raw.trim()
-  return trimmed.length > 0 ? trimmed : undefined
+  if (trimmed.length === 0) {
+    return undefined
+  }
+
+  // The first alphanumeric character becomes the first character of the
+  // camel-cased name. The prefix is valid only when such a character exists and
+  // is an ASCII letter — a leading digit yields an invalid GraphQL name, and no
+  // alphanumeric characters at all yields an empty (and thus invalid) name.
+  const firstAlnum = [...trimmed].find((char) => ASCII_ALNUM.test(char))
+  if (firstAlnum === undefined || !ASCII_LETTER.test(firstAlnum)) {
+    throw new DataSourceConfigError(
+      `Data source "${sourceName}" has an invalid namePrefix "${trimmed}": after camel-casing it must be a valid GraphQL name (matching /^[_A-Za-z][_0-9A-Za-z]*$/), i.e. start with an ASCII letter`,
+      sourceName,
+      adapterName,
+      new RangeError(
+        `namePrefix "${trimmed}" does not normalize to a valid GraphQL name`
+      )
+    )
+  }
+
+  return trimmed
 }
 
 /**
@@ -286,7 +340,11 @@ export function processDataSources(
 
     // Pass the per-source name prefix through, trimmed; an empty or
     // whitespace-only value is treated as unset (never injects a separator).
-    const normalizedNamePrefix = normalizeNamePrefix(sourceEntry.namePrefix)
+    const normalizedNamePrefix = normalizeNamePrefix(
+      sourceEntry.namePrefix,
+      sourceName,
+      adapterName
+    )
     if (normalizedNamePrefix !== undefined) {
       normalized.namePrefix = normalizedNamePrefix
     }

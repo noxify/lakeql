@@ -5,7 +5,7 @@ import { FakeAdapterFactory } from "@lakeql/datasource/testing"
 import { describe, expect, it } from "vitest"
 
 import type { AdapterDefinition } from "../src/index"
-import { defineConfig } from "../src/index"
+import { DataSourceConfigError, defineConfig } from "../src/index"
 
 /**
  * Creates a minimal AdapterDefinition stub with a custom adapter name.
@@ -53,6 +53,20 @@ function makeAdapterDefinition(
 /** Stable module-scope resolver used to assert reference identity. */
 const sampleImpersonationResolver = () =>
   Promise.resolve({ options: { impersonateAs: "alice" } })
+
+/**
+ * Invokes `fn` and returns the thrown value, or `undefined` when it does not
+ * throw. Keeps the subsequent `expect` calls unconditional so the assertions
+ * run exactly once per case.
+ */
+function captureError(fn: () => unknown): unknown {
+  try {
+    fn()
+  } catch (error) {
+    return error
+  }
+  return undefined
+}
 
 describe("defineConfig() - output shape and identity", () => {
   it("preserves adapter identity: output.adapters[i] === input[i]", () => {
@@ -249,6 +263,51 @@ describe("defineConfig() - output shape and identity", () => {
 
     expect(result.dataSources.warehouse).not.toHaveProperty("namePrefix")
   })
+
+  it("accepts a mixed-case namePrefix that normalizes to a valid GraphQL name", () => {
+    const trino = makeAdapterDefinition("trino")
+
+    const result = defineConfig({
+      adapters: [trino],
+      dataSources: {
+        warehouse: {
+          adapter: "trino",
+          connection: { host: "localhost" },
+          namePrefix: "MyTrino",
+        },
+      },
+    })
+
+    expect(result.dataSources.warehouse!.namePrefix).toBe("MyTrino")
+  })
+
+  it.each(["---", "_", "1x", "123", "!!!"])(
+    "throws a DataSourceConfigError for namePrefix %j that does not normalize to a valid GraphQL name",
+    (namePrefix) => {
+      const trino = makeAdapterDefinition("trino")
+
+      const call = () =>
+        defineConfig({
+          adapters: [trino],
+          dataSources: {
+            warehouse: {
+              adapter: "trino",
+              connection: { host: "localhost" },
+              namePrefix,
+            },
+          },
+        })
+
+      const error = captureError(call)
+
+      expect(error).toBeInstanceOf(DataSourceConfigError)
+      const configError = error as DataSourceConfigError
+      expect(configError.sourceName).toBe("warehouse")
+      expect(configError.adapterName).toBe("trino")
+      expect(configError.message).toContain("warehouse")
+      expect(configError.message).toContain(namePrefix)
+    }
+  )
 
   it("preserves connection identity through custom merge that passes it through", () => {
     const connectionObj = { host: "localhost", port: 8080 }
