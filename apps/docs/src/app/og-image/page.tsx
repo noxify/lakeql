@@ -60,12 +60,19 @@ const OGImage = () => (
 
 export default function OGImagePage() {
   const renderRef = useRef<HTMLDivElement | null>(null)
+  // Holds the current object URL so cleanup can revoke it. A ref (not a `let`
+  // reassigned inside the async closure) keeps the mutable value stable across
+  // renders without tripping the async-reassignment rule.
+  const objectUrlRef = useRef<string | null>(null)
   const [imageUrl, setImageUrl] = useState<string | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   useEffect(() => {
-    let objectUrl: string | null = null
-    let cancelled = false
+    // Track cancellation through a ref rather than a reassigned `let`: the
+    // cleanup runs after render completes, and mutating a ref there is the
+    // supported pattern (reassigning a closure variable trips the
+    // async-reassignment rule).
+    const cancelledRef = { current: false }
 
     async function generate() {
       if (!renderRef.current) {
@@ -80,13 +87,14 @@ export default function OGImagePage() {
           scale: 2,
         })
 
-        if (cancelled) {
+        if (cancelledRef.current) {
           return
         }
-        objectUrl = URL.createObjectURL(blob)
-        setImageUrl(objectUrl)
+        const url = URL.createObjectURL(blob)
+        objectUrlRef.current = url
+        setImageUrl(url)
       } catch (error) {
-        if (cancelled) {
+        if (cancelledRef.current) {
           return
         }
         const message =
@@ -100,9 +108,10 @@ export default function OGImagePage() {
     void generate()
 
     return () => {
-      cancelled = true
-      if (objectUrl) {
-        URL.revokeObjectURL(objectUrl)
+      cancelledRef.current = true
+      if (objectUrlRef.current) {
+        URL.revokeObjectURL(objectUrlRef.current)
+        objectUrlRef.current = null
       }
     }
   }, [])
