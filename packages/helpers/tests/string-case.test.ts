@@ -5,39 +5,37 @@ import { toCamelCase, toCapitalize, toUpperFirst } from "../src/string-case"
 /**
  * Golden / characterization test for the `string-case` wrappers.
  *
- * These expectations were pinned against the repo's previously installed
- * `lodash-es@4.18.1` and must stay identical after the `es-toolkit` migration
- * for every NON-symbol input class. The wrappers are `deburr` (es-toolkit/compat)
- * followed by strict `es-toolkit` `camelCase` / `upperFirst` / `capitalize`.
+ * Every expectation below is the output of the repo's previously installed
+ * `lodash-es@4.18.1` (`camelCase` / `upperFirst` / `capitalize`), captured
+ * directly from that library before the `es-toolkit` swap. The wrappers source
+ * `camelCase` / `upperFirst` / `capitalize` from `es-toolkit/compat`, which is
+ * purpose-built to reproduce `lodash`, and these expectations must stay
+ * byte-for-byte identical after the migration for EVERY input class — there is
+ * no name change.
  *
- * `toCamelCase` matches lodash's `camelCase` on every pinned case EXCEPT
- * symbol/currency characters (`€`, `¥`, `£`, `§`): lodash kept them as word
- * characters (e.g. `"x_€"` → `"x€"`), producing a value that was never a valid
- * GraphQL name; strict `camelCase` drops them (`"x_€"` → `"x"`). This single,
- * documented divergence is intentional — see the migration changelog.
- *
- * `toUpperFirst` / `toCapitalize` deburr Latin diacritics and ligatures before
- * casing (unlike lodash's `upperFirst` / `capitalize`, which only change the
- * first character). At every real call site these wrappers are applied to an
- * already-`toCamelCase`d, deburred value, so the folding below never changes a
- * generated name — it only guarantees the wrappers are self-consistent.
+ * The input set is the representative set the migration brief required: Latin
+ * diacritics, Latin ligatures, mixed separators, digit-leading / digit-bearing
+ * tokens, non-Latin scripts (Hangul, Cyrillic, Greek, emoji), symbol/currency
+ * characters, and apostrophes/quotes (the two classes where strict
+ * `es-toolkit` `camelCase` provably diverges from `lodash` — `"x_€"` and
+ * `"it's"` — and the reason the wrappers use `compat`).
  */
-describe("string-case wrappers (golden characterization)", () => {
-  // [input, toCamelCase, toUpperFirst, toCapitalize]
+describe("string-case wrappers (golden characterization vs lodash-es@4.18.1)", () => {
+  // [input, lodash camelCase, lodash upperFirst, lodash capitalize]
   const cases: [string, string, string, string][] = [
-    // Latin diacritics — folded by deburr, matches lodash camelCase
-    ["é1", "e1", "E1", "E1"],
-    ["café-bar", "cafeBar", "Cafe-bar", "Cafe-bar"],
-    ["über", "uber", "Uber", "Uber"],
-    ["ömega", "omega", "Omega", "Omega"],
-    ["naïve", "naive", "Naive", "Naive"],
-    ["São_Paulo", "saoPaulo", "Sao_Paulo", "Sao_paulo"],
-    // Latin ligatures — folded by deburr, matches lodash camelCase
-    ["ß", "ss", "Ss", "Ss"],
-    ["æther", "aether", "Aether", "Aether"],
-    ["Æthelred", "aethelred", "Aethelred", "Aethelred"],
-    ["œuvre", "oeuvre", "Oeuvre", "Oeuvre"],
-    ["straße", "strasse", "Strasse", "Strasse"],
+    // Latin diacritics
+    ["é1", "e1", "É1", "É1"],
+    ["café-bar", "cafeBar", "Café-bar", "Café-bar"],
+    ["über", "uber", "Über", "Über"],
+    ["ömega", "omega", "Ömega", "Ömega"],
+    ["naïve", "naive", "Naïve", "Naïve"],
+    ["São_Paulo", "saoPaulo", "São_Paulo", "São_paulo"],
+    // Latin ligatures
+    ["ß", "ss", "SS", "SS"],
+    ["æther", "aether", "Æther", "Æther"],
+    ["Æthelred", "aethelred", "Æthelred", "Æthelred"],
+    ["œuvre", "oeuvre", "Œuvre", "Œuvre"],
+    ["straße", "strasse", "Straße", "Straße"],
     // Mixed separators
     ["foo-bar", "fooBar", "Foo-bar", "Foo-bar"],
     ["foo_bar", "fooBar", "Foo_bar", "Foo_bar"],
@@ -60,7 +58,7 @@ describe("string-case wrappers (golden characterization)", () => {
     ["field2name", "field2Name", "Field2name", "Field2name"],
     ["2fast2furious", "2Fast2Furious", "2fast2furious", "2fast2furious"],
     ["v2_api", "v2Api", "V2_api", "V2_api"],
-    // Non-Latin scripts — NOT deburred by lodash or es-toolkit, identical on both
+    // Non-Latin scripts — not deburred by lodash, identical on both libraries
     ["한글-테스트", "한글테스트", "한글-테스트", "한글-테스트"],
     ["привет_мир", "приветМир", "Привет_мир", "Привет_мир"],
     ["Ωμέγα", "ωμέγα", "Ωμέγα", "Ωμέγα"],
@@ -68,9 +66,18 @@ describe("string-case wrappers (golden characterization)", () => {
     ["keep unicode 😅", "keepUnicode😅", "Keep unicode 😅", "Keep unicode 😅"],
     ["emoji😅test", "emoji😅Test", "Emoji😅test", "Emoji😅test"],
     ["a日", "a日", "A日", "A日"],
-    // Symbol / currency — the one DOCUMENTED divergence from lodash:
-    // lodash camelCase("x_€") === "x€" (kept the symbol); strict drops it to "x".
-    ["x_€", "x", "X_€", "X_€"],
+    // Symbol / currency — lodash keeps symbol word-chars; compat matches lodash
+    ["x_€", "x€", "X_€", "X_€"],
+    ["price€", "price€", "Price€", "Price€"],
+    // Apostrophes / quotes — lodash treats them as word-internal (no split);
+    // compat matches lodash (strict es-toolkit would split: "it's" -> "itS")
+    ["it's", "its", "It's", "It's"],
+    ["a'b", "ab", "A'b", "A'b"],
+    ["foo’s", "foos", "Foo’s", "Foo’s"],
+    ["don't", "dont", "Don't", "Don't"],
+    ["rock'n'roll", "rocknroll", "Rock'n'roll", "Rock'n'roll"],
+    ["O'Brien", "oBrien", "O'Brien", "O'brien"],
+    ["l'été", "lete", "L'été", "L'été"],
   ]
 
   it.each(cases)(

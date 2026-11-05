@@ -26,9 +26,10 @@ const GRAPHQL_NAME = /^[_A-Za-z][_0-9A-Za-z]*$/u
  * `deriveNames` camel-cases it, and throws a descriptive {@link CliError} when
  * it does not.
  *
- * The check runs the exact same `toCamelCase` ({@link @lakeql/helpers} `deburr`
- * then strict `camelCase`) that {@link deriveNames} uses to build the generated
- * names, then validates the result against the GraphQL name grammar
+ * The check runs the exact same `toCamelCase` ({@link @lakeql/helpers}
+ * `es-toolkit/compat` `camelCase`, which reproduces `lodash` byte-for-byte) that
+ * {@link deriveNames} uses to build the generated names, then validates the
+ * result against the GraphQL name grammar
  * `/^[_A-Za-z][_0-9A-Za-z]*$/`. Because the validator and the generator share
  * one casing function, the two cannot drift. `deriveNames` also applies
  * `toUpperFirst` to the type and mutation segments, but it only changes the case
@@ -46,9 +47,9 @@ const GRAPHQL_NAME = /^[_A-Za-z][_0-9A-Za-z]*$/u
  *
  * Deburrable prefixes are accepted because `toCamelCase` folds Latin diacritics
  * and ligatures to ASCII first (e.g. `"é1"`→`"e1"`, `"über"`→`"uber"`,
- * `"ß"`→`"ss"`). Strict `camelCase` also drops symbol/currency characters as
- * non-word (e.g. `"x_€"`→`"x"`, accepted), whereas `lodash` kept them (`"x€"`,
- * which was never a valid GraphQL name and was rejected).
+ * `"ß"`→`"ss"`). Symbol/currency characters are kept as word chars (e.g.
+ * `"x_€"`→`"x€"`, exactly as `lodash` did), which fails the GraphQL name grammar
+ * and is rejected.
  *
  * @param prefix - The trimmed, non-empty prefix to validate.
  * @param normalized - The `camelCase(prefix)` result (passed in to avoid a

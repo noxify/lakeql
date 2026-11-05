@@ -64,12 +64,13 @@ describe("deriveNames name prefixing", () => {
 
   describe("invalid prefix fails fast", () => {
     // Each of these camel-cases to something that is not a valid GraphQL name:
-    // "---"/"_"/"!!!" -> "" (empty), "1x"/"123" -> digit-leading, and the
-    // non-ASCII cases retain letters camelCase cannot fold to ASCII ("a日",
-    // "Ωmega" -> "ωmega", "日本a"). The check runs the same toCamelCase (deburr
-    // + strict camelCase) that deriveNames uses, so it cannot drift from the
-    // generated names.
-    it.each(["---", "_", "!!!", "1x", "123", "a日", "Ωmega", "日本a"])(
+    // "---"/"_"/"!!!" -> "" (empty), "1x"/"123" -> digit-leading, the non-ASCII
+    // cases retain letters camelCase cannot fold to ASCII ("a日", "Ωmega" ->
+    // "ωmega", "日本a"), and "x_€" camel-cases to "x€" (lodash/compat keep the
+    // symbol as a word char), which the GraphQL name grammar rejects. The check
+    // runs the same toCamelCase (es-toolkit/compat camelCase, lodash-identical)
+    // that deriveNames uses, so it cannot drift from the generated names.
+    it.each(["---", "_", "!!!", "1x", "123", "a日", "Ωmega", "日本a", "x_€"])(
       "throws for namePrefix %j",
       (prefix) => {
         expect(() => deriveNames(SCHEMA, TABLE, prefix)).toThrow(
@@ -94,26 +95,6 @@ describe("deriveNames name prefixing", () => {
       ["café", "cafe"],
     ])("accepts %j (camelCases to %j)", (prefix) => {
       expect(() => deriveNames(SCHEMA, TABLE, prefix)).not.toThrow()
-    })
-
-    // Strict camelCase drops symbol/currency characters as non-word, so a
-    // prefix like "x_€" now resolves to the valid prefix "x" and is ACCEPTED.
-    // Under lodash it camel-cased to "x€" (the symbol was kept), which failed
-    // the GraphQL name grammar and was rejected — a name that could never have
-    // been a valid GraphQL type/field name. Accepting the folded "x" form is
-    // the more-correct behavior.
-    it.each([["x_€", "x"]])(
-      "accepts %j (strict camelCase drops the symbol to %j)",
-      (prefix) => {
-        expect(() => deriveNames(SCHEMA, TABLE, prefix)).not.toThrow()
-      }
-    )
-
-    it("drops symbol characters from generated names", () => {
-      const result = deriveNames(SCHEMA, TABLE, "x_€")
-
-      expect(result.baseClassName).toBe("X_Tier1OpenLake_ItapsV2ItapsLatest")
-      expect(result.queryName).toBe("xTier1OpenLakeItapsV2ItapsLatest")
     })
 
     it("prefixes names from a deburrable prefix", () => {

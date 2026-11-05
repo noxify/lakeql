@@ -69,8 +69,8 @@ function validateMergedConfig(
  *
  * Validity of the normalized prefix as a GraphQL name is intentionally *not*
  * checked here. That check lives on the CLI side next to `deriveNames`, where
- * the same `lodash` `camelCase` that produces the generated names validates the
- * actual camel-cased result — so the config package never re-encodes casing
+ * the same `toCamelCase` that produces the generated names validates the actual
+ * camel-cased result — so the config package never re-encodes casing
  * semantics it cannot import, and there is zero drift between the validator and
  * the generator. `namePrefix` only takes effect during `pull` / `bulk-pull`
  * generation, so fail-fast at generate time is sufficient.

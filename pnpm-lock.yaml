@@ -910,9 +910,6 @@ importers:
       '@types/node':
         specifier: 24.19.2
         version: 24.19.2
-      lodash-es:
-        specifier: 4.18.1
-        version: 4.18.1
       tsdown:
         specifier: 0.23.5
         version: 0.23.5(tsx@4.23.15)(typescript@6.0.3)
@@ -4879,9 +4876,6 @@ packages:
   locate-path@3.0.0:
     resolution: {integrity: sha512-7AO748wWnIhNqAuaty2ZWHkQHRSNfPVIsPIfwEOWO22AmaoVrWavlOcMR5nzTLNYvp36X220/maaRsrec1G65A==}
     engines: {node: '>=6'}
-
-  lodash-es@4.18.1:
-    resolution: {integrity: sha512-J8xewKD/Gk22OZbhpOVSwcs60zhd95ESDwezOFuA3/099925PdHJ7OFHNTGtajL3AlZkykD32HykiMo+BIBI8A==}
 
   lodash.includes@4.3.0:
     resolution: {integrity: sha512-W3Bx6mdkRTGtlJISOvVD/lbqjTlPPUDTMnlXZFnVwi9NKJ6tiAk6LVdlhZMm17VZisqhKcgzpO5Wz91PCt5b0w==}
@@ -9960,8 +9954,6 @@ snapshots:
     dependencies:
       p-locate: 3.0.0
       path-exists: 3.0.0
-
-  lodash-es@4.18.1: {}
 
   lodash.includes@4.3.0: {}
 
