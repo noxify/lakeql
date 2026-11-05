@@ -89,12 +89,25 @@ export interface Permission {
 
 /**
  * Auth configuration block for the unified config.
+ *
+ * Request authentication (`tokenResolver`) and identity resolution
+ * (`identityResolver`) are API-server concerns configured on
+ * `defineApiConfig` (`ApiRuntimeConfig`), not here — this block carries only
+ * the config/data-source–level impersonation fallback.
  */
 export interface AuthConfig {
-  /** Resolves the current user from an incoming request. */
-  tokenResolver?: TokenResolver
-  /** Maps a JWT payload to a ResolvedIdentity. */
-  identityResolver?: IdentityResolver
-  /** Custom impersonation resolver. */
+  /**
+   * Global fallback impersonation resolver, applied across every data source.
+   *
+   * This is the source-independent counterpart to a per-source
+   * `dataSources.<source>.impersonationResolver`. Resolution is two-level: for
+   * a given data source the per-source resolver takes precedence, and this
+   * global resolver is used only when that source defines none. When neither
+   * exists, the request runs with no impersonation (system user / the source's
+   * configured service credentials).
+   *
+   * Use the per-source field to override impersonation for a specific source,
+   * and this field to apply one resolver to all sources that do not.
+   */
   impersonationResolver?: ImpersonationResolver
 }
