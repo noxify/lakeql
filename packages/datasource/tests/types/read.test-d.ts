@@ -32,9 +32,9 @@ describe("DataSourceReadInput paging", () => {
     expectTypeOf<DataSourceReadInput["paging"]["page"]>().toBeNumber()
   })
 
-  it("paging.perPage is an optional number", () => {
+  it("paging.perPage is an optional, nullable number", () => {
     expectTypeOf<DataSourceReadInput["paging"]["perPage"]>().toEqualTypeOf<
-      number | undefined
+      number | null | undefined
     >()
   })
 })
