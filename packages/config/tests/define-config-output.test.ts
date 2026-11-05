@@ -5,7 +5,7 @@ import { FakeAdapterFactory } from "@lakeql/datasource/testing"
 import { describe, expect, it } from "vitest"
 
 import type { AdapterDefinition } from "../src/index"
-import { DataSourceConfigError, defineConfig } from "../src/index"
+import { defineConfig } from "../src/index"
 
 /**
  * Creates a minimal AdapterDefinition stub with a custom adapter name.
@@ -53,20 +53,6 @@ function makeAdapterDefinition(
 /** Stable module-scope resolver used to assert reference identity. */
 const sampleImpersonationResolver = () =>
   Promise.resolve({ options: { impersonateAs: "alice" } })
-
-/**
- * Invokes `fn` and returns the thrown value, or `undefined` when it does not
- * throw. Keeps the subsequent `expect` calls unconditional so the assertions
- * run exactly once per case.
- */
-function captureError(fn: () => unknown): unknown {
-  try {
-    fn()
-  } catch (error) {
-    return error
-  }
-  return undefined
-}
 
 describe("defineConfig() - output shape and identity", () => {
   it("preserves adapter identity: output.adapters[i] === input[i]", () => {
@@ -264,7 +250,7 @@ describe("defineConfig() - output shape and identity", () => {
     expect(result.dataSources.warehouse).not.toHaveProperty("namePrefix")
   })
 
-  it("accepts a mixed-case namePrefix that normalizes to a valid GraphQL name", () => {
+  it("preserves a mixed-case namePrefix verbatim (no validation here)", () => {
     const trino = makeAdapterDefinition("trino")
 
     const result = defineConfig({
@@ -281,31 +267,28 @@ describe("defineConfig() - output shape and identity", () => {
     expect(result.dataSources.warehouse!.namePrefix).toBe("MyTrino")
   })
 
-  it.each(["---", "_", "1x", "123", "!!!"])(
-    "throws a DataSourceConfigError for namePrefix %j that does not normalize to a valid GraphQL name",
+  // GraphQL-name validity is checked at generate time next to deriveNames (see
+  // packages/cli), not in config: config only trims and drops empty values, so
+  // even a value that cannot camel-case to a valid GraphQL name is passed
+  // through here untouched. The invalid-prefix fail-fast is covered by the CLI
+  // tests.
+  it.each(["---", "_", "1x", "a日"])(
+    "passes a namePrefix %j through untouched without validating it",
     (namePrefix) => {
       const trino = makeAdapterDefinition("trino")
 
-      const call = () =>
-        defineConfig({
-          adapters: [trino],
-          dataSources: {
-            warehouse: {
-              adapter: "trino",
-              connection: { host: "localhost" },
-              namePrefix,
-            },
+      const result = defineConfig({
+        adapters: [trino],
+        dataSources: {
+          warehouse: {
+            adapter: "trino",
+            connection: { host: "localhost" },
+            namePrefix,
           },
-        })
+        },
+      })
 
-      const error = captureError(call)
-
-      expect(error).toBeInstanceOf(DataSourceConfigError)
-      const configError = error as DataSourceConfigError
-      expect(configError.sourceName).toBe("warehouse")
-      expect(configError.adapterName).toBe("trino")
-      expect(configError.message).toContain("warehouse")
-      expect(configError.message).toContain(namePrefix)
+      expect(result.dataSources.warehouse!.namePrefix).toBe(namePrefix)
     }
   )
 

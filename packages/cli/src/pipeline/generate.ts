@@ -81,11 +81,13 @@ export async function generateEndpoint(
   } = options
   const { catalog, schema, tableName, fields } = definition
 
-  // 1. Derive names from schema and tableName (optionally prefixed)
+  // 1. Derive names from schema and tableName (optionally prefixed). An invalid
+  // namePrefix fails fast here with the data-source name for context.
   const { baseClassName, queryName, mutationName } = deriveNames(
     schema,
     tableName,
-    namePrefix
+    namePrefix,
+    dataSourceName
   )
 
   // 2. Convert FieldDefinition[] → JSON Schema

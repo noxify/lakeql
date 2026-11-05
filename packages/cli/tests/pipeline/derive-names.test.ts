@@ -61,4 +61,46 @@ describe("deriveNames name prefixing", () => {
       )
     })
   })
+
+  describe("invalid prefix fails fast", () => {
+    // Each of these camel-cases to something that is not a valid GraphQL name:
+    // "---"/"_"/"!!!" -> "" (empty), "1x"/"123" -> digit-leading, and the
+    // non-ASCII cases retain letters camelCase cannot fold to ASCII ("a日",
+    // "Ωmega" -> "ωmega", "x_€" -> "x€", "日本a"). The check runs the real
+    // lodash camelCase that deriveNames uses, so it cannot drift from the
+    // generated names.
+    it.each(["---", "_", "!!!", "1x", "123", "a日", "Ωmega", "x_€", "日本a"])(
+      "throws for namePrefix %j",
+      (prefix) => {
+        expect(() => deriveNames(SCHEMA, TABLE, prefix)).toThrow(
+          /invalid namePrefix/iu
+        )
+      }
+    )
+
+    it("names the data source and the offending prefix in the error", () => {
+      expect(() => deriveNames(SCHEMA, TABLE, "1x", "trino_source")).toThrow(
+        /"trino_source".*"1x"|"1x".*"trino_source"/iu
+      )
+    })
+  })
+
+  describe("deburrable prefix is accepted", () => {
+    // lodash camelCase folds Latin diacritics and ligatures to ASCII, so these
+    // normalize to valid GraphQL names and must be accepted.
+    it.each([
+      ["é1", "e1"],
+      ["über", "uber"],
+      ["café", "cafe"],
+    ])("accepts %j (camelCases to %j)", (prefix) => {
+      expect(() => deriveNames(SCHEMA, TABLE, prefix)).not.toThrow()
+    })
+
+    it("prefixes names from a deburrable prefix", () => {
+      const result = deriveNames(SCHEMA, TABLE, "über")
+
+      expect(result.baseClassName).toBe("Uber_Tier1OpenLake_ItapsV2ItapsLatest")
+      expect(result.queryName).toBe("uberTier1OpenLakeItapsV2ItapsLatest")
+    })
+  })
 })
