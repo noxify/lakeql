@@ -27,7 +27,8 @@ const GRAPHQL_NAME = /^[_A-Za-z][_0-9A-Za-z]*$/u
  * it does not.
  *
  * The check runs the exact same `toCamelCase` ({@link @lakeql/helpers}
- * `es-toolkit/compat` `camelCase`, which reproduces `lodash` byte-for-byte) that
+ * `es-toolkit/compat` `camelCase`, which reproduces `lodash` across the
+ * reachable ASCII-after-sanitize input set) that
  * {@link deriveNames} uses to build the generated names, then validates the
  * result against the GraphQL name grammar
  * `/^[_A-Za-z][_0-9A-Za-z]*$/`. Because the validator and the generator share

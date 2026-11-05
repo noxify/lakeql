@@ -10,8 +10,31 @@ import { toCamelCase, toCapitalize, toUpperFirst } from "../src/string-case"
  * directly from that library before the `es-toolkit` swap. The wrappers source
  * `camelCase` / `upperFirst` / `capitalize` from `es-toolkit/compat`, which is
  * purpose-built to reproduce `lodash`, and these expectations must stay
- * byte-for-byte identical after the migration for EVERY input class — there is
+ * identical after the migration for every input class in this table — there is
  * no name change.
+ *
+ * How the expectations were produced (so the table is reproducible even though
+ * `lodash-es` is now removed): each row's expected values were captured by
+ * running the then-installed `lodash-es@4.18.1` directly, i.e. the equivalent
+ * of
+ *
+ * ```js
+ * import { camelCase, upperFirst, capitalize } from "lodash-es" // @4.18.1
+ * cases.map(([s]) => [s, camelCase(s), upperFirst(s), capitalize(s)])
+ * ```
+ *
+ * To re-capture against a specific `lodash-es` release, install that version in
+ * a scratch workspace and run the snippet above over the `cases` inputs below.
+ * The `es-toolkit/compat` output is asserted equal to these captured literals.
+ *
+ * Scope of the equality claim: the inputs below are the reachable/realistic set
+ * — in production every value reaching these wrappers is ASCII by the time
+ * `sanitizeFieldName` has run, and across that realistic set `es-toolkit/compat`
+ * matches `lodash` exactly. This is NOT a claim of equality for all of Unicode:
+ * some exotic inputs that never reach the wrappers still differ between the two
+ * libraries (e.g. `capitalize("İ", U+0130)` is `"I\u0307"` under `lodash` vs
+ * `"i̇"`/`"İ"` under `compat`; U+212B, ZWJ sequences, and combining marks can
+ * also diverge). Those are documented as unreachable, not asserted here.
  *
  * The input set is the representative set the migration brief required: Latin
  * diacritics, Latin ligatures, mixed separators, digit-leading / digit-bearing
