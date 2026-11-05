@@ -26,6 +26,7 @@ const DEFAULT_OBO_SCOPE = "https://database.windows.net/.default"
 /** The OBO resolver, lifted verbatim from the fabric-only example. */
 const IMPERSONATION_RESOLVER = `import { OnBehalfOfCredential } from "@azure/identity"
 import type { ImpersonationResolver } from "@lakeql/config"
+import { AuthenticationError } from "@lakeql/datasource"
 
 import { env } from "./env"
 
@@ -43,12 +44,24 @@ import { env } from "./env"
  *    adapter uses as the bearer token for that request.
  *
  * Returning \`null\` means "no impersonation" — the request uses the configured
- * service credentials.
+ * service credentials. This is only ever returned for requests that are not
+ * subject to OBO (service principals, non-Fabric adapters).
+ *
+ * A human user that reached this resolver has already been authenticated, so a
+ * failed OBO exchange is a misconfiguration, not a pass-through: the resolver
+ * throws an \`AuthenticationError\` rather than silently falling back to the
+ * broader service credentials, which would bypass the user's own Fabric
+ * row-level access. The thrown error surfaces to the client as a
+ * \`PERMISSION_DENIED\` (HTTP 403) GraphQL error.
+ *
+ * @throws {AuthenticationError} If a non-service-principal Fabric request has
+ * no \`__rawToken\` to exchange, or if the OBO exchange yields no token.
  */
 export const fabricImpersonationResolver: ImpersonationResolver = async ({
   currentUser,
   isServicePrincipal,
   adapter,
+  dataSource,
 }) => {
   // Technical users already authenticate as themselves; nothing to exchange.
   if (isServicePrincipal) {
@@ -62,8 +75,15 @@ export const fabricImpersonationResolver: ImpersonationResolver = async ({
 
   const userToken = currentUser.__rawToken as string | undefined
   if (!userToken) {
-    // No user assertion to exchange — fall back to service credentials.
-    return null
+    // An authenticated human reached OBO without a user assertion to exchange.
+    // Fail closed instead of falling back to service credentials, which would
+    // run the query with broader access than the user is entitled to.
+    throw new AuthenticationError(
+      "Fabric OBO: no user assertion (__rawToken) available for an authenticated user. " +
+        "Ensure the token resolver attaches the raw bearer token as \`__rawToken\`.",
+      adapter,
+      dataSource
+    )
   }
 
   const credential = new OnBehalfOfCredential({
@@ -75,7 +95,14 @@ export const fabricImpersonationResolver: ImpersonationResolver = async ({
 
   const tokenResponse = await credential.getToken(env.OBO_FABRIC_SCOPE)
   if (!tokenResponse?.token) {
-    return null
+    // The OBO exchange succeeded structurally but returned no token. For an
+    // authenticated human this is a failure, not a pass-through: fail closed
+    // instead of falling back to service credentials.
+    throw new AuthenticationError(
+      "Fabric OBO: the on-behalf-of token exchange returned no access token.",
+      adapter,
+      dataSource
+    )
   }
 
   return { requestAuth: { type: "bearer", token: tokenResponse.token } }

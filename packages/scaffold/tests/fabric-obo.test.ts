@@ -88,6 +88,31 @@ describe("fabric-obo build", () => {
     expect(file?.content).toContain("OnBehalfOfCredential")
   })
 
+  it("fails closed for an authenticated user instead of silently using service credentials", () => {
+    const { ops } = fabricOboTemplate.build(context(fabricDeps))
+    const content =
+      ops.find((op): op is AddFileOp => op.type === "addFile")?.content ?? ""
+
+    // The resolver imports the typed auth error and throws it on both failure
+    // paths, so an authenticated human never falls back to the broader service
+    // credentials (which would bypass their own Fabric row-level access).
+    expect(content).toContain(
+      'import { AuthenticationError } from "@lakeql/datasource"'
+    )
+
+    // Missing user assertion → throw.
+    expect(content).toContain("const userToken = currentUser.__rawToken")
+    // Empty OBO exchange result → throw.
+    expect(content).toContain("returned no access token")
+
+    // Exactly two AuthenticationError throws (missing assertion, empty exchange).
+    expect(content.match(/throw new AuthenticationError\(/gu)).toHaveLength(2)
+
+    // Only the two legitimate pass-throughs remain as `return null`: a service
+    // principal and a non-Fabric adapter. No silent credential fallback.
+    expect(content.match(/return null/gu)).toHaveLength(2)
+  })
+
   it("wires in the adapter-prefixed resolver import and property", () => {
     const { nextSteps } = fabricOboTemplate.build(context(fabricDeps))
     const joined = nextSteps.join("\n")
