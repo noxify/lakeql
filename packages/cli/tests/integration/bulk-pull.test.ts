@@ -84,8 +84,14 @@ vi.mock(import("@/config"), () => ({
 // Pull/bulk-pull now resolve a live data source and catalog up-front.
 const mockResolveCatalog = vi.fn(async () => "default_catalog")
 
+// Resolved data source is configurable per test so an invalid namePrefix can be
+// injected; defaults to a prefix-less "default" source.
+const mockResolveDataSource = vi.fn(async () =>
+  makeResolvedDataSource({ name: "default" })
+)
+
 vi.mock(import("@/resolve-datasource"), () => ({
-  resolveDataSource: async () => makeResolvedDataSource({ name: "default" }),
+  resolveDataSource: () => mockResolveDataSource(),
 }))
 
 vi.mock(import("@/resolve-catalog"), () => ({
@@ -208,6 +214,10 @@ describe("bulk-pull (integration)", () => {
     mockRunConfigRegistryGeneration.mockClear()
     mockResolveCatalog.mockClear()
     mockResolveCatalog.mockResolvedValue("default_catalog")
+    mockResolveDataSource.mockReset()
+    mockResolveDataSource.mockImplementation(async () =>
+      makeResolvedDataSource({ name: "default" })
+    )
     taskOutputs.length = 0
   })
 
@@ -588,6 +598,53 @@ describe("bulk-pull (integration)", () => {
       })
 
       expect(mockExecutePull).toHaveBeenCalledTimes(3)
+    })
+  })
+
+  describe("namePrefix validation", () => {
+    it("surfaces INVALID_NAME_PREFIX and fails before any pull work when the prefix is invalid", async () => {
+      mockResolveDataSource.mockImplementation(async () =>
+        makeResolvedDataSource({ name: "trino", namePrefix: "123" })
+      )
+
+      await writeConfig([{ schema: "schema1", tables: ["t1"] }])
+
+      // The bad prefix must surface as the root-cause CliError, not a masked
+      // connection error, and must fail fast before any network I/O or the
+      // per-item pull loop.
+      await expect(
+        executeBulkPull({
+          configPath: "import.config.mjs",
+          skipRegistry: true,
+        })
+      ).rejects.toMatchObject({
+        name: "CliError",
+        code: "INVALID_NAME_PREFIX",
+      })
+
+      expect(mockResolveCatalog).not.toHaveBeenCalled()
+      expect(mockExecutePull).not.toHaveBeenCalled()
+    })
+
+    it("does not reject when the prefix is valid", async () => {
+      mockResolveDataSource.mockImplementation(async () =>
+        makeResolvedDataSource({ name: "trino", namePrefix: "my-trino" })
+      )
+
+      await writeConfig([{ schema: "schema1", tables: ["t1"] }])
+
+      await executeBulkPull({
+        configPath: "import.config.mjs",
+        skipRegistry: true,
+      })
+
+      expect(mockExecutePull).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({
+          schema: "schema1",
+          tables: ["t1"],
+          namePrefix: "my-trino",
+        })
+      )
     })
   })
 

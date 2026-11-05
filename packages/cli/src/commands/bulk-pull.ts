@@ -13,6 +13,7 @@ import { CliError, createDataSourceConnectionError } from "@/errors"
 import { listrRendererOptions } from "@/listr-renderer"
 import { DEFAULT_PULL_CONCURRENCY } from "@/options"
 import { getInvocationCwd } from "@/path-utils"
+import { assertValidNamePrefix } from "@/pipeline/derive-names"
 import { resolveCatalog } from "@/resolve-catalog"
 import { resolveDataSource } from "@/resolve-datasource"
 
@@ -164,6 +165,13 @@ export async function executeBulkPull(options: BulkPullOptions): Promise<void> {
   } = await resolveDataSource(sourceFlag)
 
   try {
+    // Validate the per-data-source prefix once, up front — before any pull work
+    // or network I/O — so an invalid prefix fails fast with the clear
+    // INVALID_NAME_PREFIX CliError instead of being masked per item by
+    // createDataSourceConnectionError inside the pull loop. Uses the same
+    // validator deriveNames applies at generate time, so there is zero drift.
+    assertValidNamePrefix(dsConfig.namePrefix, dataSourceName)
+
     const resolvedCatalog = await resolveCatalog({
       dataSource,
       catalogFlag: cliCatalog,

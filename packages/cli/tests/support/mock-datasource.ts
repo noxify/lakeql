@@ -41,6 +41,7 @@ export function makeResolvedDataSource(
     adapter?: string
     connection?: Record<string, unknown>
     dataSource?: DataSource
+    namePrefix?: string
   } = {}
 ): ResolvedDataSource {
   const adapter = options.adapter ?? "trino"
@@ -50,6 +51,9 @@ export function makeResolvedDataSource(
     config: {
       adapter,
       connection: options.connection ?? {},
+      ...(options.namePrefix === undefined
+        ? {}
+        : { namePrefix: options.namePrefix }),
     },
   } as ResolvedDataSource
 }

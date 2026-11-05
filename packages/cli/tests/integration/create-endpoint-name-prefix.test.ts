@@ -17,8 +17,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 let testDir: string
 
+// `loadConfig` is stubbed alongside `resolveSourcePath` so this regression
+// guard stays honest: were `create-endpoint` ever made prefix-aware, it would
+// fail on the prefix contract below rather than on a missing config loader.
 vi.mock(import("@/config"), () => ({
   resolveSourcePath: () => Promise.resolve(testDir),
+  loadConfig: async () => ({
+    config: { dataSources: {}, sourcePath: "." },
+    adapters: [],
+  }),
 }))
 
 const mockRunConfigRegistryGeneration = vi.fn().mockResolvedValue(null)

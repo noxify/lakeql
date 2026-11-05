@@ -73,6 +73,38 @@ function assertValidPrefix(
 }
 
 /**
+ * Validates a per-data-source `namePrefix` fail-fast, independently of name
+ * derivation, using the exact same check {@link deriveNames} applies at
+ * generate time.
+ *
+ * A prefix is trimmed; an empty or whitespace-only value is treated as unset
+ * and passes without a check. A non-empty prefix is camel-cased with the same
+ * `camelCase` the generator uses and validated against the GraphQL name grammar,
+ * so an up-front call and the later generate-time call can never disagree.
+ *
+ * Callers use this to reject an invalid prefix once, before any pull work and
+ * before any network I/O, so the user sees the clear {@link CliError} instead of
+ * a downstream failure that masks the root cause.
+ *
+ * @param namePrefix - The per-data-source prefix in any casing, possibly unset.
+ * @param sourceName - Optional data-source name, used only for error context
+ *   when the prefix is rejected.
+ * @throws {CliError} When a non-empty `namePrefix` does not camel-case to a
+ *   valid GraphQL name.
+ */
+export function assertValidNamePrefix(
+  namePrefix?: string,
+  sourceName?: string
+): void {
+  const raw = namePrefix?.trim()
+  if (!raw) {
+    return
+  }
+
+  assertValidPrefix(raw, camelCase(raw), sourceName)
+}
+
+/**
  * Derives the base class, query, and mutation names for a table.
  *
  * When `namePrefix` is set, it is prepended — case-normalized per target
