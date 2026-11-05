@@ -49,15 +49,15 @@ dataSources: {
 
 ### Worked example
 
-For `schema = tier1_open_lake` and `table = itaps_v2_itaps_latest`, setting `namePrefix: "trino"` changes the generated names as follows:
+For `schema = analytics_sales` and `table = order_line_items`, setting `namePrefix: "warehouse"` changes the generated names as follows:
 
-| Name | Without prefix | With `namePrefix: "trino"` |
+| Name | Without prefix | With `namePrefix: "warehouse"` |
 | --- | --- | --- |
-| Type | `Tier1OpenLake_ItapsV2ItapsLatest` | `Trino_Tier1OpenLake_ItapsV2ItapsLatest` |
-| Query | `tier1OpenLakeItapsV2ItapsLatest` | `trinoTier1OpenLakeItapsV2ItapsLatest` |
-| Mutation | `createtier1OpenLakeItapsV2ItapsLatest` | `createTrinoTier1OpenLakeItapsV2ItapsLatest` |
+| Type | `AnalyticsSales_OrderLineItems` | `Warehouse_AnalyticsSales_OrderLineItems` |
+| Query | `analyticsSalesOrderLineItems` | `warehouseAnalyticsSalesOrderLineItems` |
+| Mutation | `createanalyticsSalesOrderLineItems` | `createWarehouseAnalyticsSalesOrderLineItems` |
 
-Mixed-case values (`"trino"`, `"Trino"`, `"TRINO"`) normalize identically, and an empty or whitespace-only value is treated as unset. When `namePrefix` is omitted, generated names are identical to before.
+Mixed-case values (`"warehouse"`, `"Warehouse"`, `"WAREHOUSE"`) normalize identically, and an empty or whitespace-only value is treated as unset. When `namePrefix` is omitted, generated names are identical to before.
 
 <Note>
   `namePrefix` applies to the `pull` and `bulk-pull` commands, which read the
