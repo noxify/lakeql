@@ -164,6 +164,12 @@ describe("fabric-obo end-to-end", () => {
     ]) {
       expect(stdout).toContain(guidanceLine)
     }
+
+    // `add` writes the dependency into package.json but does not install it,
+    // so the guidance must prompt the user to install before the resolver
+    // (which imports @azure/identity) will compile.
+    expect(stdout).toContain("@azure/identity")
+    expect(stdout).toContain("install")
   }, 30_000)
 
   it("is a no-op when the command is run a second time", () => {

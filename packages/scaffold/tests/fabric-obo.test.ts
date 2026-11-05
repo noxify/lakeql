@@ -152,4 +152,16 @@ describe("fabric-obo build", () => {
     expect(joined).toContain("database.windows.net/.default")
     expect(joined.toLowerCase()).toContain(".env")
   })
+
+  it("tells the user to install the newly added dependency", () => {
+    const { nextSteps } = fabricOboTemplate.build(context(fabricDeps))
+
+    // `add` writes the dep into package.json but never runs an install, so the
+    // guidance must prompt the user to install before the resolver compiles.
+    const installStep = nextSteps.find((step) =>
+      step.includes("@azure/identity")
+    )
+    expect(installStep).toBeDefined()
+    expect(installStep).toContain("install")
+  })
 })

@@ -194,6 +194,7 @@ export const fabricOboTemplate: FeatureTemplate = {
     ]
 
     const nextSteps: string[] = [
+      "Install dependencies so the newly added @azure/identity is available before you wire up the resolver (for example `npm install`, `pnpm install`, or `yarn`).",
       ...wiringSteps(),
       "Copy the new OBO_* keys from .env.example into your .env and fill in the values from your OBO app registration.",
       'In Azure, register (or reuse) a confidential app for the OBO exchange and grant it delegated permissions: "Azure SQL Database" and "Azure Storage", each with "user_impersonation".',
