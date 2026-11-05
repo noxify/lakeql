@@ -40,7 +40,7 @@ export default defineConfig({
 - **`dataSources`** — named sources, each selecting a registered `adapter` and supplying its `connection` (and optional `writeConfig`, `overrides`, `impersonationResolver`, and `namePrefix`). `overrides` applies only to adapters that declare registration-level options. The Trino and Fabric adapters declare none, so the field is typed `never` for them and you leave it out.
 - **`namePrefix`** — optional per-source string prepended to every generated GraphQL name, so two sources exposing the same `schema.tableName` no longer collide. It is a sibling of `adapter` and `connection`, written in any casing (e.g. `namePrefix: "trino"`). See [Name Prefix](/docs/cli/configuration/config-file#name-prefix) for how it is cased per target and a worked example.
 - **`sourcePath`** — base path for generated code. Defaults to `"."`.
-- **`auth`** / **`permissions`** — optional identity/impersonation config and technical-user permission rules, passed through untouched.
+- **`auth`** — optional auth block grouping all config-level auth concerns, passed through untouched. It carries `auth.impersonationResolver` (the global impersonation fallback) and `auth.permissions` (technical-user permission rules).
 
 Connection shapes are adapter-specific. See [Trino connection](/docs/data-sources/trino/connection) and [Fabric connection](/docs/data-sources/fabric/connection).
 

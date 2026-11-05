@@ -3,11 +3,7 @@
 
 import type { AdapterFactory } from "@lakeql/datasource"
 
-import type {
-  AuthConfig,
-  ImpersonationResolver,
-  Permission,
-} from "../auth-types"
+import type { AuthConfig, ImpersonationResolver } from "../auth-types"
 import type { ResolvedPaging } from "./resolve-paging"
 
 /**
@@ -273,7 +269,7 @@ export type NormalizedDataSourcesFor<
  *
  * Contains the identity-preserved adapter definitions, a normalized
  * readonly data-sources map, and the unified application-level config
- * fields (auth, permissions, sourcePath) shared by API and CLI.
+ * fields (auth, sourcePath) shared by API and CLI.
  *
  * @template TAdapters - The readonly tuple of registered `AdapterDefinition` objects.
  */
@@ -293,15 +289,10 @@ export interface TypedLakeQLConfig<
    */
   sourcePath: string
   /**
-   * Auth configuration for identity resolution and impersonation.
-   * Used by the API layer at runtime.
+   * Auth configuration grouping the global impersonation fallback and
+   * technical-user permission rules. Used by the API layer at runtime.
    */
   auth?: AuthConfig
-  /**
-   * Permission rules for technical users.
-   * Used by the API layer for authorization checks.
-   */
-  permissions?: Permission[]
   /**
    * Config-level paging defaults applied to every data source that does not
    * supply its own per-source override. Each field must be a positive integer.

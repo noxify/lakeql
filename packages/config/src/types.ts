@@ -7,11 +7,7 @@ import type {
   ResolveAuth,
 } from "@lakeql/datasource"
 
-import type {
-  AuthConfig,
-  ImpersonationResolver,
-  Permission,
-} from "./auth-types"
+import type { AuthConfig, ImpersonationResolver } from "./auth-types"
 import type { ResolvedPaging } from "./define-config/resolve-paging"
 
 /**
@@ -73,16 +69,11 @@ export interface LoadedLakeQLConfig {
   sourcePath: string
 
   /**
-   * Auth configuration for identity resolution and impersonation.
-   * Passed through from `defineConfig()` without interpretation.
+   * Auth configuration grouping the global impersonation fallback and
+   * technical-user permission rules. Passed through from `defineConfig()`
+   * without interpretation.
    */
   auth?: AuthConfig
-
-  /**
-   * Permission rules for technical users.
-   * Passed through from `defineConfig()` without interpretation.
-   */
-  permissions?: Permission[]
 
   /**
    * Config-level paging defaults applied to data sources that do not supply

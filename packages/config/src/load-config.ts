@@ -278,7 +278,7 @@ export async function loadConfig(
   const adapterArray = resolveAdapterFactories(adapters)
 
   // Read config-level paging defaults with a guarded read, matching the
-  // sourcePath/auth/permissions pass-through pattern.
+  // sourcePath/auth pass-through pattern.
   const configLevelPaging =
     typeof configObj.paging === "object" && configObj.paging !== null
       ? (configObj.paging as {
@@ -301,16 +301,12 @@ export async function loadConfig(
   const sourcePath =
     typeof configObj.sourcePath === "string" ? configObj.sourcePath : "."
   const auth = configObj.auth as LoadedLakeQLProject["config"]["auth"]
-  const permissions = configObj.permissions as
-    | LoadedLakeQLProject["config"]["permissions"]
-    | undefined
 
   return {
     config: {
       dataSources: resolvedDataSources,
       sourcePath,
       auth,
-      permissions,
       paging: configLevelPaging,
     },
     adapters: adapterArray,

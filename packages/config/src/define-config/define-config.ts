@@ -1,6 +1,6 @@
 // oxlint-disable typescript/no-explicit-any
 
-import type { AuthConfig, Permission } from "../auth-types"
+import type { AuthConfig } from "../auth-types"
 import { processDataSources } from "./process-data-sources"
 import type {
   AdapterDefinition,
@@ -14,7 +14,7 @@ import { validateInput } from "./validate-input"
  * Validates and normalizes a typed LakeQL configuration.
  *
  * Accepts an explicit adapter list, a data-source map, and optional
- * application-level config (auth, permissions, sourcePath). Validates
+ * application-level config (auth, sourcePath). Validates
  * registrations and individual data-source configurations, merges
  * defaults/overrides, and returns a `TypedLakeQLConfig` with
  * identity-preserved adapters and a normalized `dataSources` map.
@@ -39,18 +39,17 @@ export function defineConfig<
    */
   sourcePath?: string
   /**
-   * Auth configuration carrying the global fallback impersonation resolver.
+   * Auth configuration grouping all config-level auth concerns.
    *
-   * Only `impersonationResolver` lives here; it applies to every data source
-   * that does not define its own `dataSources.<source>.impersonationResolver`
-   * (per-source wins). Request authentication and identity resolution are
-   * configured on the API server via `defineApiConfig`, not here.
+   * - `impersonationResolver` is the global fallback: it applies to every data
+   *   source that does not define its own
+   *   `dataSources.<source>.impersonationResolver` (per-source wins).
+   * - `permissions` holds the technical-user authorization rules.
+   *
+   * Request authentication and identity resolution are configured on the API
+   * server via `defineApiConfig`, not here.
    */
   auth?: AuthConfig
-  /**
-   * Permission rules for technical users.
-   */
-  permissions?: Permission[]
   /**
    * Config-level paging defaults applied to every data source that does not
    * supply its own per-source override.
@@ -73,7 +72,6 @@ export function defineConfig<
     dataSources: normalizedDataSources,
     sourcePath: config.sourcePath ?? ".",
     auth: config.auth,
-    permissions: config.permissions,
     paging: config.paging,
   } as TypedLakeQLConfig<TAdapters>
 }
