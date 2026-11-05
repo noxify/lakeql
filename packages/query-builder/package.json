@@ -57,7 +57,7 @@
     "@lakeql/vitest-config": "workspace:*",
     "@pothos/core": "4.16.0",
     "@types/node": "24.19.2",
-    "graphql": "17.0.2",
+    "graphql": "17.1.0",
     "tsdown": "0.23.5",
     "typescript": "6.0.3",
     "vitest": "5.1.0"
