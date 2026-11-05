@@ -76,7 +76,7 @@ For `schema = analytics_sales` and `table = order_line_items`, setting `namePref
 
 Mixed-case values (`"warehouse"`, `"Warehouse"`, `"WAREHOUSE"`) normalize identically, and an empty or whitespace-only value is treated as unset. When `namePrefix` is omitted, generated names are identical to before.
 
-The prefix takes effect only at generation time: it is applied by the [`pull` and `bulk-pull`](/docs/cli/configuration/config-file#name-prefix) commands and intentionally not by `create-endpoint`. Changing it and re-pulling writes renamed files, and stale files from the previous prefix are not removed automatically — delete them yourself.
+The prefix takes effect only at generation time: it is applied by the `pull` and `bulk-pull` commands and intentionally not by `create-endpoint` (see [Prefix scope](/docs/cli/configuration/config-file#prefix-scope)). Changing it and re-pulling writes renamed files, and stale files from the previous prefix are not removed automatically — delete them yourself.
 
 ## Config Merge Precedence
 
