@@ -31,6 +31,8 @@ overrides:
   "@azure/msal-node": ">=7.1.0"
   # postcss-selector-parser <7.1.6
   postcss-selector-parser: ">=7.1.6"
+  "systeminformation@<5.33.16": ">5.33.16"
+  "minimatch@>=7.0.0 <11.0.1": ">=11.0.1"
 permissions:
   "@vvago/vale":
     build: false
