@@ -51,9 +51,11 @@ Connection shapes are adapter-specific. See [Trino connection](/docs/data-source
   `@lakeql/api/helpers`, importing it into `lakeql.config.ts` means every config
   load (`lakeql pull`, `generate`, server startup) evaluates the `@lakeql/api`
   module graph through jiti. That adds a little startup latency even on commands
-  that only need adapters and data sources. If you do not use
-  `auth.permissions`, you can drop the import and the `auth` block to avoid the
-  cost.
+  that only need adapters and data sources. Keep the import and the `auth` block
+  anyway — even with an empty `permissions` array — so the empty-rules
+  [Default](/docs/api/authentication/permissions#default) stays a deliberate
+  choice rather than a silent gap from a missing file. See
+  [Permissions](/docs/api/authentication/permissions) for the full rationale.
 </Note>
 
 ## Name Prefix
