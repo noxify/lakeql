@@ -1301,6 +1301,30 @@ importers:
         specifier: 6.0.3
         version: 6.0.3
 
+  tooling/integration-tests:
+    devDependencies:
+      '@lakeql/api':
+        specifier: workspace:*
+        version: link:../../packages/api
+      '@lakeql/config':
+        specifier: workspace:*
+        version: link:../../packages/config
+      '@lakeql/tsconfig':
+        specifier: workspace:*
+        version: link:../typescript
+      '@lakeql/vitest-config':
+        specifier: workspace:*
+        version: link:../vitest
+      '@types/node':
+        specifier: 24.19.2
+        version: 24.19.2
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: 5.1.0
+        version: 5.1.0(@types/node@24.19.2)(@vitest/coverage-v8@5.1.0)(@vitest/ui@5.1.0)(msw@3.0.3(@types/node@24.19.2)(graphql@17.1.0)(supports-color@10.2.2)(typescript@6.0.3)(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1)))(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))
+
   tooling/test-data:
     devDependencies:
       '@aws-sdk/client-s3':
