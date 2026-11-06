@@ -4,7 +4,7 @@ navTitle: createLakeQLApp
 description: The near plug-and-play wrapper for a standard app entry file.
 ---
 
-[`createLakeQLApp`](/docs/api/api-reference#create-lake-ql-app) collapses the standard server wiring into a single call. It loads the project config, derives the auth resolver, builds the runtime, composes the server with [`defineApiConfig`](/docs/api/server-setup/define-config), and registers graceful shutdown. It is the entry point scaffolded apps use, and it stays fully ejectable: the wrapper's internals are exactly the [eject example](#eject) below.
+[`createLakeQLApp`](/docs/api/api-reference#create-lake-ql-app) collapses the standard server wiring into a single call. It loads the project config, derives the auth resolver, builds the runtime, composes the server with [`defineApiConfig`](/docs/api/server-setup/define-config), and registers graceful shutdown. It is the entry point scaffolded apps use, and it stays fully ejectable: the [eject example](#eject) below is the expanded form of the standard call — the same steps in the same order.
 
 ## Standard Usage
 
@@ -49,7 +49,7 @@ Two options control the wrapper itself:
 
 - `runtime` — the composed [`LakeQLRuntime`](/docs/packages/config/api-reference#lake-ql-runtime) for advanced control.
 - `start()` — starts the HTTP server with the same startup error handling the scaffold has (print the message, exit non-zero on failure).
-- `close()` — closes the runtime. Call it when `handleSignals` is `false` and you own shutdown.
+- `close()` — closes the runtime, releasing all data-source connections. Call it when `handleSignals` is `false` and you own shutdown. It releases data-source connections, not the HTTP listener — the server socket is released on process exit.
 
 ```ts
 const app = await createLakeQLApp({ tokenResolver, handleSignals: false })
@@ -63,19 +63,18 @@ try {
 
 ## Eject
 
-`createLakeQLApp` builds on [`defineApiConfig`](/docs/api/server-setup/define-config), the underlying primitive. If you need full control, replace the wrapper call with its expanded form. This is byte-for-byte what the wrapper does internally, so ejecting is never a surprise — paste it into `src/index.ts` and drop the `createLakeQLApp` import.
+`createLakeQLApp` builds on [`defineApiConfig`](/docs/api/server-setup/define-config), the underlying primitive. If you need full control, replace the wrapper call with its expanded form. This is the same wiring the wrapper runs, in the same order — load the config, derive the auth resolver, build the runtime, warn on empty permissions, compose the server, and register graceful shutdown. Paste it into `src/index.ts` and drop the `createLakeQLApp` import; the only difference from the wrapper is that the options are spelled out as literals instead of forwarded from a `rest` spread.
 
 ```ts
 import { defineApiConfig } from "@lakeql/api/config"
+import { EMPTY_PERMISSIONS_WARNING } from "@lakeql/api/create-app"
 import { createApiResolveAuth } from "@lakeql/api/resolve-auth"
 import type { ResolveAuthSourceInfo } from "@lakeql/api/resolve-auth"
 import { createLakeQLRuntime, loadConfig } from "@lakeql/config"
 
 import { tokenResolver } from "./auth"
 
-const baseDir = import.meta.dirname
-
-// Load the project config (adapters + data sources) from lakeql.config.ts.
+// Load the project config (adapters + data sources) unless one was passed in.
 const project = await loadConfig()
 
 // Derive per-source auth metadata (adapter + optional impersonation resolver)
@@ -111,9 +110,7 @@ const runtime = await createLakeQLRuntime({
 const permissions = project.config.auth?.permissions ?? []
 if (permissions.length === 0) {
   // eslint-disable-next-line no-console
-  console.warn(
-    "No LakeQL permission rules configured. Defaults apply: human reads are delegated to each data source's own access control (e.g. Trino rules via impersonation, Fabric OBO), service-principal reads are denied, and all writes are denied until a matching Mutation rule is added. Ensure impersonation is configured — otherwise human queries run with the data source's service credentials."
-  )
+  console.warn(EMPTY_PERMISSIONS_WARNING)
 }
 
 // Compose the API server around the runtime.
@@ -121,15 +118,21 @@ const server = defineApiConfig({
   runtime,
   tokenResolver,
   permissions,
-  baseDir,
+  baseDir: import.meta.dirname,
   schemaPath: "./schemas",
   graphqlPath: "/graphql",
   healthCheckEndpoint: "/live",
 })
 
-// Graceful shutdown: close all data-source connections.
-const shutdown = async (): Promise<void> => {
+// Graceful shutdown: close all data-source connections, then exit. This
+// releases data-source connections, not the HTTP listener — the server socket
+// is released on process exit.
+const close = async (): Promise<void> => {
   await runtime.close()
+}
+
+const shutdown = async (): Promise<void> => {
+  await close()
   process.exit(0)
 }
 

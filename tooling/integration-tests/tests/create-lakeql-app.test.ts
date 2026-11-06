@@ -1,5 +1,6 @@
+import * as apiConfig from "@lakeql/api/config"
 import { createLakeQLApp } from "@lakeql/api/create-app"
-import type { LoadedLakeQLProject } from "@lakeql/config"
+import type { LoadedLakeQLProject, Permission } from "@lakeql/config"
 import { FakeAdapterFactory } from "@lakeql/datasource/testing"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -79,22 +80,33 @@ describe("createLakeQLApp end-to-end composition", () => {
   })
 
   it("forwards config-sourced permissions into the composed server", async () => {
+    const permissions: Permission[] = [
+      {
+        name: "reporting-user",
+        useSystemUser: false,
+        permissions: { Query: [], Mutation: [] },
+      },
+    ]
     const project = makeProject()
-    project.config.auth = {
-      permissions: [
-        {
-          name: "reporting-user",
-          useSystemUser: false,
-          permissions: { Query: [], Mutation: [] },
-        },
-      ],
-    }
+    project.config.auth = { permissions }
     const warnSpy = vi.spyOn(console, "warn")
+    // Spy on the real defineApiConfig to capture what the full composition path
+    // hands the server — proving permissions reach defineApiConfig, not just
+    // that no warning fired.
+    const defineApiConfigSpy = vi.spyOn(apiConfig, "defineApiConfig")
 
     const app = await createLakeQLApp({ project, handleSignals: false })
 
     // Non-empty config permissions: no empty-permissions warning fires.
     expect(warnSpy).not.toHaveBeenCalled()
+    // The config-sourced rules reached defineApiConfig through the real path.
+    expect(defineApiConfigSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ permissions })
+    )
+    // And they survive onto the resolved server config unchanged.
+    expect(defineApiConfigSpy.mock.results[0]?.value).toMatchObject({
+      permissions,
+    })
 
     await app.close()
   })

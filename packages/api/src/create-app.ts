@@ -5,35 +5,25 @@
  * `createLakeQLApp` encapsulates the wiring a generated `src/index.ts` would
  * otherwise hand-write: load the config, derive per-source auth metadata,
  * build the `ResolveAuth`, compose the runtime, and define the API server. The
- * expanded form is documented as the "eject" example and mirrors this module
- * byte for byte, so a user can inline it without surprises.
+ * docs "eject" example is the expanded form of the standard call — the same
+ * steps in the same order — so a user can inline it without surprises.
  *
  * @module
  */
 
-import type {
-  LakeQLRuntime,
-  LoadedLakeQLProject,
-  Permission,
-} from "@lakeql/config"
+import type { LakeQLRuntime, LoadedLakeQLProject } from "@lakeql/config"
 import { createLakeQLRuntime, loadConfig } from "@lakeql/config"
 
-import type { CorsOptions } from "./config"
+import type { ApiRuntimeConfig } from "./config"
 import { defineApiConfig } from "./config"
-import type { ApiErrorHook } from "./error-logging-plugin"
 import type { ResolveAuthSourceInfo } from "./resolve-auth"
 import { createApiResolveAuth } from "./resolve-auth"
-import type {
-  ReadPermissionResolver,
-  WritePermissionResolver,
-  YogaConfigOverrides,
-} from "./types"
 
 /**
  * The warning printed on startup when no permission rules are configured.
  *
- * Exported so the eject example and tests can assert the exact wording the
- * wrapper emits. Empty `auth.permissions` is a valid state, but it applies the
+ * Exported so tests and the docs can assert the exact wording the wrapper
+ * emits. Empty `auth.permissions` is a valid state, but it applies the
  * defaults, so surface it instead of leaving a silent gap.
  */
 export const EMPTY_PERMISSIONS_WARNING =
@@ -42,12 +32,16 @@ export const EMPTY_PERMISSIONS_WARNING =
 /**
  * Options accepted by {@link createLakeQLApp}.
  *
- * Every option the hand-wired entry file exposes is forwarded here so a user
- * never has to eject just to tweak one knob. Server-shaping options map
- * directly onto {@link defineApiConfig}; `project` and `handleSignals` control
- * the wrapper itself.
+ * Every server-shaping option is inherited structurally from
+ * {@link ApiRuntimeConfig} (minus `runtime`, which the wrapper builds), so a
+ * new `defineApiConfig` option is forwarded automatically without touching
+ * this type. Two wrapper-only options are added: `project` selects an
+ * already-loaded config, and `handleSignals` controls graceful shutdown.
  */
-export interface CreateLakeQLAppOptions {
+export interface CreateLakeQLAppOptions extends Omit<
+  ApiRuntimeConfig,
+  "runtime"
+> {
   /**
    * An already-loaded project (from `loadConfig()`). When omitted, the wrapper
    * calls `loadConfig()` itself with no arguments, matching the generated
@@ -55,74 +49,11 @@ export interface CreateLakeQLAppOptions {
    */
   project?: LoadedLakeQLProject
   /**
-   * Custom JWT token resolver. The one practically-required option, since auth
-   * is runtime behavior the wrapper cannot infer from config.
-   *
-   * @default built-in mock auth
-   */
-  tokenResolver?: Parameters<typeof defineApiConfig>[0]["tokenResolver"]
-  /**
-   * Maps a JWT payload to a resolved identity.
-   *
-   * @default entraIdIdentityResolver
-   */
-  identityResolver?: Parameters<typeof defineApiConfig>[0]["identityResolver"]
-  /**
-   * Custom read permission resolver.
-   *
-   * @default built-in read permission check
-   */
-  hasReadPermission?: ReadPermissionResolver
-  /**
-   * Custom write permission resolver.
-   *
-   * @default built-in write permission check
-   */
-  hasWritePermission?: WritePermissionResolver
-  /**
    * Permission rules for technical users.
    *
    * @default project.config.auth?.permissions ?? []
    */
-  permissions?: Permission[]
-  /**
-   * CORS options for the GraphQL route. Off by default (same-origin only).
-   */
-  cors?: CorsOptions
-  /**
-   * Hook invoked for every GraphQL execution error after it is logged.
-   */
-  onError?: ApiErrorHook
-  /**
-   * Override GraphQL Yoga options.
-   */
-  yogaConfig?: YogaConfigOverrides
-  /**
-   * Server port.
-   *
-   * @default 4000
-   */
-  port?: number
-  /**
-   * Base directory for resolving relative paths.
-   *
-   * @default process.cwd()
-   */
-  baseDir?: string
-  /** Path to query schema files (relative to `baseDir`). */
-  schemaPath?: string
-  /**
-   * GraphQL endpoint path.
-   *
-   * @default "/graphql"
-   */
-  graphqlPath?: string
-  /**
-   * Health check endpoint path.
-   *
-   * @default "/live"
-   */
-  healthCheckEndpoint?: string
+  permissions?: ApiRuntimeConfig["permissions"]
   /**
    * Register `SIGTERM`/`SIGINT` handlers that close the runtime and exit.
    *
@@ -156,8 +87,9 @@ export interface LakeQLApp {
    */
   start: () => Promise<void>
   /**
-   * Closes the runtime, releasing all data-source connections. Call this when
-   * `handleSignals` is `false` and you own the lifecycle.
+   * Closes the runtime, releasing all data-source connections. Note this does
+   * not stop the HTTP listener — the socket is released on process exit. Call
+   * it when `handleSignals` is `false` and you own shutdown.
    *
    * @returns A promise that resolves when the runtime is closed.
    */
@@ -172,6 +104,7 @@ export interface LakeQLApp {
  * per-source `sources` map and the global impersonation resolver, builds the
  * `ResolveAuth` via {@link createApiResolveAuth}, composes the runtime via
  * `createLakeQLRuntime`, and defines the server via {@link defineApiConfig}.
+ * Every remaining option is forwarded to {@link defineApiConfig} unchanged.
  *
  * Permissions default to `project.config.auth?.permissions ?? []` and can be
  * overridden via {@link CreateLakeQLAppOptions.permissions}. When the effective
@@ -187,7 +120,18 @@ export interface LakeQLApp {
 export async function createLakeQLApp(
   options: CreateLakeQLAppOptions = {}
 ): Promise<LakeQLApp> {
-  const { project: providedProject, handleSignals = true, ...rest } = options
+  const {
+    project: providedProject,
+    handleSignals = true,
+    permissions: permissionsOption,
+    ...rest
+  } = options
+
+  // The `rest` spread carries only `ApiRuntimeConfig` fields now — `project`,
+  // `handleSignals`, and `permissions` are destructured out above. This guard
+  // fails to compile if either wrapper-only key ever leaks into `rest`.
+  const _restGuard: Omit<ApiRuntimeConfig, "runtime" | "permissions"> = rest
+  void _restGuard
 
   // Load the project config (adapters + data sources) unless one was passed in.
   const project = providedProject ?? (await loadConfig())
@@ -222,29 +166,16 @@ export async function createLakeQLApp(
   // control, service-principal reads are denied, and all writes are denied
   // until a matching Mutation rule is added. Warn so that fallback is a
   // deliberate choice, not a silent gap.
-  const permissions = rest.permissions ?? project.config.auth?.permissions ?? []
+  const permissions =
+    permissionsOption ?? project.config.auth?.permissions ?? []
   if (permissions.length === 0) {
     // eslint-disable-next-line no-console
     console.warn(EMPTY_PERMISSIONS_WARNING)
   }
 
-  // Compose the API server around the runtime.
-  const server = defineApiConfig({
-    runtime,
-    tokenResolver: rest.tokenResolver,
-    identityResolver: rest.identityResolver,
-    hasReadPermission: rest.hasReadPermission,
-    hasWritePermission: rest.hasWritePermission,
-    permissions,
-    cors: rest.cors,
-    onError: rest.onError,
-    yogaConfig: rest.yogaConfig,
-    port: rest.port,
-    baseDir: rest.baseDir,
-    schemaPath: rest.schemaPath,
-    graphqlPath: rest.graphqlPath,
-    healthCheckEndpoint: rest.healthCheckEndpoint,
-  })
+  // Compose the API server around the runtime. Every forwarded option rides in
+  // `...rest`; the wrapper only resolves `runtime` and `permissions`.
+  const server = defineApiConfig({ ...rest, runtime, permissions })
 
   const close = async (): Promise<void> => {
     await runtime.close()

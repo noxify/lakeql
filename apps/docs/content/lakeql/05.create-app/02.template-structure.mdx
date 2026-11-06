@@ -11,7 +11,7 @@ create-app generates a complete, runnable project. The exact files depend on the
     { path: "lakeql.config.ts", description: "Adapters and data sources" },
     {
       path: "src/index.ts",
-      description: "Loads config, builds runtime, starts the server",
+      description: "Calls createLakeQLApp and starts the server",
     },
     { path: "src/env.ts", description: "Typed, validated environment" },
     { path: "src/auth.ts", description: "Token resolver" },
@@ -27,7 +27,7 @@ create-app generates a complete, runnable project. The exact files depend on the
 ## How the Pieces Connect
 
 - **`lakeql.config.ts`** declares the adapters and data sources. See [config file](/docs/lakeql/configuration/config-file).
-- **`src/index.ts`** loads the config, composes the runtime, and starts the API server. See [server setup](/docs/api/server-setup).
+- **`src/index.ts`** calls [`createLakeQLApp`](/docs/api/server-setup/create-lakeql-app), which loads the config, composes the runtime, and starts the API server. See [server setup](/docs/api/server-setup).
 - **`src/auth.ts`** / **`src/permissions.ts`** wire [authentication](/docs/api/authentication) and [permissions](/docs/api/authentication/permissions).
 - **`src/schemas/`** is where [`pull`](/docs/cli/commands/pull) writes generated endpoint files.
 

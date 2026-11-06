@@ -43,27 +43,21 @@ export default defineConfig({
 })
 ```
 
-The application entry (`src/index.ts`) reads them back off the loaded config into a local `const`, warns when the list is empty, and forwards them to the server, so [`defineApiConfig`](/docs/api/server-setup/define-config) stays the single API entry point that consumes them:
+The application entry (`src/index.ts`) calls [`createLakeQLApp`](/docs/api/server-setup/create-lakeql-app), which reads the rules off the loaded config, warns when the list is empty, and forwards them to the server via [`defineApiConfig`](/docs/api/server-setup/define-config) — the single API entry point that consumes them. You do not hand-wire any of this:
 
 ```ts title="src/index.ts"
-const project = await loadConfig()
+import { createLakeQLApp } from "@lakeql/api/create-app"
 
-// Absent/empty is a valid state, but it applies the Default below. Warn so the
-// fallback is a deliberate choice, not a silent gap.
-const permissions = project.config.auth?.permissions ?? []
-if (permissions.length === 0) {
-  console.warn(
-    "No LakeQL permission rules configured. Defaults apply: human reads are delegated to each data source's own access control, service-principal reads are denied, and all writes are denied until a matching Mutation rule is added."
-  )
-}
+import { tokenResolver } from "./auth"
 
-const server = defineApiConfig({
-  runtime,
-  tokenResolver,
-  permissions,
-  // …
-})
+// Permission rules come from the loaded config (`auth.permissions`), and the
+// empty-permissions warning fires from inside the wrapper.
+const app = await createLakeQLApp({ tokenResolver })
+
+await app.start()
 ```
+
+To override the config-sourced rules, pass `permissions` to `createLakeQLApp`. If you need the full expanded wiring, see the [eject example](/docs/api/server-setup/create-lakeql-app#eject).
 
 <Note>
   The `?? []` fallback means a missing `auth.permissions` (an absent `auth`
