@@ -146,6 +146,35 @@ describe("defineConfig() - output shape and identity", () => {
     expect(result.dataSources.warehouse!.writeConfig).toBe(writeConfigObj)
   })
 
+  it("passes auth.permissions through so the wiring can forward them to the API", () => {
+    const trino = makeAdapterDefinition("trino")
+    const permissions = [
+      {
+        name: "testuser",
+        useSystemUser: false,
+        permissions: {
+          Query: [
+            {
+              dataSource: "warehouse",
+              rules: [{ schema: "sales", tables: ["orders"] }],
+            },
+          ],
+          Mutation: [],
+        },
+      },
+    ]
+
+    const result = defineConfig({
+      adapters: [trino],
+      dataSources: {},
+      auth: { permissions },
+    })
+
+    // The authored rules are preserved by reference on config.auth.permissions,
+    // which is exactly what index.ts reads and hands to defineApiConfig.
+    expect(result.auth?.permissions).toBe(permissions)
+  })
+
   it("preserves per-source impersonationResolver identity", () => {
     const trino = makeAdapterDefinition("trino")
 

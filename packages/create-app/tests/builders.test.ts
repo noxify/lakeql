@@ -85,6 +85,28 @@ describe(generateLakeqlConfig, () => {
     expect(out).not.toContain("Adapter")
     expect(out).not.toMatch(/@lakeql\/adapter-/u)
   })
+
+  it("imports permissions and forwards them via auth, independent of adapters", () => {
+    const plan = buildPlan(
+      opsForAdapters([adapter("trino")], { trino: "warehouse" })
+    )
+
+    const out = generateLakeqlConfig(plan)
+
+    // permissions authored in src/permissions.ts are referenced here and
+    // forwarded through auth, mirroring how index.ts hands them to the API.
+    expect(out).toContain('import { permissions } from "./src/permissions"')
+    expect(out).toContain("auth: { permissions }")
+  })
+
+  it("wires permissions through auth even for an empty plan", () => {
+    const plan = buildPlan([])
+
+    const out = generateLakeqlConfig(plan)
+
+    expect(out).toContain('import { permissions } from "./src/permissions"')
+    expect(out).toContain("auth: { permissions }")
+  })
 })
 
 /** Builds a plan from grouped env-var ops (mirrors how features emit them). */

@@ -4,7 +4,6 @@ import type { ResolveAuthSourceInfo } from "@lakeql/api/resolve-auth"
 import { createLakeQLRuntime, loadConfig } from "@lakeql/config"
 
 import { tokenResolver } from "./auth"
-import { permissions } from "./permissions"
 
 const baseDir = import.meta.dirname
 
@@ -39,7 +38,7 @@ const runtime = await createLakeQLRuntime({
 const server = defineApiConfig({
   runtime,
   tokenResolver,
-  permissions,
+  permissions: project.config.auth?.permissions ?? [],
   baseDir,
   schemaPath: "./schemas",
   graphqlPath: "/graphql",

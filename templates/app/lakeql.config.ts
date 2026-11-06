@@ -1,5 +1,7 @@
 import { defineConfig } from "@lakeql/config"
 
+import { permissions } from "./src/permissions"
+
 /**
  * LakeQL project configuration.
  *
@@ -32,4 +34,5 @@ export default defineConfig({
   sourcePath: "src",
   adapters: [],
   dataSources: {},
+  auth: { permissions },
 })

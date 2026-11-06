@@ -12,7 +12,8 @@ import { defineApiConfig } from "@lakeql/api/config"
 const server = defineApiConfig({
   runtime,
   tokenResolver,
-  permissions,
+  // Declared in lakeql.config.ts under `auth.permissions` and forwarded here.
+  permissions: project.config.auth?.permissions ?? [],
   baseDir: import.meta.dirname,
   schemaPath: "./schemas",
 })

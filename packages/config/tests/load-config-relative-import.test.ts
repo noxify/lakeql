@@ -73,4 +73,53 @@ export default {
       "trino-from-relative-import"
     )
   })
+
+  /**
+   * Acceptance proof for the wired `auth.permissions` surface. The generated
+   * app authors permission rules in `src/permissions.ts`, imports them into
+   * `lakeql.config.ts` via an extensionless relative specifier, and sets them
+   * on `defineConfig({ auth: { permissions } })`. The application wiring
+   * (index.ts) reads `project.config.auth?.permissions` and forwards them to
+   * the API. This writes that exact shape and asserts the authored rules
+   * survive the loadConfig round-trip at `config.auth.permissions` — i.e. the
+   * value the wiring hands to `defineApiConfig` is present. This surface was
+   * previously dead (nothing read it); the assertion closes that gap.
+   */
+  it("surfaces auth.permissions imported from a sibling ./src/permissions module", async () => {
+    fs.mkdirSync(path.join(tempDir, "src"))
+
+    fs.writeFileSync(
+      path.join(tempDir, "src", "permissions.ts"),
+      `export const permissions = [
+  {
+    name: "testuser",
+    useSystemUser: false,
+    permissions: {
+      Query: [{ dataSource: "warehouse", rules: [{ schema: "sales", tables: ["orders"] }] }],
+      Mutation: [],
+    },
+  },
+]
+`
+    )
+
+    const configContent = `
+import { permissions } from "./src/permissions"
+
+export default {
+  dataSources: {},
+  adapters: [],
+  auth: { permissions },
+}
+`
+    fs.writeFileSync(path.join(tempDir, "lakeql.config.ts"), configContent)
+
+    const result = await loadConfig({ cwd: tempDir })
+
+    const loaded = result.config.auth?.permissions
+    expect(loaded).toBeDefined()
+    expect(loaded).toHaveLength(1)
+    expect(loaded?.[0]?.name).toBe("testuser")
+    expect(loaded?.[0]?.permissions.Query[0]?.dataSource).toBe("warehouse")
+  })
 })

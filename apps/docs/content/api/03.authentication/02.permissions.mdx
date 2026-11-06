@@ -4,9 +4,9 @@ navTitle: Permissions
 description: Grant technical users scoped read and write access per table.
 ---
 
-Permissions declare what a technical user may read and write, scoped by data source, schema, and table. Pass an array of `Permission` rules to the server via [`defineApiConfig`](/docs/api/server-setup/define-config).
+Permissions declare what a technical user may read and write, scoped by data source, schema, and table. Author the rules once in `src/permissions.ts`:
 
-```ts
+```ts title="src/permissions.ts"
 import type { Permission } from "@lakeql/config"
 import { createPermission } from "@lakeql/api/helpers"
 
@@ -24,6 +24,36 @@ export const permissions: Permission[] = [
     },
   },
 ]
+```
+
+## Wiring Permissions
+
+In a scaffolded app the rules reach the API through the project config rather than a direct import. Reference them in `lakeql.config.ts` under `auth.permissions`:
+
+```ts title="lakeql.config.ts"
+import { defineConfig } from "@lakeql/config"
+
+import { permissions } from "./src/permissions"
+
+export default defineConfig({
+  sourcePath: "src",
+  adapters: [],
+  dataSources: {},
+  auth: { permissions },
+})
+```
+
+The application entry (`src/index.ts`) reads them back off the loaded config and forwards them to the server, so [`defineApiConfig`](/docs/api/server-setup/define-config) stays the single API entry point that consumes them:
+
+```ts title="src/index.ts"
+const project = await loadConfig()
+
+const server = defineApiConfig({
+  runtime,
+  tokenResolver,
+  permissions: project.config.auth?.permissions ?? [],
+  // …
+})
 ```
 
 ## Building Rules

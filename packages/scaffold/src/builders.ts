@@ -133,6 +133,7 @@ export function generateLakeqlConfig(plan: Plan): string {
     ...adapterImports,
     ``,
     `import { env } from "./src/env"`,
+    `import { permissions } from "./src/permissions"`,
     ``,
     `export default defineConfig({`,
     `  sourcePath: "src",`,
@@ -140,6 +141,7 @@ export function generateLakeqlConfig(plan: Plan): string {
     `  dataSources: {`,
     dsEntries,
     `  },`,
+    `  auth: { permissions },`,
     `})`,
     ``,
   ]
