@@ -220,7 +220,16 @@ export async function loadConfig(
   // resolution behavior deterministic rather than incidental. The jiti
   // instance is anchored at `cwd` so relative specifiers resolve against the
   // project root. See https://github.com/unjs/c12#import.
-  const jiti = createJiti(cwd)
+  //
+  // `tsconfigPaths: true` auto-discovers the project's `tsconfig.json` by
+  // walking up from `cwd` and enables resolution of user-defined path aliases
+  // from `compilerOptions.paths` (e.g. the scaffolded template's
+  // `"~/*": ["./src/*"]`). jiti does NOT resolve tsconfig paths by default, so
+  // without this any alias used in `lakeql.config.ts` would fail at load time
+  // ("Cannot find module '~/...'") even though it typechecks and the editor
+  // autocompletes it. This is generic: whatever aliases the user declares in
+  // their tsconfig are honored, not just `~`.
+  const jiti = createJiti(cwd, { tsconfigPaths: true })
 
   try {
     const result = await loadC12Config({
