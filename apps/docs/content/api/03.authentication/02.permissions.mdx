@@ -56,6 +56,16 @@ const server = defineApiConfig({
 })
 ```
 
+<Note>
+  The `?? []` fallback means a missing `auth.permissions` (an absent `auth`
+  block, or a deleted `src/permissions.ts`) resolves to an empty array rather
+  than failing. With no rules the [Default](#default) applies: human users may
+  read, service principals are denied, and all writes are denied. Keep
+  `src/permissions.ts` present and `auth.permissions` set — even to `[]` — so
+  this fallback is a deliberate choice, not a silent side effect of a missing
+  file.
+</Note>
+
 ## Building Rules
 
 [`createPermission`](/docs/api/api-reference#create-permission) builds a rule scoped to one data source. The callback receives a `rule` builder. Each `rule({ schema, tables })` grants access to the listed tables within a schema. Group rules under `Query` for reads and `Mutation` for writes.

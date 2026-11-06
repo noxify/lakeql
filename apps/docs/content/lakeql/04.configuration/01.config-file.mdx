@@ -12,6 +12,7 @@ import { trinoAdapterDefinition } from "@lakeql/adapter-trino"
 import { fabricAdapterDefinition } from "@lakeql/adapter-fabric"
 
 import { env } from "./src/env"
+import { permissions } from "./src/permissions"
 
 export default defineConfig({
   sourcePath: "src",
@@ -31,6 +32,7 @@ export default defineConfig({
       },
     },
   },
+  auth: { permissions },
 })
 ```
 
