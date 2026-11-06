@@ -35,14 +35,16 @@ const runtime = await createLakeQLRuntime({
 })
 
 // Technical-user permission rules, authored in src/permissions.ts and declared
-// on lakeql.config.ts under `auth.permissions`. Absent/empty is a valid state:
-// read authorization then falls through to each data source's own access
-// control. Warn so that fallback is a deliberate choice, not a silent gap.
+// on lakeql.config.ts under `auth.permissions`. Absent/empty is a valid state,
+// but it applies the defaults: human reads are delegated to each data source's
+// own access control, service-principal reads are denied, and all writes are
+// denied until a matching Mutation rule is added. Warn so that fallback is a
+// deliberate choice, not a silent gap.
 const permissions = project.config.auth?.permissions ?? []
 if (permissions.length === 0) {
   // eslint-disable-next-line no-console
   console.warn(
-    "No LakeQL permission rules configured. Read authorization is delegated to each data source's own access control (e.g. Trino rules via impersonation, Fabric OBO). Ensure impersonation is configured — otherwise queries run with the data source's service credentials."
+    "No LakeQL permission rules configured. Defaults apply: human reads are delegated to each data source's own access control (e.g. Trino rules via impersonation, Fabric OBO), service-principal reads are denied, and all writes are denied until a matching Mutation rule is added. Ensure impersonation is configured — otherwise human queries run with the data source's service credentials."
   )
 }
 

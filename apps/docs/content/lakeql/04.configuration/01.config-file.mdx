@@ -46,6 +46,16 @@ export default defineConfig({
 
 Connection shapes are adapter-specific. See [Trino connection](/docs/data-sources/trino/connection) and [Fabric connection](/docs/data-sources/fabric/connection).
 
+<Note>
+  Because `src/permissions.ts` authors rules with `createPermission` from
+  `@lakeql/api/helpers`, importing it into `lakeql.config.ts` means every config
+  load (`lakeql pull`, `generate`, server startup) evaluates the `@lakeql/api`
+  module graph through jiti. That adds a little startup latency even on commands
+  that only need adapters and data sources. If you do not use
+  `auth.permissions`, you can drop the import and the `auth` block to avoid the
+  cost.
+</Note>
+
 ## Name Prefix
 
 Generated GraphQL names come from a table's `schema` and name only, so two data sources that expose a table with the same `schema.tableName` produce colliding type, query, and mutation names. Set an optional `namePrefix` on a data-source entry to disambiguate them — when present, it is prepended to every generated name for tables pulled from that source.

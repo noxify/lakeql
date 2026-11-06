@@ -43,15 +43,24 @@ export default defineConfig({
 })
 ```
 
-The application entry (`src/index.ts`) reads them back off the loaded config and forwards them to the server, so [`defineApiConfig`](/docs/api/server-setup/define-config) stays the single API entry point that consumes them:
+The application entry (`src/index.ts`) reads them back off the loaded config into a local `const`, warns when the list is empty, and forwards them to the server, so [`defineApiConfig`](/docs/api/server-setup/define-config) stays the single API entry point that consumes them:
 
 ```ts title="src/index.ts"
 const project = await loadConfig()
 
+// Absent/empty is a valid state, but it applies the Default below. Warn so the
+// fallback is a deliberate choice, not a silent gap.
+const permissions = project.config.auth?.permissions ?? []
+if (permissions.length === 0) {
+  console.warn(
+    "No LakeQL permission rules configured. Defaults apply: human reads are delegated to each data source's own access control, service-principal reads are denied, and all writes are denied until a matching Mutation rule is added."
+  )
+}
+
 const server = defineApiConfig({
   runtime,
   tokenResolver,
-  permissions: project.config.auth?.permissions ?? [],
+  permissions,
   // …
 })
 ```
