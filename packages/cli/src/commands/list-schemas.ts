@@ -3,6 +3,7 @@ import { ClimtTable } from "climt"
 import { createDataSourceConnectionError } from "@/errors"
 import { resolveCatalog } from "@/resolve-catalog"
 import { resolveDataSource } from "@/resolve-datasource"
+import { withSpinner } from "@/with-spinner"
 
 import { buildListSchemasCommandStructure } from "../metadata/list-schemas-metadata"
 
@@ -20,7 +21,9 @@ export default function listSchemasCommand() {
 
       let schemas: string[]
       try {
-        schemas = await dataSource.schemas(resolvedCatalog)
+        schemas = await withSpinner("Loading schemas…", () =>
+          dataSource.schemas(resolvedCatalog)
+        )
       } catch (error) {
         throw createDataSourceConnectionError(
           "list schemas",

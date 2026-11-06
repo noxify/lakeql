@@ -6,6 +6,7 @@ import { ClimtTable } from "climt"
 import { createDataSourceConnectionError } from "@/errors"
 import { resolveCatalog } from "@/resolve-catalog"
 import { resolveDataSource } from "@/resolve-datasource"
+import { withSpinner } from "@/with-spinner"
 
 /**
  * Configuration for a concrete object-listing command. The `list-tables` and
@@ -55,7 +56,9 @@ export function listObjectsCommand(options: ListObjectsCommandOptions) {
       if (resolvedSchema === undefined) {
         let remoteSchemas: string[]
         try {
-          remoteSchemas = await dataSource.schemas(resolvedCatalog)
+          remoteSchemas = await withSpinner("Loading schemas…", () =>
+            dataSource.schemas(resolvedCatalog)
+          )
         } catch (error) {
           throw createDataSourceConnectionError(
             "list schemas",
@@ -75,7 +78,9 @@ export function listObjectsCommand(options: ListObjectsCommandOptions) {
 
       let objects: string[]
       try {
-        objects = await fetch(dataSource, resolvedCatalog, resolvedSchema)
+        objects = await withSpinner(`Loading ${label.toLowerCase()}s…`, () =>
+          fetch(dataSource, resolvedCatalog, resolvedSchema)
+        )
       } catch (error) {
         throw createDataSourceConnectionError(
           errorVerb,

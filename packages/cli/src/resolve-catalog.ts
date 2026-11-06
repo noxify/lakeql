@@ -2,6 +2,7 @@ import type { DataSource } from "@lakeql/datasource"
 import { select } from "@topcli/prompts"
 
 import { CliError } from "@/errors"
+import { withSpinner } from "@/with-spinner"
 
 /**
  * Resolves a catalog for a data source command.
@@ -35,7 +36,9 @@ export async function resolveCatalog(opts: {
   }
 
   // Interactive: list catalogs from the data source
-  const catalogs = await dataSource.catalogs()
+  const catalogs = await withSpinner("Loading catalogs…", () =>
+    dataSource.catalogs()
+  )
 
   if (catalogs.length === 0) {
     throw new CliError("No catalogs found in the data source.", {

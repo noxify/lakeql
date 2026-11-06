@@ -4,6 +4,7 @@ import { ClimtTable } from "climt"
 import { createDataSourceConnectionError } from "@/errors"
 import { resolveCatalog } from "@/resolve-catalog"
 import { resolveDataSource } from "@/resolve-datasource"
+import { withSpinner } from "@/with-spinner"
 
 import { buildListColumnsCommandStructure } from "../metadata/list-columns-metadata"
 
@@ -23,7 +24,9 @@ export default function listColumnsCommand() {
       if (resolvedSchema === undefined) {
         let remoteSchemas: string[]
         try {
-          remoteSchemas = await dataSource.schemas(resolvedCatalog)
+          remoteSchemas = await withSpinner("Loading schemas…", () =>
+            dataSource.schemas(resolvedCatalog)
+          )
         } catch (error) {
           throw createDataSourceConnectionError(
             "list schemas",
@@ -45,9 +48,8 @@ export default function listColumnsCommand() {
       if (resolvedTable === undefined) {
         let remoteTables: string[]
         try {
-          remoteTables = await dataSource.tables(
-            resolvedCatalog,
-            resolvedSchema
+          remoteTables = await withSpinner("Loading tables…", () =>
+            dataSource.tables(resolvedCatalog, resolvedSchema)
           )
         } catch (error) {
           throw createDataSourceConnectionError(
@@ -73,10 +75,8 @@ export default function listColumnsCommand() {
         description?: string
       }[]
       try {
-        columns = await dataSource.columns(
-          resolvedCatalog,
-          resolvedSchema,
-          resolvedTable
+        columns = await withSpinner("Loading columns…", () =>
+          dataSource.columns(resolvedCatalog, resolvedSchema, resolvedTable)
         )
       } catch (error) {
         throw createDataSourceConnectionError(

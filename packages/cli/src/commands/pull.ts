@@ -10,6 +10,7 @@ import { listrRendererOptions } from "@/listr-renderer"
 import { DEFAULT_PULL_CONCURRENCY } from "@/options"
 import { resolveCatalog } from "@/resolve-catalog"
 import { resolveDataSource } from "@/resolve-datasource"
+import { withSpinner } from "@/with-spinner"
 
 import { buildPullCommandStructure } from "../metadata/pull-metadata"
 import { executeBulkPull } from "./bulk-pull"
@@ -86,7 +87,8 @@ export default function PullCommand() {
         const remoteSchemas = await withDataSourceContext(
           "list schemas",
           `pull (catalog=${catalog})`,
-          () => dataSource.schemas(catalog)
+          () =>
+            withSpinner("Loading schemas…", () => dataSource.schemas(catalog))
         )
 
         schema = await select(`Choose a schema from the ${catalog} catalog`, {
@@ -115,8 +117,12 @@ export default function PullCommand() {
           `pull (catalog=${catalog}, schema=${schema})`,
           () =>
             type === "views"
-              ? dataSource.views(catalog, schema)
-              : dataSource.tables(catalog, schema)
+              ? withSpinner("Loading views…", () =>
+                  dataSource.views(catalog, schema)
+                )
+              : withSpinner("Loading tables…", () =>
+                  dataSource.tables(catalog, schema)
+                )
         )
 
         if (remoteTables.length === 0) {
