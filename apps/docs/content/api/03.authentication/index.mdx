@@ -4,4 +4,4 @@ navTitle: Authentication
 description: Validate tokens, resolve identity, enforce permissions, and impersonate users.
 ---
 
-LakeQL authenticates and authorizes every request before a query runs. Four concerns cover this: JWT validation, permissions, scope authorization, and Trino user impersonation. Each has its own extension point, covered in the pages below.
+LakeQL authenticates and authorizes every request before a query runs. The [authorization model](/docs/api/authentication/authorization-model) ties the pieces together; the concerns beneath it are JWT validation, permissions, scope authorization, and Trino user impersonation. Each has its own extension point, covered in the pages below.

@@ -6,6 +6,8 @@ description: Run Trino queries as the authenticated user.
 
 Trino impersonation runs each query as the calling user rather than the service account. It uses Trino's `X-Trino-User` header. The [`trinoUserImpersonation`](/docs/api/api-reference#trino-user-impersonation) helper builds an impersonation resolver that maps a JWT claim to that header.
 
+Impersonation is Layer 2 of LakeQL's [authorization model](/docs/api/authentication/authorization-model): it is what lets each data source enforce its own per-user access control. Without it, queries run with the source's service credentials.
+
 Set it on the Trino data source in `lakeql.config.ts`:
 
 ```ts

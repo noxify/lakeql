@@ -4,7 +4,7 @@ navTitle: Permissions
 description: Grant technical users scoped read and write access per table.
 ---
 
-Permissions declare what a technical user may read and write, scoped by data source, schema, and table. Author the rules once in `src/permissions.ts`:
+Permissions declare what a technical user may read and write, scoped by data source, schema, and table. They are Layer 1 of LakeQL's [authorization model](/docs/api/authentication/authorization-model) — the gate in front of each data source's own access control. Author the rules once in `src/permissions.ts`:
 
 ```ts title="src/permissions.ts"
 import type { Permission } from "@lakeql/config"
