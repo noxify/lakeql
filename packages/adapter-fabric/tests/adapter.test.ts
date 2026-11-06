@@ -73,13 +73,13 @@ describe(FabricDataSource, () => {
     it("maps schema_name from returned rows", async () => {
       const { client } = createFakeClient([
         { schema_name: "analytics" },
-        { schema_name: "analytics" },
+        { schema_name: "reporting" },
       ])
       const ds = new FabricDataSource(client, "fabric-source")
 
       const result = await ds.schemas("Reporting_LH")
 
-      expect(result).toStrictEqual(["analytics", "analytics"])
+      expect(result).toStrictEqual(["analytics", "reporting"])
     })
   })
 })
