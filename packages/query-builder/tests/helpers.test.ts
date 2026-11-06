@@ -94,19 +94,19 @@ describe(normalizeFilter, () => {
     const query = {
       and: [
         {
-          itapsid: { eq: "itaps" },
-          or: [{ kritis: { is: false }, systelinternal: { is: true } }],
-          uka: { is: true },
+          orderId: { eq: "ord-001" },
+          or: [{ critical: { is: false }, internalFlag: { is: true } }],
+          active: { is: true },
         },
       ],
     } as Where
 
     const expected = {
       and: [
-        { itapsid: { eq: "itaps" } },
-        { uka: { is: true } },
+        { orderId: { eq: "ord-001" } },
+        { active: { is: true } },
         {
-          or: [{ kritis: { is: false } }, { systelinternal: { is: true } }],
+          or: [{ critical: { is: false } }, { internalFlag: { is: true } }],
         },
       ],
     }

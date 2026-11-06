@@ -35,10 +35,10 @@ describe(FabricDataSource, () => {
       const { client, calls } = createFakeClient()
       const ds = new FabricDataSource(client, "fabric-source")
 
-      await ds.schemas("Processed_LH")
+      await ds.schemas("Reporting_LH")
 
       expect(calls[0]?.sql).toContain(
-        "[Processed_LH].INFORMATION_SCHEMA.SCHEMATA"
+        "[Reporting_LH].INFORMATION_SCHEMA.SCHEMATA"
       )
     })
 
@@ -46,7 +46,7 @@ describe(FabricDataSource, () => {
       const { client, calls } = createFakeClient()
       const ds = new FabricDataSource(client, "fabric-source")
 
-      await ds.schemas("Processed_LH")
+      await ds.schemas("Reporting_LH")
       const { sql } = calls[0] ?? { sql: "" }
 
       expect(sql).toContain("schema_name NOT IN (")
@@ -65,21 +65,21 @@ describe(FabricDataSource, () => {
       const { client, calls } = createFakeClient()
       const ds = new FabricDataSource(client, "fabric-source")
 
-      await ds.schemas("Processed_LH")
+      await ds.schemas("Reporting_LH")
 
       expect(calls[0]?.sql).toContain("schema_name NOT LIKE 'db[_]%'")
     })
 
     it("maps schema_name from returned rows", async () => {
       const { client } = createFakeClient([
-        { schema_name: "open_lake" },
+        { schema_name: "analytics" },
         { schema_name: "analytics" },
       ])
       const ds = new FabricDataSource(client, "fabric-source")
 
-      const result = await ds.schemas("Processed_LH")
+      const result = await ds.schemas("Reporting_LH")
 
-      expect(result).toStrictEqual(["open_lake", "analytics"])
+      expect(result).toStrictEqual(["analytics", "analytics"])
     })
   })
 })

@@ -48,7 +48,7 @@ describe("Query Builder", () => {
     const query = generateQuery<DummyTableDefinition>({
       dialect: testTrinoDialect,
       catalog: "hive",
-      schema: "tier1_dummy_lake",
+      schema: "demo_sales",
       selectFields: ["stringField"],
       sorting: [{ direction: "asc", field: "stringField" }],
       table: "dummy_table",
@@ -65,14 +65,14 @@ describe("Query Builder", () => {
               SELECT
                 count(*) AS "total_records"
               FROM
-                "hive"."tier1_dummy_lake"."dummy_table"
+                "hive"."demo_sales"."dummy_table"
           ),
           "records" AS (
             SELECT
               "stringField",
               TRUE AS "__lakeql_record_present"
             FROM
-              "hive"."tier1_dummy_lake"."dummy_table"
+              "hive"."demo_sales"."dummy_table"
             ORDER BY
               "stringField" ASC
             FETCH FIRST
@@ -93,7 +93,7 @@ describe("Query Builder", () => {
     const query = generateQuery<DummyTableDefinition>({
       dialect: testTrinoDialect,
       catalog: "hive",
-      schema: "tier1_dummy_lake",
+      schema: "demo_sales",
       selectFields: ["stringField"],
       sorting: [{ direction: "asc", field: "stringField" }],
       table: "dummy_table",
@@ -112,7 +112,7 @@ describe("Query Builder", () => {
               SELECT
                 count(*) AS "total_records"
               FROM
-                "hive"."tier1_dummy_lake"."dummy_table"
+                "hive"."demo_sales"."dummy_table"
               WHERE
                 "stringField" = $1
           ),
@@ -121,7 +121,7 @@ describe("Query Builder", () => {
               "stringField",
               TRUE AS "__lakeql_record_present"
             FROM
-              "hive"."tier1_dummy_lake"."dummy_table"
+              "hive"."demo_sales"."dummy_table"
             WHERE
                 "stringField" = $1
             ORDER BY
@@ -144,7 +144,7 @@ describe("Query Builder", () => {
     const query = generateQuery<DummyTableDefinition>({
       dialect: testTrinoDialect,
       catalog: "hive",
-      schema: "tier1_dummy_lake",
+      schema: "demo_sales",
       selectFields: ["stringField"],
       sorting: [{ direction: "asc", field: "stringField" }],
       table: "dummy_table",
@@ -165,7 +165,7 @@ describe("Query Builder", () => {
               SELECT
                 count(*) AS "total_records"
               FROM
-                "hive"."tier1_dummy_lake"."dummy_table"
+                "hive"."demo_sales"."dummy_table"
               WHERE
                 (
                   "stringField" = $1
@@ -177,7 +177,7 @@ describe("Query Builder", () => {
               "stringField",
               TRUE AS "__lakeql_record_present"
             FROM
-              "hive"."tier1_dummy_lake"."dummy_table"
+              "hive"."demo_sales"."dummy_table"
             WHERE
               (  
                 "stringField" = $1
@@ -203,7 +203,7 @@ describe("Query Builder", () => {
     const query = generateQuery<DummyTableDefinition>({
       dialect: testTrinoDialect,
       catalog: "hive",
-      schema: "tier1_dummy_lake",
+      schema: "demo_sales",
       selectFields: ["stringField"],
       sorting: [{ direction: "asc", field: "stringField" }],
       table: "dummy_table",
@@ -225,7 +225,7 @@ describe("Query Builder", () => {
               SELECT
                 count(*) AS "total_records"
               FROM
-                "hive"."tier1_dummy_lake"."dummy_table"
+                "hive"."demo_sales"."dummy_table"
               WHERE
                 (
                   "stringField" = $1
@@ -237,7 +237,7 @@ describe("Query Builder", () => {
               "stringField",
               TRUE AS "__lakeql_record_present"
             FROM
-              "hive"."tier1_dummy_lake"."dummy_table"
+              "hive"."demo_sales"."dummy_table"
             WHERE
               (  
                 "stringField" = $1
@@ -263,7 +263,7 @@ describe("Query Builder", () => {
     const query = generateQuery<DummyTableDefinition>({
       dialect: testTrinoDialect,
       catalog: "hive",
-      schema: "tier1_dummy_lake",
+      schema: "demo_sales",
       selectFields: ["stringField"],
       sorting: [{ direction: "asc", field: "stringField" }],
       table: "dummy_table",
@@ -290,7 +290,7 @@ describe("Query Builder", () => {
               SELECT
                 count(*) AS "total_records"
               FROM
-                "hive"."tier1_dummy_lake"."dummy_table"
+                "hive"."demo_sales"."dummy_table"
               WHERE
               (
                 "stringField" = $1
@@ -305,7 +305,7 @@ describe("Query Builder", () => {
               "stringField",
               TRUE AS "__lakeql_record_present"
             FROM
-              "hive"."tier1_dummy_lake"."dummy_table"
+              "hive"."demo_sales"."dummy_table"
             WHERE
             (
               "stringField" = $1
@@ -334,7 +334,7 @@ describe("Query Builder", () => {
     const query = generateQuery<DummyTableDefinition>({
       dialect: testTrinoDialect,
       catalog: "hive",
-      schema: "tier1_dummy_lake",
+      schema: "demo_sales",
       selectFields: ["stringField", "numberField"],
       sorting: [{ direction: "asc", field: "stringField" }],
       table: "dummy_table",
@@ -351,7 +351,7 @@ describe("Query Builder", () => {
               SELECT
                 count(*) AS "total_records"
               FROM
-                "hive"."tier1_dummy_lake"."dummy_table"
+                "hive"."demo_sales"."dummy_table"
           ),
           "records" AS (
             SELECT
@@ -359,7 +359,7 @@ describe("Query Builder", () => {
               "numberField",
               TRUE AS "__lakeql_record_present"
             FROM
-              "hive"."tier1_dummy_lake"."dummy_table"
+              "hive"."demo_sales"."dummy_table"
             ORDER BY
               "stringField" ASC
             FETCH FIRST
@@ -380,7 +380,7 @@ describe("Query Builder", () => {
     const query = generateQuery<DummyTableDefinition>({
       dialect: testTrinoDialect,
       catalog: "hive",
-      schema: "tier1_dummy_lake",
+      schema: "demo_sales",
       selectFields: ["stringField"],
       sorting: [
         { direction: "asc", field: "stringField" },
@@ -400,14 +400,14 @@ describe("Query Builder", () => {
               SELECT
                 count(*) AS "total_records"
               FROM
-                "hive"."tier1_dummy_lake"."dummy_table"
+                "hive"."demo_sales"."dummy_table"
           ),
           "records" AS (
             SELECT
               "stringField",
               TRUE AS "__lakeql_record_present"
             FROM
-              "hive"."tier1_dummy_lake"."dummy_table"
+              "hive"."demo_sales"."dummy_table"
             ORDER BY
               "stringField" ASC,
               "numberField" DESC
@@ -432,7 +432,7 @@ describe("Query Builder", () => {
       paging: {
         limit: 250,
       },
-      schema: "tier1_dummy_lake",
+      schema: "demo_sales",
       selectFields: ["stringField"],
       sorting: [{ direction: "asc", field: "stringField" }],
       table: "dummy_table",
@@ -449,14 +449,14 @@ describe("Query Builder", () => {
               SELECT
                 count(*) AS "total_records"
               FROM
-                "hive"."tier1_dummy_lake"."dummy_table"
+                "hive"."demo_sales"."dummy_table"
           ),
           "records" AS (
             SELECT
               "stringField",
               TRUE AS "__lakeql_record_present"
             FROM
-              "hive"."tier1_dummy_lake"."dummy_table"
+              "hive"."demo_sales"."dummy_table"
             ORDER BY
               "stringField" ASC
             FETCH FIRST
@@ -481,7 +481,7 @@ describe("Query Builder", () => {
         limit: 250,
         offset: 250,
       },
-      schema: "tier1_dummy_lake",
+      schema: "demo_sales",
       selectFields: ["stringField"],
       sorting: [{ direction: "asc", field: "stringField" }],
       table: "dummy_table",
@@ -498,14 +498,14 @@ describe("Query Builder", () => {
               SELECT
                 count(*) AS "total_records"
               FROM
-                "hive"."tier1_dummy_lake"."dummy_table"
+                "hive"."demo_sales"."dummy_table"
           ),
           "records" AS (
             SELECT
               "stringField",
               TRUE AS "__lakeql_record_present"
             FROM
-              "hive"."tier1_dummy_lake"."dummy_table"
+              "hive"."demo_sales"."dummy_table"
             ORDER BY
               "stringField" ASC
             OFFSET 250
@@ -530,7 +530,7 @@ describe("Query Builder", () => {
       paging: {
         offset: 200,
       },
-      schema: "tier1_dummy_lake",
+      schema: "demo_sales",
       selectFields: ["stringField"],
       sorting: [{ direction: "asc", field: "stringField" }],
       table: "dummy_table",
@@ -547,14 +547,14 @@ describe("Query Builder", () => {
               SELECT
                 count(*) AS "total_records"
               FROM
-                "hive"."tier1_dummy_lake"."dummy_table"
+                "hive"."demo_sales"."dummy_table"
           ),
           "records" AS (
             SELECT
               "stringField",
               TRUE AS "__lakeql_record_present"
             FROM
-              "hive"."tier1_dummy_lake"."dummy_table"
+              "hive"."demo_sales"."dummy_table"
             ORDER BY
               "stringField" ASC
             OFFSET 200
@@ -576,7 +576,7 @@ describe("Query Builder", () => {
     const query = generateQuery<DummyTableDefinition>({
       dialect: testTrinoDialect,
       catalog: "hive",
-      schema: "tier1_dummy_lake",
+      schema: "demo_sales",
       selectFields: ["stringField", "numberField"],
       sorting: [{ direction: "asc", field: "stringField" }],
       table: "dummy_table",
@@ -597,7 +597,7 @@ describe("Query Builder", () => {
             SELECT
               count(*) AS "total_records"
             FROM
-              "hive"."tier1_dummy_lake"."dummy_table"
+              "hive"."demo_sales"."dummy_table"
           ),
           "records" AS (
             SELECT
@@ -605,7 +605,7 @@ describe("Query Builder", () => {
               "nümber-field" as "nümber-field",
               TRUE AS "__lakeql_record_present"
             FROM
-              "hive"."tier1_dummy_lake"."dummy_table"
+              "hive"."demo_sales"."dummy_table"
             ORDER BY
               "string-field" ASC
             FETCH FIRST
@@ -626,7 +626,7 @@ describe("Query Builder", () => {
     const query = generateQuery<DummyTableDefinition>({
       dialect: testTrinoDialect,
       catalog: "hive",
-      schema: "tier1_dummy_lake",
+      schema: "demo_sales",
       selectFields: ["stringField", "numberField"],
       sorting: [{ direction: "asc", field: "stringField" }],
       table: "dummy_table",
@@ -655,7 +655,7 @@ describe("Query Builder", () => {
             SELECT
               count(*) AS "total_records"
             FROM
-              "hive"."tier1_dummy_lake"."dummy_table"
+              "hive"."demo_sales"."dummy_table"
             WHERE
               "string-field" = 'fieldValue'
           ),
@@ -665,7 +665,7 @@ describe("Query Builder", () => {
               "nümber-field" as "nümber-field",
               TRUE AS "__lakeql_record_present"
             FROM
-              "hive"."tier1_dummy_lake"."dummy_table"
+              "hive"."demo_sales"."dummy_table"
             WHERE
               "string-field" = 'fieldValue'
             ORDER BY

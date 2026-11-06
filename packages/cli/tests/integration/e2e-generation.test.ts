@@ -479,9 +479,9 @@ describe("end-to-end generation (integration)", () => {
   describe("namePrefix propagates to generated names end to end", () => {
     const prefixDefinition: EndpointDefinitionFormat = {
       version: "1.0",
-      tableName: "itaps_v2_itaps_latest",
+      tableName: "order_line_items",
       catalog: "analytics",
-      schema: "tier1_open_lake",
+      schema: "analytics_sales",
       fields: [{ name: "event_id", type: "String" }],
     }
 
@@ -498,9 +498,7 @@ describe("end-to-end generation (integration)", () => {
         "utf-8"
       )
 
-      expect(interfaceContent).toContain(
-        "Trino_Tier1OpenLake_ItapsV2ItapsLatest"
-      )
+      expect(interfaceContent).toContain("Trino_AnalyticsSales_OrderLineItems")
     })
 
     it("carries the prefixed query name into query-schema.ts", async () => {
@@ -516,9 +514,7 @@ describe("end-to-end generation (integration)", () => {
         "utf-8"
       )
 
-      expect(querySchemaContent).toContain(
-        "trinoTier1OpenLakeItapsV2ItapsLatest"
-      )
+      expect(querySchemaContent).toContain("trinoAnalyticsSalesOrderLineItems")
     })
 
     it("carries the prefixed query and mutation names into config.ts", async () => {
@@ -534,10 +530,8 @@ describe("end-to-end generation (integration)", () => {
         "utf-8"
       )
 
-      expect(configContent).toContain("trinoTier1OpenLakeItapsV2ItapsLatest")
-      expect(configContent).toContain(
-        "createTrinoTier1OpenLakeItapsV2ItapsLatest"
-      )
+      expect(configContent).toContain("trinoAnalyticsSalesOrderLineItems")
+      expect(configContent).toContain("createTrinoAnalyticsSalesOrderLineItems")
     })
 
     it("leaves generated names unprefixed when namePrefix is unset", async () => {
@@ -552,7 +546,7 @@ describe("end-to-end generation (integration)", () => {
         "utf-8"
       )
 
-      expect(interfaceContent).toContain("Tier1OpenLake_ItapsV2ItapsLatest")
+      expect(interfaceContent).toContain("AnalyticsSales_OrderLineItems")
       expect(interfaceContent).not.toContain("Trino_")
     })
   })

@@ -50,7 +50,7 @@ describe(defineApiConfig, () => {
           Query: [
             {
               dataSource: "warehouse",
-              rules: [{ catalog: "hive", schema: "tier1_lake", tables: ["*"] }],
+              rules: [{ catalog: "hive", schema: "demo_sales", tables: ["*"] }],
             },
           ],
           Mutation: [],

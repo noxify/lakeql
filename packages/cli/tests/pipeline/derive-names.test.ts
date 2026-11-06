@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest"
 
 import { deriveNames } from "@/pipeline/derive-names"
 
-const SCHEMA = "tier1_open_lake"
-const TABLE = "itaps_v2_itaps_latest"
+const SCHEMA = "analytics_sales"
+const TABLE = "order_line_items"
 
 describe("deriveNames name prefixing", () => {
   describe("without a prefix (backward compatibility)", () => {
@@ -11,12 +11,12 @@ describe("deriveNames name prefixing", () => {
       const result = deriveNames(SCHEMA, TABLE)
 
       // The current (unset) mutation name joins `create` with the lower-cased
-      // schema segment, so the seam stays lowercase (`createtier1…`). Captured
+      // schema segment, so the seam stays lowercase (`createanalytics…`). Captured
       // verbatim to lock in R6 byte-for-byte backward compatibility.
       expect(result).toStrictEqual({
-        baseClassName: "Tier1OpenLake_ItapsV2ItapsLatest",
-        queryName: "tier1OpenLakeItapsV2ItapsLatest",
-        mutationName: "createtier1OpenLakeItapsV2ItapsLatest",
+        baseClassName: "AnalyticsSales_OrderLineItems",
+        queryName: "analyticsSalesOrderLineItems",
+        mutationName: "createanalyticsSalesOrderLineItems",
       })
     })
 
@@ -32,9 +32,9 @@ describe("deriveNames name prefixing", () => {
       const result = deriveNames(SCHEMA, TABLE, "trino")
 
       expect(result).toStrictEqual({
-        baseClassName: "Trino_Tier1OpenLake_ItapsV2ItapsLatest",
-        queryName: "trinoTier1OpenLakeItapsV2ItapsLatest",
-        mutationName: "createTrinoTier1OpenLakeItapsV2ItapsLatest",
+        baseClassName: "Trino_AnalyticsSales_OrderLineItems",
+        queryName: "trinoAnalyticsSalesOrderLineItems",
+        mutationName: "createTrinoAnalyticsSalesOrderLineItems",
       })
     })
 
@@ -100,8 +100,8 @@ describe("deriveNames name prefixing", () => {
     it("prefixes names from a deburrable prefix", () => {
       const result = deriveNames(SCHEMA, TABLE, "über")
 
-      expect(result.baseClassName).toBe("Uber_Tier1OpenLake_ItapsV2ItapsLatest")
-      expect(result.queryName).toBe("uberTier1OpenLakeItapsV2ItapsLatest")
+      expect(result.baseClassName).toBe("Uber_AnalyticsSales_OrderLineItems")
+      expect(result.queryName).toBe("uberAnalyticsSalesOrderLineItems")
     })
   })
 })

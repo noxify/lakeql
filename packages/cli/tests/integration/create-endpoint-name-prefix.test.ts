@@ -48,9 +48,9 @@ const { default: createEndpointCommandFactory } =
 // must not appear in the generated output.
 const definition = {
   version: "1.0",
-  tableName: "itaps_v2_itaps_latest",
+  tableName: "order_line_items",
   catalog: "hive",
-  schema: "tier1_open_lake",
+  schema: "analytics_sales",
   dataSource: "trino_source",
   fields: [{ name: "event_id", type: "String" }],
 }
@@ -83,7 +83,7 @@ describe("create-endpoint namePrefix contract (integration)", () => {
 
     const outDir = path.join(
       testDir,
-      "schemas/custom/hive/tier1_open_lake/itaps_v2_itaps_latest"
+      "schemas/custom/hive/analytics_sales/order_line_items"
     )
     const interfaceContent = await readFile(
       path.join(outDir, "interface.ts"),
@@ -95,11 +95,11 @@ describe("create-endpoint namePrefix contract (integration)", () => {
     )
 
     // Unprefixed names are present...
-    expect(interfaceContent).toContain("Tier1OpenLake_ItapsV2ItapsLatest")
-    expect(configContent).toContain("tier1OpenLakeItapsV2ItapsLatest")
+    expect(interfaceContent).toContain("AnalyticsSales_OrderLineItems")
+    expect(configContent).toContain("analyticsSalesOrderLineItems")
     // ...and no prefixed variant leaks in from the dataSource name.
     expect(interfaceContent).not.toContain("Trino_")
-    expect(configContent).not.toContain("trinoTier1OpenLake")
-    expect(configContent).not.toContain("createTrinoTier1OpenLake")
+    expect(configContent).not.toContain("trinoAnalyticsSales")
+    expect(configContent).not.toContain("createTrinoAnalyticsSales")
   })
 })

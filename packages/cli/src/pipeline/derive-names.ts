@@ -118,12 +118,12 @@ export function assertValidNamePrefix(
  * no longer collide:
  *
  * - **Type name** (`baseClassName`): `toUpperFirst(toCamelCase(prefix))`
- *   prepended as a new leading `_`-separated segment (e.g. `Trino_Tier1OpenLake_…`).
+ *   prepended as a new leading `_`-separated segment (e.g. `Trino_AnalyticsSales_…`).
  * - **Query name**: `toCamelCase(prefix)` prepended seamlessly; the schema
- *   segment is upper-cased at the seam so it reads `trinoTier1…`, not
- *   `trinotier1…`.
+ *   segment is upper-cased at the seam so it reads `trinoAnalyticsSales…`, not
+ *   `trinoanalyticsSales…`.
  * - **Mutation name**: the `create` verb stays leading, then
- *   `toUpperFirst(toCamelCase(prefix))`, then the rest (`createTrinoTier1…`).
+ *   `toUpperFirst(toCamelCase(prefix))`, then the rest (`createTrinoAnalyticsSales…`).
  *
  * The prefix is trimmed; an empty or whitespace-only value is treated as unset.
  * When unset, the returned names are byte-for-byte identical to the output
