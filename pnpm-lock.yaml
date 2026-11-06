@@ -1309,6 +1309,9 @@ importers:
       '@lakeql/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@lakeql/datasource':
+        specifier: workspace:*
+        version: link:../../packages/datasource
       '@lakeql/tsconfig':
         specifier: workspace:*
         version: link:../typescript

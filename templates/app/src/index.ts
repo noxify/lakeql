@@ -1,79 +1,21 @@
-import { defineApiConfig } from "@lakeql/api/config"
-import { createApiResolveAuth } from "@lakeql/api/resolve-auth"
-import type { ResolveAuthSourceInfo } from "@lakeql/api/resolve-auth"
-import { createLakeQLRuntime, loadConfig } from "@lakeql/config"
+import { createLakeQLApp } from "@lakeql/api/create-app"
 
 import { tokenResolver } from "./auth"
 
-const baseDir = import.meta.dirname
-
-// Load the project config (adapters + data sources) from lakeql.config.ts.
-const project = await loadConfig()
-
-// Derive per-source auth metadata (adapter + optional impersonation resolver)
-// from the loaded data sources. Empty until a data source is configured.
-const sources: Record<string, ResolveAuthSourceInfo> = Object.fromEntries(
-  Object.entries(project.config.dataSources).map(([name, definition]) => [
-    name,
-    {
-      adapter: definition.adapter,
-      impersonationResolver: definition.impersonationResolver,
-    },
-  ])
-)
-
-const resolveAuth = createApiResolveAuth({
-  sources,
-  globalImpersonationResolver: project.config.auth?.impersonationResolver,
-})
-
-// Build the runtime that owns data sources and read/write strategies.
-const runtime = await createLakeQLRuntime({
-  config: project.config,
-  adapters: project.adapters,
-  resolveAuth,
-})
-
-// Technical-user permission rules, authored in src/permissions.ts and declared
-// on lakeql.config.ts under `auth.permissions`. Absent/empty is a valid state,
-// but it applies the defaults: human reads are delegated to each data source's
-// own access control, service-principal reads are denied, and all writes are
-// denied until a matching Mutation rule is added. Warn so that fallback is a
-// deliberate choice, not a silent gap.
-const permissions = project.config.auth?.permissions ?? []
-if (permissions.length === 0) {
-  // eslint-disable-next-line no-console
-  console.warn(
-    "No LakeQL permission rules configured. Defaults apply: human reads are delegated to each data source's own access control (e.g. Trino rules via impersonation, Fabric OBO), service-principal reads are denied, and all writes are denied until a matching Mutation rule is added. Ensure impersonation is configured — otherwise human queries run with the data source's service credentials."
-  )
-}
-
-// Compose the API server around the runtime.
-const server = defineApiConfig({
-  runtime,
+// `createLakeQLApp` loads lakeql.config.ts, builds the runtime and auth
+// resolver, composes the API server, and registers SIGTERM/SIGINT shutdown.
+// Permission rules and the empty-permissions warning come from the loaded
+// config. The only option you usually have to supply is `tokenResolver`.
+//
+// Want full control? Eject by inlining the wrapper's wiring — the expanded,
+// copy-paste form is documented at:
+// https://lakeql.dev/docs/api/server-setup/create-lakeql-app#eject
+const app = await createLakeQLApp({
   tokenResolver,
-  permissions,
-  baseDir,
+  baseDir: import.meta.dirname,
   schemaPath: "./schemas",
   graphqlPath: "/graphql",
   healthCheckEndpoint: "/live",
 })
 
-// Graceful shutdown: close all data-source connections.
-const shutdown = async (): Promise<void> => {
-  await runtime.close()
-  process.exit(0)
-}
-
-process.on("SIGTERM", shutdown)
-process.on("SIGINT", shutdown)
-
-try {
-  await server.startServer()
-} catch (error) {
-  // Startup errors (e.g. no schema files yet) are configuration states, not
-  // crashes. Print the message without a stack trace and exit non-zero.
-  // eslint-disable-next-line no-console
-  console.error(error instanceof Error ? error.message : String(error))
-  process.exit(1)
-}
+await app.start()

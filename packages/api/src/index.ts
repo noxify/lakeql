@@ -10,6 +10,8 @@
  */
 
 export { builder } from "./builder"
+export { createLakeQLApp, EMPTY_PERMISSIONS_WARNING } from "./create-app"
+export type { CreateLakeQLAppOptions, LakeQLApp } from "./create-app"
 export { defineApiConfig } from "./config"
 export type {
   ApiRuntimeConfig,

@@ -9,7 +9,7 @@ apiReference:
 
 The complete public API of `@lakeql/api`, generated from the package's TypeScript source.
 
-The server entry points are [`defineApiConfig`](#define-api-config), [`createApiServer`](#create-api-server), and [`startApiServer`](#start-api-server). Compose authentication with [`createApiResolveAuth`](#create-api-resolve-auth) and [`trinoUserImpersonation`](#trino-user-impersonation), and permissions with [`createPermission`](#create-permission). The rest of the surface covers the schema builder, error handling, the Yoga integration, and the supporting types.
+The near plug-and-play entry point is [`createLakeQLApp`](#create-lake-ql-app). The lower-level server entry points are [`defineApiConfig`](#define-api-config), [`createApiServer`](#create-api-server), and [`startApiServer`](#start-api-server). Compose authentication with [`createApiResolveAuth`](#create-api-resolve-auth) and [`trinoUserImpersonation`](#trino-user-impersonation), and permissions with [`createPermission`](#create-permission). The rest of the surface covers the schema builder, error handling, the Yoga integration, and the supporting types.
 
 <Note>
   The package is published with subpath exports (for example,

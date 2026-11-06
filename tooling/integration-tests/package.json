@@ -11,6 +11,7 @@
   "devDependencies": {
     "@lakeql/api": "workspace:*",
     "@lakeql/config": "workspace:*",
+    "@lakeql/datasource": "workspace:*",
     "@lakeql/tsconfig": "workspace:*",
     "@lakeql/vitest-config": "workspace:*",
     "@types/node": "24.19.2",
