@@ -90,11 +90,12 @@ export interface Permission {
 /**
  * Auth configuration block for the unified config.
  *
- * Groups all config-level auth concerns: the global impersonation fallback
- * and technical-user permission rules. Request authentication
+ * Groups the config-level auth concerns: the global impersonation fallback
+ * and the technical-user permission rules. Request authentication
  * (`tokenResolver`) and identity resolution (`identityResolver`) are
  * API-server concerns configured on `defineApiConfig` (`ApiRuntimeConfig`),
- * not here.
+ * not here, because they run per HTTP request; permissions are declarative
+ * data and belong with the rest of the project configuration.
  */
 export interface AuthConfig {
   /**
@@ -114,8 +115,9 @@ export interface AuthConfig {
 
   /**
    * Permission rules for technical users, defining which data sources and
-   * tables each may read and write. Passed through from `defineConfig()`
-   * without interpretation and consumed by the API layer for authorization.
+   * tables each may read and write. Declared here in `defineConfig` and read
+   * by the application wiring, which forwards them to the API server
+   * (`defineApiConfig`) where the authorization checks consume them.
    */
   permissions?: Permission[]
 }

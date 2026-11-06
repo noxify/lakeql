@@ -39,15 +39,17 @@ export function defineConfig<
    */
   sourcePath?: string
   /**
-   * Auth configuration grouping all config-level auth concerns.
+   * Auth configuration grouping the config-level auth concerns.
    *
    * - `impersonationResolver` is the global fallback: it applies to every data
    *   source that does not define its own
    *   `dataSources.<source>.impersonationResolver` (per-source wins).
-   * - `permissions` holds the technical-user authorization rules.
+   * - `permissions` holds the technical-user authorization rules; the
+   *   application wiring forwards them to `defineApiConfig`, which consumes
+   *   them for authorization.
    *
-   * Request authentication and identity resolution are configured on the API
-   * server via `defineApiConfig`, not here.
+   * Request authentication and identity resolution run per HTTP request and
+   * are configured on the API server via `defineApiConfig`, not here.
    */
   auth?: AuthConfig
   /**
