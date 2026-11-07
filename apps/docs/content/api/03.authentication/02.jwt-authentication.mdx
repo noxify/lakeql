@@ -1,0 +1,51 @@
+---
+title: JWT Authentication
+navTitle: JWT Authentication
+description: Validate the request token and resolve the current user.
+---
+
+Authentication starts with a `tokenResolver`. This function inspects the incoming request and validates its token. It returns the decoded payload, which is the current user, or `null` when the request is unauthenticated.
+
+```ts
+import type { TokenResolver } from "@lakeql/config"
+import { createRemoteJWKSet, jwtVerify } from "jose"
+
+const JWKS = createRemoteJWKSet(
+  new URL(`https://login.microsoftonline.com/${tenantId}/discovery/v2.0/keys`)
+)
+
+export const tokenResolver: TokenResolver = async (request) => {
+  const authHeader = request.headers.get("authorization")
+  if (!authHeader?.startsWith("Bearer ")) {
+    return null
+  }
+
+  const token = authHeader.slice(7)
+  try {
+    const { payload } = await jwtVerify(token, JWKS, {
+      audience: clientId,
+      issuer: `https://login.microsoftonline.com/${tenantId}/v2.0`,
+    })
+    return { ...payload, __rawToken: token }
+  } catch {
+    return null
+  }
+}
+```
+
+Pass it to the server via [`defineApiConfig`](/docs/api/server-setup/define-config):
+
+```ts
+defineApiConfig({ runtime, tokenResolver })
+```
+
+## Identity Resolution
+
+The `identityResolver` maps the decoded payload to a `ResolvedIdentity`. It defaults to the Entra ID resolver ([`entraIdIdentityResolver`](/docs/api/api-reference#entra-id-identity-resolver)). The resolved identity drives permission checks and tells LakeQL whether the caller is a service principal. Override `identityResolver` for other identity providers.
+
+<Note>
+  Returning `null` from the token resolver leaves the request unauthenticated.
+  Whether that is allowed depends on the permissions and resolvers you
+  configure. An unauthenticated request resolves to the system user with no
+  request-scoped credentials.
+</Note>

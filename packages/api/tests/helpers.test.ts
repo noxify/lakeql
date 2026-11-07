@@ -11,15 +11,14 @@ vi.mock("@lakeql/logger/console", () => ({
   error: vi.fn(),
 }))
 
+import { DataSourceError } from "@lakeql/datasource"
 import { AuthScopeFailureType } from "@pothos/plugin-scope-auth"
 import { GraphQLError } from "graphql"
 
 import {
-  calculatePageInfoData,
   createPermission,
   handleErrorResponse,
   throwFirstError,
-  transformTrinoResponse,
 } from "../src/helpers"
 
 function getGraphQLError(fn: () => void): GraphQLError {
@@ -33,104 +32,78 @@ function getGraphQLError(fn: () => void): GraphQLError {
 }
 
 describe(handleErrorResponse, () => {
-  it("throws SYNTAX_ERROR with status 400 for errorCode 1", () => {
-    expect(() =>
-      handleErrorResponse({ errorMessage: { errorCode: 1 } })
-    ).toThrow(GraphQLError)
+  it("maps auth category to PERMISSION_DENIED with status 403", () => {
+    const error = new DataSourceError("denied", "trino", "warehouse", "auth")
 
-    const err = getGraphQLError(() =>
-      handleErrorResponse({ errorMessage: { errorCode: 1 } })
-    )
-    expect(err.message).toBe("Invalid GraphQL query")
-    expect(err.extensions.code).toBe("SYNTAX_ERROR")
-    expect((err.extensions.http as { status: number }).status).toBe(400)
-  })
-
-  it("throws PERMISSION_DENIED with status 403 for errorCode 4", () => {
-    expect(() =>
-      handleErrorResponse({ errorMessage: { errorCode: 4 } })
-    ).toThrow(GraphQLError)
-
-    const err = getGraphQLError(() =>
-      handleErrorResponse({ errorMessage: { errorCode: 4 } })
-    )
-    expect(err.message).toBe("Access denied")
+    const err = getGraphQLError(() => handleErrorResponse(error))
+    expect(err).toBeInstanceOf(GraphQLError)
+    expect(err.message).toBe("denied")
     expect(err.extensions.code).toBe("PERMISSION_DENIED")
     expect((err.extensions.http as { status: number }).status).toBe(403)
   })
 
-  it("throws UNKNOWN with status 500 for errorCode 100", () => {
-    expect(() =>
-      handleErrorResponse({ errorMessage: { errorCode: 100 } })
-    ).toThrow(GraphQLError)
+  it("maps query category to QUERY_ERROR with status 400", () => {
+    const error = new DataSourceError("bad sql", "trino", "warehouse", "query")
 
-    const err = getGraphQLError(() =>
-      handleErrorResponse({ errorMessage: { errorCode: 100 } })
+    const err = getGraphQLError(() => handleErrorResponse(error))
+    expect(err.extensions.code).toBe("QUERY_ERROR")
+    expect((err.extensions.http as { status: number }).status).toBe(400)
+  })
+
+  it("maps timeout category to TIMEOUT with status 504", () => {
+    const error = new DataSourceError(
+      "timed out",
+      "trino",
+      "warehouse",
+      "timeout"
     )
-    expect(err.message).toBe("Unknown exception")
+
+    const err = getGraphQLError(() => handleErrorResponse(error))
+    expect(err.extensions.code).toBe("TIMEOUT")
+    expect((err.extensions.http as { status: number }).status).toBe(504)
+  })
+
+  it("maps network category to NETWORK_ERROR with status 502", () => {
+    const error = new DataSourceError(
+      "unreachable",
+      "trino",
+      "warehouse",
+      "network"
+    )
+
+    const err = getGraphQLError(() => handleErrorResponse(error))
+    expect(err.extensions.code).toBe("NETWORK_ERROR")
+    expect((err.extensions.http as { status: number }).status).toBe(502)
+  })
+
+  it("propagates adapter and dataSource in the extensions", () => {
+    const error = new DataSourceError("denied", "trino", "warehouse", "auth")
+
+    const err = getGraphQLError(() => handleErrorResponse(error))
+    expect(err.extensions.adapter).toBe("trino")
+    expect(err.extensions.dataSource).toBe("warehouse")
+  })
+
+  it("preserves the DataSourceError as originalError", () => {
+    // So the error-logging plugin can read category/dataSource/adapter back.
+    const error = new DataSourceError("denied", "trino", "warehouse", "auth")
+
+    const err = getGraphQLError(() => handleErrorResponse(error))
+    expect(err.originalError).toBe(error)
+  })
+
+  it("wraps non-DataSourceError as UNKNOWN with status 500", () => {
+    const err = getGraphQLError(() => handleErrorResponse(new Error("boom")))
+    expect(err.message).toBe("boom")
     expect(err.extensions.code).toBe("UNKNOWN")
     expect((err.extensions.http as { status: number }).status).toBe(500)
   })
 
-  it("throws VALIDATION_FAILED with status 400 for errorCode 200", () => {
-    expect(() =>
-      handleErrorResponse({ errorMessage: { errorCode: 200 } })
-    ).toThrow(GraphQLError)
-
-    const err = getGraphQLError(() =>
-      handleErrorResponse({ errorMessage: { errorCode: 200 } })
-    )
-    expect(err.message).toBe("Validation failed")
-    expect(err.extensions.code).toBe("VALIDATION_FAILED")
-    expect((err.extensions.http as { status: number }).status).toBe(400)
-  })
-
-  it("uses provided message and code for unknown errorCode", () => {
-    expect(() =>
-      handleErrorResponse({
-        errorMessage: {
-          errorCode: 999,
-          message: "Custom error",
-          code: "CUSTOM_CODE",
-        },
-      })
-    ).toThrow(GraphQLError)
-
-    const err = getGraphQLError(() =>
-      handleErrorResponse({
-        errorMessage: {
-          errorCode: 999,
-          message: "Custom error",
-          code: "CUSTOM_CODE",
-        },
-      })
-    )
-    expect(err.message).toBe("Custom error")
-    expect(err.extensions.code).toBe("CUSTOM_CODE")
-    expect((err.extensions.http as { status: number }).status).toBe(400)
-  })
-
-  it("includes additionalInformation in extensions", () => {
-    const additionalInfo = [{ path: ["field"], message: "required" }]
-
-    expect(() =>
-      handleErrorResponse({
-        errorMessage: {
-          errorCode: 200,
-          additionalInformation: additionalInfo,
-        },
-      })
-    ).toThrow(GraphQLError)
-
-    const err = getGraphQLError(() =>
-      handleErrorResponse({
-        errorMessage: {
-          errorCode: 200,
-          additionalInformation: additionalInfo,
-        },
-      })
-    )
-    expect(err.extensions.additionalInformation).toStrictEqual(additionalInfo)
+  it("uses a generic message for non-Error throwables", () => {
+    const err = getGraphQLError(() => handleErrorResponse("some string"))
+    expect(err.message).toBe("Unknown exception")
+    expect(err.extensions.code).toBe("UNKNOWN")
+    expect((err.extensions.http as { status: number }).status).toBe(500)
   })
 })
 
@@ -176,240 +149,41 @@ describe(throwFirstError, () => {
   })
 })
 
-describe(calculatePageInfoData, () => {
-  it("returns correct data for first page", () => {
-    const result = calculatePageInfoData({
-      totalCount: 25,
-      perPage: 10,
-      page: 1,
-    })
-
-    expect(result).toMatchObject({
-      currentPage: 1,
-      hasPrevious: false,
-      previousPage: null,
-      hasNext: true,
-      nextPage: 2,
-      maxPages: 3,
-      totalCount: 25,
-    })
-  })
-
-  it("returns correct data for a middle page", () => {
-    const result = calculatePageInfoData({
-      totalCount: 30,
-      perPage: 10,
-      page: 2,
-    })
-
-    expect(result).toMatchObject({
-      currentPage: 2,
-      hasPrevious: true,
-      previousPage: 1,
-      hasNext: true,
-      nextPage: 3,
-      maxPages: 3,
-    })
-  })
-
-  it("returns correct data for last page", () => {
-    const result = calculatePageInfoData({
-      totalCount: 30,
-      perPage: 10,
-      page: 3,
-    })
-
-    expect(result).toMatchObject({
-      currentPage: 3,
-      hasPrevious: true,
-      previousPage: 2,
-      hasNext: false,
-      nextPage: null,
-      maxPages: 3,
-    })
-  })
-
-  it("handles zero totalCount", () => {
-    const result = calculatePageInfoData({
-      totalCount: 0,
-      perPage: 10,
-      page: 1,
-    })
-
-    expect(result).toMatchObject({
-      currentPage: 1,
-      maxPages: 0,
-      hasNext: false,
-      nextPage: null,
-      hasPrevious: false,
-      previousPage: null,
-    })
-  })
-
-  it("defaults to page 1 when page is not provided", () => {
-    const result = calculatePageInfoData({
-      totalCount: 20,
-      perPage: 10,
-    })
-
-    expect(result.currentPage).toBe(1)
-  })
-
-  it("returns limit and offset", () => {
-    const result = calculatePageInfoData({
-      totalCount: 30,
-      perPage: 10,
-      page: 2,
-    })
-
-    expect(result.limit).toBe(10)
-    expect(result.offset).toBe(10)
-  })
-
-  it("offset is undefined for first page", () => {
-    const result = calculatePageInfoData({
-      totalCount: 30,
-      perPage: 10,
-      page: 1,
-    })
-
-    expect(result.offset).toBeUndefined()
-  })
-})
-
 describe(createPermission, () => {
-  it("returns permission object with direct call", () => {
-    const result = createPermission("my_catalog", "my_schema", ["table1"])
+  it("builds a permission entry with dataSource and rules", () => {
+    const result = createPermission("warehouse", (rule) => [
+      rule({ schema: "sales", tables: ["orders", "customers"] }),
+    ])
 
     expect(result).toStrictEqual({
-      catalog: "my_catalog",
-      schema: "my_schema",
-      tables: ["table1"],
+      dataSource: "warehouse",
+      rules: [{ schema: "sales", tables: ["orders", "customers"] }],
     })
   })
 
-  it("returns a curried function when called with array config", () => {
-    const configs = [
-      { catalog: "cat1", schema: "sch1", tableName: "tbl1" },
-    ] as const
+  it("passes the rule identity helper through unchanged", () => {
+    const result = createPermission("warehouse", (rule) => [
+      rule({ catalog: "hive", schema: "finance", tables: ["*"] }),
+    ])
 
-    const factory = createPermission(configs)
-    expect(factory).toBeTypeOf("function")
-
-    const result = factory("cat1", "sch1", ["tbl1"])
-    expect(result).toStrictEqual({
-      catalog: "cat1",
-      schema: "sch1",
-      tables: ["tbl1"],
-    })
+    expect(result.rules).toStrictEqual([
+      { catalog: "hive", schema: "finance", tables: ["*"] },
+    ])
   })
 
-  it("throws TypeError when schema is missing in direct call", () => {
-    expect(() =>
-      (createPermission as (...args: unknown[]) => unknown)(
-        "catalog",
-        undefined,
-        ["table"]
-      )
-    ).toThrow(TypeError)
+  it("supports multiple rules", () => {
+    const result = createPermission("lake", (rule) => [
+      rule({ schema: "a", tables: ["t1"] }),
+      rule({ schema: "b", tables: ["*"] }),
+    ])
+
+    expect(result.rules).toHaveLength(2)
+    expect(result.dataSource).toBe("lake")
   })
 
-  it("throws TypeError when tables is missing in direct call", () => {
-    expect(() =>
-      (createPermission as (...args: unknown[]) => unknown)(
-        "catalog",
-        "schema",
-        // oxlint-disable-next-line unicorn/no-useless-undefined
-        undefined
-      )
-    ).toThrow(TypeError)
-  })
-})
+  it("supports an empty rules list", () => {
+    const result = createPermission("empty", () => [])
 
-describe(transformTrinoResponse, () => {
-  const jsonSchema = {
-    type: "object" as const,
-    properties: {
-      name: { type: "string" as const },
-      age: { type: "number" as const },
-    },
-  }
-
-  it("extracts total_count from first element of first row", () => {
-    const response = [[5, "Alice", 30]] as [number, ...unknown[]][]
-
-    const result = transformTrinoResponse({
-      response,
-      selectFields: ["name", "age"],
-      jsonSchema,
-    })
-
-    expect(result.total_count).toBe(5)
-  })
-
-  it("maps fields using selectFields", () => {
-    const response = [[2, "Bob", 25]] as [number, ...unknown[]][]
-
-    const result = transformTrinoResponse({
-      response,
-      selectFields: ["name", "age"],
-      jsonSchema,
-    })
-
-    expect(result.data).toHaveLength(1)
-    expect(result.data[0]).toMatchObject({
-      name: "Bob",
-      age: 25,
-    })
-  })
-
-  it("transforms multiple rows", () => {
-    const response = [
-      [3, "Alice", 30],
-      [3, "Bob", 25],
-      [3, "Charlie", 35],
-    ] as [number, ...unknown[]][]
-
-    const result = transformTrinoResponse({
-      response,
-      selectFields: ["name", "age"],
-      jsonSchema,
-    })
-
-    expect(result.total_count).toBe(3)
-    expect(result.data).toHaveLength(3)
-  })
-
-  it("applies transformFields to rename columns", () => {
-    const schema = {
-      type: "object" as const,
-      properties: {
-        user_name: { type: "string" as const },
-      },
-    }
-
-    const response = [[1, "Alice"]] as [number, ...unknown[]][]
-
-    const result = transformTrinoResponse({
-      response,
-      selectFields: ["name"],
-      transformFields: { name: "user_name" },
-      jsonSchema: schema,
-    })
-
-    expect(result.data[0]).toMatchObject({
-      name: "Alice",
-    })
-  })
-
-  it("returns 0 total_count for empty response", () => {
-    const result = transformTrinoResponse({
-      response: [],
-      selectFields: ["name", "age"],
-      jsonSchema,
-    })
-
-    expect(result.total_count).toBe(0)
-    expect(result.data).toHaveLength(0)
+    expect(result).toStrictEqual({ dataSource: "empty", rules: [] })
   })
 })

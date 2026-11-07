@@ -1,3 +1,4 @@
+import { Fragment } from "react"
 import { createSlug } from "renoun"
 
 import {
@@ -6,8 +7,25 @@ import {
   TableRow as UITableRow,
   TableCell,
 } from "@/components/ui/table"
+import type { SymbolIndex } from "@/lib/api-reference-symbol-index"
 
 import { DescriptionBlock } from "./description-block"
+
+/**
+ * Context threaded to every {@link DescriptionBlock} so inline JSDoc `{@link}`
+ * references in member/parameter descriptions resolve to the right page +
+ * anchor.
+ */
+interface LinkResolutionProps {
+  symbolIndex?: SymbolIndex
+  currentPageHref?: string
+  /**
+   * Export names excluded from this page's reference, so a `{@link}` in a
+   * member/parameter description that points at a dropped same-page symbol
+   * renders as plain text instead of a dead anchor.
+   */
+  excluded?: ReadonlySet<string>
+}
 
 export interface MemberRow {
   name: string
@@ -24,58 +42,67 @@ export interface MemberRow {
     type: string
     isOptional: boolean
     description?: string
+    /** Anchor link to another section (for exported types in same file) */
+    typeLink?: string
   }[]
   /** External @see links */
   seeLinks?: { url: string; label: string }[]
 }
 
-export function MembersTable({
+export const MembersTable = ({
   sectionSlug,
   rows,
+  symbolIndex,
+  currentPageHref,
+  excluded,
 }: {
   sectionSlug: string
   rows: MemberRow[]
-}) {
-  return (
-    <UITable variant="outline">
-      <thead>
-        <UITableRow>
-          <TableHead className="bg-muted font-bold">Name</TableHead>
-          <TableHead className="bg-muted font-bold">Type</TableHead>
-        </UITableRow>
-      </thead>
-      <tbody>
-        {rows.map((row) => {
-          const cellId = `${sectionSlug}-${createSlug(row.name)}`
-          const hasSubRow = !!(
-            row.description ||
-            row.defaultValue ||
-            (row.seeLinks && row.seeLinks.length > 0)
-          )
+} & LinkResolutionProps) => (
+  <UITable variant="outline">
+    <thead>
+      <UITableRow>
+        <TableHead className="bg-muted font-bold">Name</TableHead>
+        <TableHead className="bg-muted font-bold">Type</TableHead>
+      </UITableRow>
+    </thead>
+    <tbody>
+      {rows.map((row) => {
+        const cellId = `${sectionSlug}-${createSlug(row.name)}`
+        const hasSubRow = !!(
+          row.description ||
+          row.defaultValue ||
+          (row.seeLinks && row.seeLinks.length > 0)
+        )
 
-          return (
-            <MemberRowGroup
-              key={row.name}
-              row={row}
-              cellId={cellId}
-              hasSubRow={hasSubRow}
-            />
-          )
-        })}
-      </tbody>
-    </UITable>
-  )
-}
+        return (
+          <MemberRowGroup
+            key={row.name}
+            row={row}
+            cellId={cellId}
+            hasSubRow={hasSubRow}
+            symbolIndex={symbolIndex}
+            currentPageHref={currentPageHref}
+            excluded={excluded}
+          />
+        )
+      })}
+    </tbody>
+  </UITable>
+)
 
-function MemberRowGroup({
+const MemberRowGroup = ({
   row,
   cellId,
   hasSubRow,
+  symbolIndex,
+  currentPageHref,
+  excluded,
 }: {
   row: MemberRow
   cellId: string
   hasSubRow: boolean
-}) {
+} & LinkResolutionProps) => {
   const hasTypeMembers = row.typeMembers && row.typeMembers.length > 0
 
   return (
@@ -97,7 +124,11 @@ function MemberRowGroup({
         <TableCell className="text-muted-foreground max-w-75 font-mono text-xs break-all whitespace-normal">
           {row.typeLink ? (
             <a
-              href={`#${createSlug(row.typeLink)}`}
+              href={
+                row.typeLink.startsWith("/") || row.typeLink.includes("#")
+                  ? row.typeLink
+                  : `#${createSlug(row.typeLink)}`
+              }
               className="border-border bg-muted/60 hover:bg-muted inline-flex rounded border px-1.5 py-0.5 font-mono text-xs underline decoration-dotted underline-offset-2"
             >
               {row.type}
@@ -117,7 +148,13 @@ function MemberRowGroup({
           >
             <div className="ml-4 flex flex-col gap-1.5">
               {row.description && (
-                <DescriptionBlock>{row.description}</DescriptionBlock>
+                <DescriptionBlock
+                  symbolIndex={symbolIndex}
+                  currentPageHref={currentPageHref}
+                  excluded={excluded}
+                >
+                  {row.description}
+                </DescriptionBlock>
               )}
               {row.defaultValue && (
                 <span className="text-muted-foreground inline-flex items-center gap-1 text-xs">
@@ -165,17 +202,51 @@ function MemberRowGroup({
                 <tbody>
                   {/* oxlint-disable-next-line typescript/no-non-null-assertion */}
                   {row.typeMembers!.map((m) => (
-                    <UITableRow key={m.name}>
-                      <TableCell className="text-foreground max-w-75 font-mono text-xs font-semibold break-all whitespace-normal">
-                        {m.name}
-                        {m.isOptional ? "?" : ""}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground max-w-75 font-mono text-xs break-all whitespace-normal">
-                        <code className="border-border bg-muted/60 inline-flex rounded border px-1.5 py-0.5 font-mono text-xs">
-                          {m.type}
-                        </code>
-                      </TableCell>
-                    </UITableRow>
+                    <Fragment key={m.name}>
+                      <UITableRow>
+                        <TableCell className="text-foreground max-w-75 font-mono text-xs font-semibold break-all whitespace-normal">
+                          {m.name}
+                          {m.isOptional ? "?" : ""}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground max-w-75 font-mono text-xs break-all whitespace-normal">
+                          {m.typeLink ? (
+                            <a
+                              href={
+                                m.typeLink.startsWith("/") ||
+                                m.typeLink.includes("#")
+                                  ? m.typeLink
+                                  : `#${createSlug(m.typeLink)}`
+                              }
+                              className="border-border bg-muted/60 hover:bg-muted inline-flex rounded border px-1.5 py-0.5 font-mono text-xs underline decoration-dotted underline-offset-2"
+                            >
+                              {m.type}
+                            </a>
+                          ) : (
+                            <code className="border-border bg-muted/60 inline-flex rounded border px-1.5 py-0.5 font-mono text-xs">
+                              {m.type}
+                            </code>
+                          )}
+                        </TableCell>
+                      </UITableRow>
+                      {m.description && (
+                        <UITableRow>
+                          <TableCell
+                            colSpan={2}
+                            className="text-muted-foreground whitespace-normal"
+                          >
+                            <div className="ml-4">
+                              <DescriptionBlock
+                                symbolIndex={symbolIndex}
+                                currentPageHref={currentPageHref}
+                                excluded={excluded}
+                              >
+                                {m.description}
+                              </DescriptionBlock>
+                            </div>
+                          </TableCell>
+                        </UITableRow>
+                      )}
+                    </Fragment>
                   ))}
                 </tbody>
               </UITable>

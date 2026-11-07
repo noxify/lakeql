@@ -1,0 +1,46 @@
+---
+title: Package Map
+navTitle: Package Map
+description: Public vs. internal packages and how they relate.
+---
+
+LakeQL is a monorepo of focused packages. This page focuses on what an application touches directly. For how the packages depend on each other, see [Package Architecture](/docs/lakeql/contributing/architecture) in the contributing section.
+
+## Imported Directly
+
+| Package | Role | Documented under |
+| --- | --- | --- |
+| `@lakeql/config` | Load config, compose the runtime | [packages/config](/docs/packages/config) |
+| `@lakeql/api` | GraphQL server runtime | [api](/docs/api) |
+| `@lakeql/adapter-trino` | Trino adapter | [data-sources/trino](/docs/data-sources/trino) |
+| `@lakeql/adapter-fabric` | Fabric adapter | [data-sources/fabric](/docs/data-sources/fabric) |
+| `@lakeql/query-builder` | Filters, sorting, paging → SQL | [packages/query-builder](/docs/packages/query-builder) |
+| `@lakeql/cli` | Introspection and generation (dev dependency) | [cli](/docs/cli) |
+
+## Standalone Clients
+
+Used below the data-source abstraction, or on their own:
+
+| Package | Role | Documented under |
+| --- | --- | --- |
+| `@lakeql/trino-client` | Trino REST client | [packages/trino-client](/docs/packages/trino-client) |
+| `@lakeql/fabric-client` | Fabric SQL client | [packages/fabric-client](/docs/packages/fabric-client) |
+
+## Internal packages
+
+Most apps get these transitively through the packages above rather than installing them directly.
+
+| Package | Role |
+| --- | --- |
+| `@lakeql/datasource` | The core contracts: data source, strategies, factories, auth, capabilities, and errors. |
+| `@lakeql/sql-read-strategy` | Adapter-neutral SQL read orchestration and validation. |
+| `@lakeql/response-transformer` | Schema-aware transformation of decoded records into typed objects. |
+| `@lakeql/schema-generator` | Generates endpoint and mutation schemas from parsed metadata. |
+| `@lakeql/file-generator` | Writes the generated TypeScript endpoint and config files. |
+| `@lakeql/column-parser` | Parses engine column type strings into structured type objects. |
+| `@lakeql/storage` | External-storage write pipeline, serializers, and table managers. |
+| `@lakeql/parquet` | Parquet schema and serialization. |
+| `@lakeql/helpers` | Shared low-level utilities. |
+| `@lakeql/logger` | Shared structured logging with field redaction. |
+
+`@lakeql/datasource` is the one internal package whose contracts you see in type signatures. Its reference lives under [data-sources](/docs/data-sources/overview/api-reference).

@@ -1,19 +1,22 @@
 import path from "node:path"
 
 import { info } from "@lakeql/logger/console"
-import { TrinoClient } from "@lakeql/trino-client"
 import { loadConfig as c12LoadConfig } from "c12"
 import { Listr } from "listr2"
 import { ZodError } from "zod/v4"
 
-import type { BulkPullConfig } from "@/bulk-pull-config"
+import type { BulkPullConfig, BulkPullEntry } from "@/bulk-pull-config"
 import { validateBulkPullConfig } from "@/bulk-pull-config"
 import { runConfigRegistryGeneration } from "@/commands/create-registry"
-import { resolveSourcePath } from "@/config"
-import { getEnv } from "@/env"
-import { CliError, createTrinoConnectionError } from "@/errors"
+import { loadConfig, resolveSourcePath } from "@/config"
+import { CliError, createDataSourceConnectionError } from "@/errors"
+import { listrRendererOptions } from "@/listr-renderer"
 import { DEFAULT_PULL_CONCURRENCY } from "@/options"
 import { getInvocationCwd } from "@/path-utils"
+import { assertValidNamePrefix } from "@/pipeline/derive-names"
+import { resolveCatalog } from "@/resolve-catalog"
+import type { ResolvedDataSource } from "@/resolve-datasource"
+import { resolveDataSource } from "@/resolve-datasource"
 
 import { executePull } from "./pull-action"
 
@@ -85,6 +88,8 @@ export interface BulkPullOptions {
   sourcePathOverride?: string
   /** Skip config registry generation. */
   skipRegistry: boolean
+  /** CLI --source flag for data source selection. */
+  sourceFlag?: string
 }
 
 /**
@@ -141,8 +146,73 @@ export async function loadBulkConfig(
 }
 
 /**
+ * A bulk pull entry paired with the data source name it resolves to. The
+ * effective data source is the entry's explicit `dataSource` or, in a
+ * single-source project (or when `--source` pins one), the sole/pinned source.
+ */
+interface ResolvedEntry {
+  entry: BulkPullEntry
+  dataSourceName: string
+}
+
+/**
+ * Determines each entry's effective data source and applies the maintainer
+ * rule: a single-source project (or a `--source` filter) may omit
+ * `dataSource`; a multi-source project requires it per entry.
+ *
+ * @throws {CliError} When an entry names an unknown data source, or when it
+ * omits `dataSource` in a multi-source project with no `--source` filter.
+ */
+function resolveEntryDataSources(
+  config: BulkPullConfig,
+  configuredSourceNames: string[],
+  sourceFlag: string | undefined
+): ResolvedEntry[] {
+  const isSingleSource = configuredSourceNames.length === 1
+  const [soleSource] = configuredSourceNames
+
+  return config.map((entry) => {
+    if (entry.dataSource) {
+      if (!configuredSourceNames.includes(entry.dataSource)) {
+        throw new CliError(
+          `Bulk entry (catalog=${entry.catalog ?? "<resolved>"}, schema=${entry.schema}) references unknown data source "${entry.dataSource}".`,
+          {
+            code: "BULK_DATASOURCE_NOT_FOUND",
+            hint: `Available data sources: ${configuredSourceNames.join(", ")}.`,
+          }
+        )
+      }
+      return { entry, dataSourceName: entry.dataSource }
+    }
+
+    // No explicit dataSource on the entry.
+    if (sourceFlag) {
+      return { entry, dataSourceName: sourceFlag }
+    }
+
+    if (isSingleSource && soleSource) {
+      return { entry, dataSourceName: soleSource }
+    }
+
+    throw new CliError(
+      `Bulk entry (catalog=${entry.catalog ?? "<resolved>"}, schema=${entry.schema}) is missing "dataSource".`,
+      {
+        code: "BULK_DATASOURCE_REQUIRED",
+        hint: `Multiple data sources are configured (${configuredSourceNames.join(", ")}). Set "dataSource" on each entry, or pass --source to pull a single source.`,
+      }
+    )
+  })
+}
+
+/**
  * Executes the bulk pull — loads the config, then processes all entries
  * concurrently using listr2 for structured terminal output.
+ *
+ * Multi-source: without `--source`, every entry is resolved against its own
+ * `dataSource`; with `--source <value>`, entries are filtered to that source.
+ * A `dataSource`-less entry is treated as belonging to the `--source` value
+ * when one is given, so it is kept by the filter. Each distinct data source is
+ * resolved once, cached, and closed at the end — even on failure.
  */
 export async function executeBulkPull(options: BulkPullOptions): Promise<void> {
   const {
@@ -151,10 +221,11 @@ export async function executeBulkPull(options: BulkPullOptions): Promise<void> {
     concurrency = DEFAULT_PULL_CONCURRENCY,
     sourcePathOverride,
     skipRegistry,
+    sourceFlag,
   } = options
 
-  const env = getEnv()
   const resolvedTargetPath = await resolveSourcePath(sourcePathOverride)
+
   let config: BulkPullConfig
   try {
     config = await loadBulkConfig(configPath)
@@ -182,231 +253,359 @@ export async function executeBulkPull(options: BulkPullOptions): Promise<void> {
     return
   }
 
-  const runWithPullSlot = createConcurrencyLimiter(concurrency)
+  // Determine which data sources the project configures so we can validate the
+  // per-entry dataSource rule and (with --source) filter entries.
+  const project = await loadConfig()
+  const configuredSourceNames = Object.keys(project.config.dataSources)
 
-  const tasks = new Listr(
-    [
-      {
-        title: "Pull data",
-        task: (_, task) =>
-          task.newListr(
-            config.map((entry) => {
-              const catalog = cliCatalog ?? entry.catalog ?? env.HIVE_CATALOG
-              const tableCount = entry.tables?.length ?? 0
-              const viewCount = entry.views?.length ?? 0
-              const itemCount = tableCount + viewCount
-              const useCompactProgress = itemCount > LARGE_BULK_ENTRY_THRESHOLD
-
-              return {
-                title: `${catalog}/${entry.schema} — ${itemCount} item(s)`,
-                task: async (_ctx, subtask) => {
-                  let completed = 0
-                  const activeItems = new Set<string>()
-                  const parallelism = Math.min(concurrency, itemCount)
-
-                  const updateCompactOutput = () => {
-                    const activeList = [...activeItems]
-                      .slice(0, MAX_ACTIVE_PREVIEW)
-                      .map((name) => `  - ${catalog}.${entry.schema}.${name}`)
-                      .join("\n")
-
-                    const extraActive =
-                      activeItems.size > MAX_ACTIVE_PREVIEW
-                        ? `\n  ... +${activeItems.size - MAX_ACTIVE_PREVIEW} more active`
-                        : ""
-
-                    subtask.output = `Completed ${completed}/${itemCount} | Active ${activeItems.size}/${parallelism}${activeList ? `\n${activeList}${extraActive}` : ""}`
-                  }
-
-                  if (useCompactProgress) {
-                    updateCompactOutput()
-                  }
-
-                  const trinoClient = new TrinoClient({
-                    auth: {
-                      password: env.HIVE_PASSWORD,
-                      type: "basic",
-                      username: env.HIVE_USERNAME,
-                    },
-                    catalog,
-                    host: env.HIVE_HOST,
-                    port: env.HIVE_PORT,
-                  })
-
-                  const runSingleItemPull = async (
-                    itemName: string,
-                    itemKind: "tables" | "views"
-                  ) => {
-                    try {
-                      await runWithPullSlot(() =>
-                        executePull({
-                          trinoClient,
-                          catalog,
-                          schema: entry.schema,
-                          tables: [itemName],
-                          resolvedTargetPath,
-                          skipRegistry: true,
-                          sourcePathOverride,
-                        })
-                      )
-                    } catch (error) {
-                      throw createTrinoConnectionError(
-                        itemKind === "tables" ? "pull tables" : "pull views",
-                        `bulk pull (catalog=${catalog}, schema=${entry.schema}, ${itemKind}=${itemName})`,
-                        error
-                      )
-                    }
-                  }
-
-                  if (useCompactProgress) {
-                    const queue = [
-                      ...(entry.tables?.map((itemName) => ({
-                        itemKind: "tables" as const,
-                        itemName,
-                      })) ?? []),
-                      ...(entry.views?.map((itemName) => ({
-                        itemKind: "views" as const,
-                        itemName,
-                      })) ?? []),
-                    ]
-
-                    const failedItems: {
-                      itemName: string
-                      itemKind: "tables" | "views"
-                      error: Error
-                    }[] = []
-
-                    const worker = async () => {
-                      // oxlint-disable-next-line no-unreachable-loop
-                      while (queue.length > 0) {
-                        const nextItem = queue.shift()
-                        if (!nextItem) {
-                          return
-                        }
-
-                        activeItems.add(nextItem.itemName)
-                        updateCompactOutput()
-
-                        try {
-                          // oxlint-disable-next-line no-await-in-loop
-                          await runSingleItemPull(
-                            nextItem.itemName,
-                            nextItem.itemKind
-                          )
-                          completed += 1
-                        } catch (error) {
-                          failedItems.push({
-                            itemName: nextItem.itemName,
-                            itemKind: nextItem.itemKind,
-                            error:
-                              error instanceof Error
-                                ? error
-                                : new Error(String(error)),
-                          })
-                        } finally {
-                          activeItems.delete(nextItem.itemName)
-                          updateCompactOutput()
-                        }
-                      }
-                    }
-
-                    await Promise.all(
-                      Array.from({ length: parallelism }, () => worker())
-                    )
-
-                    if (failedItems.length > 0) {
-                      const failureDetails = failedItems.map(
-                        ({ itemName, itemKind, error }) => {
-                          const rootMessage =
-                            getRootCauseMessage(error) || error.message
-                          return `${itemName} (${itemKind}): ${rootMessage}`
-                        }
-                      )
-
-                      const firstError = failedItems[0]?.error
-                      if (!firstError) {
-                        throw new Error("Failed to collect error information")
-                      }
-
-                      throw new CliError(
-                        `${catalog}/${entry.schema} — ${completed}/${itemCount} item(s) pulled.\nFailed items:\n  - ${failureDetails.join("\n  - ")}`,
-                        {
-                          code: "BULK_PULL_PARTIAL_FAILURE",
-                          cause: firstError,
-                        }
-                      )
-                    }
-
-                    subtask.output = `Completed ${completed}/${itemCount}`
-                    subtask.title = `${catalog}/${entry.schema} — ${itemCount} item(s) pulled`
-                    return
-                  }
-
-                  if (entry.tables && entry.tables.length > 0) {
-                    const { tables } = entry
-                    subtask.output = `Pulling ${tables.length} table(s)...`
-                    try {
-                      await runWithPullSlot(() =>
-                        executePull({
-                          trinoClient,
-                          catalog,
-                          schema: entry.schema,
-                          tables,
-                          resolvedTargetPath,
-                          skipRegistry: true,
-                          sourcePathOverride,
-                        })
-                      )
-                    } catch (error) {
-                      throw createTrinoConnectionError(
-                        "pull tables",
-                        `bulk pull (catalog=${catalog}, schema=${entry.schema}, tables=${tables.join(",")})`,
-                        error
-                      )
-                    }
-                  }
-
-                  if (entry.views && entry.views.length > 0) {
-                    const { views } = entry
-                    subtask.output = `Pulling ${views.length} view(s)...`
-                    try {
-                      await runWithPullSlot(() =>
-                        executePull({
-                          trinoClient,
-                          catalog,
-                          schema: entry.schema,
-                          tables: views,
-                          resolvedTargetPath,
-                          skipRegistry: true,
-                          sourcePathOverride,
-                        })
-                      )
-                    } catch (error) {
-                      throw createTrinoConnectionError(
-                        "pull views",
-                        `bulk pull (catalog=${catalog}, schema=${entry.schema}, views=${views.join(",")})`,
-                        error
-                      )
-                    }
-                  }
-
-                  subtask.title = `${catalog}/${entry.schema} — ${itemCount} item(s) pulled`
-                },
-              }
-            }),
-            { concurrent: true, exitOnError: false }
-          ),
-      },
-      {
-        title: "Create registry",
-        enabled: !skipRegistry,
-        task: async () => {
-          await runConfigRegistryGeneration(sourcePathOverride)
-        },
-      },
-    ],
-    { concurrent: false, exitOnError: true }
+  // Resolve each entry's effective data source up front (fail-fast on an
+  // unknown or ambiguous source, before any network I/O).
+  const resolvedEntries = resolveEntryDataSources(
+    config,
+    configuredSourceNames,
+    sourceFlag
   )
 
-  await tasks.run()
+  // --source is a FILTER: keep only entries belonging to the pinned source.
+  const filteredEntries = sourceFlag
+    ? resolvedEntries.filter((re) => re.dataSourceName === sourceFlag)
+    : resolvedEntries
+
+  if (filteredEntries.length === 0) {
+    // oxlint-disable-next-line no-console
+    console.log(info("No entries found in bulk config."))
+    return
+  }
+
+  // A per-entry `catalog` is the most specific level and overrides the
+  // resolved catalog. The resolved catalog (from `resolveCatalog`) is only ever
+  // used as a fallback for entries that omit `catalog`. So a source only needs
+  // catalog resolution when at least one of its entries omits `catalog` — and
+  // for those, `resolveCatalog` may drop into an interactive "Choose a catalog"
+  // prompt. In bulk mode (generated configs always carry an explicit catalog),
+  // resolving unconditionally would wrongly prompt, so compute up front which
+  // sources actually need resolution and skip it for the rest.
+  const sourcesNeedingCatalog = new Set(
+    filteredEntries
+      .filter(({ entry }) => !entry.catalog)
+      .map((re) => re.dataSourceName)
+  )
+
+  // Lazily resolve each distinct data source exactly once and cache the
+  // instance so every entry for that source shares a connection.
+  const sourceCache = new Map<
+    string,
+    {
+      resolved: ResolvedDataSource
+      resolvedCatalog: string | undefined
+    }
+  >()
+
+  // Every data-source instance we actually opened, tracked independently of
+  // sourceCache so the finally block can close it even when validation
+  // (prefix/catalog) throws before the entry lands in sourceCache.
+  const openedInstances: ResolvedDataSource["instance"][] = []
+
+  const getSource = async (name: string) => {
+    const cached = sourceCache.get(name)
+    if (cached) {
+      return cached
+    }
+
+    const resolved = await resolveDataSource(name)
+    // Record the opened instance immediately so it is closed in finally even
+    // if the prefix/catalog validation below throws.
+    openedInstances.push(resolved.instance)
+
+    // Validate the per-data-source prefix the moment the source is first
+    // resolved — before any pull work or network I/O for it — so an invalid
+    // prefix fails fast with the clear INVALID_NAME_PREFIX CliError instead of
+    // being masked per item by createDataSourceConnectionError inside the pull
+    // loop. Uses the same validator deriveNames applies at generate time.
+    assertValidNamePrefix(resolved.config.namePrefix, resolved.name)
+
+    // Only resolve (and possibly prompt for) a catalog when some entry for this
+    // source omits its own `catalog`. Sources whose entries all specify a
+    // catalog never need the resolved fallback, so skip resolution entirely.
+    const resolvedCatalog = sourcesNeedingCatalog.has(name)
+      ? await resolveCatalog({
+          dataSource: resolved.instance,
+          catalogFlag: cliCatalog,
+          connectionCatalog: (
+            resolved.config.connection as { catalog?: string }
+          )?.catalog,
+        })
+      : undefined
+
+    const entry = { resolved, resolvedCatalog }
+    sourceCache.set(name, entry)
+    return entry
+  }
+
+  // Pre-resolve every distinct source now so prefix validation and catalog
+  // resolution fail fast (matching the previous single-source behaviour), and
+  // so the finally block can close exactly the instances we opened.
+  const distinctSourceNames = [
+    ...new Set(filteredEntries.map((re) => re.dataSourceName)),
+  ]
+
+  try {
+    for (const name of distinctSourceNames) {
+      // oxlint-disable-next-line no-await-in-loop
+      await getSource(name)
+    }
+
+    const runWithPullSlot = createConcurrencyLimiter(concurrency)
+
+    const tasks = new Listr(
+      [
+        {
+          title: "Pull data",
+          task: (_, task) =>
+            task.newListr(
+              filteredEntries.map(({ entry, dataSourceName }) => {
+                // The source was pre-resolved above, so this is always cached.
+                const source = sourceCache.get(dataSourceName)
+                if (!source) {
+                  throw new CliError(
+                    `Data source "${dataSourceName}" was not resolved.`,
+                    { code: "BULK_DATASOURCE_NOT_RESOLVED" }
+                  )
+                }
+                const { resolved, resolvedCatalog } = source
+                const dataSource = resolved.instance
+                const { namePrefix } = resolved.config
+
+                // The entry's own catalog wins; otherwise fall back to the
+                // catalog resolved for this source (guaranteed present, since a
+                // catalog-less entry forces its source into resolution above).
+                const catalog = entry.catalog ?? resolvedCatalog
+                if (!catalog) {
+                  throw new CliError(
+                    `Bulk entry (schema=${entry.schema}) has no catalog and none could be resolved for data source "${dataSourceName}".`,
+                    { code: "BULK_CATALOG_UNRESOLVED" }
+                  )
+                }
+                const tableCount = entry.tables?.length ?? 0
+                const viewCount = entry.views?.length ?? 0
+                const itemCount = tableCount + viewCount
+                const useCompactProgress =
+                  itemCount > LARGE_BULK_ENTRY_THRESHOLD
+
+                return {
+                  title: `${catalog}/${entry.schema} — ${itemCount} item(s)`,
+                  task: async (_ctx, subtask) => {
+                    let completed = 0
+                    const activeItems = new Set<string>()
+                    const parallelism = Math.min(concurrency, itemCount)
+
+                    const updateCompactOutput = () => {
+                      const activeList = [...activeItems]
+                        .slice(0, MAX_ACTIVE_PREVIEW)
+                        .map((name) => `  - ${catalog}.${entry.schema}.${name}`)
+                        .join("\n")
+
+                      const extraActive =
+                        activeItems.size > MAX_ACTIVE_PREVIEW
+                          ? `\n  ... +${activeItems.size - MAX_ACTIVE_PREVIEW} more active`
+                          : ""
+
+                      subtask.output = `Completed ${completed}/${itemCount} | Active ${activeItems.size}/${parallelism}${activeList ? `\n${activeList}${extraActive}` : ""}`
+                    }
+
+                    if (useCompactProgress) {
+                      updateCompactOutput()
+                    }
+
+                    const runSingleItemPull = async (
+                      itemName: string,
+                      itemKind: "tables" | "views"
+                    ) => {
+                      try {
+                        await runWithPullSlot(() =>
+                          executePull({
+                            dataSource,
+                            dataSourceName,
+                            catalog,
+                            schema: entry.schema,
+                            tables: [itemName],
+                            resolvedTargetPath,
+                            skipRegistry: true,
+                            sourcePathOverride,
+                            namePrefix,
+                          })
+                        )
+                      } catch (error) {
+                        throw createDataSourceConnectionError(
+                          itemKind === "tables" ? "pull tables" : "pull views",
+                          `bulk pull (catalog=${catalog}, schema=${entry.schema}, ${itemKind}=${itemName})`,
+                          error
+                        )
+                      }
+                    }
+
+                    if (useCompactProgress) {
+                      const queue = [
+                        ...(entry.tables?.map((itemName) => ({
+                          itemKind: "tables" as const,
+                          itemName,
+                        })) ?? []),
+                        ...(entry.views?.map((itemName) => ({
+                          itemKind: "views" as const,
+                          itemName,
+                        })) ?? []),
+                      ]
+
+                      const failedItems: {
+                        itemName: string
+                        itemKind: "tables" | "views"
+                        error: Error
+                      }[] = []
+
+                      const worker = async () => {
+                        // oxlint-disable-next-line no-unreachable-loop
+                        while (queue.length > 0) {
+                          const nextItem = queue.shift()
+                          if (!nextItem) {
+                            return
+                          }
+
+                          activeItems.add(nextItem.itemName)
+                          updateCompactOutput()
+
+                          try {
+                            // oxlint-disable-next-line no-await-in-loop
+                            await runSingleItemPull(
+                              nextItem.itemName,
+                              nextItem.itemKind
+                            )
+                            completed += 1
+                          } catch (error) {
+                            failedItems.push({
+                              itemName: nextItem.itemName,
+                              itemKind: nextItem.itemKind,
+                              error:
+                                error instanceof Error
+                                  ? error
+                                  : new Error(String(error)),
+                            })
+                          } finally {
+                            activeItems.delete(nextItem.itemName)
+                            updateCompactOutput()
+                          }
+                        }
+                      }
+
+                      await Promise.all(
+                        Array.from({ length: parallelism }, () => worker())
+                      )
+
+                      if (failedItems.length > 0) {
+                        const failureDetails = failedItems.map(
+                          ({ itemName, itemKind, error }) => {
+                            const rootMessage =
+                              getRootCauseMessage(error) || error.message
+                            return `${itemName} (${itemKind}): ${rootMessage}`
+                          }
+                        )
+
+                        const firstError = failedItems[0]?.error
+                        if (!firstError) {
+                          throw new Error("Failed to collect error information")
+                        }
+
+                        throw new CliError(
+                          `${catalog}/${entry.schema} — ${completed}/${itemCount} item(s) pulled.\nFailed items:\n  - ${failureDetails.join("\n  - ")}`,
+                          {
+                            code: "BULK_PULL_PARTIAL_FAILURE",
+                            cause: firstError,
+                          }
+                        )
+                      }
+
+                      subtask.output = `Completed ${completed}/${itemCount}`
+                      subtask.title = `${catalog}/${entry.schema} — ${itemCount} item(s) pulled`
+                      return
+                    }
+
+                    if (entry.tables && entry.tables.length > 0) {
+                      const { tables } = entry
+                      subtask.output = `Pulling ${tables.length} table(s)...`
+                      try {
+                        await runWithPullSlot(() =>
+                          executePull({
+                            dataSource,
+                            dataSourceName,
+                            catalog,
+                            schema: entry.schema,
+                            tables,
+                            resolvedTargetPath,
+                            skipRegistry: true,
+                            sourcePathOverride,
+                            namePrefix,
+                          })
+                        )
+                      } catch (error) {
+                        throw createDataSourceConnectionError(
+                          "pull tables",
+                          `bulk pull (catalog=${catalog}, schema=${entry.schema}, tables=${tables.join(",")})`,
+                          error
+                        )
+                      }
+                    }
+
+                    if (entry.views && entry.views.length > 0) {
+                      const { views } = entry
+                      subtask.output = `Pulling ${views.length} view(s)...`
+                      try {
+                        await runWithPullSlot(() =>
+                          executePull({
+                            dataSource,
+                            dataSourceName,
+                            catalog,
+                            schema: entry.schema,
+                            tables: views,
+                            resolvedTargetPath,
+                            skipRegistry: true,
+                            sourcePathOverride,
+                            namePrefix,
+                          })
+                        )
+                      } catch (error) {
+                        throw createDataSourceConnectionError(
+                          "pull views",
+                          `bulk pull (catalog=${catalog}, schema=${entry.schema}, views=${views.join(",")})`,
+                          error
+                        )
+                      }
+                    }
+
+                    subtask.title = `${catalog}/${entry.schema} — ${itemCount} item(s) pulled`
+                  },
+                }
+              }),
+              { concurrent: true, exitOnError: false }
+            ),
+        },
+        {
+          title: "Create registry",
+          enabled: !skipRegistry,
+          task: async () => {
+            await runConfigRegistryGeneration(sourcePathOverride)
+          },
+        },
+      ],
+      { concurrent: false, exitOnError: true, ...listrRendererOptions() }
+    )
+
+    await tasks.run()
+  } finally {
+    // Close every opened source, even on failure (including a source whose
+    // prefix/catalog validation threw before it reached sourceCache).
+    // allSettled so one source's close rejection does not prevent the others
+    // from closing.
+    await Promise.allSettled(
+      openedInstances.map((instance) => instance.close())
+    )
+  }
 }

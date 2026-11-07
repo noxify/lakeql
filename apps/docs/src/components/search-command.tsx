@@ -1,15 +1,16 @@
 "use client"
 
 import { Autocomplete } from "@base-ui/react/autocomplete"
-import { search as oramaSearch } from "@orama/orama"
-import { restore } from "@orama/plugin-data-persistence"
+import { restore } from "@zbsearch/plugin-data-persistence"
 import { FileIcon, HashIcon, Search, TextIcon } from "lucide-react"
 import { addBasePath } from "next/dist/client/add-base-path"
 import { useRouter } from "next/navigation"
 import * as React from "react"
+import { search as oramaSearch } from "zbsearch"
 
 import { normalizeInternalHref } from "@/lib/normalize-internal-href"
 
+import { orderHitsByTypeThenScore } from "./search-ranking"
 import { Dialog, DialogContent } from "./ui/dialog"
 import { ScrollArea } from "./ui/scroll-area"
 
@@ -19,7 +20,7 @@ export interface SearchCommandItem {
   href?: string
   group?: string
   hint?: string
-  description?: string
+  descriptionParts?: SnippetParts
   documentType?: "page" | "heading" | "text"
   pageId?: string
   pageTitle?: string
@@ -60,7 +61,7 @@ interface SearchCommandContextValue {
   setOpen: React.Dispatch<React.SetStateAction<boolean>>
 }
 
-interface OramaSearchDocument {
+interface ZBSearchDocument {
   id: string
   page_id: string
   type: "page" | "heading" | "text"
@@ -72,12 +73,12 @@ interface OramaSearchDocument {
   breadcrumb: string
 }
 
-interface OramaSearchHit {
+interface ZBSearchHit {
   score?: number
-  document?: Partial<OramaSearchDocument>
+  document?: Partial<ZBSearchDocument>
 }
 
-interface OramaSearchResult {
+interface ZBSearchResult {
   hits?: unknown
 }
 
@@ -165,21 +166,31 @@ function groupItems(items: SearchCommandItem[]): SearchCommandGroup[] {
       (item) => item.documentType === "page"
     )
 
+    // A synthetic page header inherits the best (lowest) resultOrder of the
+    // group's real hits. It must NOT use -Infinity: group ordering is decided
+    // by Math.min(resultOrder) across a group's items, so -Infinity would float
+    // every synthetic-header group above a group whose real page hit ranked #0
+    // (e.g. the Getting Started landing page). typeOrder still sorts this
+    // header to the top WITHIN its own group.
+    const syntheticPageOrder = Math.min(
+      ...pageItems.map((item) => item.resultOrder ?? Number.MAX_SAFE_INTEGER)
+    )
+
     const enrichedItems = hasExplicitPageItem
       ? pageItems
       : [
           {
-            value: `doc-page-${pageId}`,
-            label: pageTitle,
-            href: pageHref,
+            documentType: "page" as const,
             group: "Documentation",
             hint: pageHint,
-            documentType: "page" as const,
-            pageId,
-            pageTitle,
+            href: pageHref,
+            label: pageTitle,
             pageHint,
             pageHref,
-            resultOrder: Number.NEGATIVE_INFINITY,
+            pageId,
+            pageTitle,
+            resultOrder: syntheticPageOrder,
+            value: `doc-page-${pageId}`,
           },
           ...pageItems,
         ]
@@ -197,10 +208,10 @@ function groupItems(items: SearchCommandItem[]): SearchCommandGroup[] {
     })
 
     return {
-      key: `page-${pageId}`,
-      value: pageTitle,
-      subtitle: pageHint,
       items: enrichedItems,
+      key: `page-${pageId}`,
+      subtitle: pageHint,
+      value: pageTitle,
     }
   })
 
@@ -225,9 +236,9 @@ function groupItems(items: SearchCommandItem[]): SearchCommandGroup[] {
 
   const otherGroups = [...groupedOther.entries()].map(
     ([value, groupedItems]) => ({
+      items: groupedItems,
       key: `group-${value}`,
       value,
-      items: groupedItems,
     })
   )
 
@@ -276,9 +287,7 @@ function filterItemsByCollection(
   return items.filter((item) => matchesCollection(item, selectedCollection))
 }
 
-function formatHint(
-  document: Partial<OramaSearchDocument>
-): string | undefined {
+function formatHint(document: Partial<ZBSearchDocument>): string | undefined {
   const parentBreadcrumb =
     typeof document.breadcrumb === "string"
       ? document.breadcrumb.split(" > ").slice(0, -1).join(" > ")
@@ -288,9 +297,12 @@ function formatHint(
     return parentBreadcrumb
   }
 
-  return typeof document.section === "string" && document.section.length > 0
-    ? document.section
-    : undefined
+  // No parent segment (a top-level section landing page, e.g. breadcrumb
+  // "LakeQL"): return undefined so the group renders its properly-cased
+  // pageTitle. Do NOT fall back to `document.section` — that is a raw
+  // lowercase collection slug ("lakeql", "data-sources") and would show as a
+  // broken lowercase group label.
+  return undefined
 }
 
 function stripMarkdown(content: string): string {
@@ -301,13 +313,111 @@ function stripMarkdown(content: string): string {
     .trim()
 }
 
-function toSnippet(content: string, maxLength = 120): string {
-  const cleaned = stripMarkdown(content)
-  if (cleaned.length <= maxLength) {
-    return cleaned
+/**
+ * A snippet split into the text before the matched query term, the matched
+ * term itself (preserving the source casing), and the text after it. When no
+ * query term is found, only `before` is populated and `match`/`after` are
+ * empty strings, so the preview falls back to a head-of-text excerpt.
+ */
+interface SnippetParts {
+  before: string
+  match: string
+  after: string
+}
+
+/**
+ * Collect the individual query terms used for snippet matching, lower-cased
+ * and de-duplicated. Terms shorter than two characters are dropped so that
+ * stray single characters do not anchor the preview window.
+ */
+function snippetQueryTerms(query: string): string[] {
+  const terms = query
+    .toLowerCase()
+    .split(/\s+/u)
+    .map((term) => term.trim())
+    .filter((term) => term.length >= 2)
+
+  return [...new Set(terms)]
+}
+
+/**
+ * Find the earliest case-insensitive occurrence of any query term in the
+ * cleaned content. Returns the match offset and length, or `undefined` when no
+ * term matches.
+ */
+function firstQueryMatch(
+  haystack: string,
+  terms: string[]
+): { index: number; length: number } | undefined {
+  const lowerHaystack = haystack.toLowerCase()
+
+  let best: { index: number; length: number } | undefined
+  for (const term of terms) {
+    const index = lowerHaystack.indexOf(term)
+    if (index !== -1 && (best === undefined || index < best.index)) {
+      best = { index, length: term.length }
+    }
   }
 
-  return `${cleaned.slice(0, maxLength).trimEnd()}...`
+  return best
+}
+
+/**
+ * Build a preview snippet for a text block. When a query term is present, the
+ * snippet is a window centred on the first match with leading/trailing
+ * ellipses, and `match` carries the matched substring for highlighting. When
+ * no term matches (e.g. a stemmed hit), it falls back to a head-of-text
+ * excerpt in `before`.
+ *
+ * @param content - The raw markdown text block.
+ * @param query - The active search query; may contain multiple terms.
+ * @param maxLength - Target length of the snippet in characters.
+ */
+function toSnippet(content: string, query = "", maxLength = 120): SnippetParts {
+  const cleaned = stripMarkdown(content)
+  const terms = snippetQueryTerms(query)
+  const match = terms.length > 0 ? firstQueryMatch(cleaned, terms) : undefined
+
+  if (!match) {
+    const head =
+      cleaned.length <= maxLength
+        ? cleaned
+        : `${cleaned.slice(0, maxLength).trimEnd()}...`
+    return { after: "", before: head, match: "" }
+  }
+
+  // Centre a window of `maxLength` characters on the match.
+  const matchEnd = match.index + match.length
+  const slack = Math.max(0, maxLength - match.length)
+  const windowStart = Math.max(0, match.index - Math.floor(slack / 2))
+  const windowEnd = Math.min(cleaned.length, matchEnd + Math.ceil(slack / 2))
+
+  const leadingEllipsis = windowStart > 0 ? "..." : ""
+  const trailingEllipsis = windowEnd < cleaned.length ? "..." : ""
+
+  const before = `${leadingEllipsis}${cleaned.slice(windowStart, match.index)}`
+  const matchedText = cleaned.slice(match.index, matchEnd)
+  const after = `${cleaned.slice(matchEnd, windowEnd).trimEnd()}${trailingEllipsis}`
+
+  return { after, before, match: matchedText }
+}
+
+/**
+ * Render a snippet, highlighting the matched query term. When there is no
+ * match the snippet degrades to plain text (only `before` is populated).
+ */
+function SnippetText({ parts }: { parts: SnippetParts }): React.ReactElement {
+  return (
+    <>
+      {parts.before}
+      {parts.match ? (
+        <mark className="text-foreground bg-transparent font-medium">
+          {parts.match}
+        </mark>
+      ) : null}
+      {parts.after}
+    </>
+  )
 }
 
 function filterCommandItems(
@@ -339,25 +449,6 @@ function filterCommandItems(
   })
 }
 
-function orderHitsByScore(hits: OramaSearchHit[]): OramaSearchHit[] {
-  const ordered: OramaSearchHit[] = []
-
-  for (const hit of hits) {
-    const score = hit.score ?? 0
-    const insertAt = ordered.findIndex(
-      (current) => (current.score ?? 0) < score
-    )
-
-    if (insertAt === -1) {
-      ordered.push(hit)
-    } else {
-      ordered.splice(insertAt, 0, hit)
-    }
-  }
-
-  return ordered
-}
-
 const SearchCommandContext =
   React.createContext<SearchCommandContextValue | null>(null)
 
@@ -379,20 +470,24 @@ function useSearchCommand() {
   }
 }
 
-export function SearchCommandProvider({
+/* oxlint-disable react/no-object-type-as-default-prop, react-doctor/rerender-memo-with-default-value -- acceptable for this pattern */
+// oxlint-disable-next-line react-doctor/no-giant-component -- intentionally large component
+export const SearchCommandProvider = ({
   children,
   items = defaultItems,
-  // oxlint-disable-next-line react/no-object-type-as-default-prop
   availableCollections = [],
   placeholder = "Search...",
   emptyMessage = "Nothing found with this search params.",
   enableKeyboardShortcut = true,
-}: SearchCommandProviderProps) {
+}: SearchCommandProviderProps) => {
+  /* oxlint-enable react/no-object-type-as-default-prop, react-doctor/rerender-memo-with-default-value */
   const [open, setOpen] = React.useState(false)
   const [searchValue, setSearchValue] = React.useState("")
   const [selectedCollection, setSelectedCollection] = React.useState("all")
+  /* oxlint-disable react-doctor/no-derived-useState -- initial value from props is intentional */
   const [searchResults, setSearchResults] =
     React.useState<SearchCommandItem[]>(items)
+  /* oxlint-enable react-doctor/no-derived-useState */
   const [error, setError] = React.useState<string | null>(null)
   const [isPending, startTransition] = React.useTransition()
   const groupedItems = React.useMemo(
@@ -440,19 +535,22 @@ export function SearchCommandProvider({
 
     const sorted = [...optionMap.entries()]
       .toSorted(([, aLabel], [, bLabel]) => collator.compare(aLabel, bLabel))
-      .map(([value, label]) => ({ value, label }))
+      .map(([value, label]) => ({ label, value }))
 
-    return [{ value: "all", label: "All" }, ...sorted]
+    return [{ label: "All", value: "all" }, ...sorted]
   }, [availableCollections, items, searchResults, selectedCollection])
 
+  /* oxlint-disable react-doctor/no-derived-state -- syncing filtered results with prop/state changes */
   React.useEffect(() => {
     if (searchValue.length > 0) {
       return
     }
 
-    // oxlint-disable-next-line react/react-compiler
+    // Derive filtered results when items/collection change and no query is active.
+    // oxlint-disable-next-line react/react-compiler react/set-state-in-effect
     setSearchResults(filterItemsByCollection(items, selectedCollection))
   }, [items, searchValue, selectedCollection])
+  /* oxlint-enable react-doctor/no-derived-state */
 
   const loadSearchIndex = React.useCallback(async () => {
     if (indexRef.current) {
@@ -487,6 +585,7 @@ export function SearchCommandProvider({
 
       const [pageResult, headingResult, textResult] = await Promise.all([
         oramaSearch(index, {
+          boost: { content: 1, title: 5 },
           distinctOn: "url",
           limit: 10,
           properties: ["title", "content"],
@@ -496,8 +595,9 @@ export function SearchCommandProvider({
               eq: "page",
             },
           },
-        }) as Promise<OramaSearchResult>,
+        }) as Promise<ZBSearchResult>,
         oramaSearch(index, {
+          boost: { content: 1, heading: 2 },
           distinctOn: "url",
           limit: 10,
           properties: ["heading", "content"],
@@ -507,8 +607,9 @@ export function SearchCommandProvider({
               eq: "heading",
             },
           },
-        }) as Promise<OramaSearchResult>,
+        }) as Promise<ZBSearchResult>,
         oramaSearch(index, {
+          boost: { content: 1, heading: 1 },
           distinctOn: "url",
           limit: 10,
           properties: ["content", "heading"],
@@ -518,21 +619,22 @@ export function SearchCommandProvider({
               eq: "text",
             },
           },
-        }) as Promise<OramaSearchResult>,
+        }) as Promise<ZBSearchResult>,
       ])
 
-      const hits = orderHitsByScore([
+      const hits = orderHitsByTypeThenScore([
         ...(Array.isArray(pageResult.hits)
-          ? (pageResult.hits as OramaSearchHit[])
+          ? (pageResult.hits as ZBSearchHit[])
           : []),
         ...(Array.isArray(headingResult.hits)
-          ? (headingResult.hits as OramaSearchHit[])
+          ? (headingResult.hits as ZBSearchHit[])
           : []),
         ...(Array.isArray(textResult.hits)
-          ? (textResult.hits as OramaSearchHit[])
+          ? (textResult.hits as ZBSearchHit[])
           : []),
       ])
 
+      // oxlint-disable-next-line react-doctor/js-combine-iterations -- readability over single-pass
       return hits
         .map((hit, indexPosition): SearchCommandItem | null => {
           const { document } = hit
@@ -558,35 +660,35 @@ export function SearchCommandProvider({
               ? document.heading || document.title
               : document.title
 
-          const description =
+          const descriptionParts =
             document.type === "text" && typeof document.content === "string"
-              ? toSnippet(document.content)
+              ? toSnippet(document.content, query)
               : undefined
 
           return {
-            value: `doc-${document.id ?? indexPosition}`,
-            label: label ?? "",
-            href,
-            group: "Documentation",
-            hint: formatHint(document),
-            description,
-            documentType: document.type,
-            pageId:
-              typeof document.page_id === "string"
-                ? document.page_id
-                : undefined,
-            pageTitle: document.title,
-            pageHint: formatHint(document),
-            pageHref:
-              typeof document.page_id === "string"
-                ? normalizeHref(document.page_id)
-                : href,
-            resultOrder: indexPosition,
             collection:
               getCollectionFromHref(href) ??
               (typeof document.section === "string"
                 ? normalizeCollection(document.section)
                 : undefined),
+            descriptionParts,
+            documentType: document.type,
+            group: "Documentation",
+            hint: formatHint(document),
+            href,
+            label: label ?? "",
+            pageHint: formatHint(document),
+            pageHref:
+              typeof document.page_id === "string"
+                ? normalizeHref(document.page_id)
+                : href,
+            pageId:
+              typeof document.page_id === "string"
+                ? document.page_id
+                : undefined,
+            pageTitle: document.title,
+            resultOrder: indexPosition,
+            value: `doc-${document.id ?? indexPosition}`,
           }
         })
         .filter((item): item is SearchCommandItem => item !== null)
@@ -607,10 +709,12 @@ export function SearchCommandProvider({
         return
       }
 
+      // oxlint-disable-next-line react-doctor/async-defer-await -- early return guard is clearer than reordering
       startTransition(async () => {
         setError(null)
 
         try {
+          // oxlint-disable-next-line react-doctor/async-defer-await -- awaiting before abort check is acceptable
           const [documentationMatches, commandMatches] = await Promise.all([
             runSearch(nextSearchValue, nextCollection),
             Promise.resolve(
@@ -700,7 +804,7 @@ export function SearchCommandProvider({
   }
 
   return (
-    // oxlint-disable-next-line react/jsx-no-constructed-context-values
+    // oxlint-disable-next-line react/jsx-no-constructed-context-values -- value changes trigger necessary re-renders
     <SearchCommandContext.Provider value={{ open, setOpen }}>
       {children}
 
@@ -766,14 +870,8 @@ export function SearchCommandProvider({
                     items={group.items}
                     className="not-last:mb-2"
                   >
-                    <Autocomplete.GroupLabel className="text-muted-foreground px-2 py-1 text-xs font-medium tracking-wide uppercase">
-                      {group.subtitle ? (
-                        <span className="text-muted-foreground/80 normal-case">
-                          {group.subtitle}
-                        </span>
-                      ) : (
-                        group.value
-                      )}
+                    <Autocomplete.GroupLabel className="text-muted-foreground/80 px-2 py-1 text-xs font-medium tracking-wide">
+                      {group.subtitle ?? group.value}
                     </Autocomplete.GroupLabel>
                     <Autocomplete.Collection>
                       {(item: SearchCommandItem) => (
@@ -796,9 +894,9 @@ export function SearchCommandProvider({
 
                             <div className="min-w-0">
                               <div className="truncate">{item.label}</div>
-                              {item.description ? (
+                              {item.descriptionParts ? (
                                 <div className="text-muted-foreground line-clamp-1 text-xs">
-                                  {item.description}
+                                  <SnippetText parts={item.descriptionParts} />
                                 </div>
                               ) : null}
                             </div>
@@ -843,10 +941,10 @@ export function SearchCommandProvider({
   )
 }
 
-export function SearchCommand({ children }: SearchCommandProps) {
+export const SearchCommand = ({ children }: SearchCommandProps) => {
   const { open, setOpen } = useSearchCommand()
 
-  // oxlint-disable-next-line react/no-react-children
+  // oxlint-disable-next-line react/no-react-children -- needed for dynamic child inspection
   const childArray = React.Children.toArray(children)
   const onlyChild = childArray.length === 1 ? childArray[0] : null
 
@@ -862,7 +960,7 @@ export function SearchCommand({ children }: SearchCommandProps) {
 
   const childOnClick = triggerChild.props.onClick
 
-  // oxlint-disable-next-line react/no-clone-element
+  // oxlint-disable-next-line react/no-clone-element -- needed to inject props into command items
   return React.cloneElement(triggerChild, {
     "aria-expanded": open,
     "aria-haspopup": "dialog",

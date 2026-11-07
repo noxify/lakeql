@@ -5,6 +5,7 @@ import { createSlug } from "renoun"
 import { isDirectory, isFile } from "renoun/file-system"
 import type { z } from "zod"
 
+import { resolvePackagePath } from "@/components/mdx/api-reference/utils"
 import { cachePromise } from "@/lib/cache-promise"
 import { analyzeSyntacticExports } from "@/lib/ts-morph-analysis"
 
@@ -249,9 +250,9 @@ const _entryFrontmatterCache = new Map<
   Promise<Frontmatter | undefined>
 >()
 
+collectionHelperGlobals.__docsEntryFrontmatterCache ??= _entryFrontmatterCache
 const _sharedEntryFrontmatterCache =
-  (collectionHelperGlobals.__docsEntryFrontmatterCache ??=
-    _entryFrontmatterCache)
+  collectionHelperGlobals.__docsEntryFrontmatterCache
 
 export async function getEntryFrontmatter(entry: EntryType) {
   const cacheKey = entry.getPathname({ includeBasePathname: true })
@@ -348,6 +349,72 @@ export async function getSections(
 
 export function getRootSections() {
   return AllDocumentation.getRootEntries() as EntryType[]
+}
+
+/**
+ * An item resolved for {@link PageList}: the title and description come from the
+ * target page's frontmatter, so they never need to be maintained twice.
+ */
+export interface PageListItem {
+  title: string
+  description: string
+  path: string
+}
+
+/**
+ * Normalizes a page reference to collection-relative pathname segments.
+ *
+ * Accepts `"lakeql/introduction/overview"`, a leading slash, or a leading
+ * `docs/` / `/docs/` prefix, so authors can paste the same path they use in a
+ * link.
+ */
+function toPageSegments(reference: string): string[] {
+  return reference
+    .replace(/^\/+/u, "")
+    .replace(/^docs\//u, "")
+    .split("/")
+    .filter(Boolean)
+}
+
+/**
+ * Resolves a list of documentation page references to {@link PageListItem}s,
+ * reading each page's title and description from its frontmatter.
+ *
+ * References that do not resolve to an existing page are skipped, so a typo
+ * drops the item rather than failing the build. Order is preserved.
+ *
+ * @param references - Page paths relative to `/docs` (e.g.
+ *   `"lakeql/introduction/overview"`). A leading slash or `docs/` prefix is
+ *   tolerated.
+ */
+export async function resolvePageListItems(
+  references: readonly string[]
+): Promise<PageListItem[]> {
+  const resolved = await Promise.all(
+    references.map(async (reference) => {
+      const segments = toPageSegments(reference)
+
+      if (segments.length === 0) {
+        return null
+      }
+
+      const file = await getFileContentByPathCached(segments.join("/"))
+
+      if (!file) {
+        return null
+      }
+
+      const frontmatter = await getMetadata(file)
+
+      return {
+        description: frontmatter?.description ?? "",
+        path: `/docs/${segments.join("/")}`,
+        title: frontmatter ? getTitle(file, frontmatter, true) : file.title,
+      } satisfies PageListItem
+    })
+  )
+
+  return resolved.filter((item): item is PageListItem => item !== null)
 }
 
 /**
@@ -654,51 +721,71 @@ export function kindToLabel(kind: string): string {
   )
 }
 
+/**
+ * Resolves the exported symbols documented by a page's `apiReference`
+ * frontmatter, mirroring the anchors the rendered reference sections produce.
+ *
+ * Each entry's optional `exclude` list removes the named top-level exports from
+ * the result, so callers (notably the link validator's allowed-anchor set) stay
+ * in parity with the rendered page: an excluded symbol's anchor is never
+ * treated as valid. Entries without `exclude` behave exactly as before.
+ *
+ * @param references - The frontmatter `apiReference` entries. `exclude` is
+ *   optional per entry; an absent or empty list excludes nothing.
+ * @returns One {@link ApiReferenceResult} per successfully resolved file, with
+ *   excluded exports omitted. Files that fail to resolve are dropped.
+ */
 export const getApiReferenceExports = cache(
   async (
-    references: { name: string; file: string }[]
+    references: { name: string; file: string; exclude?: string[] }[]
   ): Promise<ApiReferenceResult[]> => {
     const results = await Promise.all(
-      references.map((ref) =>
-        cachePromise(_apiReferenceCache, ref.file, async () => {
+      references.map((ref) => {
+        const excluded = new Set(ref.exclude)
+        // Key the cache by file + exclude so two pages referencing the same
+        // file with different exclusions do not share a filtered result.
+        const cacheKey =
+          excluded.size > 0
+            ? `${ref.file}::exclude=${[...excluded].toSorted().join(",")}`
+            : ref.file
+
+        return cachePromise(_apiReferenceCache, cacheKey, async () => {
           try {
-            const filePath = path.resolve(
-              process.cwd(),
-              "../../packages",
-              `${ref.file}.ts`
-            )
+            const filePath = resolvePackagePath(ref.file)
 
             // Use lightweight syntactic analysis instead of full type resolution
             const syntacticExports = await analyzeSyntacticExports(filePath)
 
             // Build export metadata purely from ts-morph analysis (no renoun getExports)
-            const exports = syntacticExports.map((info) => {
-              const slug = createSlug(info.name)
+            const exports = syntacticExports
+              .filter((info) => !excluded.has(info.name))
+              .map((info) => {
+                const slug = createSlug(info.name)
 
-              const methods =
-                info.kind === "Class" && info.methods
-                  ? info.methods.map((methodName) => ({
-                      slug: `${slug}-${createSlug(methodName)}`,
-                      name: methodName,
-                      title: methodName,
-                    }))
-                  : undefined
+                const methods =
+                  info.kind === "Class" && info.methods
+                    ? info.methods.map((methodName) => ({
+                        slug: `${slug}-${createSlug(methodName)}`,
+                        name: methodName,
+                        title: methodName,
+                      }))
+                    : undefined
 
-              return {
-                slug,
-                name: info.name,
-                title: info.name,
-                kind: info.kind ? kindToLabel(info.kind) : null,
-                methods,
-              }
-            })
+                return {
+                  slug,
+                  name: info.name,
+                  title: info.name,
+                  kind: info.kind ? kindToLabel(info.kind) : null,
+                  methods,
+                }
+              })
 
             return { name: ref.name, exports }
           } catch {
             return null
           }
         })
-      )
+      })
     )
     return results.filter((r): r is ApiReferenceResult => r !== null)
   }

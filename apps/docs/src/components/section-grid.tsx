@@ -8,6 +8,13 @@ import {
   resolveDocEntry,
 } from "@/collection-helpers"
 import { GradientGridBackground } from "@/components/grid-background"
+import {
+  Item,
+  ItemContent,
+  ItemDescription,
+  ItemGroup,
+  ItemTitle,
+} from "@/components/ui/item"
 import { cn } from "@/lib/utils"
 
 interface SectionGridItem {
@@ -24,16 +31,21 @@ interface GridElement {
 
 type SectionItem = Awaited<ReturnType<typeof getSections>>[number]
 
+/** How a {@link SectionGrid} renders its entries. */
+export type SectionGridVariant = "card" | "list"
+
 type SectionGridProps =
   | {
       sections: Awaited<ReturnType<typeof getSections>>
       items?: never
       className?: string
+      variant?: SectionGridVariant
     }
   | {
       items: readonly SectionGridItem[]
       sections?: never
       className?: string
+      variant?: SectionGridVariant
     }
 
 function isEmptyInput(
@@ -124,6 +136,31 @@ export default async function SectionGrid(props: SectionGridProps) {
       seenPaths.add(path)
       elements.push(element)
     }
+  }
+
+  const variant = props.variant ?? "card"
+
+  if (variant === "list") {
+    return (
+      <ItemGroup className={cn("not-prose mt-8", props.className)}>
+        {elements.map((ele, index) => (
+          <Item
+            key={index}
+            variant="outline"
+            render={<Link href={ele.path} prefetch={false} />}
+          >
+            <ItemContent>
+              <ItemTitle className="text-foreground group-hover/item:text-foreground">
+                {ele.title}
+              </ItemTitle>
+              {ele.description ? (
+                <ItemDescription>{ele.description}</ItemDescription>
+              ) : null}
+            </ItemContent>
+          </Item>
+        ))}
+      </ItemGroup>
+    )
   }
 
   return (

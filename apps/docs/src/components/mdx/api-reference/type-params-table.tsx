@@ -11,7 +11,7 @@ import type { ResolvedTypeParam } from "@/lib/ts-morph-analysis"
 
 import { DescriptionBlock } from "./description-block"
 
-export function TypeParamsTable({
+export const TypeParamsTable = ({
   sectionSlug,
   typeParams,
   templateTags,
@@ -19,7 +19,7 @@ export function TypeParamsTable({
   sectionSlug: string
   typeParams: ResolvedTypeParam[]
   templateTags?: { name: string; text?: string }[]
-}) {
+}) => {
   // Extract @template descriptions keyed by param name
   const templateDescriptions = new Map<string, string>()
 

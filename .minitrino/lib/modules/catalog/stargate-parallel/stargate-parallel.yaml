@@ -1,5 +1,6 @@
 ---
 services:
+
   minitrino:
     volumes:
       - ./modules/catalog/stargate-parallel/resources/cluster/stargate_parallel.properties:/mnt/etc/catalog/stargate_parallel.properties:ro

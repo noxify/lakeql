@@ -2,7 +2,7 @@
 
 import { useSidebar } from "@/components/ui/sidebar"
 
-export function DocsLeftRailBackground() {
+export const DocsLeftRailBackground = () => {
   const { open, isMobile } = useSidebar()
 
   const width = !isMobile && open ? "var(--docs-left-rail-width)" : "0px"

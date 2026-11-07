@@ -23,10 +23,10 @@ export function toRawHref(slug: readonly string[]): string {
 
 export function textResponse(body: string): Response {
   return new Response(body, {
-    status: 200,
     headers: {
       "Content-Type": "text/plain; charset=utf-8",
     },
+    status: 200,
   })
 }
 
@@ -91,6 +91,7 @@ function dedupeSlugPaths(
 export async function getNormalizedDocPaths(): Promise<string[][]> {
   const entries = await staticRoutes()
 
+  // oxlint-disable-next-line react-doctor/js-combine-iterations -- readability over single-pass
   const normalized = entries
     .map((entryPathSegments) => removeFromArray(entryPathSegments, ["docs"]))
     .map((slug) => {

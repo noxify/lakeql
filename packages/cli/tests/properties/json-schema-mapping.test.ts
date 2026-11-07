@@ -1,7 +1,6 @@
 // oxlint-disable typescript/no-non-null-assertion
 // oxlint-disable vitest/no-conditional-expect
 // oxlint-disable import/no-named-as-default-member
-// Feature: custom-endpoint-cli, Property 5: Field definitions to JSON Schema mapping
 
 import { generateJsonSchemaFromFields } from "@lakeql/schema-generator/json-schema"
 import fc from "fast-check"
@@ -197,7 +196,7 @@ function fieldDefinitionsArb(
 
 // --- Tests ---
 
-describe("Property 5: Field definitions to JSON Schema mapping", () => {
+describe("Field definitions to JSON Schema mapping", () => {
   it("root schema has $schema, type:'object', properties, and additionalProperties:false", () => {
     fc.assert(
       fc.property(fieldDefinitionsArb(4), (fields) => {

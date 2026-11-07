@@ -1,0 +1,30 @@
+---
+title: Scope Authorization
+navTitle: Scope Authorization
+description: How LakeQL authorizes fields through Pothos scope-auth.
+---
+
+Authorization runs at the schema level through Pothos's scope-auth plugin. Each generated field declares the scopes it requires. The builder evaluates them against the request context before the resolver runs.
+
+## The Scopes
+
+The schema builder defines three auth scopes:
+
+- `authorized` — true when there is an authenticated current user.
+- `readPermission` — checks read access for the field's data source, catalog, schema, and table.
+- `writePermission` — the same, for writes.
+
+`readPermission` and `writePermission` delegate to the resolvers on your config ([`hasReadPermission`](/docs/api/authentication/permissions) / `hasWritePermission`). They fall back to the built-in checks. The two are not symmetric. See the default behavior below.
+
+## Evaluation
+
+The default strategy is `any`. Errors during scope evaluation count as unauthorized. When authorization fails, LakeQL surfaces the first underlying error rather than a generic message. That includes a permission-denied (403) from the data source. See [error handling](/docs/api/customization/error-handling).
+
+## Default Behavior
+
+The two permission scopes default differently:
+
+- **`readPermission`** — when no matching rule exists, a human user is allowed and a service principal is denied. The adapter enforces its own access control for the human user. The identity resolver flags which one the caller is, keeping machine callers least-privilege by default.
+- **`writePermission`** — denied for everyone without an explicit matching `Mutation` rule, regardless of principal type. Writes are opt-in.
+
+See [permissions](/docs/api/authentication/permissions) for how to declare rules.

@@ -4,6 +4,7 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
+      "env": ["LAKEQL_PKG_SHA", "LAKEQL_TEMPLATE_REF"],
       "outputs": [
         ".next/**",
         "!.next/cache/**",

@@ -7,7 +7,7 @@ type RenderIconProps = {
 } & React.Attributes &
   LucideProps
 
-export function RenderIcon({ icon, ...props }: RenderIconProps) {
+export const RenderIcon = ({ icon, ...props }: RenderIconProps) => {
   if (!icon) {
     return null
   }

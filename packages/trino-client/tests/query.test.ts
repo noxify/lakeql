@@ -1,6 +1,6 @@
-import { http, HttpResponse } from "msw"
+import { http, HttpResponse } from "msw/http"
 import { setupServer } from "msw/node"
-import { afterAll, afterEach, beforeAll, describe, expect, test } from "vitest"
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest"
 
 import { TrinoClientError, TrinoQueryError } from "../src"
 import type { QueryResult } from "../src"
@@ -17,12 +17,12 @@ import {
 const server = setupServer(...singlePageHandlers())
 
 describe("query()", () => {
-  beforeAll(() => server.listen({ onUnhandledRequest: "error" }))
+  beforeAll(() => server.listen({ onUnhandledFrame: "error" }))
   afterEach(() => server.resetHandlers())
 
   afterAll(() => server.close())
 
-  test("returns data from a single-page response", async () => {
+  it("returns data from a single-page response", async () => {
     server.use(...singlePageHandlers([["a"], ["b"]]))
 
     const client = createClient()
@@ -31,7 +31,7 @@ describe("query()", () => {
     expect(result).toStrictEqual([["a"], ["b"]])
   })
 
-  test("collects data across multiple pages (follows nextUri)", async () => {
+  it("collects data across multiple pages (follows nextUri)", async () => {
     server.use(...multiPageHandlers())
 
     const client = createClient()
@@ -47,7 +47,7 @@ describe("query()", () => {
     ])
   })
 
-  test("returns empty array when no data in response", async () => {
+  it("returns empty array when no data in response", async () => {
     server.use(
       http.post(`${mockUrl}/v1/statement`, () =>
         HttpResponse.json({
@@ -74,7 +74,7 @@ describe("query()", () => {
     expect(result).toStrictEqual([])
   })
 
-  test("keeps initial statement data and follows nextUri", async () => {
+  it("keeps initial statement data and follows nextUri", async () => {
     server.use(...statementWithDataHandlers())
 
     const client = createClient()
@@ -88,7 +88,7 @@ describe("query()", () => {
     ])
   })
 
-  test("throws TrinoQueryError when Trino returns an error in response", async () => {
+  it("throws TrinoQueryError when Trino returns an error in response", async () => {
     server.use(
       http.post(`${mockUrl}/v1/statement`, () =>
         HttpResponse.json({
@@ -121,7 +121,7 @@ describe("query()", () => {
     )
   })
 
-  test("throws TrinoClientError on non-2xx HTTP status", async () => {
+  it("throws TrinoClientError on non-2xx HTTP status", async () => {
     server.use(
       http.post(
         `${mockUrl}/v1/statement`,
@@ -135,7 +135,7 @@ describe("query()", () => {
     )
   })
 
-  test("passes impersonateAs as X-Trino-User header", async () => {
+  it("passes impersonateAs as X-Trino-User header", async () => {
     let capturedUser: string | null = null
 
     server.use(

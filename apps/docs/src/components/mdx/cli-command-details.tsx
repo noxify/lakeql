@@ -1,6 +1,9 @@
+// oxlint-disable react/no-unstable-nested-components
 import "server-only"
 import type { CommandOptionMeta } from "@lakeql/cli"
 import { getCommandConfig } from "@lakeql/cli"
+import { getCreateAppCommandConfig } from "@lakeql/create-app/metadata"
+import { MDX as Mdx } from "renoun"
 
 import {
   Table,
@@ -10,6 +13,29 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+
+function resolveConfig(command: string) {
+  if (command === "create-app") {
+    return getCreateAppCommandConfig()
+  }
+  return getCommandConfig(command)
+}
+
+/**
+ * Escapes MDX-significant characters in CLI metadata descriptions.
+ *
+ * Command descriptions are plain text that may legitimately contain `{`, `}`,
+ * or `<` (for example `import.config.{mjs,ts,js,json}`). Because they are
+ * rendered through the MDX parser to support inline `` `code` `` spans, those
+ * characters would otherwise be parsed as JSX expressions or tags and break the
+ * build. Backticks are deliberately left intact so code spans still render.
+ */
+function escapeMdxText(text: string): string {
+  return text
+    .replaceAll("{", "\\{")
+    .replaceAll("}", "\\}")
+    .replaceAll("<", "\\<")
+}
 
 function formatDefault(opt: CommandOptionMeta): string | null {
   if (opt.defaultValueDescription) {
@@ -40,8 +66,8 @@ interface CliCommandDetailsProps {
  * <CliCommandDetails command="pull" />
  * ```
  */
-export function CliCommandDetails({ command }: CliCommandDetailsProps) {
-  const config = getCommandConfig(command)
+export const CliCommandDetails = ({ command }: CliCommandDetailsProps) => {
+  const config = resolveConfig(command)
 
   return (
     <div className="not-prose my-6 space-y-8">
@@ -70,7 +96,21 @@ export function CliCommandDetails({ command }: CliCommandDetailsProps) {
                         {arg.variadic ? "..." : ""}
                       </code>
                     </TableCell>
-                    <TableCell className="text-sm">{arg.description}</TableCell>
+                    <TableCell className="text-sm">
+                      <Mdx
+                        components={{
+                          code: (props) => (
+                            <code
+                              className="bg-muted text-foreground rounded px-1 py-0.5 text-[0.85em]"
+                              {...props}
+                            />
+                          ),
+                          p: (props) => <p className="m-0" {...props} />,
+                        }}
+                      >
+                        {escapeMdxText(arg.description)}
+                      </Mdx>
+                    </TableCell>
                     <TableCell className="text-sm">
                       {arg.required ? "Yes" : "No"}
                     </TableCell>
@@ -98,9 +138,20 @@ export function CliCommandDetails({ command }: CliCommandDetailsProps) {
               {opt.flags}
             </h3>
 
-            <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
-              {opt.description}
-            </p>
+            <div className="text-muted-foreground mt-2 text-sm leading-relaxed">
+              <Mdx
+                components={{
+                  code: (props) => (
+                    <code
+                      className="bg-muted text-foreground rounded px-1 py-0.5 text-[0.85em]"
+                      {...props}
+                    />
+                  ),
+                }}
+              >
+                {escapeMdxText(opt.description)}
+              </Mdx>
+            </div>
 
             <div className="mt-3">
               <Table variant="outline">
@@ -123,6 +174,23 @@ export function CliCommandDetails({ command }: CliCommandDetailsProps) {
                       </code>
                     </TableCell>
                   </TableRow>
+                  {opt.choices && opt.choices.length > 0 && (
+                    <TableRow>
+                      <TableCell className="text-sm font-medium">
+                        Choices
+                      </TableCell>
+                      <TableCell className="flex flex-wrap gap-1.5">
+                        {opt.choices.map((choice) => (
+                          <code
+                            key={choice}
+                            className="border-border bg-muted/60 rounded border px-1.5 py-0.5 font-mono text-xs"
+                          >
+                            {choice}
+                          </code>
+                        ))}
+                      </TableCell>
+                    </TableRow>
+                  )}
                   <TableRow>
                     <TableCell className="text-sm font-medium">
                       Required

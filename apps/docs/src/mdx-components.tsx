@@ -8,6 +8,7 @@ import { createSlug } from "renoun/mdx"
 import { ApiReference } from "@/components/mdx/api-reference"
 import { CliCommandDetails } from "@/components/mdx/cli-command-details"
 import { CommandWrapper as Command } from "@/components/mdx/command"
+import { MdxFileTree } from "@/components/mdx/file-tree"
 import { Heading } from "@/components/mdx/heading"
 import {
   ImageHandler,
@@ -15,11 +16,10 @@ import {
 } from "@/components/mdx/image-handler"
 import { LinkHandler } from "@/components/mdx/link-handler"
 import { MermaidDiagram } from "@/components/mdx/mermaid"
+import { PageList } from "@/components/mdx/page-list"
 import { RailroadDiagram } from "@/components/mdx/railroad"
-import {
-  StepperComponent,
-  StepperItemComponent,
-} from "@/components/mdx/stepper"
+import { Step, Steps } from "@/components/mdx/steps"
+import { MdxTerminal } from "@/components/mdx/terminal"
 import {
   Accordion as BaseAccordion,
   AccordionContent as BaseAccordionContent,
@@ -194,16 +194,8 @@ export function useMDXComponents() {
       </div>
     ),
 
-    Stepper: ({ children }: { children: ReactNode }) => (
-      <StepperComponent>{children}</StepperComponent>
-    ),
-    StepperItem: ({
-      title,
-      children,
-    }: {
-      title: string
-      children: ReactNode
-    }) => <StepperItemComponent title={title}>{children}</StepperItemComponent>,
+    Steps,
+    Step,
 
     Tabs: ({
       defaultValue,
@@ -308,5 +300,8 @@ export function useMDXComponents() {
     Command,
     CliCommandDetails,
     ApiReference,
+    Terminal: MdxTerminal,
+    FileTree: MdxFileTree,
+    PageList,
   } satisfies MDXComponents
 }

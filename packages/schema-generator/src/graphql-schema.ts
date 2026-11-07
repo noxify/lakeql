@@ -1,6 +1,7 @@
 import replaceSpecialCharacters from "@lakeql/helpers/special-characters"
+import { toCapitalize } from "@lakeql/helpers/string-case"
+import { omit } from "es-toolkit"
 import type { JSONSchema7 } from "json-schema"
-import { capitalize, omit } from "lodash-es"
 
 export interface CurrentModelResponse {
   name: string
@@ -155,7 +156,7 @@ export const generateModel = ({
     )
   }
 
-  const modelKey = isRoot ? name : `${parent}_${capitalize(name)}`
+  const modelKey = isRoot ? name : `${parent}_${toCapitalize(name)}`
 
   nestedModels[modelKey] = {
     dateTimeFields: Object.values(currentModel)
@@ -196,7 +197,7 @@ export const generateFieldDefinition = ({
   fieldDefinition,
   parent,
 }: GenerateFieldDefinitionProps): FieldDefinitionResponse => {
-  const capitalizedName = capitalize(fieldName)
+  const capitalizedName = toCapitalize(fieldName)
   switch (fieldDefinition.type) {
     case "string": {
       switch (fieldDefinition.format) {

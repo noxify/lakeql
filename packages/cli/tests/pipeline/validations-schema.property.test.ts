@@ -160,9 +160,9 @@ const fieldsWithValidationsArb = fc.uniqueArray(fieldWithValidationsArb, {
   selector: (item) => item.field.name,
 })
 
-// --- Property Tests ---
+// --- Tests ---
 
-describe("Property 11: Zod Validation Schema Generation Correctness", () => {
+describe("Zod Validation Schema Generation Correctness", () => {
   it("derives the correct base Zod type from the field type", () => {
     fc.assert(
       fc.property(fieldWithValidationsArb, ({ field, fieldType }) => {

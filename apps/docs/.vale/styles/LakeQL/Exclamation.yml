@@ -1,0 +1,6 @@
+extends: existence
+message: "Remove the exclamation point. Technical docs stay even in tone."
+level: warning
+nonword: true
+tokens:
+  - '\w!(?:\s|$)'

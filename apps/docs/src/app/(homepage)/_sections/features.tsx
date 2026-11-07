@@ -1,75 +1,80 @@
+import { Activity, Filter, Layers, Lock, RefreshCw, Shield } from "lucide-react"
 import { Space_Grotesk } from "next/font/google"
 
 import { PageContainer } from "@/components/page-container"
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card"
 
 const spaceGrotesk = Space_Grotesk({ subsets: ["latin"] })
 
 const features = [
   {
-    title: "Intuitive CLI & API",
+    icon: <Layers className="size-5" />,
+    title: "Type-safe GraphQL APIs",
     description:
-      "Get started in minutes with a modern CLI and a flexible API that fit naturally into existing backend and platform workflows.",
+      "Adapter-agnostic query generation with full TypeScript support. Get autocomplete and compile-time checks for your entire data layer.",
   },
   {
-    title: "Flexible filtering",
+    icon: <RefreshCw className="size-5" />,
+    title: "CLI-based schema generation",
     description:
-      "Apply expressive filters to handle complex query conditions across fields, helping teams narrow large datasets with confidence.",
+      "Pull live catalog metadata from multiple sources and generate typed schemas that stay in sync as upstream tables evolve.",
   },
   {
-    title: "Open source & transparent",
+    icon: <Filter className="size-5" />,
+    title: "Filtering, sorting & pagination",
     description:
-      "Built as open source with a transparent architecture and reusable packages across API, CLI, and tooling for long-term maintainability.",
+      "Built-in support for expressive filters, sorting, and pagination with engine-specific SQL dialect generation.",
   },
   {
-    title: "Support for complex data types",
+    icon: <Shield className="size-5" />,
+    title: "Adapter-agnostic permissions",
     description:
-      "Query and process nested and structured data types without flattening everything first, while keeping your schema predictable.",
+      "Define access rules per dataSource and table name. Enforce them consistently across every connected adapter.",
   },
   {
-    title: "GraphQL interface for flexible queries",
+    icon: <Activity className="size-5" />,
+    title: "OpenTelemetry tracing",
     description:
-      "Expose a modern GraphQL interface so consumers can request exactly the data they need through clear, flexible query patterns.",
+      "Optional per-DataSource tracing out of the box. Monitor query latency, errors, and throughput with your existing observability stack.",
   },
   {
-    title: "Automatic/dynamic GraphQL schema generation",
+    icon: <Lock className="size-5" />,
+    title: "Flexible authentication",
     description:
-      "Generate GraphQL schemas from your data sources through the CLI to reduce manual boilerplate and keep your API aligned with metadata changes.",
+      "OAuth2, Basic Auth, and Bearer token authentication with configurable impersonation strategies per DataSource.",
   },
 ]
 
-export function FeaturesSection() {
-  return (
-    <section className="py-24">
-      <PageContainer>
-        <div className="mb-12 text-center">
-          <h2
-            className="text-3xl font-semibold tracking-tight"
-            style={{ fontFamily: spaceGrotesk.style.fontFamily }}
+export const FeaturesSection = () => (
+  <section className="border-border bg-muted/40 border-b">
+    <PageContainer className="py-24">
+      <div className="mb-14 text-center">
+        <h2
+          className="text-foreground text-3xl font-semibold tracking-tight sm:text-4xl"
+          style={{ fontFamily: spaceGrotesk.style.fontFamily }}
+        >
+          Powerful features
+        </h2>
+        <p className="text-muted-foreground mx-auto mt-4 max-w-xl text-lg text-pretty">
+          Everything you need to query, govern, and ship data products faster.
+        </p>
+      </div>
+
+      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        {features.map((feature) => (
+          <div
+            key={feature.title}
+            className="border-border bg-card group rounded-2xl border p-6 transition-shadow hover:shadow-md"
           >
-            Powerful features
-          </h2>
-          <p className="text-muted-foreground mt-3 text-lg">
-            Everything you need to build predictable, type-safe data APIs with
-            LakeQL.
-          </p>
-        </div>
-        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
-          {features.map((feature, idx) => (
-            <Card key={idx}>
-              <CardHeader>
-                <CardTitle>{feature.title}</CardTitle>
-                <CardDescription>{feature.description}</CardDescription>
-              </CardHeader>
-            </Card>
-          ))}
-        </div>
-      </PageContainer>
-    </section>
-  )
-}
+            <div className="bg-brand/10 text-brand mb-4 flex size-10 items-center justify-center rounded-lg">
+              {feature.icon}
+            </div>
+            <h3 className="text-foreground font-semibold">{feature.title}</h3>
+            <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
+              {feature.description}
+            </p>
+          </div>
+        ))}
+      </div>
+    </PageContainer>
+  </section>
+)

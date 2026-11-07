@@ -1,6 +1,6 @@
-import { http, HttpResponse } from "msw"
+import { http, HttpResponse } from "msw/http"
 import { setupServer } from "msw/node"
-import { afterAll, afterEach, beforeAll, describe, expect, test } from "vitest"
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest"
 
 import type { QueryResult } from "../src"
 import { baseStats, createClient, mockUrl, State } from "./helpers"
@@ -38,12 +38,12 @@ function convenienceHandlers(data: unknown[][]) {
 const server = setupServer(...convenienceHandlers([["item1"], ["item2"]]))
 
 describe("convenience methods", () => {
-  beforeAll(() => server.listen({ onUnhandledRequest: "error" }))
+  beforeAll(() => server.listen({ onUnhandledFrame: "error" }))
   afterEach(() => server.resetHandlers())
 
   afterAll(() => server.close())
 
-  test("schemas() returns flat string array", async () => {
+  it("schemas() returns flat string array", async () => {
     server.use(...convenienceHandlers([["public"], ["information_schema"]]))
 
     const client = createClient()
@@ -52,7 +52,7 @@ describe("convenience methods", () => {
     expect(result).toStrictEqual(["public", "information_schema"])
   })
 
-  test("tables() returns flat string array", async () => {
+  it("tables() returns flat string array", async () => {
     server.use(...convenienceHandlers([["users"], ["orders"]]))
 
     const client = createClient()
@@ -61,7 +61,7 @@ describe("convenience methods", () => {
     expect(result).toStrictEqual(["users", "orders"])
   })
 
-  test("views() returns flat string array", async () => {
+  it("views() returns flat string array", async () => {
     server.use(...convenienceHandlers([["active_users"], ["daily_report"]]))
 
     const client = createClient()
@@ -70,7 +70,7 @@ describe("convenience methods", () => {
     expect(result).toStrictEqual(["active_users", "daily_report"])
   })
 
-  test("columns() returns array of tuples", async () => {
+  it("columns() returns array of tuples", async () => {
     server.use(
       ...convenienceHandlers([
         ["id", "bigint", "", "Primary key"],
@@ -91,7 +91,7 @@ describe("convenience methods", () => {
     ])
   })
 
-  test("columns() with asObject=true returns typed objects", async () => {
+  it("columns() with asObject=true returns typed objects", async () => {
     server.use(
       ...convenienceHandlers([
         ["id", "bigint", "", "Primary key"],
@@ -123,7 +123,7 @@ describe("convenience methods", () => {
     ])
   })
 
-  test("columns() with asObject=false returns tuples", async () => {
+  it("columns() with asObject=false returns tuples", async () => {
     server.use(
       ...convenienceHandlers([
         ["id", "bigint", "", "Primary key"],
@@ -145,7 +145,7 @@ describe("convenience methods", () => {
     ])
   })
 
-  test("columns() with asObject undefined returns tuples", async () => {
+  it("columns() with asObject undefined returns tuples", async () => {
     server.use(
       ...convenienceHandlers([
         ["id", "bigint", "", "Primary key"],

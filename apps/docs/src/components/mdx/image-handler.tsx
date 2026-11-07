@@ -109,13 +109,13 @@ function parseImageOptionsFromSources(sources: (string | undefined)[]): {
   return { mode: mode ?? "default", previewFit, width, height }
 }
 
-export function MarkdownImageHandler({
+export const MarkdownImageHandler = ({
   title,
   src,
   alt,
   width,
   height,
-}: ComponentPropsWithoutRef<"img">) {
+}: ComponentPropsWithoutRef<"img">) => {
   // Markdown image options can come from title, alt text hints,
   // or URL fragments like #mode=zoom&fit=cover.
   const srcValue =
@@ -161,14 +161,14 @@ export function MarkdownImageHandler({
   )
 }
 
-export function ImageHandler({
+export const ImageHandler = ({
   src,
   alt = "",
   width = 0,
   height = 0,
   previewFit = "contain",
   mode = "default",
-}: ImageHandlerProps) {
+}: ImageHandlerProps) => {
   const hasExplicitSize = width > 0 && height > 0
   const fallbackContainerClass =
     mode === "default"

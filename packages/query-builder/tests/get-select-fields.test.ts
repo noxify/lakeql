@@ -1,6 +1,6 @@
 import type { FieldNode, GraphQLResolveInfo, SelectionNode } from "graphql"
 import { GraphQLError, Kind } from "graphql"
-import { describe, expect, test } from "vitest"
+import { describe, expect, it } from "vitest"
 
 import { getSelectFields } from "../src"
 
@@ -49,7 +49,7 @@ const createMockInfo = (selections: SelectionNode[], withNodes = false) => {
 }
 
 describe(getSelectFields, () => {
-  test("should extract field names from selections", () => {
+  it("should extract field names from selections", () => {
     const selections: SelectionNode[] = [
       {
         kind: Kind.FIELD,
@@ -67,7 +67,7 @@ describe(getSelectFields, () => {
     expect(result).toStrictEqual(["field1", "field2"])
   })
 
-  test("should extract field names from nodes when withNodes=true", () => {
+  it("should extract field names from nodes when withNodes=true", () => {
     const selections: SelectionNode[] = [
       {
         kind: Kind.FIELD,
@@ -85,7 +85,7 @@ describe(getSelectFields, () => {
     expect(result).toStrictEqual(["field1", "field2"])
   })
 
-  test("should throw error when withNodes=true but no nodes field exists", () => {
+  it("should throw error when withNodes=true but no nodes field exists", () => {
     // Create info without nodes field
     const info = {
       fieldNodes: [
@@ -115,7 +115,7 @@ describe(getSelectFields, () => {
     )
   })
 
-  test("should handle empty selections", () => {
+  it("should handle empty selections", () => {
     const info = {
       fieldNodes: [
         {
@@ -133,7 +133,7 @@ describe(getSelectFields, () => {
     expect(result).toStrictEqual([])
   })
 
-  test("should handle multiple fieldNodes", () => {
+  it("should handle multiple fieldNodes", () => {
     const info = {
       fieldNodes: [
         {
@@ -172,7 +172,7 @@ describe(getSelectFields, () => {
 
 describe("getSelectFields - additional cases", () => {
   // Test the error case when withNodes=true but no nodes field exists
-  test("should throw error when withNodes=true but no nodes field exists", () => {
+  it("should throw error when withNodes=true but no nodes field exists", () => {
     // Create info without nodes field
     const info = {
       fieldNodes: [
@@ -203,7 +203,7 @@ describe("getSelectFields - additional cases", () => {
   })
 
   // Test with empty selections
-  test("should handle empty selections", () => {
+  it("should handle empty selections", () => {
     const info = {
       fieldNodes: [
         {
@@ -222,7 +222,7 @@ describe("getSelectFields - additional cases", () => {
   })
 
   // Test with missing selectionSet
-  test("should handle missing selectionSet", () => {
+  it("should handle missing selectionSet", () => {
     const info = {
       fieldNodes: [
         {
@@ -238,7 +238,7 @@ describe("getSelectFields - additional cases", () => {
   })
 
   // Test with empty nodes selections
-  test("should handle empty nodes selections when withNodes=true", () => {
+  it("should handle empty nodes selections when withNodes=true", () => {
     const info = {
       fieldNodes: [
         {
@@ -266,7 +266,7 @@ describe("getSelectFields - additional cases", () => {
   })
 
   // Test with nodes field but missing selectionSet
-  test("should handle nodes field with missing selectionSet when withNodes=true", () => {
+  it("should handle nodes field with missing selectionSet when withNodes=true", () => {
     const info = {
       fieldNodes: [
         {

@@ -75,7 +75,10 @@ export function generateQuerySchema({
     ...generateModelImplement({ models }),
     ...generateTransformFields({ transformFields }),
     ...generateDateFields({ dateTimeFields }),
-    ...generateQueryFields({ queryName }),
+    ...generateQueryFields({
+      queryName,
+      nodeInterfaceName: rootModel.interfaceName,
+    }),
   ]
 }
 
@@ -116,14 +119,9 @@ function generateImports({
   filterTypes: string[]
 }): ts.Node[] {
   return [
-    importNames(
-      "@lakeql/api/types",
-      ["ConnectionInterface", "TrinoArrayResponse"],
-      {
-        typeOnly: true,
-      }
-    ),
-    importNames("json-schema", ["JSONSchema7"], { typeOnly: true }),
+    importNames("@lakeql/api/types", ["ConnectionInterface"], {
+      typeOnly: true,
+    }),
     importNames("@lakeql/api/builder", [
       "builder",
       ...filterTypes.map((type) => `${type}FieldComparison`),
@@ -131,28 +129,14 @@ function generateImports({
       "Paging",
       "SortDirection",
     ]),
-    importNames("~/env", ["env"]),
-    importNames("@lakeql/api/helpers", [
-      "calculatePageInfoData",
-      "handleErrorResponse",
-      "transformTrinoResponse",
-    ]),
-    importNames("@lakeql/query-builder", ["SortInput"], { typeOnly: true }),
-    importNames("@lakeql/query-builder", [
-      "formatQuery",
-      "generateQuery",
-      "getSelectFields",
-    ]),
-    importNames("@lakeql/trino-client", ["TrinoClient"]),
+    importNames("@lakeql/api/helpers", ["handleErrorResponse"]),
+    importNames("@lakeql/query-builder", ["getSelectFields"]),
     importNames(
       "./interface",
-      [
-        ...Object.values(models).map((model) => model.interfaceName),
-        "TableDefinition",
-      ],
+      Object.values(models).map((model) => model.interfaceName),
       { typeOnly: true }
     ),
-    importNames("./config", ["hiveConfig"]),
+    importNames("./config", ["sourceConfig"]),
     importDefault("./json-schema.json", "jsonSchema"),
   ]
 }
@@ -423,15 +407,6 @@ function createArgField(
   )
 }
 
-function createConstDeclarationStatement(
-  declarations: ts.VariableDeclaration[]
-): ts.VariableStatement {
-  return ts.factory.createVariableStatement(
-    undefined,
-    ts.factory.createVariableDeclarationList(declarations, ts.NodeFlags.Const)
-  )
-}
-
 function createPagingValue(
   fieldName: "page" | "perPage",
   fallback: string
@@ -447,286 +422,12 @@ function createPagingValue(
   )
 }
 
-function createPageInfoRequest(
-  totalCount: ts.Expression
-): ts.ObjectLiteralExpression {
-  return objectLiteral([
-    property("totalCount", totalCount),
-    property("page", createPagingValue("page", "1")),
-    property("perPage", createPagingValue("perPage", "100")),
-  ])
-}
-
-function createCalculatePageInfoCall(
-  totalCount: ts.Expression
-): ts.CallExpression {
-  return ts.factory.createCallExpression(
-    id("calculatePageInfoData"),
-    undefined,
-    [createPageInfoRequest(totalCount)]
-  )
-}
-
-function createOffsetLimitStatement(): ts.VariableStatement {
-  return createConstDeclarationStatement([
-    ts.factory.createVariableDeclaration(
-      ts.factory.createObjectBindingPattern([
-        ts.factory.createBindingElement(undefined, undefined, id("offset")),
-        ts.factory.createBindingElement(undefined, undefined, id("limit")),
-      ]),
-      undefined,
-      undefined,
-      createCalculatePageInfoCall(ts.factory.createNumericLiteral("0"))
-    ),
-  ])
-}
-
-function createSelectFieldsStatement(): ts.VariableStatement {
-  return createConstDeclarationStatement([
-    ts.factory.createVariableDeclaration(
-      id("selectFields"),
-      undefined,
-      undefined,
-      ts.factory.createCallExpression(
-        id("getSelectFields"),
-        [typeRef("TableDefinition")],
-        [
-          ts.factory.createObjectLiteralExpression(
-            [
-              ts.factory.createPropertyAssignment(
-                id("graphqlInfo"),
-                id("info")
-              ),
-              ts.factory.createPropertyAssignment(id("withNodes"), bool(true)),
-            ],
-            false
-          ),
-        ]
-      )
-    ),
-  ])
-}
-
-function createGeneratedQueryStatement(): ts.VariableStatement {
-  return createConstDeclarationStatement([
-    ts.factory.createVariableDeclaration(
-      id("query"),
-      undefined,
-      undefined,
-      ts.factory.createCallExpression(
-        id("generateQuery"),
-        [typeRef("TableDefinition")],
-        [
-          objectLiteral([
-            shorthand("selectFields"),
-            property("schema", access("hiveConfig", "schema")),
-            property("table", access("hiveConfig", "tableName")),
-            shorthand("transformFields"),
-            property("catalog", access("hiveConfig", "catalog")),
-            property(
-              "userQuery",
-              ts.factory.createBinaryExpression(
-                access("args", "filter"),
-                ts.factory.createToken(ts.SyntaxKind.QuestionQuestionToken),
-                objectLiteral([], false)
-              )
-            ),
-            shorthand("dateFields"),
-            property(
-              "paging",
-              objectLiteral([shorthand("offset"), shorthand("limit")])
-            ),
-            property(
-              "sorting",
-              ts.factory.createAsExpression(
-                access("args", "sorting"),
-                ts.factory.createArrayTypeNode(
-                  typeRef("SortInput", [typeRef("TableDefinition")])
-                )
-              )
-            ),
-          ]),
-        ]
-      )
-    ),
-  ])
-}
-
-function createClientStatement(): ts.VariableStatement {
-  return createConstDeclarationStatement([
-    ts.factory.createVariableDeclaration(
-      id("client"),
-      undefined,
-      undefined,
-      ts.factory.createNewExpression(id("TrinoClient"), undefined, [
-        objectLiteral([
-          property("host", access("env", "HIVE_HOST")),
-          property("port", access("env", "HIVE_PORT")),
-          property(
-            "auth",
-            objectLiteral([
-              property("type", stringLiteral("basic")),
-              property("username", access("env", "HIVE_USERNAME")),
-              property("password", access("env", "HIVE_PASSWORD")),
-            ])
-          ),
-          property("catalog", access("env", "HIVE_CATALOG")),
-          property("source", access("env", "HIVE_SOURCE")),
-        ]),
-      ])
-    ),
-  ])
-}
-
-function createRecordsStatement(): ts.VariableStatement {
-  return createConstDeclarationStatement([
-    ts.factory.createVariableDeclaration(
-      id("records"),
-      undefined,
-      undefined,
-      ts.factory.createAwaitExpression(
-        ts.factory.createCallExpression(
-          access(
-            ts.factory.createCallExpression(
-              access(id("client"), "query"),
-              [typeRef("TrinoArrayResponse", [typeRef("TableDefinition")])],
-              [
-                objectLiteral(
-                  [
-                    property(
-                      "sql",
-                      ts.factory.createCallExpression(
-                        id("formatQuery"),
-                        [typeRef("TableDefinition")],
-                        [objectLiteral([shorthand("query")], false)]
-                      )
-                    ),
-                  ],
-                  true
-                ),
-              ]
-            ),
-            "catch"
-          ),
-          undefined,
-          [
-            arrowFunction(
-              [
-                ts.factory.createParameterDeclaration(
-                  undefined,
-                  undefined,
-                  id("e"),
-                  undefined,
-                  ts.factory.createKeywordTypeNode(ts.SyntaxKind.UnknownKeyword)
-                ),
-              ],
-              ts.factory.createBlock(
-                [
-                  ts.addSyntheticLeadingComment(
-                    ts.factory.createThrowStatement(
-                      ts.factory.createCallExpression(
-                        id("handleErrorResponse"),
-                        undefined,
-                        [
-                          objectLiteral(
-                            [
-                              property("errorMessage", id("e")),
-                              shorthand("context"),
-                              shorthand("info"),
-                            ],
-                            false
-                          ),
-                        ]
-                      )
-                    ),
-                    ts.SyntaxKind.SingleLineCommentTrivia,
-                    ` @ts-expect-error e is unknown - ignore it for now`,
-                    true
-                  ),
-                ],
-                true
-              )
-            ),
-          ]
-        )
-      )
-    ),
-  ])
-}
-
-function createTransformedResponseStatement(): ts.VariableStatement {
-  return createConstDeclarationStatement([
-    ts.factory.createVariableDeclaration(
-      ts.factory.createObjectBindingPattern([
-        ts.factory.createBindingElement(
-          undefined,
-          undefined,
-          id("total_count")
-        ),
-        ts.factory.createBindingElement(undefined, undefined, id("data")),
-      ]),
-      undefined,
-      undefined,
-      ts.factory.createCallExpression(id("transformTrinoResponse"), undefined, [
-        objectLiteral([
-          property("response", id("records")),
-          property(
-            "selectFields",
-            ts.factory.createAsExpression(
-              id("selectFields"),
-              ts.factory.createArrayTypeNode(
-                ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword)
-              )
-            )
-          ),
-          shorthand("dateFields"),
-          shorthand("transformFields"),
-          property(
-            "jsonSchema",
-            ts.factory.createAsExpression(
-              id("jsonSchema"),
-              typeRef("JSONSchema7")
-            )
-          ),
-        ]),
-      ])
-    ),
-  ])
-}
-
-function createResolvedPageInfoStatement(): ts.VariableStatement {
-  return createConstDeclarationStatement([
-    ts.factory.createVariableDeclaration(
-      ts.factory.createObjectBindingPattern([
-        ts.factory.createBindingElement(undefined, undefined, id("totalCount")),
-        ts.factory.createBindingElement(
-          ts.factory.createToken(ts.SyntaxKind.DotDotDotToken),
-          undefined,
-          id("pageInfo")
-        ),
-      ]),
-      undefined,
-      undefined,
-      createCalculatePageInfoCall(id("total_count"))
-    ),
-  ])
-}
-
-function createResolverReturnStatement(): ts.ReturnStatement {
-  return ts.factory.createReturnStatement(
-    objectLiteral([
-      shorthand("totalCount"),
-      shorthand("pageInfo"),
-      property("nodes", id("data")),
-    ])
-  )
-}
-
 function createReadPermission(): ts.ObjectLiteralExpression {
   return objectLiteral([
-    property("catalog", access("hiveConfig", "catalog")),
-    property("schema", access("hiveConfig", "schema")),
-    property("tableName", access("hiveConfig", "tableName")),
+    property("dataSource", access("sourceConfig", "dataSource")),
+    property("tableName", access("sourceConfig", "tableName")),
+    property("catalog", access("sourceConfig", "catalog")),
+    property("schema", access("sourceConfig", "schema")),
   ])
 }
 
@@ -737,7 +438,139 @@ function createAuthScopes(): ts.ObjectLiteralExpression {
   ])
 }
 
-function createResolver(): ts.ArrowFunction {
+/**
+ * Creates the resolver function that delegates to the runtime read strategy.
+ *
+ * Generated code:
+ * ```ts
+ * async (_parent, args, context, info) => {
+ *   const readStrategy = context.getReadStrategy(sourceConfig.dataSource)
+ *   return readStrategy.read({
+ *     sourceConfig,
+ *     selectFields: getSelectFields<TableDefinition>({ graphqlInfo: info, withNodes: true }),
+ *     filter: args.filter ?? {},
+ *     paging: { page: args.paging?.page ?? 1, perPage: args.paging?.perPage },
+ *     sorting: args.sorting,
+ *     transformFields,
+ *     dateFields,
+ *     schema: jsonSchema,
+ *     context,
+ *   })
+ * }
+ * ```
+ */
+function createResolver(nodeInterfaceName: string): ts.ArrowFunction {
+  // const readStrategy = context.getReadStrategy(sourceConfig.dataSource)
+  const readStrategyStatement = ts.factory.createVariableStatement(
+    undefined,
+    ts.factory.createVariableDeclarationList(
+      [
+        ts.factory.createVariableDeclaration(
+          id("readStrategy"),
+          undefined,
+          undefined,
+          ts.factory.createCallExpression(
+            access(id("context"), "getReadStrategy"),
+            undefined,
+            [access("sourceConfig", "dataSource")]
+          )
+        ),
+      ],
+      ts.NodeFlags.Const
+    )
+  )
+
+  // return readStrategy.read<NodeInterface>({ ... })
+  // `return await` (not bare `return`) so the enclosing try/catch actually
+  // catches the read's async rejection; a bare `return promise` in an async
+  // function settles outside the try and the catch never runs.
+  const returnStatement = ts.factory.createReturnStatement(
+    ts.factory.createAwaitExpression(
+      ts.factory.createCallExpression(
+        access(id("readStrategy"), "read"),
+        [typeRef(nodeInterfaceName)],
+        [
+          objectLiteral([
+            shorthand("sourceConfig"),
+            property(
+              "selectFields",
+              ts.factory.createCallExpression(
+                id("getSelectFields"),
+                undefined,
+                [
+                  objectLiteral(
+                    [
+                      property("graphqlInfo", id("info")),
+                      property("withNodes", bool(true)),
+                    ],
+                    false
+                  ),
+                ]
+              )
+            ),
+            property(
+              "filter",
+              ts.factory.createBinaryExpression(
+                access("args", "filter"),
+                ts.factory.createToken(ts.SyntaxKind.QuestionQuestionToken),
+                objectLiteral([], false)
+              )
+            ),
+            property(
+              "paging",
+              objectLiteral(
+                [
+                  property("page", createPagingValue("page", "1")),
+                  property(
+                    "perPage",
+                    ts.factory.createPropertyAccessChain(
+                      access("args", "paging"),
+                      ts.factory.createToken(ts.SyntaxKind.QuestionDotToken),
+                      id("perPage")
+                    )
+                  ),
+                ],
+                false
+              )
+            ),
+            property("sorting", access("args", "sorting")),
+            shorthand("transformFields"),
+            shorthand("dateFields"),
+            property("schema", id("jsonSchema")),
+            shorthand("context"),
+          ]),
+        ]
+      )
+    )
+  )
+
+  // try { return await readStrategy.read<…>({ … }) }
+  // catch (error) { return handleErrorResponse(error) }
+  //
+  // handleErrorResponse maps a DataSourceError to a GraphQLError with a code
+  // and HTTP status, so adapter failures (e.g. PERMISSION_DENIED) reach the
+  // client as explicit GraphQL errors instead of being masked to a generic
+  // "Unexpected error." by Yoga's maskedErrors.
+  const tryCatchStatement = ts.factory.createTryStatement(
+    ts.factory.createBlock([returnStatement], true),
+    ts.factory.createCatchClause(
+      ts.factory.createVariableDeclaration(id("error")),
+      ts.factory.createBlock(
+        [
+          ts.factory.createReturnStatement(
+            ts.factory.createCallExpression(
+              id("handleErrorResponse"),
+              undefined,
+              [id("error")]
+            )
+          ),
+        ],
+        true
+      )
+    ),
+    undefined
+  )
+
   return arrowFunction(
     [
       parameter("_parent"),
@@ -745,24 +578,15 @@ function createResolver(): ts.ArrowFunction {
       parameter("context"),
       parameter("info"),
     ],
-    ts.factory.createBlock(
-      [
-        createOffsetLimitStatement(),
-        createSelectFieldsStatement(),
-        createGeneratedQueryStatement(),
-        createClientStatement(),
-        createRecordsStatement(),
-        createTransformedResponseStatement(),
-        createResolvedPageInfoStatement(),
-        createResolverReturnStatement(),
-      ],
-      true
-    ),
+    ts.factory.createBlock([readStrategyStatement, tryCatchStatement], true),
     { async: true }
   )
 }
 
-function createQueryField(queryName: string): ts.PropertyAssignment {
+function createQueryField(
+  queryName: string,
+  nodeInterfaceName: string
+): ts.PropertyAssignment {
   return property(
     queryName,
     tField([
@@ -776,13 +600,21 @@ function createQueryField(queryName: string): ts.PropertyAssignment {
         ])
       ),
       property("authScopes", createAuthScopes()),
-      property("resolve", createResolver()),
+      property("resolve", createResolver(nodeInterfaceName)),
     ])
   )
 }
 
-function generateQueryFields({ queryName }: { queryName: string }): ts.Node[] {
+function generateQueryFields({
+  queryName,
+  nodeInterfaceName,
+}: {
+  queryName: string
+  nodeInterfaceName: string
+}): ts.Node[] {
   return [
-    builderCall("queryFields", [fieldsFunction([createQueryField(queryName)])]),
+    builderCall("queryFields", [
+      fieldsFunction([createQueryField(queryName, nodeInterfaceName)]),
+    ]),
   ]
 }

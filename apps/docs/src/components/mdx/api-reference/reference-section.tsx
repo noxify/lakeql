@@ -8,6 +8,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
+import type { SymbolIndex } from "@/lib/api-reference-symbol-index"
 import type { ResolvedExport } from "@/lib/ts-morph-analysis"
 
 import { DescriptionBlock } from "./description-block"
@@ -17,11 +18,25 @@ import { extractSeeLinks, kindToLabel } from "./utils"
 
 const spaceGrotesk = Space_Grotesk({ subsets: ["latin"] })
 
+/**
+ * Context threaded to every {@link DescriptionBlock} so inline JSDoc `{@link}`
+ * targets resolve against the global symbol index and the page being rendered.
+ */
+interface LinkResolutionProps {
+  symbolIndex?: SymbolIndex
+  currentPageHref?: string
+  /**
+   * Export names excluded from this page's reference, so inline `{@link}`
+   * targets pointing at a dropped same-page symbol degrade to plain text.
+   */
+  excluded?: ReadonlySet<string>
+}
+
 // ---------------------------------------------------------------------------
 // Sub-sections extracted to reduce complexity
 // ---------------------------------------------------------------------------
 
-function SeeLinks({ tags }: { tags?: { name: string; text?: string }[] }) {
+const SeeLinks = ({ tags }: { tags?: { name: string; text?: string }[] }) => {
   const links = extractSeeLinks(tags)
 
   if (!links) {
@@ -46,13 +61,16 @@ function SeeLinks({ tags }: { tags?: { name: string; text?: string }[] }) {
   )
 }
 
-function FunctionSignatures({
+const FunctionSignatures = ({
   source,
   slug,
+  symbolIndex,
+  currentPageHref,
+  excluded,
 }: {
   source: ResolvedExport
   slug: string
-}) {
+} & LinkResolutionProps) => {
   if (!source.signatures || source.signatures.length === 0) {
     return null
   }
@@ -82,6 +100,9 @@ function FunctionSignatures({
               </h4>
               <MembersTable
                 sectionSlug={slug}
+                symbolIndex={symbolIndex}
+                currentPageHref={currentPageHref}
+                excluded={excluded}
                 rows={sig.params.map((p) => ({
                   name: `${p.name}${p.isOptional ? "?" : ""}`,
                   type: p.type,
@@ -112,7 +133,13 @@ function FunctionSignatures({
                 </CodeBlock>
               )}
               {sig.returnsDescription && (
-                <DescriptionBlock>{sig.returnsDescription}</DescriptionBlock>
+                <DescriptionBlock
+                  symbolIndex={symbolIndex}
+                  currentPageHref={currentPageHref}
+                  excluded={excluded}
+                >
+                  {sig.returnsDescription}
+                </DescriptionBlock>
               )}
             </div>
           )}
@@ -122,7 +149,7 @@ function FunctionSignatures({
   )
 }
 
-function TypeDefinition({ source }: { source: ResolvedExport }) {
+const TypeDefinition = ({ source }: { source: ResolvedExport }) => {
   const showDefinition =
     source.typeText &&
     ((source.kind === "TypeAlias" &&
@@ -166,13 +193,16 @@ function TypeDefinition({ source }: { source: ResolvedExport }) {
   )
 }
 
-function MethodDetail({
+const MethodDetail = ({
   method,
   parentSlug,
+  symbolIndex,
+  currentPageHref,
+  excluded,
 }: {
   method: ResolvedExport
   parentSlug: string
-}) {
+} & LinkResolutionProps) => {
   const sig = method.signatures?.[0]
   const methodSlug = `${parentSlug}-${createSlug(method.name)}`
 
@@ -190,7 +220,13 @@ function MethodDetail({
       </div>
 
       {method.description && (
-        <DescriptionBlock>{method.description}</DescriptionBlock>
+        <DescriptionBlock
+          symbolIndex={symbolIndex}
+          currentPageHref={currentPageHref}
+          excluded={excluded}
+        >
+          {method.description}
+        </DescriptionBlock>
       )}
 
       {/* Method type parameters */}
@@ -213,6 +249,9 @@ function MethodDetail({
           <h5 className="text-foreground text-xs font-semibold">Parameters</h5>
           <MembersTable
             sectionSlug={methodSlug}
+            symbolIndex={symbolIndex}
+            currentPageHref={currentPageHref}
+            excluded={excluded}
             rows={sig.params.map((p) => ({
               name: `${p.name}${p.isOptional ? "?" : ""}`,
               type: p.type,
@@ -244,7 +283,13 @@ function MethodDetail({
               </CodeBlock>
             )}
             {sig.returnsDescription && (
-              <DescriptionBlock>{sig.returnsDescription}</DescriptionBlock>
+              <DescriptionBlock
+                symbolIndex={symbolIndex}
+                currentPageHref={currentPageHref}
+                excluded={excluded}
+              >
+                {sig.returnsDescription}
+              </DescriptionBlock>
             )}
           </div>
         )}
@@ -258,8 +303,20 @@ function MethodDetail({
 
 /**
  * Renders a single ResolvedExport as a collapsible section with full details.
+ *
+ * @param symbolIndex - Global symbol → page/anchor index used to resolve inline
+ *   JSDoc `{@link}` references in description text.
+ * @param currentPageHref - Absolute route of the page rendering this section,
+ *   used to emit same-page fragments for symbols documented on this page.
+ * @param excluded - Export names excluded from this page's reference, so a
+ *   `{@link}` to a dropped same-page symbol degrades to plain text.
  */
-export function ReferenceSection({ source }: { source: ResolvedExport }) {
+export const ReferenceSection = ({
+  source,
+  symbolIndex,
+  currentPageHref,
+  excluded,
+}: { source: ResolvedExport } & LinkResolutionProps) => {
   const slug = createSlug(source.name)
 
   return (
@@ -289,7 +346,13 @@ export function ReferenceSection({ source }: { source: ResolvedExport }) {
         <CollapsibleContent className="px-6 pt-0 pb-4">
           <div className="space-y-4">
             {source.description && (
-              <DescriptionBlock>{source.description}</DescriptionBlock>
+              <DescriptionBlock
+                symbolIndex={symbolIndex}
+                currentPageHref={currentPageHref}
+                excluded={excluded}
+              >
+                {source.description}
+              </DescriptionBlock>
             )}
 
             <SeeLinks tags={source.tags} />
@@ -310,7 +373,13 @@ export function ReferenceSection({ source }: { source: ResolvedExport }) {
                 </div>
               )}
 
-            <FunctionSignatures source={source} slug={slug} />
+            <FunctionSignatures
+              source={source}
+              slug={slug}
+              symbolIndex={symbolIndex}
+              currentPageHref={currentPageHref}
+              excluded={excluded}
+            />
 
             {/* Class constructor */}
             {source.classConstructor &&
@@ -320,12 +389,19 @@ export function ReferenceSection({ source }: { source: ResolvedExport }) {
                     Constructor
                   </h4>
                   {source.classConstructor.description && (
-                    <DescriptionBlock>
+                    <DescriptionBlock
+                      symbolIndex={symbolIndex}
+                      currentPageHref={currentPageHref}
+                      excluded={excluded}
+                    >
                       {source.classConstructor.description}
                     </DescriptionBlock>
                   )}
                   <MembersTable
                     sectionSlug={slug}
+                    symbolIndex={symbolIndex}
+                    currentPageHref={currentPageHref}
+                    excluded={excluded}
                     rows={source.classConstructor.params.map((p) => ({
                       name: `${p.name}${p.isOptional ? "?" : ""}`,
                       type: p.type,
@@ -347,6 +423,9 @@ export function ReferenceSection({ source }: { source: ResolvedExport }) {
                 </h4>
                 <MembersTable
                   sectionSlug={slug}
+                  symbolIndex={symbolIndex}
+                  currentPageHref={currentPageHref}
+                  excluded={excluded}
                   rows={source.members.map((m) => ({
                     name: `${m.name}${m.isOptional ? "?" : ""}`,
                     type: m.type,
@@ -373,6 +452,9 @@ export function ReferenceSection({ source }: { source: ResolvedExport }) {
                     key={method.name}
                     method={method}
                     parentSlug={slug}
+                    symbolIndex={symbolIndex}
+                    currentPageHref={currentPageHref}
+                    excluded={excluded}
                   />
                 ))}
               </div>
@@ -382,6 +464,9 @@ export function ReferenceSection({ source }: { source: ResolvedExport }) {
             {source.enumMembers && source.enumMembers.length > 0 && (
               <MembersTable
                 sectionSlug={slug}
+                symbolIndex={symbolIndex}
+                currentPageHref={currentPageHref}
+                excluded={excluded}
                 rows={source.enumMembers.map((m) => ({
                   name: m.name,
                   type: m.value ?? "",
@@ -405,7 +490,7 @@ export function ReferenceSection({ source }: { source: ResolvedExport }) {
 /**
  * Renders a single ResolvedExport in summary mode (title + description only).
  */
-export function ReferenceSummary({ source }: { source: ResolvedExport }) {
+export const ReferenceSummary = ({ source }: { source: ResolvedExport }) => {
   const slug = createSlug(source.name)
 
   return (
@@ -430,7 +515,7 @@ export function ReferenceSummary({ source }: { source: ResolvedExport }) {
  * Renders a single ResolvedExport as a flat properties table (no collapsible).
  * Used for showing a single interface/type inline without the full section chrome.
  */
-export function ReferenceTable({ source }: { source: ResolvedExport }) {
+export const ReferenceTable = ({ source }: { source: ResolvedExport }) => {
   const slug = createSlug(source.name)
 
   if (!source.members || source.members.length === 0) {

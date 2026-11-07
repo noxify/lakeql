@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest"
+import { describe, expect, it } from "vitest"
 
 import { parseColumns } from "../src/index"
 
@@ -31,7 +31,7 @@ const primitives = [
 
 describe("Column Parser", () => {
   describe("primitives", () => {
-    test.each(primitives)("$input", ({ input, output }) => {
+    it.each(primitives)("$input", ({ input, output }) => {
       const mockedColumns = [
         {
           description: "",
@@ -50,7 +50,7 @@ describe("Column Parser", () => {
     })
   })
 
-  test("objects ( row() )", () => {
+  it("objects ( row() )", () => {
     const mockedColumns = [
       {
         description: "",
@@ -72,7 +72,7 @@ describe("Column Parser", () => {
     expect(generated).toMatchObject(expected)
   })
 
-  test("array of objects w/o nesting", () => {
+  it("array of objects w/o nesting", () => {
     const mockedColumns = [
       {
         description: "",
@@ -96,7 +96,7 @@ describe("Column Parser", () => {
     expect(generated).toMatchObject(expected)
   })
 
-  test("array of objects w/ nesting", () => {
+  it("array of objects w/ nesting", () => {
     const mockedColumns = [
       {
         description: "",

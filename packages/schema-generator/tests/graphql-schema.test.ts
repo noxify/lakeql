@@ -1,11 +1,11 @@
 import type { JSONSchema7 } from "json-schema"
-import { describe, expect, test } from "vitest"
+import { describe, expect, it } from "vitest"
 
 import { generateModel } from "../src/graphql-schema"
 
 describe(generateModel, () => {
   describe("primitives", () => {
-    test("string", () => {
+    it("string", () => {
       const jsonSchema: JSONSchema7 = {
         additionalProperties: false,
         properties: {
@@ -47,7 +47,8 @@ describe(generateModel, () => {
         },
       })
     })
-    test("number", () => {
+
+    it("number", () => {
       const jsonSchema: JSONSchema7 = {
         additionalProperties: false,
         properties: {
@@ -89,7 +90,8 @@ describe(generateModel, () => {
         },
       })
     })
-    test("integer", () => {
+
+    it("integer", () => {
       const jsonSchema: JSONSchema7 = {
         additionalProperties: false,
         properties: {
@@ -131,7 +133,8 @@ describe(generateModel, () => {
         },
       })
     })
-    test("boolean", () => {
+
+    it("boolean", () => {
       const jsonSchema: JSONSchema7 = {
         additionalProperties: false,
         properties: {
@@ -173,7 +176,8 @@ describe(generateModel, () => {
         },
       })
     })
-    test("datetime", () => {
+
+    it("datetime", () => {
       const jsonSchema: JSONSchema7 = {
         additionalProperties: false,
         properties: {
@@ -216,7 +220,8 @@ describe(generateModel, () => {
         },
       })
     })
-    test("date", () => {
+
+    it("date", () => {
       const jsonSchema: JSONSchema7 = {
         additionalProperties: false,
         properties: {
@@ -259,7 +264,8 @@ describe(generateModel, () => {
         },
       })
     })
-    test("simple array", () => {
+
+    it("simple array", () => {
       const jsonSchema: JSONSchema7 = {
         additionalProperties: false,
         properties: {
@@ -307,7 +313,7 @@ describe(generateModel, () => {
   })
 
   describe("complex", () => {
-    test("objects", () => {
+    it("objects", () => {
       const jsonSchema: JSONSchema7 = {
         properties: {
           fieldName: {
@@ -407,7 +413,7 @@ describe(generateModel, () => {
       })
     })
 
-    test("array of objects", () => {
+    it("array of objects", () => {
       const jsonSchema: JSONSchema7 = {
         properties: {
           fieldName: {
@@ -510,7 +516,7 @@ describe(generateModel, () => {
       })
     })
 
-    test("special characters", () => {
+    it("special characters", () => {
       const jsonSchema: JSONSchema7 = {
         properties: {
           fieldName: {
@@ -613,7 +619,7 @@ describe(generateModel, () => {
       })
     })
 
-    test("normalizes invalid identifiers", () => {
+    it("normalizes invalid identifiers", () => {
       const jsonSchema: JSONSchema7 = {
         properties: {
           "   ": {

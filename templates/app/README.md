@@ -1,6 +1,8 @@
 # LakeQL App
 
-A GraphQL API backed by Trino/Hive with auto-generated schemas and type-safe query building.
+A GraphQL API over your data sources with auto-generated schemas and type-safe query building.
+
+This starter ships empty and runnable: it boots a GraphQL server with an empty schema until you configure a data source.
 
 ## Getting Started
 
@@ -10,23 +12,54 @@ A GraphQL API backed by Trino/Hive with auto-generated schemas and type-safe que
    cp .env.example .env
    ```
 
-   Edit `.env` and fill in your Trino connection details.
+2. **Register an adapter and a data source**
 
-2. **Pull schemas from Trino**
+   Install an adapter and wire it in `lakeql.config.ts`:
 
    ```bash
-   pnpm cli pull --source-path ./src
+   pnpm add @lakeql/adapter-trino
    ```
 
-   This introspects your Trino catalog and generates endpoint files.
+   ```ts
+   import { trinoAdapterDefinition } from "@lakeql/adapter-trino"
+   import { defineConfig } from "@lakeql/config"
 
-3. **Start development server**
+   export default defineConfig({
+     sourcePath: "src",
+     adapters: [trinoAdapterDefinition],
+     dataSources: {
+       warehouse: {
+         adapter: "trino",
+         connection: {
+           host: process.env.TRINO_HOST!,
+           port: Number(process.env.TRINO_PORT),
+           catalog: process.env.TRINO_CATALOG!,
+           auth: {
+             type: "basic",
+             username: process.env.TRINO_USERNAME!,
+             password: process.env.TRINO_PASSWORD!,
+           },
+         },
+       },
+     },
+   })
+   ```
+
+3. **Pull schemas from the data source**
+
+   ```bash
+   pnpm cli pull
+   ```
+
+   This introspects the source and generates endpoint files under `src`.
+
+4. **Start the development server**
 
    ```bash
    pnpm dev
    ```
 
-   The GraphQL API starts at `http://localhost:4000` with GraphiQL at `/graphql`.
+   The GraphQL API starts at `http://localhost:4000` with GraphiQL at `/graphql` and a health check at `/live`.
 
 ## Commands
 
@@ -39,16 +72,6 @@ A GraphQL API backed by Trino/Hive with auto-generated schemas and type-safe que
 | `pnpm typecheck` | Type-check the project                           |
 | `pnpm clean`     | Remove build artifacts and node_modules          |
 
-## CLI Usage
-
-```bash
-# Pull schemas from Trino
-pnpm cli pull --source-path ./src
-
-# Create a custom endpoint from a definition file
-pnpm cli create-endpoint --from-file ./my-endpoint.json
-```
-
 ## Documentation
 
-See the [LakeQL Documentation](https://lakeql.dev/docs) for guides on permissions, mutations, load strategies, and more.
+See the [LakeQL Documentation](https://lakeql.dev/docs) for guides on data sources, permissions, mutations, and more.

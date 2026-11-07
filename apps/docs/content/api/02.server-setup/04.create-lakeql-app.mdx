@@ -1,0 +1,151 @@
+---
+title: createLakeQLApp
+navTitle: createLakeQLApp
+description: The near plug-and-play wrapper for a standard app entry file.
+---
+
+[`createLakeQLApp`](/docs/api/api-reference#create-lake-ql-app) collapses the standard server wiring into a single call. It loads the project config, derives the auth resolver, builds the runtime, composes the server with [`defineApiConfig`](/docs/api/server-setup/define-config), and registers graceful shutdown. It is the entry point scaffolded apps use, and it stays fully ejectable: the [eject example](#eject) below is the expanded form of the standard call — the same steps in the same order.
+
+## Standard Usage
+
+The generated `src/index.ts` is slim. The only option you usually supply is `tokenResolver`, since auth is runtime behavior the wrapper cannot infer from config.
+
+```ts
+import { createLakeQLApp } from "@lakeql/api/create-app"
+
+import { tokenResolver } from "./auth"
+
+const app = await createLakeQLApp({
+  tokenResolver,
+  baseDir: import.meta.dirname,
+  schemaPath: "./schemas",
+  graphqlPath: "/graphql",
+  healthCheckEndpoint: "/live",
+})
+
+await app.start()
+```
+
+Permission rules come from the loaded config (`auth.permissions`), and the empty-permissions warning fires from inside the wrapper. You do not hand-wire any of that.
+
+## Options
+
+Every option [`defineApiConfig`](/docs/api/server-setup/define-config) accepts is forwarded through, so you never have to eject just to tweak one knob:
+
+- `tokenResolver`, `identityResolver` — auth resolution.
+- `hasReadPermission`, `hasWritePermission` — custom permission resolvers.
+- `permissions` — defaults to `project.config.auth?.permissions ?? []`; pass to override.
+- `cors`, `onError`, `yogaConfig` — server-layer customization.
+- `port`, `baseDir`, `schemaPath`, `graphqlPath`, `healthCheckEndpoint` — paths and server.
+
+Two options control the wrapper itself:
+
+- `project` — an already-loaded project from `loadConfig()`. When omitted, the wrapper calls `loadConfig()` with no arguments.
+- `handleSignals` — register `SIGTERM`/`SIGINT` handlers that close the runtime and exit. Defaults to `true`. Set to `false` to own the lifecycle yourself.
+
+## Return Shape
+
+`createLakeQLApp` returns `{ runtime, start, close }`:
+
+- `runtime` — the composed [`LakeQLRuntime`](/docs/packages/config/api-reference#lake-ql-runtime) for advanced control.
+- `start()` — starts the HTTP server with the same startup error handling the scaffold has (print the message, exit non-zero on failure).
+- `close()` — closes the runtime, releasing all data-source connections. Call it when `handleSignals` is `false` and you own shutdown. It releases data-source connections, not the HTTP listener — the server socket is released on process exit.
+
+```ts
+const app = await createLakeQLApp({ tokenResolver, handleSignals: false })
+
+try {
+  await app.start()
+} finally {
+  await app.close()
+}
+```
+
+## Eject
+
+`createLakeQLApp` builds on [`defineApiConfig`](/docs/api/server-setup/define-config), the underlying primitive. If you need full control, replace the wrapper call with its expanded form. This is the same wiring the wrapper runs, in the same order — load the config, derive the auth resolver, build the runtime, warn on empty permissions, compose the server, and register graceful shutdown. Paste it into `src/index.ts` and drop the `createLakeQLApp` import; the only difference from the wrapper is that the options are spelled out as literals instead of forwarded from a `rest` spread.
+
+```ts
+import { defineApiConfig } from "@lakeql/api/config"
+import { EMPTY_PERMISSIONS_WARNING } from "@lakeql/api/create-app"
+import { createApiResolveAuth } from "@lakeql/api/resolve-auth"
+import type { ResolveAuthSourceInfo } from "@lakeql/api/resolve-auth"
+import { createLakeQLRuntime, loadConfig } from "@lakeql/config"
+
+import { tokenResolver } from "./auth"
+
+// Load the project config (adapters + data sources) unless one was passed in.
+const project = await loadConfig()
+
+// Derive per-source auth metadata (adapter + optional impersonation resolver)
+// from the loaded data sources. Empty until a data source is configured.
+const sources: Record<string, ResolveAuthSourceInfo> = Object.fromEntries(
+  Object.entries(project.config.dataSources).map(([name, definition]) => [
+    name,
+    {
+      adapter: definition.adapter,
+      impersonationResolver: definition.impersonationResolver,
+    },
+  ])
+)
+
+const resolveAuth = createApiResolveAuth({
+  sources,
+  globalImpersonationResolver: project.config.auth?.impersonationResolver,
+})
+
+// Build the runtime that owns data sources and read/write strategies.
+const runtime = await createLakeQLRuntime({
+  config: project.config,
+  adapters: project.adapters,
+  resolveAuth,
+})
+
+// Technical-user permission rules, declared on lakeql.config.ts under
+// `auth.permissions`. Absent/empty is a valid state, but it applies the
+// defaults: human reads are delegated to each data source's own access
+// control, service-principal reads are denied, and all writes are denied
+// until a matching Mutation rule is added. Warn so that fallback is a
+// deliberate choice, not a silent gap.
+const permissions = project.config.auth?.permissions ?? []
+if (permissions.length === 0) {
+  // eslint-disable-next-line no-console
+  console.warn(EMPTY_PERMISSIONS_WARNING)
+}
+
+// Compose the API server around the runtime.
+const server = defineApiConfig({
+  runtime,
+  tokenResolver,
+  permissions,
+  baseDir: import.meta.dirname,
+  schemaPath: "./schemas",
+  graphqlPath: "/graphql",
+  healthCheckEndpoint: "/live",
+})
+
+// Graceful shutdown: close all data-source connections, then exit. This
+// releases data-source connections, not the HTTP listener — the server socket
+// is released on process exit.
+const close = async (): Promise<void> => {
+  await runtime.close()
+}
+
+const shutdown = async (): Promise<void> => {
+  await close()
+  process.exit(0)
+}
+
+process.on("SIGTERM", shutdown)
+process.on("SIGINT", shutdown)
+
+try {
+  await server.startServer()
+} catch (error) {
+  // Startup errors (e.g. no schema files yet) are configuration states, not
+  // crashes. Print the message without a stack trace and exit non-zero.
+  // eslint-disable-next-line no-console
+  console.error(error instanceof Error ? error.message : String(error))
+  process.exit(1)
+}
+```

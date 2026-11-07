@@ -1,0 +1,128 @@
+---
+title: Permissions
+navTitle: Permissions
+description: Grant technical users scoped read and write access per table.
+---
+
+Permissions declare what a technical user may read and write, scoped by data source, schema, and table. They are Layer 1 of LakeQL's [authorization model](/docs/api/authentication/authorization-model) — the gate in front of each data source's own access control. Author the rules once in `src/permissions.ts`:
+
+```ts title="src/permissions.ts"
+import type { Permission } from "@lakeql/config"
+import { createPermission } from "@lakeql/api/helpers"
+
+export const permissions: Permission[] = [
+  {
+    name: "reporting-user",
+    useSystemUser: false,
+    permissions: {
+      Query: [
+        createPermission("warehouse", (rule) => [
+          rule({ schema: "sales", tables: ["orders"] }),
+        ]),
+      ],
+      Mutation: [],
+    },
+  },
+]
+```
+
+## Wiring Permissions
+
+In a scaffolded app the rules reach the API through the project config rather than a direct import. Reference them in `lakeql.config.ts` under `auth.permissions`:
+
+```ts title="lakeql.config.ts"
+import { defineConfig } from "@lakeql/config"
+
+import { permissions } from "./src/permissions"
+
+export default defineConfig({
+  sourcePath: "src",
+  adapters: [],
+  dataSources: {},
+  auth: { permissions },
+})
+```
+
+The application entry (`src/index.ts`) calls [`createLakeQLApp`](/docs/api/server-setup/create-lakeql-app), which reads the rules off the loaded config, warns when the list is empty, and forwards them to the server via [`defineApiConfig`](/docs/api/server-setup/define-config) — the single API entry point that consumes them. You do not hand-wire any of this:
+
+```ts title="src/index.ts"
+import { createLakeQLApp } from "@lakeql/api/create-app"
+
+import { tokenResolver } from "./auth"
+
+// Permission rules come from the loaded config (`auth.permissions`), and the
+// empty-permissions warning fires from inside the wrapper.
+const app = await createLakeQLApp({ tokenResolver })
+
+await app.start()
+```
+
+To override the config-sourced rules, pass `permissions` to `createLakeQLApp`. If you need the full expanded wiring, see the [eject example](/docs/api/server-setup/create-lakeql-app#eject).
+
+<Note>
+  The `?? []` fallback means a missing `auth.permissions` (an absent `auth`
+  block, or a deleted `src/permissions.ts`) resolves to an empty array rather
+  than failing. With no rules the [Default](#default) applies: human users may
+  read, service principals are denied, and all writes are denied. Keep
+  `src/permissions.ts` present and `auth.permissions` set — even to `[]` — so
+  this fallback is a deliberate choice, not a silent side effect of a missing
+  file.
+</Note>
+
+## Building Rules
+
+[`createPermission`](/docs/api/api-reference#create-permission) builds a rule scoped to one data source. The callback receives a `rule` builder. Each `rule({ schema, tables })` grants access to the listed tables within a schema. Group rules under `Query` for reads and `Mutation` for writes.
+
+<ApiReference
+  variant="table"
+  file="config/src/auth-types"
+  name="PermissionRule"
+/>
+
+### Wildcards and Scope Matching
+
+Rules support wildcards: `schema` accepts `"*"` to match any schema, `tables` accepts `["*"]` to match any table, and omitting `catalog` matches any catalog.
+
+Scope matching is strict. A rule that names a concrete `catalog` or `schema` matches only a request whose target carries the same value. A target that omits `catalog`/`schema` does not match a rule scoped to one. The rule's scope is never silently ignored. To match broadly on purpose, use `"*"` for the schema or omit the `catalog`.
+
+<Note>
+  The `name` field matches the resolved user name, and `useSystemUser` is part
+  of the `Permission` shape but currently has no behavioral effect.
+</Note>
+
+## Default
+
+Reads and writes default differently when no matching permission entry exists:
+
+- **Reads** — a human user is allowed (the adapter layer enforces its own access control); a service principal is denied.
+- **Writes** — denied for everyone. Writes require an explicit `Mutation` rule that matches the target; without one, the write is rejected regardless of principal type.
+
+So an empty `permissions` array lets human users read, but no one can write until you add `Mutation` rules.
+
+## Granting Write Access
+
+A positive `Mutation` rule un-denies writes for the tables it names. The shape is identical to `Query`'s: the same `createPermission`/`rule` builder, grouped under `Mutation` instead. The matching rules from [Building Rules](#building-rules) apply unchanged, including wildcards and strict scope matching across data source, schema, and table:
+
+```ts
+import { createPermission } from "@lakeql/api/helpers"
+import type { Permission } from "@lakeql/config"
+
+export const permissions: Permission[] = [
+  {
+    name: "ingestion-service",
+    useSystemUser: false,
+    permissions: {
+      Query: [],
+      Mutation: [
+        createPermission("warehouse", (rule) => [
+          rule({ schema: "sales", tables: ["orders"] }),
+        ]),
+      ],
+    },
+  },
+]
+```
+
+## Custom Resolvers
+
+For logic beyond the declarative rules, provide `hasReadPermission` / `hasWritePermission` resolvers on the config. They override the built-in checks. See [`ReadPermissionResolver`](/docs/api/api-reference#read-permission-resolver) and [`WritePermissionResolver`](/docs/api/api-reference#write-permission-resolver).

@@ -1,0 +1,40 @@
+---
+title: Introduction
+navTitle: Introduction
+description: How adapters plug a query engine into LakeQL.
+---
+
+LakeQL never talks to a query engine directly. Everything above the adapter layer works against the neutral contracts in `@lakeql/datasource`. That includes the GraphQL server, the CLI, and the query builder. An **adapter** implements those contracts for one engine.
+
+## What an Adapter Owns
+
+An adapter owns everything engine-specific:
+
+- **Connection** — how to reach the engine and authenticate.
+- **SQL dialect** — how neutral query intent is rendered into the engine's SQL.
+- **Read strategy** — how a read is executed and validated.
+- **Write strategies** — which write paths the adapter supports.
+- **Response decoding** — how raw protocol responses become keyed records.
+- **Errors** — mapping engine errors to the normalized [`DataSourceError`](/docs/data-sources/overview/api-reference#data-source-error) categories.
+
+LakeQL ships two adapters: [Trino](/docs/data-sources/trino) and [Fabric](/docs/data-sources/fabric). The layer is neutral, so one project can register both and route each named data source to a different engine.
+
+## Registration
+
+Register adapters in `defineConfig`, then declare data sources that select one by name:
+
+```ts
+import { defineConfig } from "@lakeql/config"
+import { trinoAdapterDefinition } from "@lakeql/adapter-trino"
+import { fabricAdapterDefinition } from "@lakeql/adapter-fabric"
+
+export default defineConfig({
+  adapters: [trinoAdapterDefinition, fabricAdapterDefinition],
+  dataSources: {
+    warehouse: { adapter: "trino", connection: {/* ... */} },
+    reporting: { adapter: "fabric", connection: {/* ... */} },
+  },
+})
+```
+
+Adapters never depend on `@lakeql/config`. You register them into it. See the [runtime config contract](/docs/packages/config/runtime-config) for how registered adapters and data sources compose into a runtime.

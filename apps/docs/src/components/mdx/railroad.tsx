@@ -39,13 +39,13 @@ class RailroadErrorBoundary extends React.Component<
   }
 }
 
-export function RailroadDiagram({
+export const RailroadDiagram = ({
   code,
   preview,
 }: {
   code: string
   preview?: boolean
-}) {
+}) => {
   const parsed = React.useMemo<
     | { mode: "legacy"; diagram: Diagram }
     | { mode: "ebnf" }

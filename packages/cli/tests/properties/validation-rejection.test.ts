@@ -1,5 +1,4 @@
 // oxlint-disable import/no-named-as-default-member
-// Feature: custom-endpoint-cli, Property 9: Schema validation rejects invalid definitions
 
 import fc from "fast-check"
 import { describe, expect, it } from "vitest"
@@ -39,7 +38,7 @@ function buildValidBase() {
   }
 }
 
-describe("Property 9: Schema validation rejects invalid definitions", () => {
+describe("Schema validation rejects invalid definitions", () => {
   it("rejects definitions missing required fields", () => {
     const requiredFields = [
       "version",

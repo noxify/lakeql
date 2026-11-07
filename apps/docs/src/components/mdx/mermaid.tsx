@@ -66,13 +66,13 @@ function parseMermaidAspectRatio(svg: string): number {
 }
 
 // copied from https://github.com/lukilabs/beautiful-mermaid#react-integration
-export function MermaidDiagram({
+export const MermaidDiagram = ({
   code,
   preview,
 }: {
   code: string
   preview?: boolean
-}) {
+}) => {
   const { theme } = useTheme()
   const [resolvedTheme, setResolvedTheme] = React.useState<"light" | "dark">(
     "light"
@@ -80,7 +80,8 @@ export function MermaidDiagram({
 
   React.useEffect(() => {
     if (theme === "light" || theme === "dark") {
-      // oxlint-disable-next-line react/react-compiler
+      // Sync resolved theme with the theme prop / prefers-color-scheme.
+      // oxlint-disable-next-line react/react-compiler react/set-state-in-effect
       setResolvedTheme(theme)
       return
     }
@@ -128,7 +129,7 @@ export function MermaidDiagram({
 
   const previewSvg = svg
 
-  // oxlint-disable-next-line react-hooks/rules-of-hooks
+  // oxlint-disable-next-line react/react-compiler  react-hooks/rules-of-hooks
   const inlineAspectRatio = React.useMemo(() => {
     const rawRatio = parseMermaidAspectRatio(previewSvg)
 
@@ -136,7 +137,7 @@ export function MermaidDiagram({
     return Math.min(4, Math.max(0.85, rawRatio))
   }, [previewSvg])
 
-  // oxlint-disable-next-line react-hooks/rules-of-hooks
+  // oxlint-disable-next-line react/react-compiler  react-hooks/rules-of-hooks
   const inlineDimensions = React.useMemo(
     () => parseMermaidDimensions(previewSvg),
     [previewSvg]

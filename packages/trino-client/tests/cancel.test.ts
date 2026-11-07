@@ -1,6 +1,6 @@
-import { http, HttpResponse } from "msw"
+import { http, HttpResponse } from "msw/http"
 import { setupServer } from "msw/node"
-import { afterAll, afterEach, beforeAll, describe, expect, test } from "vitest"
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest"
 
 import { TrinoCancellationError, TrinoClientError } from "../src"
 import type { QueryResult } from "../src"
@@ -15,12 +15,12 @@ import {
 const server = setupServer(...singlePageHandlers())
 
 describe("cancel/abort behavior", () => {
-  beforeAll(() => server.listen({ onUnhandledRequest: "error" }))
+  beforeAll(() => server.listen({ onUnhandledFrame: "error" }))
   afterEach(() => server.resetHandlers())
 
   afterAll(() => server.close())
 
-  test("cancelQuery() sends DELETE to /v1/query/{queryId}", async () => {
+  it("cancelQuery() sends DELETE to /v1/query/{queryId}", async () => {
     let receivedMethod: string | null = null
     let receivedPath: string | null = null
 
@@ -39,7 +39,7 @@ describe("cancel/abort behavior", () => {
     expect(receivedPath).toBe("/v1/query/abc-123")
   })
 
-  test("cancelQuery() does not throw on 404 (already cancelled)", async () => {
+  it("cancelQuery() does not throw on 404 (already cancelled)", async () => {
     server.use(
       http.delete(
         `${mockUrl}/v1/query/:queryId`,
@@ -51,7 +51,7 @@ describe("cancel/abort behavior", () => {
     await expect(client.cancelQuery("gone-query")).resolves.toBeUndefined()
   })
 
-  test("cancelQuery() throws on other non-2xx status", async () => {
+  it("cancelQuery() throws on other non-2xx status", async () => {
     server.use(
       http.delete(
         `${mockUrl}/v1/query/:queryId`,
@@ -65,7 +65,7 @@ describe("cancel/abort behavior", () => {
     )
   })
 
-  test("cancelAllQueries() cancels all tracked queries", async () => {
+  it("cancelAllQueries() cancels all tracked queries", async () => {
     const deletedIds: string[] = []
     let queryCount = 0
 
@@ -190,12 +190,12 @@ describe("cancel/abort behavior", () => {
     expect(deletedIds).toStrictEqual([])
   })
 
-  test("getActiveQueries() returns empty array initially", () => {
+  it("getActiveQueries() returns empty array initially", () => {
     const client = createClient()
     expect(client.getActiveQueries()).toStrictEqual([])
   })
 
-  test("getActiveQueries() returns empty after query completes", async () => {
+  it("getActiveQueries() returns empty after query completes", async () => {
     server.use(...singlePageHandlers())
 
     const client = createClient()
@@ -204,7 +204,7 @@ describe("cancel/abort behavior", () => {
     expect(client.getActiveQueries()).toStrictEqual([])
   })
 
-  test("query with signal that's already aborted throws TrinoCancellationError", async () => {
+  it("query with signal that's already aborted throws TrinoCancellationError", async () => {
     const controller = new AbortController()
     controller.abort("Already cancelled")
 
@@ -215,7 +215,7 @@ describe("cancel/abort behavior", () => {
     ).rejects.toThrow(TrinoCancellationError)
   })
 
-  test("AbortSignal cancels in-flight query (abort during pagination)", async () => {
+  it("AbortSignal cancels in-flight query (abort during pagination)", async () => {
     let pagesFetched = 0
     const controller = new AbortController()
 
