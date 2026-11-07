@@ -1,0 +1,167 @@
+---
+title: Debugging Identity & Credentials
+navTitle: Debugging Identity
+description: Observe which identity and credential a request actually runs as, and why removing impersonation silently changes it.
+---
+
+When a query still succeeds after you change your auth configuration, that is not proof it runs as the identity you expect. LakeQL resolves two separate things per request — _who the caller authenticated as_ and _which credential the query runs against the data source with_ — and the library does not log either on the auth path. This page shows how to make those decisions observable.
+
+The worked examples use Fabric, because that is the path we traced end to end. The underlying concept applies to any data source that supports [impersonation](/docs/api/authentication/authorization-model#resolving-layer-2-identity); see [Generalizing to other data sources](#generalizing-to-other-data-sources) for how Trino differs.
+
+## The Core Concept
+
+Every request resolves an [identity](/docs/api/authentication/jwt-authentication#identity-resolution) (human or service principal) and then, per query, an outbound credential. The outbound credential comes from one of two paths, selected by whether an `impersonationResolver` is configured for the data source:
+
+- **Impersonation / on-behalf-of path** — a resolver is configured. It exchanges the caller's token for a request-scoped credential, and the query runs **as the calling user**.
+- **Fallback / service-principal path** — no resolver is configured (neither per-source nor the global `auth.impersonationResolver`). No request-scoped credential is produced, so the query runs with the data source's **own configured service credentials** — for Fabric, the service principal from the `oauth2` block on the connection, acquired through a `ClientSecretCredential`.
+
+The two paths for Fabric side by side:
+
+| | Impersonation (resolver present) | Fallback (resolver removed) |
+|---|---|---|
+| Request-scoped credential | the caller's exchanged bearer token | none |
+| Credential the query uses | `OnBehalfOfCredential` (your resolver) | `ClientSecretCredential` (connection `auth`) |
+| Runs as | the **calling user** | the **service principal** |
+
+<Warning>
+  Removing an `impersonationResolver` silently changes _who_ the query runs as,
+  from the end user to the service principal. The query keeps succeeding, and
+  nothing in the library logs the switch at request time. The only built-in hint
+  is the `EMPTY_PERMISSIONS_WARNING` that `createLakeQLApp` prints at startup
+  when `auth.permissions` is empty — a one-time note, not a per-request signal.
+</Warning>
+
+## Interaction With the Authorization Model
+
+This change is security-sensitive because of how it composes with the [authorization model](/docs/api/authentication/authorization-model). With an empty [permission](/docs/api/authentication/permissions) set, a human read is **allowed** at Layer 1 and deferred to the data source's own access control at Layer 2. That delegation is only safe when impersonation is wired, so the engine sees the _user's_ identity and enforces the user's access.
+
+<Warning>
+  Remove impersonation and the same human read still passes Layer 1, but Layer 2
+  now sees the **service principal's** credential instead of the user's. The
+  query is then authorized by the service principal's grants, which are usually
+  **broader** than any single user's — a potential over-grant, not just a
+  cosmetic change. Writes are unaffected: they stay denied until an explicit
+  `Mutation` rule exists.
+</Warning>
+
+## Debugging Recipes
+
+Ordered easiest first. None of these require modifying `@lakeql/*` source — recipes 1 and 5 are env vars, 2–4 are small snippets in your own app.
+
+### 1. Turn On Azure Identity Logging
+
+The fastest signal, and the clearest for _which credential type_ ran. `@azure/identity` honors the `AZURE_LOG_LEVEL` environment variable, and LakeQL's Fabric client depends on it directly. LakeQL itself never sets this variable, so it is purely opt-in.
+
+```bash title=".env"
+AZURE_LOG_LEVEL=verbose
+```
+
+Restart the app and run a Fabric query. With the resolver removed you will see `ClientSecretCredential` activity (the service principal). With the resolver present you would instead see `OnBehalfOfCredential` activity (the user). That difference is the single clearest proof of which credential acquired the token.
+
+<Warning>
+  `verbose` can print request and correlation detail that may include token
+  fragments. Use it in a development or test environment, never in a shared or
+  production one, and do not paste raw verbose logs into tickets or chat.
+</Warning>
+
+### 2. Observe the Outbound Decision With a Logging Resolver
+
+To see the outbound decision itself, put back an `impersonationResolver` that only logs and then returns `null`. Returning `null` means "no impersonation — fall back to the data source's service credentials," so this observes the fallback without changing its outcome. Set it on your Fabric source (or on the global `auth.impersonationResolver`) in `lakeql.config.ts`:
+
+```ts title="lakeql.config.ts"
+import type { ImpersonationResolver } from "@lakeql/config"
+
+const debugResolver: ImpersonationResolver = (context) => {
+  console.debug("[impersonation] invoked", {
+    dataSource: context.dataSource,
+    adapter: context.adapter,
+    isServicePrincipal: context.isServicePrincipal,
+    hasRawToken: typeof context.currentUser.__rawToken === "string",
+  })
+  return null // fall back to the data source's service credentials
+}
+```
+
+If the line prints, the request reached the resolver and — because it returns `null` — runs as the service principal. If it does **not** print after you remove the resolver entirely, that confirms the no-resolver fallback short-circuited before any resolver ran. Either way you have proof of the path taken.
+
+### 3. Log the Resolved Identity
+
+To see how the _request_ authenticated to your API (human versus service principal), wrap the built-in [`entraIdIdentityResolver`](/docs/api/api-reference#entra-id-identity-resolver) with an `identityResolver` hook that logs and then delegates. Pass it where you call `createLakeQLApp` (or `defineApiConfig`):
+
+```ts title="src/index.ts"
+import { entraIdIdentityResolver } from "@lakeql/api"
+import { createLakeQLApp } from "@lakeql/api/create-app"
+
+const app = await createLakeQLApp({
+  identityResolver: (token) => {
+    const identity = entraIdIdentityResolver(token)
+    console.debug("[identity]", {
+      isServicePrincipal: identity.isServicePrincipal,
+      userName: identity.userName,
+      idtyp: token.idtyp,
+      appid: token.appid,
+      azp: token.azp,
+      oid: token.oid,
+      upn: token.upn ?? token.preferred_username,
+      aud: token.aud,
+    })
+    return identity
+  },
+})
+```
+
+The `isServicePrincipal` flag tells you how the request was seen at the API boundary. Note this is distinct from the outbound credential: it reflects how the caller authenticated _to LakeQL_, while the outbound-to-Fabric credential is decided later by the impersonation resolver (recipe 2).
+
+### 4. Decode the Acquired Token's Claims
+
+To confirm the exact principal on the token that reaches Fabric, mint the service-principal token the same way the client does and decode its claims. Use the same `tenantId` / `clientId` / `clientSecret` as your Fabric connection's `auth` block:
+
+```ts title="scripts/decode-token.ts"
+import { ClientSecretCredential } from "@azure/identity"
+
+const cred = new ClientSecretCredential(TENANT_ID, CLIENT_ID, CLIENT_SECRET)
+const result = await cred.getToken("https://database.windows.net/.default")
+const [, payload] = result!.token.split(".")
+console.log(JSON.parse(Buffer.from(payload, "base64url").toString()))
+```
+
+Inspect the claims, not the token string. An app-only (service principal) token shows `idtyp: "app"`, carries an `appid`, and has no `upn` / `unique_name`. A user token carries `upn` / `preferred_username` and `oid`. The claims worth checking are `aud`, `appid`, `oid`, `upn`, and `idtyp`.
+
+<Warning>
+  Do not log full tokens in shared environments. Decode locally and inspect only
+  the claims. A raw token is a bearer credential — treat it like a password.
+</Warning>
+
+### 5. Raise LakeQL's Log Level — With a Caveat
+
+LakeQL has two independent log-level switches, both read from the environment:
+
+- `LOG_LEVEL` — `info`, `warn`, `error`, or `debug` (default `warn`). Drives the core logger.
+- `API_LOGGER` — `debug`, `info`, `warn`, `error`, or `silent` (default `warn`). Controls the API server's request and GraphQL logging.
+
+```bash title=".env"
+LOG_LEVEL=debug
+API_LOGGER=debug
+```
+
+<Note>
+  These give you request and error context, but the library does **not** log the
+  resolved identity or the chosen credential on the auth path. Higher log levels
+  alone will not tell you whether a query ran as the service principal or the
+  user — combine them with recipe 1, 2, or 4 for that answer.
+</Note>
+
+## Generalizing to Other Data Sources
+
+The identity-versus-credential split and the impersonation fallback apply to any data source that supports impersonation. The _mechanism_ differs by adapter, so the Fabric-specific recipes above do not all carry over verbatim:
+
+- **Fabric** forwards a request-scoped **bearer token** acquired through the OAuth2 on-behalf-of flow. Recipes 1 and 4 (Azure identity logging, token decoding) are Fabric-specific because they target that credential.
+- **Trino** impersonates through the `X-Trino-User` header via [`trinoUserImpersonation`](/docs/api/authentication/trino-user-impersonation) rather than a request-scoped bearer token. Its fallback is the same shape — no resolver means the query runs with the connection's own credentials — so recipes 2, 3, and 5 (the logging resolver, the identity wrapper, and the LakeQL log levels) apply to Trino too. The Azure-specific recipes do not.
+
+In every case the key question is the same: with no `impersonationResolver` configured, the query runs under the data source's own credentials, not the caller's.
+
+## Where to Next
+
+- [Authorization Model](/docs/api/authentication/authorization-model) — how Layer 1 permissions and Layer 2 identity compose, and why impersonation keeps the open read default safe.
+- [Permissions](/docs/api/authentication/permissions) — declare the Layer 1 rules that gate each data source.
+- [Trino User Impersonation](/docs/api/authentication/trino-user-impersonation) — configure the `X-Trino-User` delegation.
