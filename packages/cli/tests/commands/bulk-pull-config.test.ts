@@ -5,6 +5,11 @@ import path from "node:path"
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
+import {
+  bulkPullConfigSchema,
+  validateBulkPullConfig,
+} from "@/bulk-pull-config"
+
 const mockCwd = vi.fn<() => string>(() => process.cwd())
 vi.mock(import("@/path-utils"), () => ({
   getInvocationCwd: () => mockCwd(),
@@ -112,6 +117,34 @@ export default [
       expect(mod.default[0].tables).toHaveLength(3)
       expect(mod.default[1].views).toStrictEqual(["daily_summary"])
       expect(mod.default[2].catalog).toBe("warehouse")
+    })
+  })
+
+  describe("dataSource field (schema level)", () => {
+    it("accepts an entry with a dataSource", () => {
+      const result = validateBulkPullConfig([
+        { dataSource: "trino", schema: "s1", tables: ["t1"] },
+      ])
+      expect(result[0]?.dataSource).toBe("trino")
+    })
+
+    it("accepts an entry that omits dataSource (optional at the schema level)", () => {
+      const result = validateBulkPullConfig([{ schema: "s1", tables: ["t1"] }])
+      expect(result[0]?.dataSource).toBeUndefined()
+    })
+
+    it("rejects an empty-string dataSource", () => {
+      const parsed = bulkPullConfigSchema.safeParse([
+        { dataSource: "", schema: "s1", tables: ["t1"] },
+      ])
+      expect(parsed.success).toBeFalsy()
+    })
+
+    it("still enforces the tables/views refinement alongside dataSource", () => {
+      const parsed = bulkPullConfigSchema.safeParse([
+        { dataSource: "trino", schema: "s1", tables: [], views: [] },
+      ])
+      expect(parsed.success).toBeFalsy()
     })
   })
 

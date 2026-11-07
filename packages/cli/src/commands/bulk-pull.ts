@@ -5,16 +5,17 @@ import { loadConfig as c12LoadConfig } from "c12"
 import { Listr } from "listr2"
 import { ZodError } from "zod/v4"
 
-import type { BulkPullConfig } from "@/bulk-pull-config"
+import type { BulkPullConfig, BulkPullEntry } from "@/bulk-pull-config"
 import { validateBulkPullConfig } from "@/bulk-pull-config"
 import { runConfigRegistryGeneration } from "@/commands/create-registry"
-import { resolveSourcePath } from "@/config"
+import { loadConfig, resolveSourcePath } from "@/config"
 import { CliError, createDataSourceConnectionError } from "@/errors"
 import { listrRendererOptions } from "@/listr-renderer"
 import { DEFAULT_PULL_CONCURRENCY } from "@/options"
 import { getInvocationCwd } from "@/path-utils"
 import { assertValidNamePrefix } from "@/pipeline/derive-names"
 import { resolveCatalog } from "@/resolve-catalog"
+import type { ResolvedDataSource } from "@/resolve-datasource"
 import { resolveDataSource } from "@/resolve-datasource"
 
 import { executePull } from "./pull-action"
@@ -145,8 +146,73 @@ export async function loadBulkConfig(
 }
 
 /**
+ * A bulk pull entry paired with the data source name it resolves to. The
+ * effective data source is the entry's explicit `dataSource` or, in a
+ * single-source project (or when `--source` pins one), the sole/pinned source.
+ */
+interface ResolvedEntry {
+  entry: BulkPullEntry
+  dataSourceName: string
+}
+
+/**
+ * Determines each entry's effective data source and applies the maintainer
+ * rule: a single-source project (or a `--source` filter) may omit
+ * `dataSource`; a multi-source project requires it per entry.
+ *
+ * @throws {CliError} When an entry names an unknown data source, or when it
+ * omits `dataSource` in a multi-source project with no `--source` filter.
+ */
+function resolveEntryDataSources(
+  config: BulkPullConfig,
+  configuredSourceNames: string[],
+  sourceFlag: string | undefined
+): ResolvedEntry[] {
+  const isSingleSource = configuredSourceNames.length === 1
+  const [soleSource] = configuredSourceNames
+
+  return config.map((entry) => {
+    if (entry.dataSource) {
+      if (!configuredSourceNames.includes(entry.dataSource)) {
+        throw new CliError(
+          `Bulk entry (catalog=${entry.catalog ?? "<resolved>"}, schema=${entry.schema}) references unknown data source "${entry.dataSource}".`,
+          {
+            code: "BULK_DATASOURCE_NOT_FOUND",
+            hint: `Available data sources: ${configuredSourceNames.join(", ")}.`,
+          }
+        )
+      }
+      return { entry, dataSourceName: entry.dataSource }
+    }
+
+    // No explicit dataSource on the entry.
+    if (sourceFlag) {
+      return { entry, dataSourceName: sourceFlag }
+    }
+
+    if (isSingleSource && soleSource) {
+      return { entry, dataSourceName: soleSource }
+    }
+
+    throw new CliError(
+      `Bulk entry (catalog=${entry.catalog ?? "<resolved>"}, schema=${entry.schema}) is missing "dataSource".`,
+      {
+        code: "BULK_DATASOURCE_REQUIRED",
+        hint: `Multiple data sources are configured (${configuredSourceNames.join(", ")}). Set "dataSource" on each entry, or pass --source to pull a single source.`,
+      }
+    )
+  })
+}
+
+/**
  * Executes the bulk pull — loads the config, then processes all entries
  * concurrently using listr2 for structured terminal output.
+ *
+ * Multi-source: without `--source`, every entry is resolved against its own
+ * `dataSource`; with `--source <value>`, entries are filtered to that source
+ * (plus `dataSource`-less entries in a single-source project). Each distinct
+ * data source is resolved once, cached, and closed at the end — even on
+ * failure.
  */
 export async function executeBulkPull(options: BulkPullOptions): Promise<void> {
   const {
@@ -158,53 +224,107 @@ export async function executeBulkPull(options: BulkPullOptions): Promise<void> {
     sourceFlag,
   } = options
 
-  const {
-    name: dataSourceName,
-    instance: dataSource,
-    config: dsConfig,
-  } = await resolveDataSource(sourceFlag)
+  const resolvedTargetPath = await resolveSourcePath(sourcePathOverride)
 
+  let config: BulkPullConfig
   try {
-    // Validate the per-data-source prefix once, up front — before any pull work
-    // or network I/O — so an invalid prefix fails fast with the clear
-    // INVALID_NAME_PREFIX CliError instead of being masked per item by
-    // createDataSourceConnectionError inside the pull loop. Uses the same
-    // validator deriveNames applies at generate time, so there is zero drift.
-    assertValidNamePrefix(dsConfig.namePrefix, dataSourceName)
+    config = await loadBulkConfig(configPath)
+  } catch (error) {
+    if (error instanceof ZodError) {
+      const details = error.issues.map((issue) => {
+        const issuePath = issue.path.length > 0 ? issue.path.join(".") : "root"
+        return `  - ${issuePath}: ${issue.message}`
+      })
 
-    const resolvedCatalog = await resolveCatalog({
-      dataSource,
-      catalogFlag: cliCatalog,
-      connectionCatalog: (dsConfig.connection as { catalog?: string })?.catalog,
-    })
-
-    const resolvedTargetPath = await resolveSourcePath(sourcePathOverride)
-    let config: BulkPullConfig
-    try {
-      config = await loadBulkConfig(configPath)
-    } catch (error) {
-      if (error instanceof ZodError) {
-        const details = error.issues.map((issue) => {
-          const issuePath =
-            issue.path.length > 0 ? issue.path.join(".") : "root"
-          return `  - ${issuePath}: ${issue.message}`
-        })
-
-        throw new CliError("Invalid bulk pull config.", {
-          code: "BULK_CONFIG_INVALID",
-          details,
-          hint: "Ensure each entry defines a schema and at least one non-empty list: tables or views.",
-          cause: error,
-        })
-      }
-
-      throw error
+      throw new CliError("Invalid bulk pull config.", {
+        code: "BULK_CONFIG_INVALID",
+        details,
+        hint: "Ensure each entry defines a schema and at least one non-empty list: tables or views.",
+        cause: error,
+      })
     }
 
-    if (config.length === 0) {
-      // oxlint-disable-next-line no-console
-      console.log(info("No entries found in bulk config."))
-      return
+    throw error
+  }
+
+  if (config.length === 0) {
+    // oxlint-disable-next-line no-console
+    console.log(info("No entries found in bulk config."))
+    return
+  }
+
+  // Determine which data sources the project configures so we can validate the
+  // per-entry dataSource rule and (with --source) filter entries.
+  const project = await loadConfig()
+  const configuredSourceNames = Object.keys(project.config.dataSources)
+
+  // Resolve each entry's effective data source up front (fail-fast on an
+  // unknown or ambiguous source, before any network I/O).
+  const resolvedEntries = resolveEntryDataSources(
+    config,
+    configuredSourceNames,
+    sourceFlag
+  )
+
+  // --source is a FILTER: keep only entries belonging to the pinned source.
+  const filteredEntries = sourceFlag
+    ? resolvedEntries.filter((re) => re.dataSourceName === sourceFlag)
+    : resolvedEntries
+
+  if (filteredEntries.length === 0) {
+    // oxlint-disable-next-line no-console
+    console.log(info("No entries found in bulk config."))
+    return
+  }
+
+  // Lazily resolve each distinct data source exactly once and cache the
+  // instance so every entry for that source shares a connection.
+  const sourceCache = new Map<
+    string,
+    {
+      resolved: ResolvedDataSource
+      resolvedCatalog: string
+    }
+  >()
+
+  const getSource = async (name: string) => {
+    const cached = sourceCache.get(name)
+    if (cached) {
+      return cached
+    }
+
+    const resolved = await resolveDataSource(name)
+
+    // Validate the per-data-source prefix the moment the source is first
+    // resolved — before any pull work or network I/O for it — so an invalid
+    // prefix fails fast with the clear INVALID_NAME_PREFIX CliError instead of
+    // being masked per item by createDataSourceConnectionError inside the pull
+    // loop. Uses the same validator deriveNames applies at generate time.
+    assertValidNamePrefix(resolved.config.namePrefix, resolved.name)
+
+    const resolvedCatalog = await resolveCatalog({
+      dataSource: resolved.instance,
+      catalogFlag: cliCatalog,
+      connectionCatalog: (resolved.config.connection as { catalog?: string })
+        ?.catalog,
+    })
+
+    const entry = { resolved, resolvedCatalog }
+    sourceCache.set(name, entry)
+    return entry
+  }
+
+  // Pre-resolve every distinct source now so prefix validation and catalog
+  // resolution fail fast (matching the previous single-source behaviour), and
+  // so the finally block can close exactly the instances we opened.
+  const distinctSourceNames = [
+    ...new Set(filteredEntries.map((re) => re.dataSourceName)),
+  ]
+
+  try {
+    for (const name of distinctSourceNames) {
+      // oxlint-disable-next-line no-await-in-loop
+      await getSource(name)
     }
 
     const runWithPullSlot = createConcurrencyLimiter(concurrency)
@@ -215,7 +335,19 @@ export async function executeBulkPull(options: BulkPullOptions): Promise<void> {
           title: "Pull data",
           task: (_, task) =>
             task.newListr(
-              config.map((entry) => {
+              filteredEntries.map(({ entry, dataSourceName }) => {
+                // The source was pre-resolved above, so this is always cached.
+                const source = sourceCache.get(dataSourceName)
+                if (!source) {
+                  throw new CliError(
+                    `Data source "${dataSourceName}" was not resolved.`,
+                    { code: "BULK_DATASOURCE_NOT_RESOLVED" }
+                  )
+                }
+                const { resolved, resolvedCatalog } = source
+                const dataSource = resolved.instance
+                const { namePrefix } = resolved.config
+
                 const catalog = entry.catalog ?? resolvedCatalog
                 const tableCount = entry.tables?.length ?? 0
                 const viewCount = entry.views?.length ?? 0
@@ -263,7 +395,7 @@ export async function executeBulkPull(options: BulkPullOptions): Promise<void> {
                             resolvedTargetPath,
                             skipRegistry: true,
                             sourcePathOverride,
-                            namePrefix: dsConfig.namePrefix,
+                            namePrefix,
                           })
                         )
                       } catch (error) {
@@ -373,7 +505,7 @@ export async function executeBulkPull(options: BulkPullOptions): Promise<void> {
                             resolvedTargetPath,
                             skipRegistry: true,
                             sourcePathOverride,
-                            namePrefix: dsConfig.namePrefix,
+                            namePrefix,
                           })
                         )
                       } catch (error) {
@@ -399,7 +531,7 @@ export async function executeBulkPull(options: BulkPullOptions): Promise<void> {
                             resolvedTargetPath,
                             skipRegistry: true,
                             sourcePathOverride,
-                            namePrefix: dsConfig.namePrefix,
+                            namePrefix,
                           })
                         )
                       } catch (error) {
@@ -431,6 +563,10 @@ export async function executeBulkPull(options: BulkPullOptions): Promise<void> {
 
     await tasks.run()
   } finally {
-    await dataSource.close()
+    // Close every opened source, even on failure. allSettled so one source's
+    // close rejection does not prevent the others from closing.
+    await Promise.allSettled(
+      [...sourceCache.values()].map(({ resolved }) => resolved.instance.close())
+    )
   }
 }

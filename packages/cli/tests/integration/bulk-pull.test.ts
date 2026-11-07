@@ -73,29 +73,54 @@ vi.mock(import("@/path-utils"), () => ({
     path.isAbsolute(p) ? p : path.resolve(testDir, p),
 }))
 
+// Configured data sources are set per test so single- vs multi-source behaviour
+// can be exercised. Defaults to a single "default" source.
+let configuredDataSources: Record<string, unknown> = { default: {} }
+
 vi.mock(import("@/config"), () => ({
   resolveSourcePath: async (override?: string) => override ?? testDir,
-  loadConfig: async () => ({
-    config: { dataSources: {}, sourcePath: "." },
-    adapters: [],
-  }),
+  loadConfig: async () =>
+    ({
+      config: { dataSources: configuredDataSources, sourcePath: "." },
+      adapters: [],
+      // oxlint-disable-next-line typescript/no-explicit-any
+    }) as any,
 }))
 
-// Pull/bulk-pull now resolve a live data source and catalog up-front.
-const mockResolveCatalog = vi.fn(async () => "default_catalog")
+// Pull/bulk-pull now resolve a live data source and catalog per source.
+const mockResolveCatalog = vi.fn(async (_name?: string) => "default_catalog")
 
-// Resolved data source is configurable per test so an invalid namePrefix can be
-// injected; defaults to a prefix-less "default" source.
-const mockResolveDataSource = vi.fn(async () =>
-  makeResolvedDataSource({ name: "default" })
-)
+// Resolved data sources are cached per requested name so each source has its
+// own instance (and its own `close` spy). Tests can override an entry to inject
+// an invalid namePrefix.
+const resolvedSourceOverrides = new Map<
+  string,
+  ReturnType<typeof makeResolvedDataSource>
+>()
+const resolvedSourceInstances = new Map<
+  string,
+  ReturnType<typeof makeResolvedDataSource>
+>()
+
+const mockResolveDataSource = vi.fn(async (sourceName = "default") => {
+  const existing = resolvedSourceInstances.get(sourceName)
+  if (existing) {
+    return existing
+  }
+  const resolved =
+    resolvedSourceOverrides.get(sourceName) ??
+    makeResolvedDataSource({ name: sourceName })
+  resolvedSourceInstances.set(sourceName, resolved)
+  return resolved
+})
 
 vi.mock(import("@/resolve-datasource"), () => ({
-  resolveDataSource: () => mockResolveDataSource(),
+  resolveDataSource: (name?: string) => mockResolveDataSource(name),
 }))
 
 vi.mock(import("@/resolve-catalog"), () => ({
-  resolveCatalog: () => mockResolveCatalog(),
+  resolveCatalog: (opts?: { dataSource?: { adapter?: string } }) =>
+    mockResolveCatalog(opts?.dataSource?.adapter),
 }))
 
 // Mock c12 to do a simple file import (like our previous implementation)
@@ -213,11 +238,11 @@ describe("bulk-pull (integration)", () => {
     setDefaultExecutePullMock()
     mockRunConfigRegistryGeneration.mockClear()
     mockResolveCatalog.mockClear()
-    mockResolveCatalog.mockResolvedValue("default_catalog")
-    mockResolveDataSource.mockReset()
-    mockResolveDataSource.mockImplementation(async () =>
-      makeResolvedDataSource({ name: "default" })
-    )
+    mockResolveCatalog.mockImplementation(async () => "default_catalog")
+    mockResolveDataSource.mockClear()
+    resolvedSourceOverrides.clear()
+    resolvedSourceInstances.clear()
+    configuredDataSources = { default: {} }
     taskOutputs.length = 0
   })
 
@@ -603,7 +628,9 @@ describe("bulk-pull (integration)", () => {
 
   describe("namePrefix validation", () => {
     it("surfaces INVALID_NAME_PREFIX and fails before any pull work when the prefix is invalid", async () => {
-      mockResolveDataSource.mockImplementation(async () =>
+      configuredDataSources = { trino: {} }
+      resolvedSourceOverrides.set(
+        "trino",
         makeResolvedDataSource({ name: "trino", namePrefix: "123" })
       )
 
@@ -627,7 +654,9 @@ describe("bulk-pull (integration)", () => {
     })
 
     it("does not reject when the prefix is valid", async () => {
-      mockResolveDataSource.mockImplementation(async () =>
+      configuredDataSources = { trino: {} }
+      resolvedSourceOverrides.set(
+        "trino",
         makeResolvedDataSource({ name: "trino", namePrefix: "my-trino" })
       )
 
@@ -645,6 +674,119 @@ describe("bulk-pull (integration)", () => {
           namePrefix: "my-trino",
         })
       )
+    })
+  })
+
+  describe("multi-source", () => {
+    it("without --source, pulls entries for both sources and closes both instances", async () => {
+      configuredDataSources = { trino: {}, fabric: {} }
+
+      await writeConfig([
+        { dataSource: "trino", schema: "hive", tables: ["t1"] },
+        { dataSource: "fabric", schema: "Processed_LH", tables: ["t2"] },
+      ])
+
+      await executeBulkPull({
+        configPath: "import.config.mjs",
+        skipRegistry: true,
+      })
+
+      expect(mockExecutePull).toHaveBeenCalledTimes(2)
+      expect(mockExecutePull).toHaveBeenCalledWith(
+        expect.objectContaining({ dataSourceName: "trino", schema: "hive" })
+      )
+      expect(mockExecutePull).toHaveBeenCalledWith(
+        expect.objectContaining({
+          dataSourceName: "fabric",
+          schema: "Processed_LH",
+        })
+      )
+
+      // Both opened instances must be closed.
+      const trino = resolvedSourceInstances.get("trino")
+      const fabric = resolvedSourceInstances.get("fabric")
+      expect(trino?.instance.close).toHaveBeenCalledOnce()
+      expect(fabric?.instance.close).toHaveBeenCalledOnce()
+    })
+
+    it("with --source, filters to that source and never resolves the other", async () => {
+      configuredDataSources = { trino: {}, fabric: {} }
+
+      await writeConfig([
+        { dataSource: "trino", schema: "hive", tables: ["t1"] },
+        { dataSource: "fabric", schema: "Processed_LH", tables: ["t2"] },
+      ])
+
+      await executeBulkPull({
+        configPath: "import.config.mjs",
+        skipRegistry: true,
+        sourceFlag: "trino",
+      })
+
+      expect(mockExecutePull).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({ dataSourceName: "trino", schema: "hive" })
+      )
+      // The other source was never resolved/opened.
+      expect(resolvedSourceInstances.has("fabric")).toBeFalsy()
+      expect(
+        resolvedSourceInstances.get("trino")?.instance.close
+      ).toHaveBeenCalledOnce()
+    })
+
+    it("single-source config omitting dataSource defaults to the sole source", async () => {
+      configuredDataSources = { only: {} }
+
+      await writeConfig([{ schema: "schema1", tables: ["t1"] }])
+
+      await executeBulkPull({
+        configPath: "import.config.mjs",
+        skipRegistry: true,
+      })
+
+      expect(mockExecutePull).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({ dataSourceName: "only", schema: "schema1" })
+      )
+    })
+
+    it("errors clearly when a multi-source entry omits dataSource and no --source is set", async () => {
+      configuredDataSources = { trino: {}, fabric: {} }
+
+      await writeConfig([
+        { dataSource: "trino", schema: "hive", tables: ["t1"] },
+        { schema: "orphan", tables: ["t2"] },
+      ])
+
+      await expect(
+        executeBulkPull({
+          configPath: "import.config.mjs",
+          skipRegistry: true,
+        })
+      ).rejects.toMatchObject({
+        name: "CliError",
+        code: "BULK_DATASOURCE_REQUIRED",
+      })
+
+      expect(mockExecutePull).not.toHaveBeenCalled()
+    })
+
+    it("errors when an entry references an unknown data source", async () => {
+      configuredDataSources = { trino: {}, fabric: {} }
+
+      await writeConfig([
+        { dataSource: "nope", schema: "hive", tables: ["t1"] },
+      ])
+
+      await expect(
+        executeBulkPull({
+          configPath: "import.config.mjs",
+          skipRegistry: true,
+        })
+      ).rejects.toMatchObject({
+        name: "CliError",
+        code: "BULK_DATASOURCE_NOT_FOUND",
+      })
+
+      expect(mockExecutePull).not.toHaveBeenCalled()
     })
   })
 

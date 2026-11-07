@@ -11,4 +11,28 @@ cliCommand: generate-import-config
 
 Run this after [`pull`](/docs/cli/commands/pull) has generated one or more endpoints. The file is written as `import.config.mjs` in the directory you run the command from. Use `--output` to write elsewhere, or `--force` to overwrite an existing file.
 
+## Generated shape
+
+Each generated endpoint has a `config.ts` that exports the authoritative `sourceConfig` (`dataSource`, `adapter`, `catalog`, `schema`, `tableName`). `generate-import-config` reads those values directly — it does not infer them from the directory layout. Endpoints are grouped by `dataSource`, `catalog`, and `schema`, with every `tableName` collected into `tables`:
+
+```js
+/** @type {import('@lakeql/cli').BulkPullConfig} */
+export default [
+  {
+    dataSource: "trino",
+    catalog: "hive",
+    schema: "tier1_open_lake",
+    tables: ["itaps_v2_environments_latest"],
+  },
+  {
+    dataSource: "fabric",
+    catalog: "fabric",
+    schema: "Processed_LH",
+    tables: ["tier1_open_lake"],
+  },
+]
+```
+
+Each entry carries a `dataSource` so a multi-source project can attribute every entry to the source it came from. The `adapter` is not emitted — it is derivable from the `dataSource` (the source's config in `lakeql.config.ts` knows its adapter).
+
 <CliCommandDetails command="generate-import-config" />

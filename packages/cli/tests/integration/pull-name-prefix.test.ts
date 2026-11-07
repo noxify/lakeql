@@ -45,9 +45,12 @@ vi.mock(import("@/config"), () => ({
   resolveSourcePath: () => Promise.resolve(testDir),
   loadConfig: () =>
     Promise.resolve({
-      config: { dataSources: {}, sourcePath: "." },
+      // Single configured source so a bulk entry may omit `dataSource` and
+      // default to it.
+      config: { dataSources: { default: {} }, sourcePath: "." },
       adapters: [],
-    }),
+      // oxlint-disable-next-line typescript/no-explicit-any
+    }) as any,
 }))
 
 const mockRunConfigRegistryGeneration = vi.fn().mockResolvedValue(null)
