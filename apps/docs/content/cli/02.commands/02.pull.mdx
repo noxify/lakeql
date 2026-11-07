@@ -29,6 +29,22 @@ Generated files land under your configured source path, organized by data source
 
 In a **single-source project** (exactly one data source configured) you may omit `dataSource` on each entry — it defaults to the sole source. In a **multi-source project**, `dataSource` is required per entry; an entry that omits it when more than one source is configured (and no `--source` filter pins one) is a configuration error.
 
+A hand-authored entry may list `views` instead of or in addition to `tables`; bulk pull generates endpoints for views the same way it does for tables, and each entry must have at least one non-empty `tables` or `views` list. (`generate-import-config` only ever emits `tables`, so add any `views` by hand.)
+
+```js
+// import.config.mjs
+/** @type {import('@lakeql/cli').BulkPullConfig} */
+export default [
+  {
+    dataSource: "warehouse",
+    catalog: "hive",
+    schema: "sales",
+    tables: ["orders"],
+    views: ["orders_summary"],
+  },
+]
+```
+
 <Note>
   `pull` always generates a read-only endpoint (`mutation: false`). It does not
   add a `Mutation` root field or otherwise make the endpoint writable. To enable

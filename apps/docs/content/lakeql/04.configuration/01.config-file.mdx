@@ -47,6 +47,17 @@ export default defineConfig({
 Connection shapes are adapter-specific. See [Trino connection](/docs/data-sources/trino/connection) and [Fabric connection](/docs/data-sources/fabric/connection).
 
 <Note>
+  `lakeql.config.ts` is loaded with tsconfig `paths` resolution enabled, so any
+  path aliases you declare in `tsconfig.json` (for example `~/`) resolve inside
+  the config file just as they do elsewhere in your project.
+
+```ts
+import { env } from "~/env"
+```
+
+</Note>
+
+<Note>
   Because `src/permissions.ts` authors rules with `createPermission` from
   `@lakeql/api/helpers`, importing it into `lakeql.config.ts` means every config
   load (`lakeql pull`, `generate`, server startup) evaluates the `@lakeql/api`

@@ -7,3 +7,5 @@ description: What the CLI does and how to install it.
 The LakeQL CLI (`@lakeql/cli`, binary `lakeql-cli`) generates and introspects. It reads your `lakeql.config.ts`, connects to a data source through its adapter, and generates the typed endpoint files the API server serves.
 
 Use it to initialize a project, explore a data source, and generate or regenerate endpoints. See [installation](/docs/cli/overview/installation) to add it to a project. Then read the [commands](/docs/cli/commands) for everything it can do.
+
+When a command has to reach a remote data source before prompting you, it shows a one-line progress spinner so you know it is working; the spinner is suppressed on CI and other non-interactive terminals.
