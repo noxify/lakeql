@@ -277,13 +277,27 @@ export async function executeBulkPull(options: BulkPullOptions): Promise<void> {
     return
   }
 
+  // A per-entry `catalog` is the most specific level and overrides the
+  // resolved catalog. The resolved catalog (from `resolveCatalog`) is only ever
+  // used as a fallback for entries that omit `catalog`. So a source only needs
+  // catalog resolution when at least one of its entries omits `catalog` — and
+  // for those, `resolveCatalog` may drop into an interactive "Choose a catalog"
+  // prompt. In bulk mode (generated configs always carry an explicit catalog),
+  // resolving unconditionally would wrongly prompt, so compute up front which
+  // sources actually need resolution and skip it for the rest.
+  const sourcesNeedingCatalog = new Set(
+    filteredEntries
+      .filter(({ entry }) => !entry.catalog)
+      .map((re) => re.dataSourceName)
+  )
+
   // Lazily resolve each distinct data source exactly once and cache the
   // instance so every entry for that source shares a connection.
   const sourceCache = new Map<
     string,
     {
       resolved: ResolvedDataSource
-      resolvedCatalog: string
+      resolvedCatalog: string | undefined
     }
   >()
 
@@ -310,12 +324,18 @@ export async function executeBulkPull(options: BulkPullOptions): Promise<void> {
     // loop. Uses the same validator deriveNames applies at generate time.
     assertValidNamePrefix(resolved.config.namePrefix, resolved.name)
 
-    const resolvedCatalog = await resolveCatalog({
-      dataSource: resolved.instance,
-      catalogFlag: cliCatalog,
-      connectionCatalog: (resolved.config.connection as { catalog?: string })
-        ?.catalog,
-    })
+    // Only resolve (and possibly prompt for) a catalog when some entry for this
+    // source omits its own `catalog`. Sources whose entries all specify a
+    // catalog never need the resolved fallback, so skip resolution entirely.
+    const resolvedCatalog = sourcesNeedingCatalog.has(name)
+      ? await resolveCatalog({
+          dataSource: resolved.instance,
+          catalogFlag: cliCatalog,
+          connectionCatalog: (
+            resolved.config.connection as { catalog?: string }
+          )?.catalog,
+        })
+      : undefined
 
     const entry = { resolved, resolvedCatalog }
     sourceCache.set(name, entry)
@@ -356,7 +376,16 @@ export async function executeBulkPull(options: BulkPullOptions): Promise<void> {
                 const dataSource = resolved.instance
                 const { namePrefix } = resolved.config
 
+                // The entry's own catalog wins; otherwise fall back to the
+                // catalog resolved for this source (guaranteed present, since a
+                // catalog-less entry forces its source into resolution above).
                 const catalog = entry.catalog ?? resolvedCatalog
+                if (!catalog) {
+                  throw new CliError(
+                    `Bulk entry (schema=${entry.schema}) has no catalog and none could be resolved for data source "${dataSourceName}".`,
+                    { code: "BULK_CATALOG_UNRESOLVED" }
+                  )
+                }
                 const tableCount = entry.tables?.length ?? 0
                 const viewCount = entry.views?.length ?? 0
                 const itemCount = tableCount + viewCount

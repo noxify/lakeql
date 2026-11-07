@@ -504,6 +504,75 @@ describe("bulk-pull (integration)", () => {
         })
       )
     })
+
+    // Regression: `pull --bulk` with a config whose every entry carries an
+    // explicit `catalog` must run fully non-interactively. The interactive
+    // catalog resolver (`resolveCatalog`, which prompts "Choose a catalog")
+    // must never be reached, because no entry needs the resolved fallback.
+    it("never invokes the catalog resolver when every entry has an explicit catalog", async () => {
+      await writeConfig([
+        { schema: "schema1", catalog: "catalog_a", tables: ["t1"] },
+        { schema: "schema2", catalog: "catalog_b", tables: ["t2"] },
+      ])
+
+      await executeBulkPull({
+        configPath: "import.config.mjs",
+        skipRegistry: true,
+      })
+
+      expect(mockResolveCatalog).not.toHaveBeenCalled()
+      expect(mockExecutePull).toHaveBeenCalledTimes(2)
+    })
+
+    it("never invokes the catalog resolver in a multi-source config where every entry has a catalog", async () => {
+      configuredDataSources = { trino: {}, fabric: {} }
+
+      await writeConfig([
+        { dataSource: "trino", catalog: "hive", schema: "s1", tables: ["t1"] },
+        {
+          dataSource: "fabric",
+          catalog: "Processed_LH",
+          schema: "s2",
+          tables: ["t2"],
+        },
+      ])
+
+      await executeBulkPull({
+        configPath: "import.config.mjs",
+        skipRegistry: true,
+      })
+
+      expect(mockResolveCatalog).not.toHaveBeenCalled()
+      expect(mockExecutePull).toHaveBeenCalledTimes(2)
+    })
+
+    it("resolves the catalog only for a source that has an entry omitting catalog", async () => {
+      configuredDataSources = { trino: {}, fabric: {} }
+      mockResolveCatalog.mockResolvedValue("resolved_catalog")
+
+      await writeConfig([
+        // trino: every entry has an explicit catalog -> no resolution needed
+        { dataSource: "trino", catalog: "hive", schema: "s1", tables: ["t1"] },
+        // fabric: entry omits catalog -> must resolve once for fabric only
+        { dataSource: "fabric", schema: "s2", tables: ["t2"] },
+      ])
+
+      await executeBulkPull({
+        configPath: "import.config.mjs",
+        skipRegistry: true,
+      })
+
+      expect(mockResolveCatalog).toHaveBeenCalledOnce()
+      expect(mockExecutePull).toHaveBeenCalledWith(
+        expect.objectContaining({ dataSourceName: "trino", catalog: "hive" })
+      )
+      expect(mockExecutePull).toHaveBeenCalledWith(
+        expect.objectContaining({
+          dataSourceName: "fabric",
+          catalog: "resolved_catalog",
+        })
+      )
+    })
   })
 
   describe("registry generation", () => {
