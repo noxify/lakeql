@@ -62,7 +62,7 @@
   "dependencies": {
     "@lakeql/datasource": "workspace:*",
     "@lakeql/helpers": "workspace:*",
-    "es-toolkit": "1.53.1",
+    "es-toolkit": "1.53.2",
     "zod": "4.6.7"
   },
   "devDependencies": {
@@ -72,7 +72,7 @@
     "@types/node": "24.19.2",
     "fast-check": "4.10.2",
     "json-column-parser": "2.0.0",
-    "tsdown": "0.23.5",
+    "tsdown": "0.23.7",
     "typescript": "6.0.3",
     "vitest": "5.1.0"
   }
