@@ -675,6 +675,46 @@ describe("bulk-pull (integration)", () => {
         })
       )
     })
+
+    it("closes every opened source when a later source's prefix is invalid", async () => {
+      configuredDataSources = { trino: {}, fabric: {} }
+      // trino resolves with a valid prefix (opened first); fabric then throws
+      // INVALID_NAME_PREFIX while being opened. Both must still be closed.
+      resolvedSourceOverrides.set(
+        "trino",
+        makeResolvedDataSource({ name: "trino", namePrefix: "ok" })
+      )
+      resolvedSourceOverrides.set(
+        "fabric",
+        makeResolvedDataSource({ name: "fabric", namePrefix: "123" })
+      )
+
+      await writeConfig([
+        { dataSource: "trino", schema: "hive", tables: ["t1"] },
+        { dataSource: "fabric", schema: "Processed_LH", tables: ["t2"] },
+      ])
+
+      await expect(
+        executeBulkPull({
+          configPath: "import.config.mjs",
+          skipRegistry: true,
+        })
+      ).rejects.toMatchObject({
+        name: "CliError",
+        code: "INVALID_NAME_PREFIX",
+      })
+
+      // The run failed before any pull work, but both opened instances must be
+      // closed — including fabric, whose prefix validation threw before it was
+      // cached.
+      expect(mockExecutePull).not.toHaveBeenCalled()
+      expect(
+        resolvedSourceInstances.get("trino")?.instance.close
+      ).toHaveBeenCalledOnce()
+      expect(
+        resolvedSourceInstances.get("fabric")?.instance.close
+      ).toHaveBeenCalledOnce()
+    })
   })
 
   describe("multi-source", () => {

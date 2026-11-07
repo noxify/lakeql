@@ -23,9 +23,10 @@ interface GeneratedEntry {
 /**
  * The authoritative per-endpoint metadata exported as `sourceConfig` from each
  * generated `config.ts`. Mirrors the shape produced by
- * `@lakeql/file-generator`'s `generateConfig`. The `adapter` field is read and
- * validated for completeness but intentionally not copied into the emitted
- * import config (it is derivable from the data source).
+ * `@lakeql/file-generator`'s `generateConfig`. The `adapter` field is read for
+ * shape fidelity but is neither validated nor copied into the emitted import
+ * config — it is derivable from the data source, so it is intentionally
+ * redundant there.
  */
 interface SourceConfig {
   dataSource: string

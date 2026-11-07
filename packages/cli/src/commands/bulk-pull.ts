@@ -209,10 +209,10 @@ function resolveEntryDataSources(
  * concurrently using listr2 for structured terminal output.
  *
  * Multi-source: without `--source`, every entry is resolved against its own
- * `dataSource`; with `--source <value>`, entries are filtered to that source
- * (plus `dataSource`-less entries in a single-source project). Each distinct
- * data source is resolved once, cached, and closed at the end — even on
- * failure.
+ * `dataSource`; with `--source <value>`, entries are filtered to that source.
+ * A `dataSource`-less entry is treated as belonging to the `--source` value
+ * when one is given, so it is kept by the filter. Each distinct data source is
+ * resolved once, cached, and closed at the end — even on failure.
  */
 export async function executeBulkPull(options: BulkPullOptions): Promise<void> {
   const {
@@ -287,6 +287,11 @@ export async function executeBulkPull(options: BulkPullOptions): Promise<void> {
     }
   >()
 
+  // Every data-source instance we actually opened, tracked independently of
+  // sourceCache so the finally block can close it even when validation
+  // (prefix/catalog) throws before the entry lands in sourceCache.
+  const openedInstances: ResolvedDataSource["instance"][] = []
+
   const getSource = async (name: string) => {
     const cached = sourceCache.get(name)
     if (cached) {
@@ -294,6 +299,9 @@ export async function executeBulkPull(options: BulkPullOptions): Promise<void> {
     }
 
     const resolved = await resolveDataSource(name)
+    // Record the opened instance immediately so it is closed in finally even
+    // if the prefix/catalog validation below throws.
+    openedInstances.push(resolved.instance)
 
     // Validate the per-data-source prefix the moment the source is first
     // resolved — before any pull work or network I/O for it — so an invalid
@@ -563,10 +571,12 @@ export async function executeBulkPull(options: BulkPullOptions): Promise<void> {
 
     await tasks.run()
   } finally {
-    // Close every opened source, even on failure. allSettled so one source's
-    // close rejection does not prevent the others from closing.
+    // Close every opened source, even on failure (including a source whose
+    // prefix/catalog validation threw before it reached sourceCache).
+    // allSettled so one source's close rejection does not prevent the others
+    // from closing.
     await Promise.allSettled(
-      [...sourceCache.values()].map(({ resolved }) => resolved.instance.close())
+      openedInstances.map((instance) => instance.close())
     )
   }
 }
