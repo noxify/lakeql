@@ -17,8 +17,8 @@ Every request resolves an [identity](/docs/api/authentication/jwt-authentication
 
 The two paths for Fabric side by side:
 
-| | Impersonation (resolver present) | Fallback (resolver removed) |
-|---|---|---|
+|  | Impersonation (resolver present) | Fallback (resolver removed) |
+| --- | --- | --- |
 | Request-scoped credential | the caller's exchanged bearer token | none |
 | Credential the query uses | `OnBehalfOfCredential` (your resolver) | `ClientSecretCredential` (connection `auth`) |
 | Runs as | the **calling user** | the **service principal** |
