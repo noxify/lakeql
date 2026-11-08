@@ -49,6 +49,9 @@
       "types": "./dist/commands-metadata.d.mts"
     }
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsdown",
     "clean": "git clean -xdf .cache .turbo dist node_modules dist",
