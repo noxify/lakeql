@@ -56,6 +56,11 @@ export const PanZoomViewport = ({
     fitOnInit={fitOnInit}
     wheel={{ step: wheelStep }}
     doubleClick={{ disabled: true }}
+    // Keyboard navigation: arrow keys pan, +/- zoom, 0 resets. The library sets
+    // tabIndex=0 on the wrapper when enabled, so the viewport is focusable and
+    // the handlers fire only while focus is inside it (click or tab in) — the
+    // keys never hijack page scroll when the diagram is not focused.
+    keyboard={{ disabled: false, panStep: 20, zoomStep: 0.1 }}
   >
     {({ zoomIn, zoomOut, resetTransform }) => (
       <>
