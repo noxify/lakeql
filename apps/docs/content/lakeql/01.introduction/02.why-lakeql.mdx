@@ -91,4 +91,26 @@ export default defineConfig({
 
 Each source carries its own `host`, `catalog`, and `auth`, driven by separate environment variables, so the two workspaces stay fully independent. Generated files are organized by data source, so tables never collide on disk. Two sources that expose a table with the same `schema.tableName` would otherwise produce colliding GraphQL names, so set a [`namePrefix`](/docs/lakeql/configuration/config-file#name-prefix) on each source to disambiguate them. The prefix is the mechanism that keeps a merged, multi-workspace schema unambiguous.
 
+## LakeQL and Direct Trino Access
+
+[Trino](/docs/data-sources/trino) has no GraphQL layer of its own, so the comparison here is different from the Fabric one. The alternative to LakeQL is reaching the Trino coordinator directly: through an ODBC or JDBC driver, or by calling the Trino REST API from application code. LakeQL stands in for the work that path requires, and the following points describe that work rather than a shortcoming in Trino.
+
+| Capability | LakeQL | Direct Trino access |
+| --- | --- | --- |
+| Interface | GraphQL over HTTP | SQL over the REST API, or an ODBC/JDBC driver |
+| Driver dependency | None; the adapter is an HTTP client over the REST API | A driver to install and maintain, itself an HTTP client over the same REST API |
+| Result handling | Pagination and column decoding handled by the client | Caller follows `nextUri` pages and decodes column-oriented rows |
+| Query authoring | SQL generated from the GraphQL query | Caller writes and maintains SQL |
+| Authentication | Request-scoped identity resolved by LakeQL in front of the connection | Driver or REST credentials supplied per connection |
+
+Three points carry most of the difference.
+
+**No driver to maintain.** The Trino adapter reaches the coordinator through an HTTP client over the [Trino REST API](/docs/packages/trino-client), so a project adds no ODBC or JDBC driver. The honest nuance: those drivers are themselves HTTP clients over the same REST API, so the saving is one fewer dependency to install and track, not a protocol-level gain.
+
+**No hand-built result handling.** A Trino query returns results across several pages linked by a `nextUri`, with rows delivered as positional arrays alongside separate column metadata. The client follows that pagination to completion and maps each positional row onto its column names, so application code receives keyed records. A direct REST consumer writes that pagination loop and column decoding.
+
+**SQL comes from the GraphQL query.** The Trino endpoint accepts SQL and nothing else, so a direct consumer authors and maintains the SQL for every query. LakeQL compiles the SQL from the incoming GraphQL query, so the GraphQL schema is the interface a consumer works against.
+
+Authentication differs from the Fabric case and the table reflects that. Direct Trino access authenticates with the credentials the driver or REST call carries. LakeQL resolves a request-scoped identity in front of the connection and can impersonate the caller against Trino. See [Trino user impersonation](/docs/api/authentication/trino-user-impersonation) for how that identity reaches the coordinator.
+
 See [Getting Started](/docs/lakeql/getting-started) to scaffold a project and the [data-source overview](/docs/data-sources) for adapter details.
