@@ -1,6 +1,6 @@
 {
   "name": "@lakeql/datasource",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Adapter-neutral contracts for LakeQL data sources, read strategies, write strategies, and adapter factories",
   "keywords": [
     "contracts",

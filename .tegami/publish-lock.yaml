@@ -1,12 +1,6 @@
 core:changelogs:
-  - content: "---\npackages:\n  \"@lakeql/adapters\":\n    type: patch\n  \"@lakeql/api\":\n    type: patch\n  \"@lakeql/cli\":\n    type: patch\n  \"@lakeql/column-parser\":\n    type: patch\n  \"@lakeql/create-app\":\n    type: patch\n  \"@lakeql/file-generator\":\n    type: patch\n  \"@lakeql/helpers\":\n    type: patch\n  \"@lakeql/logger\":\n    type: patch\n  \"@lakeql/parquet\":\n    type: patch\n  \"@lakeql/query-builder\":\n    type: patch\n  \"@lakeql/response-transformer\":\n    type: patch\n  \"@lakeql/schema-generator\":\n    type: patch\n  \"@lakeql/trino-client\":\n    type: patch\n---\n\n### Migrate release tooling from Changesets to Tegami\n\nReplaced Changesets with Tegami for versioning and publishing.\n\n### Update dependencies\n\nUpdated all dependencies to their latest versions.\n"
-    filename: 2026-07-23-f8da3f7b.md
-    v: 0.0.0
-  - content: "---\npackages:\n  \"@lakeql/query-builder\":\n    type: minor\n  \"@lakeql/file-generator\":\n    type: minor\n---\n\n### Refactor `getSelectFields` to use props interface\n\n`getSelectFields` now accepts a single `GetSelectFieldProps` object instead of positional arguments. The generated code from the file-generator is updated accordingly.\n\n```ts\n// Before\ngetSelectFields(info, true)\n\n// After\ngetSelectFields({ graphqlInfo: info, withNodes: true })\n```\n"
-    filename: 2026-07-24-968a0f1c.md
-    v: 0.0.0
-  - content: "---\npackages:\n  \"@lakeql/trino-client\":\n    type: minor\n---\n\n### Rename generic type parameter `<T>` to `<TRow>`\n\nRenamed the generic type parameter across `TrinoClient` methods, `QueryResult`, and `QueryProps` from `<T>` to `<TRow>` for clarity.\n\n### Add JSDoc documentation to error classes\n\nAll error classes (`TrinoClientError`, `TrinoQueryError`, `TrinoTimeoutError`, `TrinoCancellationError`) now have documented constructor parameters.\n"
-    filename: 2026-07-24-3227d086.md
+  - content: "---\npackages:\n  \"@lakeql/adapter-fabric\":\n    type: major\n  \"@lakeql/adapter-trino\":\n    type: major\n  \"@lakeql/api\":\n    type: major\n  \"@lakeql/cli\":\n    type: major\n  \"@lakeql/column-parser\":\n    type: major\n  \"@lakeql/config\":\n    type: major\n  \"@lakeql/create-app\":\n    type: major\n  \"@lakeql/datasource\":\n    type: major\n  \"@lakeql/fabric-client\":\n    type: major\n  \"@lakeql/file-generator\":\n    type: major\n  \"@lakeql/helpers\":\n    type: major\n  \"@lakeql/logger\":\n    type: major\n  \"@lakeql/parquet\":\n    type: major\n  \"@lakeql/query-builder\":\n    type: major\n  \"@lakeql/response-transformer\":\n    type: major\n  \"@lakeql/scaffold\":\n    type: major\n  \"@lakeql/schema-generator\":\n    type: major\n  \"@lakeql/sql-read-strategy\":\n    type: major\n  \"@lakeql/storage\":\n    type: major\n  \"@lakeql/trino-client\":\n    type: major\n---\n\n### LakeQL 1.0 — first stable release on the adapter-based architecture\n\nThe 1.0 line is a ground-up restructure of the 0.x packages around a single adapter-based architecture: a neutral data-source/adapter contract, config + runtime composition, the Trino (read + write) and Fabric (read-only) adapters, the CLI (endpoint generation and `create-app`), and the GraphQL API layer.\n\nThis is a breaking release with no in-place upgrade path from the 0.x line — re-scaffold projects with `create-app` and re-author configuration against the 1.0 APIs rather than upgrading existing code.\n"
+    filename: 2026-10-27-lakeql-1-0.md
     v: 0.0.0
 core:packages:
   - id: npm:lakeql
@@ -14,85 +8,123 @@ core:packages:
   - id: npm:docs
     updated: true
   - changelogIds:
-      - 2026-07-23-f8da3f7b.md
-    id: npm:@lakeql/adapters
+      - 2026-10-27-lakeql-1-0.md
+    id: npm:@lakeql/adapter-fabric
     updated: true
   - changelogIds:
-      - 2026-07-23-f8da3f7b.md
+      - 2026-10-27-lakeql-1-0.md
+    id: npm:@lakeql/adapter-trino
+    updated: true
+  - changelogIds:
+      - 2026-10-27-lakeql-1-0.md
     id: npm:@lakeql/api
     updated: true
   - changelogIds:
-      - 2026-07-23-f8da3f7b.md
+      - 2026-10-27-lakeql-1-0.md
     id: npm:@lakeql/cli
     updated: true
   - changelogIds:
-      - 2026-07-23-f8da3f7b.md
+      - 2026-10-27-lakeql-1-0.md
     id: npm:@lakeql/column-parser
     updated: true
   - changelogIds:
-      - 2026-07-23-f8da3f7b.md
+      - 2026-10-27-lakeql-1-0.md
+    id: npm:@lakeql/config
+    updated: true
+  - changelogIds:
+      - 2026-10-27-lakeql-1-0.md
     id: npm:@lakeql/create-app
     updated: true
   - changelogIds:
-      - 2026-07-23-f8da3f7b.md
-      - 2026-07-24-968a0f1c.md
+      - 2026-10-27-lakeql-1-0.md
+    id: npm:@lakeql/datasource
+    updated: true
+  - changelogIds:
+      - 2026-10-27-lakeql-1-0.md
+    id: npm:@lakeql/fabric-client
+    updated: true
+  - changelogIds:
+      - 2026-10-27-lakeql-1-0.md
     id: npm:@lakeql/file-generator
     updated: true
   - changelogIds:
-      - 2026-07-23-f8da3f7b.md
+      - 2026-10-27-lakeql-1-0.md
     id: npm:@lakeql/helpers
     updated: true
   - changelogIds:
-      - 2026-07-23-f8da3f7b.md
+      - 2026-10-27-lakeql-1-0.md
     id: npm:@lakeql/logger
     updated: true
   - changelogIds:
-      - 2026-07-23-f8da3f7b.md
+      - 2026-10-27-lakeql-1-0.md
     id: npm:@lakeql/parquet
     updated: true
   - changelogIds:
-      - 2026-07-23-f8da3f7b.md
-      - 2026-07-24-968a0f1c.md
+      - 2026-10-27-lakeql-1-0.md
     id: npm:@lakeql/query-builder
     updated: true
   - changelogIds:
-      - 2026-07-23-f8da3f7b.md
+      - 2026-10-27-lakeql-1-0.md
     id: npm:@lakeql/response-transformer
     updated: true
   - changelogIds:
-      - 2026-07-23-f8da3f7b.md
+      - 2026-10-27-lakeql-1-0.md
+    id: npm:@lakeql/scaffold
+    updated: true
+  - changelogIds:
+      - 2026-10-27-lakeql-1-0.md
     id: npm:@lakeql/schema-generator
     updated: true
   - changelogIds:
-      - 2026-07-23-f8da3f7b.md
-      - 2026-07-24-3227d086.md
+      - 2026-10-27-lakeql-1-0.md
+    id: npm:@lakeql/sql-read-strategy
+    updated: true
+  - changelogIds:
+      - 2026-10-27-lakeql-1-0.md
+    id: npm:@lakeql/storage
+    updated: true
+  - changelogIds:
+      - 2026-10-27-lakeql-1-0.md
     id: npm:@lakeql/trino-client
     updated: true
   - id: npm:lakeql-app
     updated: true
-  - id: npm:stackblitz
+  - id: npm:@lakeql/integration-tests
     updated: false
   - id: npm:@lakeql/test-data
     updated: false
+  - id: npm:@lakeql/type-tests
+    updated: false
   - id: npm:@lakeql/tsconfig
+    updated: false
+  - id: npm:@lakeql/vitest-config
     updated: false
 npm:packages:
   - id: npm:lakeql
   - id: npm:docs
-  - id: npm:@lakeql/adapters
+  - id: npm:@lakeql/adapter-fabric
+  - id: npm:@lakeql/adapter-trino
   - id: npm:@lakeql/api
   - id: npm:@lakeql/cli
   - id: npm:@lakeql/column-parser
+  - id: npm:@lakeql/config
   - id: npm:@lakeql/create-app
+  - id: npm:@lakeql/datasource
+  - id: npm:@lakeql/fabric-client
   - id: npm:@lakeql/file-generator
   - id: npm:@lakeql/helpers
   - id: npm:@lakeql/logger
   - id: npm:@lakeql/parquet
   - id: npm:@lakeql/query-builder
   - id: npm:@lakeql/response-transformer
+  - id: npm:@lakeql/scaffold
   - id: npm:@lakeql/schema-generator
+  - id: npm:@lakeql/sql-read-strategy
+  - id: npm:@lakeql/storage
   - id: npm:@lakeql/trino-client
   - id: npm:lakeql-app
-  - id: npm:stackblitz
+  - id: npm:@lakeql/integration-tests
   - id: npm:@lakeql/test-data
+  - id: npm:@lakeql/type-tests
   - id: npm:@lakeql/tsconfig
+  - id: npm:@lakeql/vitest-config

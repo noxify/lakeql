@@ -1,6 +1,6 @@
 {
   "name": "@lakeql/fabric-client",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "TDS client for executing T-SQL queries on Microsoft Fabric SQL endpoints",
   "keywords": [
     "fabric",

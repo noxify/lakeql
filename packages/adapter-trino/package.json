@@ -1,6 +1,6 @@
 {
   "name": "@lakeql/adapter-trino",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Trino adapter for LakeQL",
   "keywords": [
     "adapter",
