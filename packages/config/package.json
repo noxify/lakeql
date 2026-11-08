@@ -1,6 +1,6 @@
 {
   "name": "@lakeql/config",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Adapter-factory registry and composition layer for LakeQL runtimes",
   "keywords": [
     "adapter",
