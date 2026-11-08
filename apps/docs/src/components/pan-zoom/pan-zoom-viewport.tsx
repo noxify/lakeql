@@ -6,6 +6,7 @@ import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch"
 
 import { PanZoomControls } from "@/components/pan-zoom/pan-zoom-controls"
 import { PanZoomKeyHint } from "@/components/pan-zoom/pan-zoom-key-hint"
+import { useIsMobile } from "@/hooks/use-mobile"
 
 /**
  * Accessible description of the keyboard controls, exposed to assistive tech on
@@ -64,6 +65,10 @@ export const PanZoomViewport = ({
   wheelStep = 0.1,
 }: PanZoomViewportProps) => {
   const [focused, setFocused] = React.useState(false)
+  // On mobile/narrow viewports the keyboard affordance is hidden (touch has no
+  // arrow keys, and the hint would collide with the controls), so the behaviour
+  // is disabled there too — no invisible key capture without its on-screen hint.
+  const isMobile = useIsMobile()
 
   return (
     <TransformWrapper
@@ -77,8 +82,9 @@ export const PanZoomViewport = ({
       // Keyboard navigation: arrow keys pan, +/- zoom, 0 resets. The library sets
       // tabIndex=0 on the wrapper when enabled, so the viewport is focusable and
       // the handlers fire only while focus is inside it (click or tab in) — the
-      // keys never hijack page scroll when the diagram is not focused.
-      keyboard={{ disabled: false, panStep: 20, zoomStep: 0.1 }}
+      // keys never hijack page scroll when the diagram is not focused. Disabled
+      // on mobile, paired with hiding the KeyHint overlay.
+      keyboard={{ disabled: isMobile, panStep: 20, zoomStep: 0.1 }}
     >
       {({ zoomIn, zoomOut, resetTransform }) => (
         // The focus ring is drawn by the outer <PanZoom> container via
@@ -103,7 +109,7 @@ export const PanZoomViewport = ({
             {children}
           </TransformComponent>
 
-          <PanZoomKeyHint focused={focused} />
+          {isMobile ? null : <PanZoomKeyHint focused={focused} />}
 
           {showControls ? (
             <PanZoomControls

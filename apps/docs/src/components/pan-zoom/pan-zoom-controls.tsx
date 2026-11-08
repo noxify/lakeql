@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
  *
  * Reads the library's programmatic controls from the render prop and exposes
  * zoom-in, zoom-out, and reset-to-fit buttons. This is the single control UI
- * shared by every pan/zoom consumer (mermaid, railroad, image) — a bottom-right
+ * shared by every pan/zoom consumer (mermaid, railroad, image) — a top-right
  * overlay with no percentage readout and no "drag to pan" hint.
  *
  * @param props.zoomIn - Library handler that steps the zoom level up.
@@ -25,7 +25,7 @@ export const PanZoomControls = ({
   zoomOut: () => void
   resetTransform: () => void
 }) => (
-  <div className="bg-background/95 absolute right-3 bottom-3 z-10 flex items-center gap-1 rounded-md border p-1 shadow-sm backdrop-blur-sm">
+  <div className="bg-background/95 absolute top-3 right-3 z-10 flex items-center gap-1 rounded-md border p-1 shadow-sm backdrop-blur-sm">
     <Button
       variant="ghost"
       size="icon-sm"
