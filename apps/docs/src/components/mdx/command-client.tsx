@@ -17,7 +17,6 @@ declare global {
 }
 
 const PACKAGE_MANAGERS: PackageManager[] = ["npm", "pnpm"]
-const EXECUTION_MODES: ExecutionMode[] = ["local", "oneoff"]
 
 const STORAGE_KEY = "lakeql:selected-package-manager"
 const LEGACY_STORAGE_KEY = "package-manager"
@@ -26,17 +25,12 @@ const SYNC_EVENT = "lakeql:command-package-manager-change"
 const EXEC_STORAGE_KEY = "lakeql:selected-execution-mode"
 const EXEC_SYNC_EVENT = "lakeql:command-execution-mode-change"
 
-const EXECUTION_MODE_LABELS: Record<ExecutionMode, string> = {
-  local: "Local",
-  oneoff: "One-off",
-}
-
 function isPackageManager(value: string): value is PackageManager {
   return PACKAGE_MANAGERS.includes(value as PackageManager)
 }
 
 function isExecutionMode(value: string): value is ExecutionMode {
-  return EXECUTION_MODES.includes(value as ExecutionMode)
+  return value === "local" || value === "oneoff"
 }
 
 interface ExecCommand {
@@ -145,14 +139,6 @@ const onValueChange = (value: string) => {
   window.setPackageManager?.(value)
 }
 
-const onExecutionModeValueChange = (value: string) => {
-  if (!isExecutionMode(value)) {
-    return
-  }
-
-  window.setExecutionMode?.(value)
-}
-
 /**
  * Toggle for the execution mode, rendered as a labeled Switch. The switch is
  * checked for the one-off mode, so its label describes running the command
@@ -174,30 +160,6 @@ const ExecutionModeSwitch = ({
     />
     Run without installing
   </label>
-)
-
-/**
- * Toggle for the execution mode, rendered as a two-button segmented control
- * styled to match the package-manager tabs.
- */
-const ExecutionModeSegmented = ({
-  executionMode,
-}: {
-  executionMode: ExecutionMode
-}) => (
-  <Tabs
-    value={executionMode}
-    onValueChange={onExecutionModeValueChange}
-    className="w-fit"
-  >
-    <TabsList>
-      {EXECUTION_MODES.map((mode) => (
-        <TabsTrigger key={mode} value={mode}>
-          {EXECUTION_MODE_LABELS[mode]}
-        </TabsTrigger>
-      ))}
-    </TabsList>
-  </Tabs>
 )
 
 export const CommandTabsClient = ({
@@ -315,10 +277,7 @@ export const CommandTabsClient = ({
         </TabsList>
 
         {showExecutionMode ? (
-          <div className="flex flex-wrap items-center gap-4">
-            <ExecutionModeSwitch executionMode={executionMode} />
-            <ExecutionModeSegmented executionMode={executionMode} />
-          </div>
+          <ExecutionModeSwitch executionMode={executionMode} />
         ) : null}
       </div>
 
