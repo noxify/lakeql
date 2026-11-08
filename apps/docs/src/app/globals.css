@@ -109,8 +109,11 @@
   --sidebar-ring: oklch(0.708 0 0);
   /* Mermaid diagram palette (github-light). Consumed by the build-time
      pre-rendered SVG via the --diagram-* -> --bg/--fg/... mapping; the single
-     SVG recolors on `.dark` without a re-render. */
-  --diagram-bg: #ffffff;
+     SVG recolors on `.dark` without a re-render. The diagram background is
+     transparent so the SVG inherits the surrounding container background in
+     both themes (matching the pre-migration `transparent` render), rather than
+     painting an opaque panel that mismatches the page background. */
+  --diagram-bg: transparent;
   --diagram-fg: #1f2328;
   --diagram-line: #d1d9e0;
   --diagram-accent: #0969da;
@@ -168,8 +171,9 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(0.42 0.012 235 / 0.28);
   --sidebar-ring: oklch(0.62 0.016 235);
-  /* Mermaid diagram palette (github-dark). */
-  --diagram-bg: #0d1117;
+  /* Mermaid diagram palette (github-dark). Background stays transparent (see
+     the light palette note) so the diagram inherits the container background. */
+  --diagram-bg: transparent;
   --diagram-fg: #e6edf3;
   --diagram-line: #3d444d;
   --diagram-accent: #4493f8;
