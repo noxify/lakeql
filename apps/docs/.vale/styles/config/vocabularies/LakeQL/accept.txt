@@ -1,6 +1,7 @@
 LakeQL
 Trino
 Fabric
+TypeScript
 Tegami
 Hono
 Kysely
