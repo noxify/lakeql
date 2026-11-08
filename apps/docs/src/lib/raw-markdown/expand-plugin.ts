@@ -3,6 +3,7 @@ import { visitParents } from "unist-util-visit-parents"
 
 import type { MdxJsxElement } from "./mdast-helpers"
 import {
+  collectChildrenText,
   fallbackNode,
   parseMarkdownFragment,
   readStringAttr,
@@ -59,7 +60,10 @@ async function resolveReplacement(node: MdxJsxElement): Promise<RootContent[]> {
 
   if (renderer && name) {
     try {
-      const md = await renderer(readStringAttrs(node))
+      const md = await renderer(
+        readStringAttrs(node),
+        collectChildrenText(node)
+      )
       return parseMarkdownFragment(md).children
     } catch (error) {
       // oxlint-disable-next-line no-console

@@ -59,6 +59,48 @@ export function readStringAttr(
 }
 
 /**
+ * Collects the text content of a JSX element's children into a single
+ * whitespace-collapsed string.
+ *
+ * Only `text` and `inlineCode` descendant values contribute; any run of
+ * whitespace (including the newlines and indentation of a multi-line element
+ * body) collapses to a single space, and the result is trimmed. This mirrors
+ * how the React `Command` component reads its children into one command line.
+ */
+export function collectChildrenText(node: MdxJsxElement): string {
+  const parts: string[] = []
+
+  const walk = (nodes: readonly unknown[]): void => {
+    for (const child of nodes) {
+      if (!child || typeof child !== "object") {
+        continue
+      }
+
+      const candidate = child as {
+        type?: string
+        value?: unknown
+        children?: unknown
+      }
+
+      if (
+        (candidate.type === "text" || candidate.type === "inlineCode") &&
+        typeof candidate.value === "string"
+      ) {
+        parts.push(candidate.value)
+      }
+
+      if (Array.isArray(candidate.children)) {
+        walk(candidate.children)
+      }
+    }
+  }
+
+  walk(node.children ?? [])
+
+  return parts.join("").replaceAll(/\s+/gu, " ").trim()
+}
+
+/**
  * Parses a Markdown fragment emitted by a renderer into an mdast tree.
  *
  * GFM extensions are passed explicitly because the low-level `fromMarkdown`
