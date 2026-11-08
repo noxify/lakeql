@@ -41,7 +41,7 @@ export const MermaidPanZoom = ({
   svg: string
   preview?: boolean
 }) => {
-  const { style, initialScale } = React.useMemo(
+  const { style, initialScale, previewClassName, previewFit } = React.useMemo(
     () => computeMermaidBox(svg),
     [svg]
   )
@@ -52,8 +52,9 @@ export const MermaidPanZoom = ({
         lightbox={true}
         title="Diagram"
         className="my-6"
-        previewClassName="h-72"
+        previewClassName={previewClassName}
         initialScale={initialScale}
+        previewFit={previewFit}
       >
         <MermaidContent svg={svg} />
       </PanZoom>

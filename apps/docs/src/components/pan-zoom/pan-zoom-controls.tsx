@@ -1,8 +1,15 @@
 "use client"
 
 import { ZoomIn, ZoomOut, Maximize2 } from "lucide-react"
+import { useTransformComponent } from "react-zoom-pan-pinch"
 
 import { Button } from "@/components/ui/button"
+
+export function DimensionsBadge() {
+  return useTransformComponent(({ state }) => (
+    <div className="pl-1 text-xs font-bold">{state.scale.toFixed(2)}x</div>
+  ))
+}
 
 /**
  * Zoom/reset control cluster rendered inside a `TransformWrapper`.
@@ -26,6 +33,8 @@ export const PanZoomControls = ({
   resetTransform: () => void
 }) => (
   <div className="bg-background/95 absolute top-3 right-3 z-10 flex items-center gap-1 rounded-md border p-1 shadow-sm backdrop-blur-sm">
+    <DimensionsBadge />
+    <div className="bg-border mx-1 h-4 w-px" />
     <Button
       variant="ghost"
       size="icon-sm"

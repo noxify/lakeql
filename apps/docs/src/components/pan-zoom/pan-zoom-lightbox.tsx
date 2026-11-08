@@ -80,7 +80,10 @@ export const PanZoomLightbox = ({
       previewFit === "cover"
         ? Math.max(scaleX, scaleY)
         : Math.min(scaleX, scaleY, 1)
-    const upperBound = previewFit === "cover" ? 6 : 1
+    // Allow `contain` previews to scale slightly above 1 so a small or sparse
+    // diagram fills the preview card instead of sitting tiny and centered with
+    // large empty margins.
+    const upperBound = previewFit === "cover" ? 6 : 1.5
     const clampedScale = Math.min(upperBound, Math.max(0.08, fittedScale))
 
     setPreviewScale(clampedScale)

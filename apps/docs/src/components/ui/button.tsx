@@ -49,7 +49,10 @@ const Button = ({
 }: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) => (
   <ButtonPrimitive
     data-slot="button"
-    className={cn(buttonVariants({ variant, size, className }))}
+    className={cn(
+      !props.disabled && "cursor-pointer",
+      buttonVariants({ variant, size, className })
+    )}
     {...props}
   />
 )

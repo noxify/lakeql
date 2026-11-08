@@ -29,7 +29,7 @@ The interesting case is a **human user with no LakeQL rule**. Layer 1 allows the
 
 Both checks start from the same question — is there an authenticated user, and is there a permission entry for them — but they diverge on the default. Reads are open for humans; writes are closed for everyone. This asymmetry is deliberate: an absent or empty permission set allows human reads but denies all writes.
 
-```mermaid
+```mermaid preview
 flowchart TB
     start["Request for a data source target"] --> authd{"Authenticated?"}
     authd -->|No| deny["Deny"]

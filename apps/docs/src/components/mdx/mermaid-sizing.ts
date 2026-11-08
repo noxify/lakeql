@@ -73,19 +73,25 @@ export function parseMermaidAspectRatio(svg: string): number {
 }
 
 /**
- * Computes the caller-side sizing for a mermaid diagram's inline pan/zoom box.
+ * Computes the caller-side sizing for a mermaid diagram's pan/zoom box, for
+ * both the inline viewport and the lightbox preview card.
  *
  * Clamps the aspect ratio to a usable range, flags very wide diagrams so they
- * open slightly zoomed out, and derives the container's height bands from the
- * diagram's shape. The returned values feed the `<PanZoom>` container's style
- * and `initialScale`.
+ * open slightly zoomed out, derives the inline container's height bands from
+ * the diagram's shape, and picks a preview card height + fit from the same
+ * ratio: tall diagrams get a taller card filled with `cover` (otherwise they
+ * shrink to an illegible thumbnail), balanced and wide diagrams get a shorter
+ * card with `contain` so the whole diagram stays visible.
  *
  * @param svg - The pre-rendered SVG markup.
- * @returns Container `style`, the `initialScale` to pass to `<PanZoom>`.
+ * @returns The inline container `style`, the `initialScale`, and the lightbox
+ *   preview card's height class and fit mode.
  */
 export function computeMermaidBox(svg: string): {
   style: React.CSSProperties
   initialScale: number
+  previewClassName: string
+  previewFit: "contain" | "cover"
 } {
   const rawRatio = parseMermaidAspectRatio(svg)
 
@@ -104,6 +110,19 @@ export function computeMermaidBox(svg: string): {
     ? `min(calc(${Math.round(dimensions.height)}px + 4rem), ${maxHeight})`
     : undefined
 
+  // Preview card: a tall diagram needs a taller card and `cover` fill or it
+  // renders as a tiny centered thumbnail; a balanced or wide diagram fits whole
+  // in a shorter card with `contain`.
+  let previewClassName: string
+  if (aspectRatio < 1) {
+    previewClassName = "h-[48rem]"
+  } else if (aspectRatio < 1.6) {
+    previewClassName = "h-96"
+  } else {
+    previewClassName = "h-72"
+  }
+  const previewFit = "contain"
+
   return {
     style: {
       aspectRatio: height ? undefined : aspectRatio,
@@ -112,5 +131,7 @@ export function computeMermaidBox(svg: string): {
       maxHeight,
     },
     initialScale,
+    previewClassName,
+    previewFit,
   }
 }
