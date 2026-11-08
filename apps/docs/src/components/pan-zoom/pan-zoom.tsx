@@ -99,7 +99,14 @@ export const PanZoom = ({
 
   return (
     <div
-      className={cn("relative overflow-hidden rounded-lg border", className)}
+      className={cn(
+        // Focus ring on the bordered box itself, via focus-within: the
+        // library's focusable wrapper lives inside, so tabbing/clicking into
+        // the diagram lights the ring around the whole viewport. inset keeps it
+        // inside the overflow-hidden bounds; it is never covered by the SVG.
+        "relative overflow-hidden rounded-lg border focus-within:ring-2 focus-within:ring-ring focus-within:ring-inset",
+        className
+      )}
       style={{ aspectRatio, ...style }}
     >
       <PanZoomViewport

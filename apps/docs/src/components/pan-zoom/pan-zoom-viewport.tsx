@@ -6,7 +6,6 @@ import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch"
 
 import { PanZoomControls } from "@/components/pan-zoom/pan-zoom-controls"
 import { PanZoomKeyHint } from "@/components/pan-zoom/pan-zoom-key-hint"
-import { cn } from "@/lib/utils"
 
 /**
  * Accessible description of the keyboard controls, exposed to assistive tech on
@@ -82,22 +81,13 @@ export const PanZoomViewport = ({
       keyboard={{ disabled: false, panStep: 20, zoomStep: 0.1 }}
     >
       {({ zoomIn, zoomOut, resetTransform }) => (
-        // The focus ring lives on this outer container (which spans the whole
-        // viewport box) rather than on the inner TransformComponent wrapper:
-        // that inner wrapper is fit-content and sits under the transparent
-        // diagram, so an inset ring there is hidden by the content. Showing it
-        // here frames the entire diagram area and stays visible.
-        <div
-          className={cn(
-            "group relative size-full rounded-[inherit]",
-            focused && "ring-ring ring-2 ring-inset"
-          )}
-        >
+        // The focus ring is drawn by the outer <PanZoom> container via
+        // `focus-within` (the focusable wrapper lives inside it), so it frames
+        // the bordered box and is never covered by the diagram content. This
+        // wrapper only tracks focus for the KeyHint's "active" state.
+        <div className="group relative size-full">
           <TransformComponent
-            // Small inset padding so the diagram content does not reach the
-            // container edge, leaving a clear gap for the focus ring (which is
-            // drawn inset on the outer container) instead of the SVG covering it.
-            wrapperStyle={{ width: "100%", height: "100%", padding: "1.25rem" }}
+            wrapperStyle={{ width: "100%", height: "100%" }}
             contentStyle={{ width: "100%", height: "100%" }}
             // The library sets tabIndex=0 here, making this div the keyboard
             // focus target. Describe the controls for screen readers and track
