@@ -17,7 +17,7 @@ const adapters = [
     name: "Trino",
     icon: <TrinoLogo className="size-8" />,
     description:
-      "Query federated data across Trino clusters, with pushdown for joins, aggregations, and filters.",
+      "A type-safe GraphQL-over-HTTP layer over Trino. No driver to install, with generated SQL and automatic field mapping.",
     href: "/docs/data-sources/trino",
     accent: "from-pink-500/10 to-transparent",
     comingSoon: false,
@@ -26,7 +26,7 @@ const adapters = [
     name: "Microsoft Fabric",
     icon: <MicrosoftFabricLogo className="size-8" />,
     description:
-      "Connect directly to Fabric warehouses and lakehouses using OneLake shortcuts and managed identity.",
+      "Unified type-safe GraphQL over Fabric warehouses and lakehouses, with request-scoped Entra ID identity and storage-agnostic access.",
     href: "/docs/data-sources/fabric",
     accent: "from-emerald-500/10 to-transparent",
     comingSoon: false,
