@@ -11,8 +11,7 @@ import {
   looksLikeLegacyRailroad,
   parseLegacyRailroadDiagram,
 } from "@/components/mdx/railroad-legacy-parser"
-import { PanZoomControl } from "@/components/pan-zoom/pan-zoom-control"
-import { PanZoomDialog } from "@/components/pan-zoom/pan-zoom-dialog"
+import { PanZoom } from "@/components/pan-zoom/pan-zoom"
 
 class RailroadErrorBoundary extends React.Component<
   {
@@ -95,22 +94,20 @@ export const RailroadDiagram = ({
 
   if (preview) {
     return (
-      <PanZoomDialog
+      <PanZoom
+        lightbox={true}
         title="Railroad diagram"
         previewClassName="h-64"
         className="my-8"
-        fitOnMount={true}
       >
         {diagram}
-      </PanZoomDialog>
+      </PanZoom>
     )
   }
 
   return (
     <div className="my-6 h-112 max-h-[65vh] min-h-72 w-full">
-      <PanZoomControl className="h-full w-full" centerOnMount={true}>
-        {diagram}
-      </PanZoomControl>
+      <PanZoom className="h-full w-full">{diagram}</PanZoom>
     </div>
   )
 }

@@ -3,7 +3,7 @@
 import Image from "next/image"
 import type { ComponentPropsWithoutRef } from "react"
 
-import { PanZoomDialog } from "@/components/pan-zoom/pan-zoom-dialog"
+import { PanZoom } from "@/components/pan-zoom/pan-zoom"
 
 type ImageMode = "default" | "zoom"
 type ImagePreviewFit = "cover" | "contain"
@@ -212,13 +212,12 @@ export const ImageHandler = ({
 
   if (mode === "zoom") {
     return (
-      <PanZoomDialog
+      <PanZoom
+        lightbox={true}
         title={alt || "Image"}
         className="my-8"
         previewClassName="h-72"
         previewFit={previewFit}
-        fitOnMount={true}
-        initialZoom={1}
       >
         <div
           className={
@@ -229,7 +228,7 @@ export const ImageHandler = ({
         >
           {imageNode}
         </div>
-      </PanZoomDialog>
+      </PanZoom>
     )
   }
 
