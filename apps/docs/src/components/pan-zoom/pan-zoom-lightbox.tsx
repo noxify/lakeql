@@ -118,7 +118,7 @@ export const PanZoomLightbox = ({
         type="button"
         onClick={() => setOpen(true)}
         className={cn(
-          "group relative w-full overflow-hidden rounded-lg border bg-muted/30 text-left transition-all hover:border-foreground/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+          "group relative w-full overflow-hidden rounded-lg border text-left transition-all hover:border-foreground/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
           className
         )}
       >
@@ -159,13 +159,16 @@ export const PanZoomLightbox = ({
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent
           className={cn(
-            "h-[88vh] max-h-[92vh] w-[98vw] max-w-7xl! overflow-hidden p-0",
+            // bg-background (not the dialog's default bg-popover) so the
+            // diagram sits on the same surface as the inline view; the
+            // transparent diagram background then matches in both places.
+            "bg-background h-[88vh] max-h-[92vh] w-[98vw] max-w-7xl! overflow-hidden p-0",
             dialogClassName
           )}
         >
           <DialogTitle className="sr-only">{title}</DialogTitle>
 
-          <div className="bg-muted/30 relative h-full w-full overflow-hidden">
+          <div className="relative h-full w-full overflow-hidden">
             {open ? (
               <PanZoomViewport
                 minScale={minScale}
