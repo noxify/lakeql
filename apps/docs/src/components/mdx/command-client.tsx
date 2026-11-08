@@ -16,7 +16,7 @@ declare global {
   }
 }
 
-const PACKAGE_MANAGERS: PackageManager[] = ["npm", "pnpm"]
+const PACKAGE_MANAGERS: PackageManager[] = ["pnpm", "npm"]
 
 const STORAGE_KEY = "lakeql:selected-package-manager"
 const LEGACY_STORAGE_KEY = "package-manager"
@@ -164,7 +164,7 @@ const ExecutionModeSwitch = ({
 
 export const CommandTabsClient = ({
   commands,
-  defaultPackageManager = "npm",
+  defaultPackageManager = "pnpm",
   defaultExecutionMode = "local",
   showExecutionMode = false,
 }: CommandTabsClientProps) => {

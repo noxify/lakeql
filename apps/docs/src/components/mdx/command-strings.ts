@@ -6,7 +6,7 @@ import type {
 } from "@/components/mdx/command-client"
 
 /** Package managers offered by every `Command` variant, in display order. */
-export const PACKAGE_MANAGERS: PackageManager[] = ["npm", "pnpm"]
+export const PACKAGE_MANAGERS: PackageManager[] = ["pnpm", "npm"]
 
 /** Execution modes offered by the `exec` variant, in display order. */
 export const EXECUTION_MODES: ExecutionMode[] = ["local", "oneoff"]
