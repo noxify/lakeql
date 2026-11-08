@@ -34,4 +34,4 @@ jobs:
           # for a package that does not exist on npm yet. This token covers the
           # first publish (and acts as a fallback); once packages exist and
           # trusted publishing is set up, OIDC takes over and this is unused.
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          # NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
