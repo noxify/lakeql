@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, vi, it } from "vitest"
 
+import { VALID_PACKAGE_MANAGERS } from "../src/prompts/install"
+
 // Test the project name validation regex pattern
 // (replicated from src/index.ts since it's not exported and the module auto-executes main())
 describe("Project Name Validation", () => {
@@ -110,9 +112,7 @@ describe("getLatestVersion", () => {
   })
 })
 
-describe("VALID_PACKAGE_MANAGERS", () => {
-  const VALID_PACKAGE_MANAGERS = ["npm", "pnpm", "yarn", "bun"]
-
+describe("valid package managers", () => {
   it("includes npm", () => {
     expect(VALID_PACKAGE_MANAGERS).toContain("npm")
   })
@@ -125,7 +125,7 @@ describe("VALID_PACKAGE_MANAGERS", () => {
     expect(VALID_PACKAGE_MANAGERS).toContain("yarn")
   })
 
-  it("includes bun", () => {
-    expect(VALID_PACKAGE_MANAGERS).toContain("bun")
+  it("does not include bun", () => {
+    expect(VALID_PACKAGE_MANAGERS).not.toContain("bun")
   })
 })
