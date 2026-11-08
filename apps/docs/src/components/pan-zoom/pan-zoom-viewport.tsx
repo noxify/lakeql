@@ -46,7 +46,7 @@ export const PanZoomViewport = ({
   showControls = true,
   centerOnInit = true,
   fitOnInit,
-  wheelStep = 0.15,
+  wheelStep = 0.1,
 }: PanZoomViewportProps) => (
   <TransformWrapper
     initialScale={initialScale}

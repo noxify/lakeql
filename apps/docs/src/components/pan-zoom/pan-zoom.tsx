@@ -30,7 +30,7 @@ export interface PanZoomProps {
   showControls?: boolean
   /** Center the content in the viewport on init. Defaults to true. */
   centerOnInit?: boolean
-  /** Scale added/removed per wheel step. Defaults to 0.15. */
+  /** Scale added/removed per wheel step. Defaults to 0.1. */
   wheelStep?: number
 
   /**
@@ -74,7 +74,7 @@ export const PanZoom = ({
   aspectRatio,
   showControls = true,
   centerOnInit = true,
-  wheelStep = 0.15,
+  wheelStep = 0.1,
   lightbox = false,
   title,
   previewClassName,
