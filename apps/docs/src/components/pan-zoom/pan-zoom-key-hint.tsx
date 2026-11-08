@@ -1,6 +1,6 @@
 "use client"
 
-import { Kbd, KbdGroup } from "@/components/ui/kbd"
+import { Kbd } from "@/components/ui/kbd"
 import { cn } from "@/lib/utils"
 
 /**
@@ -35,23 +35,21 @@ export const PanZoomKeyHint = ({ focused }: { focused: boolean }) => (
 
     <div className="bg-border h-4 w-px" />
 
-    <div className="flex items-center gap-2">
-      <KbdGroup title="Pan">
-        <Kbd>←</Kbd>
-        <Kbd>↑</Kbd>
-        <Kbd>→</Kbd>
-        <Kbd>↓</Kbd>
-      </KbdGroup>
+    <div className="text-muted-foreground flex items-center gap-3">
+      <span className="flex items-center gap-1.5">
+        <Kbd>← ↑ → ↓</Kbd>
+        <span>pan</span>
+      </span>
 
-      <KbdGroup title="Zoom">
-        <Kbd>+</Kbd>
-        <span className="text-muted-foreground">/</span>
-        <Kbd>−</Kbd>
-      </KbdGroup>
+      <span className="flex items-center gap-1.5">
+        <Kbd>+ / −</Kbd>
+        <span>zoom</span>
+      </span>
 
-      <KbdGroup title="Reset">
+      <span className="flex items-center gap-1.5">
         <Kbd>0</Kbd>
-      </KbdGroup>
+        <span>reset</span>
+      </span>
     </div>
   </div>
 )
