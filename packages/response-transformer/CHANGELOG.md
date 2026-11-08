@@ -1,3 +1,9 @@
+## @lakeql/response-transformer@1.0.1
+
+### Package metadata and publishing
+
+Add READMEs for the packages that shipped without one, refine npm keywords (and drop the Trino-specific keyword from adapter-neutral packages), and re-publish every package through npm trusted publishing (OIDC) to validate the configuration. No runtime or API changes.
+
 ## @lakeql/response-transformer@1.0.0
 
 ### LakeQL 1.0 — first stable release on the adapter-based architecture

@@ -1,6 +1,6 @@
 {
   "name": "@lakeql/trino-client",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "HTTP client for executing queries and inspecting metadata on Trino clusters",
   "keywords": [
     "http-client",

@@ -1,6 +1,6 @@
 {
   "name": "@lakeql/storage",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Storage adapters and write pipeline for LakeQL — provides table management and S3/MinIO operations",
   "keywords": [
     "hive",

@@ -1,6 +1,6 @@
 core:changelogs:
-  - content: "---\npackages:\n  \"@lakeql/adapter-fabric\":\n    type: major\n  \"@lakeql/adapter-trino\":\n    type: major\n  \"@lakeql/api\":\n    type: major\n  \"@lakeql/cli\":\n    type: major\n  \"@lakeql/column-parser\":\n    type: major\n  \"@lakeql/config\":\n    type: major\n  \"@lakeql/create-app\":\n    type: major\n  \"@lakeql/datasource\":\n    type: major\n  \"@lakeql/fabric-client\":\n    type: major\n  \"@lakeql/file-generator\":\n    type: major\n  \"@lakeql/helpers\":\n    type: major\n  \"@lakeql/logger\":\n    type: major\n  \"@lakeql/parquet\":\n    type: major\n  \"@lakeql/query-builder\":\n    type: major\n  \"@lakeql/response-transformer\":\n    type: major\n  \"@lakeql/scaffold\":\n    type: major\n  \"@lakeql/schema-generator\":\n    type: major\n  \"@lakeql/sql-read-strategy\":\n    type: major\n  \"@lakeql/storage\":\n    type: major\n  \"@lakeql/trino-client\":\n    type: major\n---\n\n### LakeQL 1.0 — first stable release on the adapter-based architecture\n\nThe 1.0 line is a ground-up restructure of the 0.x packages around a single adapter-based architecture: a neutral data-source/adapter contract, config + runtime composition, the Trino (read + write) and Fabric (read-only) adapters, the CLI (endpoint generation and `create-app`), and the GraphQL API layer.\n\nThis is a breaking release with no in-place upgrade path from the 0.x line — re-scaffold projects with `create-app` and re-author configuration against the 1.0 APIs rather than upgrading existing code.\n"
-    filename: 2026-10-27-lakeql-1-0.md
+  - content: "---\npackages:\n  npm:@lakeql/adapter-fabric:\n    type: patch\n  npm:@lakeql/adapter-trino:\n    type: patch\n  npm:@lakeql/api:\n    type: patch\n  npm:@lakeql/cli:\n    type: patch\n  npm:@lakeql/column-parser:\n    type: patch\n  npm:@lakeql/config:\n    type: patch\n  npm:@lakeql/create-app:\n    type: patch\n  npm:@lakeql/datasource:\n    type: patch\n  npm:@lakeql/fabric-client:\n    type: patch\n  npm:@lakeql/file-generator:\n    type: patch\n  npm:@lakeql/helpers:\n    type: patch\n  npm:@lakeql/logger:\n    type: patch\n  npm:@lakeql/parquet:\n    type: patch\n  npm:@lakeql/query-builder:\n    type: patch\n  npm:@lakeql/response-transformer:\n    type: patch\n  npm:@lakeql/scaffold:\n    type: patch\n  npm:@lakeql/schema-generator:\n    type: patch\n  npm:@lakeql/sql-read-strategy:\n    type: patch\n  npm:@lakeql/storage:\n    type: patch\n  npm:@lakeql/trino-client:\n    type: patch\n---\n\n### Package metadata and publishing\n\nAdd READMEs for the packages that shipped without one, refine npm keywords (and drop the Trino-specific keyword from adapter-neutral packages), and re-publish every package through npm trusted publishing (OIDC) to validate the configuration. No runtime or API changes.\n"
+    filename: 2026-11-08-readme-oidc.md
     v: 0.0.0
 core:packages:
   - id: npm:lakeql
@@ -8,86 +8,84 @@ core:packages:
   - id: npm:docs
     updated: true
   - changelogIds:
-      - 2026-10-27-lakeql-1-0.md
+      - 2026-11-08-readme-oidc.md
     id: npm:@lakeql/adapter-fabric
     updated: true
   - changelogIds:
-      - 2026-10-27-lakeql-1-0.md
+      - 2026-11-08-readme-oidc.md
     id: npm:@lakeql/adapter-trino
     updated: true
   - changelogIds:
-      - 2026-10-27-lakeql-1-0.md
+      - 2026-11-08-readme-oidc.md
     id: npm:@lakeql/api
     updated: true
   - changelogIds:
-      - 2026-10-27-lakeql-1-0.md
+      - 2026-11-08-readme-oidc.md
     id: npm:@lakeql/cli
     updated: true
   - changelogIds:
-      - 2026-10-27-lakeql-1-0.md
+      - 2026-11-08-readme-oidc.md
     id: npm:@lakeql/column-parser
     updated: true
   - changelogIds:
-      - 2026-10-27-lakeql-1-0.md
+      - 2026-11-08-readme-oidc.md
     id: npm:@lakeql/config
     updated: true
   - changelogIds:
-      - 2026-10-27-lakeql-1-0.md
+      - 2026-11-08-readme-oidc.md
     id: npm:@lakeql/create-app
     updated: true
   - changelogIds:
-      - 2026-10-27-lakeql-1-0.md
+      - 2026-11-08-readme-oidc.md
     id: npm:@lakeql/datasource
     updated: true
   - changelogIds:
-      - 2026-10-27-lakeql-1-0.md
+      - 2026-11-08-readme-oidc.md
     id: npm:@lakeql/fabric-client
     updated: true
   - changelogIds:
-      - 2026-10-27-lakeql-1-0.md
+      - 2026-11-08-readme-oidc.md
     id: npm:@lakeql/file-generator
     updated: true
   - changelogIds:
-      - 2026-10-27-lakeql-1-0.md
+      - 2026-11-08-readme-oidc.md
     id: npm:@lakeql/helpers
     updated: true
   - changelogIds:
-      - 2026-10-27-lakeql-1-0.md
+      - 2026-11-08-readme-oidc.md
     id: npm:@lakeql/logger
     updated: true
   - changelogIds:
-      - 2026-10-27-lakeql-1-0.md
+      - 2026-11-08-readme-oidc.md
     id: npm:@lakeql/parquet
     updated: true
   - changelogIds:
-      - 2026-10-27-lakeql-1-0.md
+      - 2026-11-08-readme-oidc.md
     id: npm:@lakeql/query-builder
     updated: true
   - changelogIds:
-      - 2026-10-27-lakeql-1-0.md
+      - 2026-11-08-readme-oidc.md
     id: npm:@lakeql/response-transformer
     updated: true
   - changelogIds:
-      - 2026-10-27-lakeql-1-0.md
+      - 2026-11-08-readme-oidc.md
     id: npm:@lakeql/scaffold
     updated: true
   - changelogIds:
-      - 2026-10-27-lakeql-1-0.md
+      - 2026-11-08-readme-oidc.md
     id: npm:@lakeql/schema-generator
     updated: true
   - changelogIds:
-      - 2026-10-27-lakeql-1-0.md
+      - 2026-11-08-readme-oidc.md
     id: npm:@lakeql/sql-read-strategy
     updated: true
   - changelogIds:
-      - 2026-10-27-lakeql-1-0.md
+      - 2026-11-08-readme-oidc.md
     id: npm:@lakeql/storage
     updated: true
   - changelogIds:
-      - 2026-10-27-lakeql-1-0.md
+      - 2026-11-08-readme-oidc.md
     id: npm:@lakeql/trino-client
-    updated: true
-  - id: npm:lakeql-app
     updated: true
   - id: npm:@lakeql/integration-tests
     updated: false
@@ -99,6 +97,8 @@ core:packages:
     updated: false
   - id: npm:@lakeql/vitest-config
     updated: false
+  - id: npm:lakeql-app
+    updated: true
 npm:packages:
   - id: npm:lakeql
   - id: npm:docs
@@ -122,9 +122,9 @@ npm:packages:
   - id: npm:@lakeql/sql-read-strategy
   - id: npm:@lakeql/storage
   - id: npm:@lakeql/trino-client
-  - id: npm:lakeql-app
   - id: npm:@lakeql/integration-tests
   - id: npm:@lakeql/test-data
   - id: npm:@lakeql/type-tests
   - id: npm:@lakeql/tsconfig
   - id: npm:@lakeql/vitest-config
+  - id: npm:lakeql-app

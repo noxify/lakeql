@@ -1,6 +1,6 @@
 {
   "name": "@lakeql/create-app",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Project scaffolding tool for creating new LakeQL applications",
   "keywords": [
     "create-app",
