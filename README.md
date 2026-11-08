@@ -35,17 +35,19 @@ One interface, many platforms. Connect LakeQL to the data engines your team alre
 
 ## Requirements
 
-- Node.js 24
-- pnpm 12+
+- Node.js 24 or newer
+- A package manager — npm, pnpm, or yarn
 
 ## Getting started
 
 ### Init project & setup
 
-Run the following command in your terminal:
+Scaffold a project with your package manager's `create` command:
 
 ```bash
-pnpm dlx @lakeql/create-app
+pnpm create @lakeql/app
+# or
+npm create @lakeql/app
 ```
 
 Then follow the interactive setup.
@@ -57,7 +59,7 @@ The command bootstraps a project from the preconfigured template in [templates/a
 Run the interactive CLI to generate your schemas.
 
 ```bash
-pnpm cli pull --source-path ./src
+lakeql-cli pull --env .env
 ```
 
 ### Run a query
