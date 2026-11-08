@@ -8,7 +8,7 @@
     "hono",
     "lakeql",
     "pothos",
-    "trino",
+    "server",
     "yoga"
   ],
   "homepage": "https://lakeql.dev",

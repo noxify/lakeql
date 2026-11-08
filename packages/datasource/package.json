@@ -3,9 +3,11 @@
   "version": "1.0.0",
   "description": "Adapter-neutral contracts for LakeQL data sources, read strategies, write strategies, and adapter factories",
   "keywords": [
+    "adapter",
     "contracts",
     "datasource",
     "lakeql",
+    "read-strategy",
     "types"
   ],
   "homepage": "https://lakeql.dev",

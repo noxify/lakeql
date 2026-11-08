@@ -4,7 +4,9 @@
   "description": "Microsoft Fabric adapter for LakeQL",
   "keywords": [
     "adapter",
+    "data-source",
     "fabric",
+    "graphql",
     "lakeql",
     "mssql"
   ],

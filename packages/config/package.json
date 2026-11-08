@@ -4,7 +4,9 @@
   "description": "Adapter-factory registry and composition layer for LakeQL runtimes",
   "keywords": [
     "adapter",
+    "composition",
     "config",
+    "data-source",
     "lakeql",
     "registry"
   ],

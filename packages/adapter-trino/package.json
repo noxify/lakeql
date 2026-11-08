@@ -4,7 +4,10 @@
   "description": "Trino adapter for LakeQL",
   "keywords": [
     "adapter",
+    "data-source",
+    "graphql",
     "lakeql",
+    "sql",
     "trino"
   ],
   "homepage": "https://lakeql.dev",

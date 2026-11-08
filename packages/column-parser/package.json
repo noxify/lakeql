@@ -6,7 +6,7 @@
     "columns",
     "lakeql",
     "parser",
-    "trino",
+    "sql",
     "types"
   ],
   "homepage": "https://lakeql.dev",

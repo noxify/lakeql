@@ -5,10 +5,10 @@
   "keywords": [
     "cli",
     "codegen",
+    "data-source",
     "graphql",
     "lakeql",
-    "schema",
-    "trino"
+    "schema"
   ],
   "homepage": "https://lakeql.dev",
   "bugs": "https://github.com/noxify/lakeql/issues",

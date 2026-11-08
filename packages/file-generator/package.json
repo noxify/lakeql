@@ -5,8 +5,8 @@
   "keywords": [
     "ast",
     "codegen",
+    "graphql",
     "lakeql",
-    "trino",
     "typescript"
   ],
   "homepage": "https://lakeql.dev",

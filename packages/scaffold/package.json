@@ -6,7 +6,8 @@
     "codegen",
     "lakeql",
     "scaffold",
-    "scaffolding"
+    "scaffolding",
+    "typescript"
   ],
   "homepage": "https://lakeql.dev",
   "license": "Apache-2.0",
