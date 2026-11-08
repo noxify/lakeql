@@ -15,7 +15,6 @@
   "type": "module",
   "scripts": {
     "dev": "turbo dev",
-    "dev:ui": "pnpm -F ui dev",
     "build": "turbo build",
     "dev:docs": "turbo dev --filter='docs'",
     "build:docs": "turbo build --filter='docs'",
