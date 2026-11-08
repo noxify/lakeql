@@ -6,6 +6,7 @@ import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch"
 
 import { PanZoomControls } from "@/components/pan-zoom/pan-zoom-controls"
 import { PanZoomKeyHint } from "@/components/pan-zoom/pan-zoom-key-hint"
+import { cn } from "@/lib/utils"
 
 /**
  * Accessible description of the keyboard controls, exposed to assistive tech on
@@ -81,7 +82,17 @@ export const PanZoomViewport = ({
       keyboard={{ disabled: false, panStep: 20, zoomStep: 0.1 }}
     >
       {({ zoomIn, zoomOut, resetTransform }) => (
-        <div className="group relative size-full">
+        // The focus ring lives on this outer container (which spans the whole
+        // viewport box) rather than on the inner TransformComponent wrapper:
+        // that inner wrapper is fit-content and sits under the transparent
+        // diagram, so an inset ring there is hidden by the content. Showing it
+        // here frames the entire diagram area and stays visible.
+        <div
+          className={cn(
+            "group relative size-full rounded-[inherit]",
+            focused && "ring-ring ring-2 ring-inset"
+          )}
+        >
           <TransformComponent
             wrapperStyle={{ width: "100%", height: "100%" }}
             contentStyle={{ width: "100%", height: "100%" }}
@@ -95,13 +106,6 @@ export const PanZoomViewport = ({
               onFocus: () => setFocused(true),
               onBlur: () => setFocused(false),
             }}
-            // A focus ring that only shows while focus is inside the viewport,
-            // using the repo's shared ring token (not a hardcoded colour).
-            wrapperClass={
-              focused
-                ? "outline-none ring-2 ring-ring ring-inset"
-                : "outline-none"
-            }
           >
             {children}
           </TransformComponent>
