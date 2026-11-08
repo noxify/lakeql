@@ -1,330 +1,100 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync } from "node:fs"
 import path from "node:path"
 
-import { installPackage } from "@antfu/install-pkg"
-import {
-  cancel,
-  confirm,
-  intro,
-  isCancel,
-  outro,
-  select,
-  spinner,
-  text,
-} from "@clack/prompts"
-import { downloadTemplate as download } from "giget"
+import { cancel, intro, note, outro, tasks } from "@clack/prompts"
+import { buildPlan, materializeFiles } from "@lakeql/scaffold"
 import pc from "picocolors"
 import terminalLink from "terminal-link"
 
-interface Template {
-  name: string
-  alias: string
-  description: string
-  path: string
-}
+import { buildCreateAppCommandStructure } from "./command-metadata"
+import type { AdapterDefinition } from "./features/adapters"
+import { opsForAdapters } from "./features/adapters"
+import { opsForAuth } from "./features/auth"
+import { ensureUniqueValues } from "./materialize"
+import {
+  promptAdapters,
+  promptDataSourceNames,
+  resolveAdaptersFromFlag,
+  resolveDsNamesFromFlag,
+} from "./prompts/adapters"
+import { promptAuthStrategy, resolveAuthFromFlag } from "./prompts/auth"
+import {
+  promptInstallDeps,
+  selectPackageManager,
+  validatePackageManager,
+} from "./prompts/install"
+import { promptProjectName, validateProjectName } from "./prompts/project-name"
+import {
+  allowsExoticSubdeps,
+  installDependencies,
+} from "./runtime/dependencies"
+import {
+  invocationCwd,
+  resolveLocalTemplateDir,
+  resolveTargetDir,
+} from "./runtime/local-template"
+import { updatePackageJson } from "./runtime/package-json"
+import { downloadTemplate } from "./runtime/template"
 
-interface NpmPackageData {
-  version: string
-}
+// === Gather user input (prompts or flags) ===
 
-const template: Template = {
-  alias: "app",
-  description: "LakeQL app template",
-  name: "app",
-  path: "templates/app",
-}
-
-async function getLatestVersion(packageName: string): Promise<string> {
-  try {
-    const response = await fetch(
-      `https://registry.npmjs.org/${packageName}/latest`
-    )
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`)
-    }
-    const data = (await response.json()) as NpmPackageData
-    return `^${data.version}`
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  } catch {
-    console.warn(
-      pc.yellow(
-        `⚠️  Could not fetch latest version for ${packageName}, using '*'`
-      )
-    )
-    return "*"
-  }
-}
-
-async function downloadTemplate(targetDir: string): Promise<void> {
-  const s = spinner()
-  s.start("Downloading template...")
-
-  try {
-    await download(`github:noxify/lakeql/${template.path}`, {
-      dir: targetDir,
-      offline: false,
-    })
-
-    // Create pnpm-workspace.yaml to allow esbuild build scripts
-    writeFileSync(
-      path.resolve(targetDir, "pnpm-workspace.yaml"),
-      "allowBuilds:\n  esbuild: true\n"
-    )
-
-    s.stop("Template downloaded successfully!")
-  } catch (error) {
-    s.stop("Failed to download template")
-    throw error
-  }
-}
-
-async function updatePackageJson(
-  targetDir: string,
-  projectName: string
-): Promise<void> {
-  const s = spinner()
-  s.start("Updating package.json...")
-
-  try {
-    if (!existsSync(targetDir)) {
-      s.stop("Target directory not found")
-      return
-    }
-
-    const packageJsonPath = path.resolve(targetDir, "package.json")
-    const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf-8")) as {
-      dependencies?: Record<string, string>
-      devDependencies?: Record<string, string>
-      private?: boolean
-      [key: string]: unknown
-    }
-
-    // Update project name
-    const updatedPackageJson = {
-      ...packageJson,
-      name: projectName,
-    }
-
-    // Get latest versions
-    const workspaceDeps = [
-      ...Object.entries(updatedPackageJson.dependencies ?? {})
-        .filter(([, v]) => v === "workspace:*")
-        .map(([name]) => ({ name, target: "dependencies" as const })),
-      ...Object.entries(updatedPackageJson.devDependencies ?? {})
-        .filter(([, v]) => v === "workspace:*")
-        .map(([name]) => ({ name, target: "devDependencies" as const })),
-    ]
-
-    const versions = await Promise.all(
-      workspaceDeps.map(({ name }) => getLatestVersion(name))
-    )
-
-    // Replace workspace:* with resolved versions
-    for (const [i, { name, target }] of workspaceDeps.entries()) {
-      const deps = updatedPackageJson[target]
-      const version = versions[i]
-      if (deps && version) {
-        deps[name] = version
-      }
-    }
-
-    // Remove workspace-specific fields
-    delete updatedPackageJson.private
-
-    writeFileSync(
-      path.resolve(targetDir, "package.json"),
-      JSON.stringify(updatedPackageJson, null, 2)
-    )
-    s.stop("Package.json updated!")
-  } catch (error) {
-    s.stop("Failed to update package.json")
-    throw error
-  }
-}
-
-interface ParsedArgs {
-  cliPackageManager?: string
-  noInstall: boolean
-  projectName?: string
-  quietMode: boolean
-}
-
-interface ProjectConfig {
-  installDeps: boolean
-  packageManager: string
-  projectName: string
-  quietMode: boolean
-}
-
-const VALID_PACKAGE_MANAGERS = ["npm", "pnpm", "yarn", "bun"]
-const PROJECT_NAME_REGEX = /^[a-z0-9-_]+$/u
-
-function parseArguments(): ParsedArgs {
-  const args = process.argv.slice(2)
-  const pmFlag = args.find(
-    (arg) => arg.startsWith("--package-manager=") || arg.startsWith("-pm=")
-  )
-
-  return {
-    cliPackageManager: pmFlag?.split("=")[1],
-    noInstall: args.includes("--no-install"),
-    projectName: args.find((arg) => !arg.startsWith("-")),
-    quietMode: args.includes("--quiet") || args.includes("-q"),
-  }
-}
-
-function setupQuietMode(): void {
-  console.clear = () => null
-  console.log = () => null
-  console.warn = () => null
-}
-
-async function promptProjectName(): Promise<string> {
-  const result = await text({
-    message: "What is your project name?",
-    placeholder: "my-lakeql-project",
-    validate: (value) => {
-      if (!value) {
-        return "Project name is required"
-      }
-      if (!PROJECT_NAME_REGEX.test(value)) {
-        return "Project name must contain only lowercase letters, numbers, hyphens, and underscores"
-      }
-    },
-  })
-
-  if (isCancel(result)) {
-    cancel("Operation cancelled")
-    process.exit(0)
-  }
-
-  return result
-}
-
-function validateProjectName(name: string): void {
-  if (!PROJECT_NAME_REGEX.test(name)) {
-    cancel(
-      "Project name must contain only lowercase letters, numbers, hyphens, and underscores"
-    )
-    process.exit(1)
-  }
-}
-
-async function promptInstallDeps(): Promise<boolean> {
-  const result = await confirm({
-    initialValue: true,
-    message: "Install dependencies?",
-  })
-
-  if (isCancel(result)) {
-    cancel("Operation cancelled")
-    process.exit(0)
-  }
-
-  return result
-}
-
-function validatePackageManager(pm?: string): string {
-  if (!pm || !VALID_PACKAGE_MANAGERS.includes(pm)) {
-    cancel(
-      `Invalid package manager: ${pm}. Valid options: ${VALID_PACKAGE_MANAGERS.join(", ")}`
-    )
-    process.exit(1)
-  }
-  return pm
-}
-
-async function selectPackageManager(): Promise<string> {
-  const result = await select({
-    message: "Which package manager?",
-    options: [
-      { label: "npm", value: "npm" },
-      { label: "pnpm", value: "pnpm" },
-      { label: "yarn", value: "yarn" },
-    ],
-  })
-
-  if (isCancel(result)) {
-    cancel("Operation cancelled")
-    process.exit(0)
-  }
-
-  return result
-}
-
-async function installDependencies(
-  targetDir: string,
-  packageManager: string
-): Promise<void> {
-  const s = spinner()
-  s.start(`Installing dependencies with ${packageManager}...`)
-
-  try {
-    await installPackage([], {
-      cwd: targetDir,
-      packageManager,
-      silent: true,
-    })
-    s.stop("Dependencies installed!")
-  } catch {
-    s.stop("Failed to install dependencies")
-    console.log(pc.yellow("You can install them manually with:"))
-    console.log(pc.cyan(`  cd ${path.resolve(targetDir).split("/").pop()}`))
-    console.log(pc.cyan(`  ${packageManager} install`))
-  }
-}
-
-function printSuccessMessage(config: ProjectConfig): void {
-  outro(pc.green("🎉 Project created successfully!"))
-
-  console.log()
-  console.log("Next steps:")
-  console.log(pc.cyan(`  cd ${config.projectName}`))
-  if (!config.installDeps) {
-    console.log(pc.cyan(`  ${config.packageManager} install`))
-  }
-  console.log(pc.cyan(`  cp .env.example .env`))
-  console.log(pc.gray(`  # edit .env and fill in valid values`))
-  console.log(pc.cyan(`  ${config.packageManager} run cli pull --target ./src`))
-  console.log(pc.cyan(`  ${config.packageManager} run dev`))
-  console.log()
-  console.log("Learn more:")
-  console.log(
-    `  ${terminalLink("Repository", "https://github.com/noxify/lakeql")}`
-  )
-  console.log(`  ${terminalLink("Documentation", "https://lakeql.dev/docs")}`)
-}
-
-async function main() {
-  const {
-    cliPackageManager,
-    noInstall,
-    projectName: argProjectName,
-    quietMode,
-  } = parseArguments()
-
-  if (quietMode) {
-    setupQuietMode()
-  } else {
-    console.clear()
-    intro(pc.bgCyan(pc.black(" create-lakeql-app ")))
-  }
-
-  // Get or prompt project name
+async function gatherConfig(
+  argProjectName: string | undefined,
+  opts: {
+    adapters?: string
+    auth?: string
+    dsNames?: string
+    install: boolean
+    packageManager?: string
+    pm?: string
+  },
+  localMode: boolean
+) {
   const projectName = argProjectName || (await promptProjectName())
-  if (!argProjectName) {
+  if (argProjectName) {
     validateProjectName(projectName)
   }
 
-  // Get or prompt install dependencies
-  let installDeps = !noInstall
-  if (!noInstall && !cliPackageManager) {
+  const cliAdapters = opts.adapters?.split(",")
+  const selectedAdapters = cliAdapters
+    ? resolveAdaptersFromFlag(cliAdapters)
+    : await promptAdapters()
+
+  const cliDsNames = opts.dsNames?.split(",")
+  const dsNames = cliDsNames
+    ? resolveDsNamesFromFlag(selectedAdapters, cliDsNames)
+    : await promptDataSourceNames(selectedAdapters)
+
+  ensureUniqueValues(dsNames)
+
+  const authStrategy = opts.auth
+    ? resolveAuthFromFlag(opts.auth)
+    : await promptAuthStrategy()
+
+  // In local mode the surrounding monorepo owns installation, so the generated
+  // project is never installed in isolation. Skip the install/package-manager
+  // prompts entirely instead of asking questions whose answers are unused.
+  // The package manager is only used to render the next-steps hints; a local
+  // monorepo is driven by pnpm, so report that rather than a generic npm.
+  if (localMode) {
+    return {
+      authStrategy,
+      dsNames,
+      installDeps: false,
+      packageManager: "pnpm",
+      projectName,
+      selectedAdapters,
+    }
+  }
+
+  const cliPackageManager = opts.packageManager
+  let installDeps = opts.install
+  if (opts.install && !cliPackageManager) {
     installDeps = await promptInstallDeps()
   }
 
-  // Get or prompt package manager
   const packageManager =
     installDeps && cliPackageManager
       ? validatePackageManager(cliPackageManager)
@@ -332,41 +102,196 @@ async function main() {
         ? await selectPackageManager()
         : "npm"
 
-  // Setup project
-  const targetDir = path.resolve(projectName)
-
-  if (existsSync(targetDir)) {
-    cancel(`Directory ${projectName} already exists`)
-    return process.exit(1)
-  }
-
-  mkdirSync(targetDir, { recursive: true })
-
-  try {
-    const config: ProjectConfig = {
-      installDeps,
-      packageManager,
-      projectName,
-      quietMode,
-    }
-
-    await downloadTemplate(targetDir)
-    await updatePackageJson(targetDir, projectName)
-
-    if (installDeps) {
-      await installDependencies(targetDir, packageManager)
-    }
-
-    if (!quietMode) {
-      printSuccessMessage(config)
-    }
-  } catch (error) {
-    if (!quietMode) {
-      console.error(pc.red("❌ Failed to create project:"), error)
-    }
-    process.exit(1)
+  return {
+    authStrategy,
+    dsNames,
+    installDeps,
+    packageManager,
+    projectName,
+    selectedAdapters,
   }
 }
 
-// oxlint-disable-next-line promise/prefer-await-to-then
-main().catch(console.error)
+// === Execute scaffolding tasks ===
+
+async function executeTasks(opts: {
+  adapters: AdapterDefinition[]
+  authStrategy: string
+  dsNames: Record<string, string>
+  dryRun: boolean
+  installDeps: boolean
+  localTemplateDir?: string
+  packageManager: string
+  projectName: string
+  targetDir: string
+}) {
+  // Auth ops first so the Authentication section leads the generated
+  // .env.example; adapters follow in selection order. Ordering is irrelevant
+  // for the keyed deps/dataSources/adapters maps.
+  const plan = buildPlan([
+    ...opsForAuth(opts.authStrategy),
+    ...opsForAdapters(opts.adapters, opts.dsNames),
+  ])
+
+  const localMode = opts.localTemplateDir !== undefined
+
+  // Surface the relaxed install setting rather than applying it silently.
+  // Only a pnpm install of a pkg.pr.new preview build opts out of pnpm's
+  // exotic-subdependency block (see allowsExoticSubdeps); released scaffolds
+  // never hit this path.
+  if (
+    opts.installDeps &&
+    !opts.dryRun &&
+    !localMode &&
+    allowsExoticSubdeps(opts.packageManager)
+  ) {
+    note(
+      [
+        "This is a pkg.pr.new preview build, so the generated project pins its",
+        "@lakeql/* dependencies (and their transitive @lakeql/* deps) to",
+        "pkg.pr.new URLs. The generated pnpm-workspace.yaml sets",
+        "`blockExoticSubdeps: false` so pnpm resolves those URL subdependencies",
+        "on install and on every later pnpm command. Released scaffolds resolve",
+        "from npm and never set this.",
+      ].join(" "),
+      "Preview build"
+    )
+  }
+
+  await tasks([
+    {
+      title: localMode ? "Copying local template" : "Downloading template",
+      task: async () => {
+        await downloadTemplate(opts.targetDir, opts.localTemplateDir)
+        return localMode ? "Template copied" : "Template downloaded"
+      },
+    },
+    {
+      title: "Configuring package.json",
+      task: async () => {
+        await updatePackageJson(
+          opts.targetDir,
+          opts.projectName,
+          plan.deps,
+          plan.devDeps,
+          localMode
+        )
+        return "Dependencies configured"
+      },
+    },
+    {
+      title: "Generating project files",
+      task: () => {
+        materializeFiles(
+          opts.targetDir,
+          plan,
+          opts.dryRun ? "dry-run" : "write"
+        )
+        return "Files generated"
+      },
+    },
+    {
+      enabled: opts.installDeps && !opts.dryRun,
+      title: localMode
+        ? "Skipping install (local monorepo owns dependencies)"
+        : `Installing dependencies with ${opts.packageManager}`,
+      task: async () => {
+        await installDependencies(
+          opts.targetDir,
+          opts.packageManager,
+          localMode
+        )
+        return localMode
+          ? "Install skipped (run install from the monorepo root)"
+          : "Dependencies installed"
+      },
+    },
+  ])
+}
+
+// === CLI Program ===
+
+const program = buildCreateAppCommandStructure().action(
+  async (argProjectName, opts) => {
+    const quietMode = opts.quiet ?? false
+    const dryRun = opts.dryRun ?? false
+
+    if (quietMode) {
+      console.clear = () => null
+      console.log = () => null
+      console.warn = () => null
+    } else {
+      console.clear()
+      intro(pc.bgCyan(pc.black(" create-lakeql-app ")))
+    }
+
+    const localTemplateDir = resolveLocalTemplateDir(opts.local)
+    const localMode = localTemplateDir !== undefined
+
+    const config = await gatherConfig(argProjectName, opts, localMode)
+    const targetDir = resolveTargetDir(opts.targetDir, config.projectName)
+    const displayPath = path.relative(invocationCwd(), targetDir) || "."
+
+    if (existsSync(targetDir)) {
+      cancel(`Directory ${displayPath} already exists`)
+      return process.exit(1)
+    }
+
+    mkdirSync(targetDir, { recursive: true })
+
+    try {
+      await executeTasks({
+        adapters: config.selectedAdapters,
+        authStrategy: config.authStrategy,
+        dsNames: config.dsNames,
+        dryRun,
+        installDeps: config.installDeps,
+        localTemplateDir,
+        packageManager: config.packageManager,
+        projectName: config.projectName,
+        targetDir,
+      })
+    } catch (error) {
+      // The @clack/prompts task spinner reports a generic "Something went
+      // wrong" and discards the underlying cause. Surface the real error so
+      // failures (e.g. a missing local template dir) are actionable.
+      const message = error instanceof Error ? error.message : String(error)
+      cancel(`Scaffolding failed: ${message}`)
+      return process.exit(1)
+    }
+
+    if (!quietMode) {
+      // In local mode the monorepo root owns installation, so the install
+      // step runs there (not inside the generated project).
+      const installStep = localMode
+        ? [`${config.packageManager} install  # from the monorepo root`]
+        : config.installDeps
+          ? []
+          : [`${config.packageManager} install`]
+
+      const nextSteps = [
+        ...installStep,
+        `cd ${displayPath}`,
+        "cp .env.example .env",
+        `${config.packageManager} run cli pull --source-path ./src`,
+        `${config.packageManager} run dev`,
+      ].join("\n")
+
+      note(
+        `${pc.green("Created")} ${displayPath}\nAdapters: ${config.selectedAdapters.map((a) => a.label).join(", ")}`,
+        "Done"
+      )
+      note(nextSteps, "Next steps")
+      note(
+        [
+          terminalLink("Repository", "https://github.com/noxify/lakeql"),
+          terminalLink("Documentation", "https://lakeql.dev/docs"),
+        ].join("\n"),
+        "Learn more"
+      )
+      outro(pc.green("Happy building!"))
+    }
+  }
+)
+
+program.parse()

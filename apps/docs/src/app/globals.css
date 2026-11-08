@@ -107,6 +107,19 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  /* Mermaid diagram palette (github-light). Consumed by the build-time
+     pre-rendered SVG via the --diagram-* -> --bg/--fg/... mapping; the single
+     SVG recolors on `.dark` without a re-render. The diagram background tracks
+     the page background token so the outer SVG panel matches the surrounding
+     container (no visible edge) while node fills and edge-label halos — which
+     the renderer derives from --bg — stay opaque. */
+  --diagram-bg: var(--background);
+  --diagram-fg: #1f2328;
+  --diagram-line: #d1d9e0;
+  --diagram-accent: #0969da;
+  --diagram-muted: #59636e;
+  --diagram-surface: #f6f8fa;
+  --diagram-border: #d1d9e0;
 }
 
 .dark {
@@ -123,7 +136,11 @@
   --brand-950: #0f3742;
   --brand: var(--brand-500);
   --brand-soft: var(--brand-300);
-  --background: oklch(16.5% 0.028 229);
+  /* sRGB hex (exact equivalent of oklch(16.5% 0.028 229)). Kept as hex, not
+     oklch: the wide-gamut oklch value rendered with a tiny difference between
+     the content <main> and the TOC <aside> (different compositing paths),
+     producing a visible seam in dark mode. sRGB has no such ambiguity. */
+  --background: #021118;
   --foreground: oklch(0.985 0 0);
   --card: oklch(19.5% 0.02 229);
   --card-foreground: oklch(0.985 0 0);
@@ -154,6 +171,15 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(0.42 0.012 235 / 0.28);
   --sidebar-ring: oklch(0.62 0.016 235);
+  /* Mermaid diagram palette (github-dark). Background tracks the page
+     background token (see the light palette note). */
+  --diagram-bg: var(--background);
+  --diagram-fg: #e6edf3;
+  --diagram-line: #3d444d;
+  --diagram-accent: #4493f8;
+  --diagram-muted: #9198a1;
+  --diagram-surface: #161b22;
+  --diagram-border: #3d444d;
 }
 
 @layer base {

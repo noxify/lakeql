@@ -11,6 +11,8 @@ import { pathToFileURL } from "node:url"
 import type { Listr } from "listr2"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
+import { makeResolvedDataSource } from "../support/mock-datasource"
+
 // --- Mocks ---
 
 const taskOutputs: string[] = []
@@ -71,9 +73,54 @@ vi.mock(import("@/path-utils"), () => ({
     path.isAbsolute(p) ? p : path.resolve(testDir, p),
 }))
 
+// Configured data sources are set per test so single- vs multi-source behaviour
+// can be exercised. Defaults to a single "default" source.
+let configuredDataSources: Record<string, unknown> = { default: {} }
+
 vi.mock(import("@/config"), () => ({
   resolveSourcePath: async (override?: string) => override ?? testDir,
-  loadConfig: async () => ({ sourcePath: "." }),
+  loadConfig: async () =>
+    ({
+      config: { dataSources: configuredDataSources, sourcePath: "." },
+      adapters: [],
+      // oxlint-disable-next-line typescript/no-explicit-any
+    }) as any,
+}))
+
+// Pull/bulk-pull now resolve a live data source and catalog per source.
+const mockResolveCatalog = vi.fn(async (_name?: string) => "default_catalog")
+
+// Resolved data sources are cached per requested name so each source has its
+// own instance (and its own `close` spy). Tests can override an entry to inject
+// an invalid namePrefix.
+const resolvedSourceOverrides = new Map<
+  string,
+  ReturnType<typeof makeResolvedDataSource>
+>()
+const resolvedSourceInstances = new Map<
+  string,
+  ReturnType<typeof makeResolvedDataSource>
+>()
+
+const mockResolveDataSource = vi.fn(async (sourceName = "default") => {
+  const existing = resolvedSourceInstances.get(sourceName)
+  if (existing) {
+    return existing
+  }
+  const resolved =
+    resolvedSourceOverrides.get(sourceName) ??
+    makeResolvedDataSource({ name: sourceName })
+  resolvedSourceInstances.set(sourceName, resolved)
+  return resolved
+})
+
+vi.mock(import("@/resolve-datasource"), () => ({
+  resolveDataSource: (name?: string) => mockResolveDataSource(name),
+}))
+
+vi.mock(import("@/resolve-catalog"), () => ({
+  resolveCatalog: (opts?: { dataSource?: { adapter?: string } }) =>
+    mockResolveCatalog(opts?.dataSource?.adapter),
 }))
 
 // Mock c12 to do a simple file import (like our previous implementation)
@@ -190,6 +237,12 @@ describe("bulk-pull (integration)", () => {
     mockExecutePull.mockReset()
     setDefaultExecutePullMock()
     mockRunConfigRegistryGeneration.mockClear()
+    mockResolveCatalog.mockClear()
+    mockResolveCatalog.mockImplementation(async () => "default_catalog")
+    mockResolveDataSource.mockClear()
+    resolvedSourceOverrides.clear()
+    resolvedSourceInstances.clear()
+    configuredDataSources = { default: {} }
     taskOutputs.length = 0
   })
 
@@ -385,7 +438,12 @@ describe("bulk-pull (integration)", () => {
   })
 
   describe("catalog precedence", () => {
-    it("should use CLI catalog over config catalog and ENV", async () => {
+    // In bulk mode the per-entry `catalog` is the most specific level and wins
+    // over the resolved catalog (`resolveCatalog`, which itself applies
+    // CLI-flag > connection-catalog > prompt). When an entry omits `catalog`,
+    // the resolved catalog is used as the fallback.
+    it("uses the per-entry catalog over the resolved catalog", async () => {
+      mockResolveCatalog.mockResolvedValue("resolved_catalog")
       await writeConfig([
         { schema: "schema1", catalog: "config_catalog", tables: ["t1"] },
       ])
@@ -398,29 +456,13 @@ describe("bulk-pull (integration)", () => {
 
       expect(mockExecutePull).toHaveBeenCalledWith(
         expect.objectContaining({
-          catalog: "cli_catalog",
-        })
-      )
-    })
-
-    it("should use config catalog over ENV when no CLI catalog", async () => {
-      await writeConfig([
-        { schema: "schema1", catalog: "config_catalog", tables: ["t1"] },
-      ])
-
-      await executeBulkPull({
-        configPath: "import.config.mjs",
-        skipRegistry: true,
-      })
-
-      expect(mockExecutePull).toHaveBeenCalledWith(
-        expect.objectContaining({
           catalog: "config_catalog",
         })
       )
     })
 
-    it("should fall back to ENV catalog when neither CLI nor config provides one", async () => {
+    it("falls back to the resolved catalog when the entry omits one", async () => {
+      mockResolveCatalog.mockResolvedValue("resolved_catalog")
       await writeConfig([{ schema: "schema1", tables: ["t1"] }])
 
       await executeBulkPull({
@@ -430,7 +472,7 @@ describe("bulk-pull (integration)", () => {
 
       expect(mockExecutePull).toHaveBeenCalledWith(
         expect.objectContaining({
-          catalog: "default_catalog",
+          catalog: "resolved_catalog",
         })
       )
     })
@@ -459,6 +501,75 @@ describe("bulk-pull (integration)", () => {
         expect.objectContaining({
           catalog: "default_catalog",
           schema: "schema3",
+        })
+      )
+    })
+
+    // Regression: `pull --bulk` with a config whose every entry carries an
+    // explicit `catalog` must run fully non-interactively. The interactive
+    // catalog resolver (`resolveCatalog`, which prompts "Choose a catalog")
+    // must never be reached, because no entry needs the resolved fallback.
+    it("never invokes the catalog resolver when every entry has an explicit catalog", async () => {
+      await writeConfig([
+        { schema: "schema1", catalog: "catalog_a", tables: ["t1"] },
+        { schema: "schema2", catalog: "catalog_b", tables: ["t2"] },
+      ])
+
+      await executeBulkPull({
+        configPath: "import.config.mjs",
+        skipRegistry: true,
+      })
+
+      expect(mockResolveCatalog).not.toHaveBeenCalled()
+      expect(mockExecutePull).toHaveBeenCalledTimes(2)
+    })
+
+    it("never invokes the catalog resolver in a multi-source config where every entry has a catalog", async () => {
+      configuredDataSources = { trino: {}, fabric: {} }
+
+      await writeConfig([
+        { dataSource: "trino", catalog: "hive", schema: "s1", tables: ["t1"] },
+        {
+          dataSource: "fabric",
+          catalog: "Processed_LH",
+          schema: "s2",
+          tables: ["t2"],
+        },
+      ])
+
+      await executeBulkPull({
+        configPath: "import.config.mjs",
+        skipRegistry: true,
+      })
+
+      expect(mockResolveCatalog).not.toHaveBeenCalled()
+      expect(mockExecutePull).toHaveBeenCalledTimes(2)
+    })
+
+    it("resolves the catalog only for a source that has an entry omitting catalog", async () => {
+      configuredDataSources = { trino: {}, fabric: {} }
+      mockResolveCatalog.mockResolvedValue("resolved_catalog")
+
+      await writeConfig([
+        // trino: every entry has an explicit catalog -> no resolution needed
+        { dataSource: "trino", catalog: "hive", schema: "s1", tables: ["t1"] },
+        // fabric: entry omits catalog -> must resolve once for fabric only
+        { dataSource: "fabric", schema: "s2", tables: ["t2"] },
+      ])
+
+      await executeBulkPull({
+        configPath: "import.config.mjs",
+        skipRegistry: true,
+      })
+
+      expect(mockResolveCatalog).toHaveBeenCalledOnce()
+      expect(mockExecutePull).toHaveBeenCalledWith(
+        expect.objectContaining({ dataSourceName: "trino", catalog: "hive" })
+      )
+      expect(mockExecutePull).toHaveBeenCalledWith(
+        expect.objectContaining({
+          dataSourceName: "fabric",
+          catalog: "resolved_catalog",
         })
       )
     })
@@ -581,6 +692,210 @@ describe("bulk-pull (integration)", () => {
       })
 
       expect(mockExecutePull).toHaveBeenCalledTimes(3)
+    })
+  })
+
+  describe("namePrefix validation", () => {
+    it("surfaces INVALID_NAME_PREFIX and fails before any pull work when the prefix is invalid", async () => {
+      configuredDataSources = { trino: {} }
+      resolvedSourceOverrides.set(
+        "trino",
+        makeResolvedDataSource({ name: "trino", namePrefix: "123" })
+      )
+
+      await writeConfig([{ schema: "schema1", tables: ["t1"] }])
+
+      // The bad prefix must surface as the root-cause CliError, not a masked
+      // connection error, and must fail fast before any network I/O or the
+      // per-item pull loop.
+      await expect(
+        executeBulkPull({
+          configPath: "import.config.mjs",
+          skipRegistry: true,
+        })
+      ).rejects.toMatchObject({
+        name: "CliError",
+        code: "INVALID_NAME_PREFIX",
+      })
+
+      expect(mockResolveCatalog).not.toHaveBeenCalled()
+      expect(mockExecutePull).not.toHaveBeenCalled()
+    })
+
+    it("does not reject when the prefix is valid", async () => {
+      configuredDataSources = { trino: {} }
+      resolvedSourceOverrides.set(
+        "trino",
+        makeResolvedDataSource({ name: "trino", namePrefix: "my-trino" })
+      )
+
+      await writeConfig([{ schema: "schema1", tables: ["t1"] }])
+
+      await executeBulkPull({
+        configPath: "import.config.mjs",
+        skipRegistry: true,
+      })
+
+      expect(mockExecutePull).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({
+          schema: "schema1",
+          tables: ["t1"],
+          namePrefix: "my-trino",
+        })
+      )
+    })
+
+    it("closes every opened source when a later source's prefix is invalid", async () => {
+      configuredDataSources = { trino: {}, fabric: {} }
+      // trino resolves with a valid prefix (opened first); fabric then throws
+      // INVALID_NAME_PREFIX while being opened. Both must still be closed.
+      resolvedSourceOverrides.set(
+        "trino",
+        makeResolvedDataSource({ name: "trino", namePrefix: "ok" })
+      )
+      resolvedSourceOverrides.set(
+        "fabric",
+        makeResolvedDataSource({ name: "fabric", namePrefix: "123" })
+      )
+
+      await writeConfig([
+        { dataSource: "trino", schema: "hive", tables: ["t1"] },
+        { dataSource: "fabric", schema: "Processed_LH", tables: ["t2"] },
+      ])
+
+      await expect(
+        executeBulkPull({
+          configPath: "import.config.mjs",
+          skipRegistry: true,
+        })
+      ).rejects.toMatchObject({
+        name: "CliError",
+        code: "INVALID_NAME_PREFIX",
+      })
+
+      // The run failed before any pull work, but both opened instances must be
+      // closed — including fabric, whose prefix validation threw before it was
+      // cached.
+      expect(mockExecutePull).not.toHaveBeenCalled()
+      expect(
+        resolvedSourceInstances.get("trino")?.instance.close
+      ).toHaveBeenCalledOnce()
+      expect(
+        resolvedSourceInstances.get("fabric")?.instance.close
+      ).toHaveBeenCalledOnce()
+    })
+  })
+
+  describe("multi-source", () => {
+    it("without --source, pulls entries for both sources and closes both instances", async () => {
+      configuredDataSources = { trino: {}, fabric: {} }
+
+      await writeConfig([
+        { dataSource: "trino", schema: "hive", tables: ["t1"] },
+        { dataSource: "fabric", schema: "Processed_LH", tables: ["t2"] },
+      ])
+
+      await executeBulkPull({
+        configPath: "import.config.mjs",
+        skipRegistry: true,
+      })
+
+      expect(mockExecutePull).toHaveBeenCalledTimes(2)
+      expect(mockExecutePull).toHaveBeenCalledWith(
+        expect.objectContaining({ dataSourceName: "trino", schema: "hive" })
+      )
+      expect(mockExecutePull).toHaveBeenCalledWith(
+        expect.objectContaining({
+          dataSourceName: "fabric",
+          schema: "Processed_LH",
+        })
+      )
+
+      // Both opened instances must be closed.
+      const trino = resolvedSourceInstances.get("trino")
+      const fabric = resolvedSourceInstances.get("fabric")
+      expect(trino?.instance.close).toHaveBeenCalledOnce()
+      expect(fabric?.instance.close).toHaveBeenCalledOnce()
+    })
+
+    it("with --source, filters to that source and never resolves the other", async () => {
+      configuredDataSources = { trino: {}, fabric: {} }
+
+      await writeConfig([
+        { dataSource: "trino", schema: "hive", tables: ["t1"] },
+        { dataSource: "fabric", schema: "Processed_LH", tables: ["t2"] },
+      ])
+
+      await executeBulkPull({
+        configPath: "import.config.mjs",
+        skipRegistry: true,
+        sourceFlag: "trino",
+      })
+
+      expect(mockExecutePull).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({ dataSourceName: "trino", schema: "hive" })
+      )
+      // The other source was never resolved/opened.
+      expect(resolvedSourceInstances.has("fabric")).toBeFalsy()
+      expect(
+        resolvedSourceInstances.get("trino")?.instance.close
+      ).toHaveBeenCalledOnce()
+    })
+
+    it("single-source config omitting dataSource defaults to the sole source", async () => {
+      configuredDataSources = { only: {} }
+
+      await writeConfig([{ schema: "schema1", tables: ["t1"] }])
+
+      await executeBulkPull({
+        configPath: "import.config.mjs",
+        skipRegistry: true,
+      })
+
+      expect(mockExecutePull).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({ dataSourceName: "only", schema: "schema1" })
+      )
+    })
+
+    it("errors clearly when a multi-source entry omits dataSource and no --source is set", async () => {
+      configuredDataSources = { trino: {}, fabric: {} }
+
+      await writeConfig([
+        { dataSource: "trino", schema: "hive", tables: ["t1"] },
+        { schema: "orphan", tables: ["t2"] },
+      ])
+
+      await expect(
+        executeBulkPull({
+          configPath: "import.config.mjs",
+          skipRegistry: true,
+        })
+      ).rejects.toMatchObject({
+        name: "CliError",
+        code: "BULK_DATASOURCE_REQUIRED",
+      })
+
+      expect(mockExecutePull).not.toHaveBeenCalled()
+    })
+
+    it("errors when an entry references an unknown data source", async () => {
+      configuredDataSources = { trino: {}, fabric: {} }
+
+      await writeConfig([
+        { dataSource: "nope", schema: "hive", tables: ["t1"] },
+      ])
+
+      await expect(
+        executeBulkPull({
+          configPath: "import.config.mjs",
+          skipRegistry: true,
+        })
+      ).rejects.toMatchObject({
+        name: "CliError",
+        code: "BULK_DATASOURCE_NOT_FOUND",
+      })
+
+      expect(mockExecutePull).not.toHaveBeenCalled()
     })
   })
 

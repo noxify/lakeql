@@ -1,0 +1,37 @@
+name: Dependabot auto-merge
+
+# Auto-merges Dependabot's minor/patch PRs once the required status checks on
+# `main` pass. The real "green" gate is branch protection: `gh pr merge --auto`
+# only merges after the repo's required checks succeed. Without required checks
+# configured on `main`, --auto merges as soon as the PR is mergeable.
+#
+# Uses pull_request_target so the GITHUB_TOKEN is writable (Dependabot PRs get a
+# read-only token under the plain pull_request trigger). This workflow never
+# checks out or executes PR-head code, so the usual pull_request_target risk
+# does not apply; the actor + same-repo guard keeps fork PRs out.
+
+on: pull_request_target
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  dependabot:
+    runs-on: ubuntu-latest
+    if: >-
+      github.event.pull_request.user.login == 'dependabot[bot]' && github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - name: Fetch Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@v3
+        with:
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+
+      - name: Enable auto-merge for minor/patch updates
+        if: >-
+          steps.metadata.outputs.update-type == 'version-update:semver-minor' || steps.metadata.outputs.update-type == 'version-update:semver-patch'
+        run: gh pr merge --auto --squash "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

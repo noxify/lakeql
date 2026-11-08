@@ -1,9 +1,8 @@
 // oxlint-disable unicorn/no-useless-spread
 // oxlint-disable typescript/no-non-null-assertion
-// Feature: custom-endpoint-cli, Property 3: Duplicate field detection at same nesting level
 
 import * as fc from "fast-check"
-import { describe, expect, test } from "vitest"
+import { describe, expect, it } from "vitest"
 
 import { findDuplicateFieldNames } from "../../src/pipeline/schema"
 import type { FieldDefinition } from "../../src/pipeline/schema"
@@ -132,10 +131,10 @@ const nestedArrayItemObjectWithDuplicateArb: fc.Arbitrary<{
     })
   )
 
-// --- Property Tests ---
+// --- Tests ---
 
-describe("Property 3: Duplicate field detection at same nesting level", () => {
-  test("detects duplicates at root level for any field list with repeated names", () => {
+describe("Duplicate field detection at same nesting level", () => {
+  it("detects duplicates at root level for any field list with repeated names", () => {
     fc.assert(
       fc.property(fieldsWithDuplicateArb, ({ fields, duplicatedName }) => {
         const duplicates = findDuplicateFieldNames(fields)
@@ -152,7 +151,7 @@ describe("Property 3: Duplicate field detection at same nesting level", () => {
     )
   })
 
-  test("reports no duplicates for fields with all unique names at same level", () => {
+  it("reports no duplicates for fields with all unique names at same level", () => {
     fc.assert(
       fc.property(
         uniqueFieldNamesArb(1, 10).map((names) =>
@@ -169,7 +168,7 @@ describe("Property 3: Duplicate field detection at same nesting level", () => {
     )
   })
 
-  test("detects duplicates within nested Object fields", () => {
+  it("detects duplicates within nested Object fields", () => {
     fc.assert(
       fc.property(
         nestedObjectWithDuplicateArb,
@@ -190,7 +189,7 @@ describe("Property 3: Duplicate field detection at same nesting level", () => {
     )
   })
 
-  test("detects duplicates within nested Array item Object fields", () => {
+  it("detects duplicates within nested Array item Object fields", () => {
     fc.assert(
       fc.property(
         nestedArrayItemObjectWithDuplicateArb,
@@ -215,7 +214,7 @@ describe("Property 3: Duplicate field detection at same nesting level", () => {
     )
   })
 
-  test("same name at different nesting levels is NOT a duplicate", () => {
+  it("same name at different nesting levels is NOT a duplicate", () => {
     fc.assert(
       fc.property(validFieldNameArb, (sharedName) => {
         // A field at root and a field with the same name nested inside an Object

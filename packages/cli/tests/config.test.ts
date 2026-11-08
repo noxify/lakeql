@@ -3,7 +3,7 @@ import { mkdir, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
 
-import { afterEach, beforeEach, describe, expect, test, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, vi, it } from "vitest"
 
 let testDir: string
 
@@ -15,106 +15,156 @@ vi.mock(import("@/path-utils"), () => ({
     path.isAbsolute(p) ? p : path.resolve(mockGetInvocationCwd(), p),
 }))
 
-// Import after mock setup
-const { loadConfig, resolveSourcePath } = await import("../src/config")
+/**
+ * A minimal valid `.mjs` config exporting a `dataSources` object. `@lakeql/config`
+ * requires a supported extension and a valid `dataSources` object.
+ */
+function validConfigModule(sourcePath?: string): string {
+  const sourcePathLine =
+    sourcePath === undefined
+      ? ""
+      : `  sourcePath: ${JSON.stringify(sourcePath)},\n`
+  return `export default {\n${sourcePathLine}  dataSources: { warehouse: { adapter: "trino", connection: {} } },\n  adapters: [],\n}\n`
+}
 
-describe(loadConfig, () => {
-  beforeEach(async () => {
-    testDir = path.join(
-      tmpdir(),
-      `config-test-${Date.now()}-${Math.random().toString(36).slice(2)}`
-    )
-    await mkdir(testDir, { recursive: true })
-  })
+function loadConfigModule() {
+  return import("../src/config")
+}
 
-  afterEach(async () => {
-    await rm(testDir, { recursive: true, force: true })
-  })
+type ConfigModule = Awaited<ReturnType<typeof loadConfigModule>>
 
-  test("returns default config when no config file exists", async () => {
-    const config = await loadConfig()
-    expect(config).toStrictEqual({ sourcePath: "." })
-  })
+/**
+ * Freshly imports `../src/config` after resetting modules so the module-level
+ * `cachedProject` cache does not leak between test cases.
+ */
+async function importFreshConfig(): Promise<ConfigModule> {
+  vi.resetModules()
+  return loadConfigModule()
+}
 
-  test("loads config from lakeql.config.json", async () => {
-    await writeFile(
-      path.join(testDir, "lakeql.config.json"),
-      JSON.stringify({ sourcePath: "src" })
-    )
+async function setupTestDir(): Promise<void> {
+  testDir = path.join(
+    tmpdir(),
+    `config-test-${Date.now()}-${Math.random().toString(36).slice(2)}`
+  )
+  await mkdir(testDir, { recursive: true })
+}
 
-    const config = await loadConfig()
-    expect(config.sourcePath).toBe("src")
-  })
+async function cleanupTestDir(): Promise<void> {
+  await rm(testDir, { recursive: true, force: true })
+}
 
-  test("loads config from lakeql.config.mjs", async () => {
+describe("loadConfig", () => {
+  beforeEach(setupTestDir)
+  afterEach(cleanupTestDir)
+
+  it("loads a .mjs config with a valid dataSources object", async () => {
     await writeFile(
       path.join(testDir, "lakeql.config.mjs"),
-      `export default { sourcePath: "lib" }\n`
+      validConfigModule("lib")
     )
 
-    const config = await loadConfig()
-    expect(config.sourcePath).toBe("lib")
+    const { loadConfig } = await importFreshConfig()
+    const project = await loadConfig()
+
+    expect(project.config.sourcePath).toBe("lib")
+    expect(project.config.dataSources).toHaveProperty("warehouse")
   })
 
-  test("prefers .mjs over .json when both exist", async () => {
+  it("defaults sourcePath to '.' when omitted", async () => {
     await writeFile(
       path.join(testDir, "lakeql.config.mjs"),
-      `export default { sourcePath: "from-mjs" }\n`
-    )
-    await writeFile(
-      path.join(testDir, "lakeql.config.json"),
-      JSON.stringify({ sourcePath: "from-json" })
+      validConfigModule()
     )
 
-    const config = await loadConfig()
-    expect(config.sourcePath).toBe("from-mjs")
+    const { loadConfig } = await importFreshConfig()
+    const project = await loadConfig()
+
+    expect(project.config.sourcePath).toBe(".")
   })
 
-  test("merges with defaults for partial config", async () => {
+  it("throws a CliError when no config file exists", async () => {
+    const { loadConfig } = await importFreshConfig()
+
+    await expect(loadConfig()).rejects.toMatchObject({
+      code: "LAKEQL_CONFIG_LOAD_FAILED",
+    })
+  })
+
+  it("throws a CliError for an unsupported .json config", async () => {
     await writeFile(
       path.join(testDir, "lakeql.config.json"),
-      JSON.stringify({})
+      JSON.stringify({ sourcePath: "src", dataSources: {} })
     )
 
-    const config = await loadConfig()
-    expect(config).toStrictEqual({ sourcePath: "." })
+    const { loadConfig } = await importFreshConfig()
+
+    await expect(loadConfig()).rejects.toMatchObject({
+      code: "LAKEQL_CONFIG_LOAD_FAILED",
+    })
+  })
+
+  it("throws a CliError when dataSources is missing", async () => {
+    await writeFile(
+      path.join(testDir, "lakeql.config.mjs"),
+      `export default { sourcePath: "src" }\n`
+    )
+
+    const { loadConfig } = await importFreshConfig()
+
+    await expect(loadConfig()).rejects.toMatchObject({
+      code: "LAKEQL_CONFIG_LOAD_FAILED",
+    })
+  })
+
+  it("caches the project across repeated calls", async () => {
+    await writeFile(
+      path.join(testDir, "lakeql.config.mjs"),
+      validConfigModule("lib")
+    )
+
+    const { loadConfig } = await importFreshConfig()
+    const first = await loadConfig()
+    const second = await loadConfig()
+
+    expect(second).toBe(first)
   })
 })
 
-describe(resolveSourcePath, () => {
-  beforeEach(async () => {
-    testDir = path.join(
-      tmpdir(),
-      `config-test-${Date.now()}-${Math.random().toString(36).slice(2)}`
-    )
-    await mkdir(testDir, { recursive: true })
-  })
+describe("resolveSourcePath", () => {
+  beforeEach(setupTestDir)
+  afterEach(cleanupTestDir)
 
-  afterEach(async () => {
-    await rm(testDir, { recursive: true, force: true })
-  })
-
-  test("uses CLI override when provided as absolute path", async () => {
+  it("uses CLI override when provided as absolute path", async () => {
+    const { resolveSourcePath } = await importFreshConfig()
     const result = await resolveSourcePath("/absolute/override")
     expect(result).toBe("/absolute/override")
   })
 
-  test("resolves relative CLI override from invocation cwd", async () => {
+  it("resolves relative CLI override from invocation cwd", async () => {
+    const { resolveSourcePath } = await importFreshConfig()
     const result = await resolveSourcePath("custom/path")
     expect(result).toBe(path.resolve(testDir, "custom/path"))
   })
 
-  test("falls back to config sourcePath when no CLI override", async () => {
+  it("falls back to config sourcePath when no CLI override", async () => {
     await writeFile(
-      path.join(testDir, "lakeql.config.json"),
-      JSON.stringify({ sourcePath: "src" })
+      path.join(testDir, "lakeql.config.mjs"),
+      validConfigModule("src")
     )
 
+    const { resolveSourcePath } = await importFreshConfig()
     const result = await resolveSourcePath()
     expect(result).toBe(path.resolve(testDir, "src"))
   })
 
-  test("uses default sourcePath when no config file and no override", async () => {
+  it("uses default sourcePath when config omits it", async () => {
+    await writeFile(
+      path.join(testDir, "lakeql.config.mjs"),
+      validConfigModule()
+    )
+
+    const { resolveSourcePath } = await importFreshConfig()
     const result = await resolveSourcePath()
     expect(result).toBe(path.resolve(testDir, "."))
   })

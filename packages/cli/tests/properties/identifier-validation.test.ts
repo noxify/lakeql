@@ -1,12 +1,11 @@
 // oxlint-disable unicorn/no-useless-spread
-// Feature: custom-endpoint-cli, Property 1: Identifier validation accepts and rejects correctly
 
 import * as fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
 import { fieldNamePattern, metadataFieldPattern } from "@/pipeline/schema"
 
-describe("Property 1: Identifier validation accepts and rejects correctly", () => {
+describe("Identifier validation accepts and rejects correctly", () => {
   // Reference patterns for oracle comparison
   const fieldNameOracle = /^[a-zA-Z_][a-zA-Z0-9_]*$/u
   const MAX_FIELD_NAME_LENGTH = 64

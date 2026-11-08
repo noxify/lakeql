@@ -1,0 +1,13 @@
+---
+title: API Reference
+navTitle: API Reference
+description: Complete reference for the @lakeql/config public API.
+apiReference:
+  - name: "@lakeql/config"
+    file: "config/src/index"
+    exclude: ["OverridesFor"]
+---
+
+The complete public API of `@lakeql/config`, generated from the package's TypeScript source.
+
+You use three functions most: [`defineConfig`](#define-config) authors the config file, [`loadConfig`](#load-config) loads and validates it, and [`createLakeQLRuntime`](#create-lake-ql-runtime) composes the runtime that owns your data sources. The remaining exports are the config and runtime types, the [`AdapterRegistry`](#adapter-registry), the [`RuntimeLifecycleManager`](#runtime-lifecycle-manager), and the error classes thrown during loading and runtime construction.

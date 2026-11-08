@@ -1,4 +1,4 @@
-import { describe, expect, test, vi } from "vitest"
+import { describe, expect, vi, it } from "vitest"
 
 import { createLogger } from "../src/index"
 
@@ -99,12 +99,12 @@ vi.mock(import("@loglayer/plugin-redaction"), async (importOriginal) => {
 })
 
 describe("logger", () => {
-  test("createLogger should return a LogLayer instance", () => {
+  it("createLogger should return a LogLayer instance", () => {
     const logger = createLogger()
     expect(logger).toHaveProperty("_config")
   })
 
-  test("createLogger should configure LogLayer with correct options", () => {
+  it("createLogger should configure LogLayer with correct options", () => {
     const logger = createLogger()
     expect(logger._config).toStrictEqual(
       expect.objectContaining({

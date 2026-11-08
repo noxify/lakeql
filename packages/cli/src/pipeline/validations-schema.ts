@@ -1,7 +1,11 @@
+import {
+  id,
+  importNames,
+  methodCall,
+  property,
+} from "@lakeql/file-generator/ast-builders"
 import type { FieldDefinition } from "@lakeql/schema-generator/endpoint-schema"
 import ts from "typescript"
-
-import { id, importNames, methodCall, property } from "./ast-helpers"
 
 /**
  * Parameters for generateValidationsSchema.

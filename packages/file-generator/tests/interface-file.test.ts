@@ -2,13 +2,13 @@ import { parseColumns } from "@lakeql/column-parser"
 import formatCode from "@lakeql/helpers/format-code"
 import { generateModel } from "@lakeql/schema-generator/graphql-schema"
 import { generateJsonSchema } from "@lakeql/schema-generator/json-schema"
-import { describe, expect, test } from "vitest"
+import { describe, expect, it } from "vitest"
 
 import { generateCode } from "../src"
 import { generateInterface } from "../src/interface"
 
 describe("interface file generator", () => {
-  test("simple interface", async () => {
+  it("simple interface", async () => {
     const parsedColumns = parseColumns([
       { description: "", extra: "", name: "stringField", type: "varchar" },
       {
@@ -82,7 +82,7 @@ describe("interface file generator", () => {
     expect(generatedCodeFromFactory.fileName).toBe("vitest_interface.ts")
   })
 
-  test("interface w/ object", async () => {
+  it("interface w/ object", async () => {
     const parsedColumns = parseColumns([
       { description: "", extra: "", name: "stringField", type: "varchar" },
       {
@@ -130,7 +130,7 @@ describe("interface file generator", () => {
     expect(generatedCodeFromFactory.fileName).toBe("vitest_interface.ts")
   })
 
-  test("interface w/ array of object", async () => {
+  it("interface w/ array of object", async () => {
     const parsedColumns = parseColumns([
       { description: "", extra: "", name: "stringField", type: "varchar" },
       {

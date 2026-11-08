@@ -16,7 +16,7 @@ const PolymorphicComponent = <T extends IntrinsicElement>({
   return <Component {...rest} />
 }
 
-export function Heading({
+export const Heading = ({
   level,
   id,
   children,
@@ -24,22 +24,20 @@ export function Heading({
   level: number
   id: string
   children: ReactNode
-}) {
-  return (
-    <PolymorphicComponent
-      as={`h${level}` as IntrinsicElement}
-      id={id}
-      className="group no-underline hover:no-underline [&_a]:no-underline"
-      style={{ fontFamily: spaceGrotesk.style.fontFamily }}
+}) => (
+  <PolymorphicComponent
+    as={`h${level}` as IntrinsicElement}
+    id={id}
+    className="group no-underline hover:no-underline [&_a]:no-underline"
+    style={{ fontFamily: spaceGrotesk.style.fontFamily }}
+  >
+    {children}{" "}
+    <a
+      href={`#${id}`}
+      className="hidden no-underline group-hover:inline-block"
+      data-pagefind-ignore
     >
-      {children}{" "}
-      <a
-        href={`#${id}`}
-        className="hidden no-underline group-hover:inline-block"
-        data-pagefind-ignore
-      >
-        #
-      </a>
-    </PolymorphicComponent>
-  )
-}
+      #
+    </a>
+  </PolymorphicComponent>
+)

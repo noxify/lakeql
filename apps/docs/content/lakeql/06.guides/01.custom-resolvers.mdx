@@ -1,0 +1,92 @@
+---
+title: Custom Resolvers
+navTitle: Custom Resolvers
+description: Add a computed or aggregate query field to a running project.
+---
+
+The generated endpoints cover table reads and writes. You often need a field that is not a direct table query. An aggregate, a computed value, or a call to another service all fall outside the generated set. Add these as your own query fields on the shared schema builder.
+
+This guide walks through one worked task: add an `orderCount` aggregate query to a project you already have running.
+
+<Steps>
+
+<Step>Create a module for your fields</Step>
+
+Put your custom fields in their own file, such as `src/custom-fields.ts`. Keep them out of the generated files under `schemas/generated`, because a later `pull` can overwrite that directory.
+
+```ts
+// src/custom-fields.ts
+import { builder } from "@lakeql/api/builder"
+```
+
+<Step>Import the module before you start the server</Step>
+
+Add the import to your entry point, before the call to `startServer()`. The server discovers schema modules by globbing the generated files. It does not import arbitrary files, so a module that is never imported never registers its fields.
+
+```ts
+import "./custom-fields"
+
+await server.startServer()
+```
+
+See the [two prerequisites](/docs/api/customization/custom-queries-mutations#two-prerequisites) for the globbing rule and the `Mutation`-type caveat.
+
+<Step>Define the field</Step>
+
+Add the query field with `builder.queryField`. Read data through the GraphQL context, which exposes `getReadStrategy(name)` and `getWriteStrategy(name)`.
+
+```ts
+// src/custom-fields.ts
+import { builder } from "@lakeql/api/builder"
+
+builder.queryField("orderCount", (t) =>
+  t.int({
+    resolve: async (_root, _args, context) => {
+      const strategy = context.getReadStrategy("warehouse")
+      // use the strategy to read, the same path generated resolvers take
+      // ...
+      return count
+    },
+  })
+)
+```
+
+This is the same [`builder`](/docs/api/schema-builder/builder-configuration) the generated endpoints use. Your field gets the same auth scopes, input validation, and scalar types.
+
+<Step>Require a scope</Step>
+
+Declare the scopes the field needs through its `authScopes` option. Require an authenticated user, or a read permission on a particular table.
+
+```ts
+builder.queryField("orderCount", (t) =>
+  t.int({
+    authScopes: { authenticated: true },
+    resolve: async (_root, _args, context) => {
+      // ...
+      return count
+    },
+  })
+)
+```
+
+See [scope authorization](/docs/api/authentication/scope-authorization) for the scope model.
+
+<Step>Validate the arguments</Step>
+
+If the field takes arguments, attach a Zod schema through the argument's `validate` option. The schema runs before the resolver, so the resolver only sees valid input. See [input validation](/docs/api/schema-builder/input-validation).
+
+<Step>Run it</Step>
+
+Start the dev server and query the new field.
+
+<Command variant="run">dev</Command>
+
+```graphql
+query {
+  orderCount
+}
+```
+
+</Steps>
+
+For the mutation case and the full reference on each option, see [custom queries and mutations](/docs/api/customization/custom-queries-mutations).

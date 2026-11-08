@@ -1,0 +1,118 @@
+---
+title: Config File
+navTitle: Config File
+description: The structure of lakeql.config.ts.
+---
+
+`lakeql.config.ts` declares the adapters your project uses and the named data sources it connects to. Author it with [`defineConfig`](/docs/packages/config/api-reference#define-config) for full type inference.
+
+```ts
+import { defineConfig } from "@lakeql/config"
+import { trinoAdapterDefinition } from "@lakeql/adapter-trino"
+import { fabricAdapterDefinition } from "@lakeql/adapter-fabric"
+
+import { env } from "./src/env"
+import { permissions } from "./src/permissions"
+
+export default defineConfig({
+  sourcePath: "src",
+  adapters: [trinoAdapterDefinition, fabricAdapterDefinition],
+  dataSources: {
+    warehouse: {
+      adapter: "trino",
+      connection: {
+        host: env.TRINO_HOST,
+        port: env.TRINO_PORT,
+        catalog: env.TRINO_CATALOG,
+        auth: {
+          type: "basic",
+          username: env.TRINO_USERNAME,
+          password: env.TRINO_PASSWORD,
+        },
+      },
+    },
+  },
+  auth: { permissions },
+})
+```
+
+## Fields
+
+- **`adapters`** — the adapter definitions the project may use. The registered list provides the available adapter types.
+- **`dataSources`** — named sources, each selecting a registered `adapter` and supplying its `connection` (and optional `writeConfig`, `overrides`, `impersonationResolver`, and `namePrefix`). `overrides` applies only to adapters that declare registration-level options. The Trino and Fabric adapters declare none, so the field is typed `never` for them and you leave it out.
+- **`namePrefix`** — optional per-source string prepended to every generated GraphQL name, so two sources exposing the same `schema.tableName` no longer collide. It is a sibling of `adapter` and `connection`, written in any casing. See [Name Prefix](#name-prefix) for how it is cased per target and a worked example.
+- **`sourcePath`** — base path for generated code. Defaults to `"."`.
+- **`auth`** — optional auth block grouping all config-level auth concerns, passed through untouched. It carries `auth.impersonationResolver` (the global impersonation fallback) and `auth.permissions` (technical-user permission rules). Author the rules in `src/permissions.ts`, import them here, and set `auth.permissions`; the app entry (`src/index.ts`) calls [`createLakeQLApp`](/docs/api/server-setup/create-lakeql-app), which reads `project.config.auth?.permissions` and forwards them to the API. See [Permissions](/docs/api/authentication/permissions).
+
+Connection shapes are adapter-specific. See [Trino connection](/docs/data-sources/trino/connection) and [Fabric connection](/docs/data-sources/fabric/connection).
+
+<Note>
+  `lakeql.config.ts` is loaded with tsconfig `paths` resolution enabled, so any
+  path aliases you declare in `tsconfig.json` (for example `~/`) resolve inside
+  the config file the same way they do elsewhere in your project.
+
+```ts
+import { env } from "~/env"
+```
+
+</Note>
+
+<Note>
+  Because `src/permissions.ts` authors rules with `createPermission` from
+  `@lakeql/api/helpers`, importing it into `lakeql.config.ts` means every config
+  load (`lakeql pull`, `generate`, server startup) evaluates the `@lakeql/api`
+  module graph through jiti. That adds a little startup latency even on commands
+  that only need adapters and data sources. Keep the import and the `auth` block
+  anyway — even with an empty `permissions` array — so the empty-rules
+  [Default](/docs/api/authentication/permissions#default) stays a deliberate
+  choice rather than a silent gap from a missing file. See
+  [Permissions](/docs/api/authentication/permissions) for the full rationale.
+</Note>
+
+## Name Prefix
+
+Generated GraphQL names come from a table's `schema` and name only, so two data sources that expose a table with the same `schema.tableName` produce colliding type, query, and mutation names. Set an optional `namePrefix` on a data-source entry to disambiguate them — when present, it is prepended to every generated name for tables pulled from that source.
+
+```ts
+dataSources: {
+  warehouse: {
+    adapter: "trino",
+    namePrefix: "warehouse",
+    connection: {/* ... */},
+  },
+}
+```
+
+`namePrefix` is a sibling of `adapter` and `connection` (not part of the adapter-owned `connection`). You write it in any casing; it is normalized per target context at generation time:
+
+- **Type names** (PascalCase, `_`-separated segments) — the prefix becomes a new leading segment joined with `_`.
+- **Query names** (lowerCamelCase) — the prefix is prepended with no separator.
+- **Mutation names** — the `create` verb stays leading, then the prefix, then the rest, with no separator.
+
+### Worked example
+
+For `schema = analytics_sales` and `table = order_line_items`, setting `namePrefix: "warehouse"` changes the generated names as follows:
+
+| Name | Without prefix | With `namePrefix: "warehouse"` |
+| --- | --- | --- |
+| Type | `AnalyticsSales_OrderLineItems` | `Warehouse_AnalyticsSales_OrderLineItems` |
+| Query | `analyticsSalesOrderLineItems` | `warehouseAnalyticsSalesOrderLineItems` |
+| Mutation | `createanalyticsSalesOrderLineItems` | `createWarehouseAnalyticsSalesOrderLineItems` |
+
+Mixed-case values (`"warehouse"`, `"Warehouse"`, `"WAREHOUSE"`) normalize identically, and an empty or whitespace-only value is treated as unset. When `namePrefix` is omitted, generated names are identical to before.
+
+The prefix takes effect only at generation time — the `pull` and `bulk-pull` commands apply it, `create-endpoint` does not. See [Prefix scope](/docs/cli/configuration/config-file#prefix-scope) for which commands apply it and the re-pull/stale-file caveat.
+
+## Config Merge Precedence
+
+LakeQL merges a data source's effective connection from three layers, lowest to highest precedence:
+
+1. the adapter's registration defaults,
+2. the data source's own `connection`,
+3. the data source's `overrides`.
+
+So `overrides` wins over `connection`, which wins over the adapter defaults. Each layer must be a plain-object record of serializable values, or the merge throws a `DataSourceConfigError`.
+
+## Multiple Adapters
+
+A single project can register both adapters and route each data source to a different engine. You might run a Trino `warehouse` and a Fabric `reporting` source side by side.

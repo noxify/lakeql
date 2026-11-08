@@ -3,7 +3,7 @@
 import Image from "next/image"
 import type { ComponentPropsWithoutRef } from "react"
 
-import { PanZoomDialog } from "@/components/pan-zoom/pan-zoom-dialog"
+import { PanZoom } from "@/components/pan-zoom/pan-zoom"
 
 type ImageMode = "default" | "zoom"
 type ImagePreviewFit = "cover" | "contain"
@@ -109,13 +109,13 @@ function parseImageOptionsFromSources(sources: (string | undefined)[]): {
   return { mode: mode ?? "default", previewFit, width, height }
 }
 
-export function MarkdownImageHandler({
+export const MarkdownImageHandler = ({
   title,
   src,
   alt,
   width,
   height,
-}: ComponentPropsWithoutRef<"img">) {
+}: ComponentPropsWithoutRef<"img">) => {
   // Markdown image options can come from title, alt text hints,
   // or URL fragments like #mode=zoom&fit=cover.
   const srcValue =
@@ -161,14 +161,14 @@ export function MarkdownImageHandler({
   )
 }
 
-export function ImageHandler({
+export const ImageHandler = ({
   src,
   alt = "",
   width = 0,
   height = 0,
   previewFit = "contain",
   mode = "default",
-}: ImageHandlerProps) {
+}: ImageHandlerProps) => {
   const hasExplicitSize = width > 0 && height > 0
   const fallbackContainerClass =
     mode === "default"
@@ -212,13 +212,12 @@ export function ImageHandler({
 
   if (mode === "zoom") {
     return (
-      <PanZoomDialog
+      <PanZoom
+        lightbox={true}
         title={alt || "Image"}
         className="my-8"
         previewClassName="h-72"
         previewFit={previewFit}
-        fitOnMount={true}
-        initialZoom={1}
       >
         <div
           className={
@@ -229,7 +228,7 @@ export function ImageHandler({
         >
           {imageNode}
         </div>
-      </PanZoomDialog>
+      </PanZoom>
     )
   }
 

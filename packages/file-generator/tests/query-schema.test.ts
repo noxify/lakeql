@@ -2,7 +2,7 @@ import { parseColumns } from "@lakeql/column-parser"
 import { generateModel } from "@lakeql/schema-generator/graphql-schema"
 import { generateJsonSchema } from "@lakeql/schema-generator/json-schema"
 import type { JSONSchema7 } from "json-schema"
-import { describe, expect, test } from "vitest"
+import { describe, expect, it } from "vitest"
 
 import { generateCode } from "../src"
 import { generateQuerySchema } from "../src/query-schema"
@@ -148,20 +148,19 @@ async function buildUserQueryCode() {
 
 describe("query-schema file generator", () => {
   describe("simple query", () => {
-    test("generates correct fileName", async () => {
+    it("generates correct fileName", async () => {
       const generatedCodeFromFactory = await buildSimpleQueryCode()
       expect(generatedCodeFromFactory.fileName).toBe("vitest_query-schema.ts")
     })
 
-    test("generates correct type imports", async () => {
+    it("generates correct type imports", async () => {
       const { text: code } = await buildSimpleQueryCode()
       expect(code).toContain(
-        'import type { ConnectionInterface, TrinoArrayResponse } from "@lakeql/api/types"'
+        'import type { ConnectionInterface } from "@lakeql/api/types"'
       )
-      expect(code).toContain('import type { JSONSchema7 } from "json-schema"')
     })
 
-    test("generates correct builder imports", async () => {
+    it("generates correct builder imports", async () => {
       const { text: code } = await buildSimpleQueryCode()
       expect(code).toContain('from "@lakeql/api/builder"')
       expect(code).toContain("builder")
@@ -170,31 +169,59 @@ describe("query-schema file generator", () => {
       expect(code).toContain("SortDirection")
     })
 
-    test("generates correct query-builder imports", async () => {
+    it("generates correct query-builder imports", async () => {
       const { text: code } = await buildSimpleQueryCode()
       expect(code).toContain('from "@lakeql/query-builder"')
-      expect(code).toContain("formatQuery")
-      expect(code).toContain("generateQuery")
       expect(code).toContain("getSelectFields")
     })
 
-    test("generates correct trino-client and local imports", async () => {
+    it("generates local interface imports", async () => {
       const { text: code } = await buildSimpleQueryCode()
-      expect(code).toContain('from "@lakeql/trino-client"')
-      expect(code).toContain("TrinoClient")
       expect(code).toContain('from "./interface"')
       expect(code).toContain("SimpleInterface")
-      expect(code).toContain("TableDefinition")
     })
 
-    test("generates config and json-schema imports", async () => {
+    it("generates config and json-schema imports", async () => {
       const { text: code } = await buildSimpleQueryCode()
       expect(code).toContain('from "./config"')
-      expect(code).toContain("hiveConfig")
+      expect(code).toContain("sourceConfig")
       expect(code).toContain('import jsonSchema from "./json-schema.json"')
     })
 
-    test("generates FilterInput with correct fields", async () => {
+    it("resolver resolves the read strategy via context, not a global runtime", async () => {
+      const { text: code } = await buildSimpleQueryCode()
+      expect(code).toContain("context.getReadStrategy(sourceConfig.dataSource)")
+      // read() is called with the concrete node interface as its type argument
+      // so the resolver returns a typed Connection, not DataSourceReadResult<unknown>.
+      expect(code).toContain("readStrategy.read<SimpleInterface>(")
+      expect(code).not.toContain("getRuntime")
+    })
+
+    it("resolver routes datasource errors through handleErrorResponse", async () => {
+      const { text: code } = await buildSimpleQueryCode()
+      // So adapter failures (e.g. PERMISSION_DENIED) become explicit GraphQL
+      // errors instead of being masked to a generic "Unexpected error.".
+      expect(code).toContain(
+        'import { handleErrorResponse } from "@lakeql/api/helpers"'
+      )
+      expect(code).toContain("try {")
+      expect(code).toContain("catch (error)")
+      expect(code).toContain("return handleErrorResponse(error)")
+      // `return await` (not bare `return`) is required so the try/catch
+      // actually catches the read's async rejection.
+      expect(code).toContain("return await readStrategy.read<SimpleInterface>(")
+    })
+
+    it("resolver passes perPage through without a default fallback", async () => {
+      const { text: code } = await buildSimpleQueryCode()
+      // An omitted perPage must reach the read strategy as undefined so the
+      // data source's configured default page size applies; the generator no
+      // longer bakes in a `?? 100` fallback at the GraphQL layer.
+      expect(code).toContain("args.paging?.perPage")
+      expect(code).not.toContain("?? 100")
+    })
+
+    it("generates FilterInput with correct fields", async () => {
       const { text: code } = await buildSimpleQueryCode()
       expect(code).toContain("SimpleFilterInput")
       expect(code).toContain("StringFieldComparison")
@@ -203,14 +230,14 @@ describe("query-schema file generator", () => {
       expect(code).toContain("DateFieldComparison")
     })
 
-    test("generates FilterInput with datetime and logical operators", async () => {
+    it("generates FilterInput with datetime and logical operators", async () => {
       const { text: code } = await buildSimpleQueryCode()
       expect(code).toContain("DateTimeFieldComparison")
       expect(code).toContain("and")
       expect(code).toContain("or")
     })
 
-    test("generates SortFields enum with field names", async () => {
+    it("generates SortFields enum with field names", async () => {
       const { text: code } = await buildSimpleQueryCode()
       expect(code).toContain("SimpleSortFields")
       expect(code).toContain('"stringField"')
@@ -219,7 +246,7 @@ describe("query-schema file generator", () => {
       expect(code).toContain('"dateField"')
     })
 
-    test("generates SortFields enum with remaining fields", async () => {
+    it("generates SortFields enum with remaining fields", async () => {
       const { text: code } = await buildSimpleQueryCode()
       expect(code).toContain('"timestampField"')
       expect(code).toContain('"bigintField"')
@@ -227,7 +254,7 @@ describe("query-schema file generator", () => {
       expect(code).toContain("SortingInput")
     })
 
-    test("generates object refs and Connection", async () => {
+    it("generates object refs and Connection", async () => {
       const { text: code } = await buildSimpleQueryCode()
       expect(code).toContain('builder.objectRef<SimpleInterface>("Simple")')
       expect(code).toContain(
@@ -235,7 +262,7 @@ describe("query-schema file generator", () => {
       )
     })
 
-    test("generates transformFields and dateFields constants", async () => {
+    it("generates transformFields and dateFields constants", async () => {
       const { text: code } = await buildSimpleQueryCode()
       expect(code).toContain(
         "const transformFields: Record<string, string> = {}"
@@ -243,7 +270,7 @@ describe("query-schema file generator", () => {
       expect(code).toContain("const dateFields: string[] = [")
     })
 
-    test("generates queryFields with queryName", async () => {
+    it("generates queryFields with queryName", async () => {
       const { text: code } = await buildSimpleQueryCode()
       expect(code).toContain("builder.queryFields")
       expect(code).toContain("test:")
@@ -251,38 +278,38 @@ describe("query-schema file generator", () => {
   })
 
   describe("query with transform fields and datetime fields", () => {
-    test("generates correct fileName", async () => {
+    it("generates correct fileName", async () => {
       const generatedCodeFromFactory = await buildUserQueryCode()
       expect(generatedCodeFromFactory.fileName).toBe("vitest_query-schema.ts")
     })
 
-    test("generates transformFields with correct key/value pairs", async () => {
+    it("generates transformFields with correct key/value pairs", async () => {
       const { text: code } = await buildUserQueryCode()
       expect(code).toContain('first_name: "firstName"')
       expect(code).toContain('created_at: "createdAt"')
     })
 
-    test("generates dateFields array with field names", async () => {
+    it("generates dateFields array with field names", async () => {
       const { text: code } = await buildUserQueryCode()
       expect(code).toContain('"createdAt"')
       expect(code).toContain('"updatedAt"')
       expect(code).toContain("const dateFields: string[] = [")
     })
 
-    test("generates queryFields with correct queryName", async () => {
+    it("generates queryFields with correct queryName", async () => {
       const { text: code } = await buildUserQueryCode()
       expect(code).toContain("builder.queryFields")
       expect(code).toContain("users:")
     })
 
-    test("generates model-specific names", async () => {
+    it("generates model-specific names", async () => {
       const { text: code } = await buildUserQueryCode()
       expect(code).toContain("UserFilterInput")
       expect(code).toContain("UserSortFields")
       expect(code).toContain("UserSortOrder")
     })
 
-    test("generates model object refs", async () => {
+    it("generates model object refs", async () => {
       const { text: code } = await buildUserQueryCode()
       expect(code).toContain('builder.objectRef<UserInterface>("User")')
       expect(code).toContain(
@@ -290,7 +317,7 @@ describe("query-schema file generator", () => {
       )
     })
 
-    test("deduplicates transform fields with the same key", async () => {
+    it("deduplicates transform fields with the same key", async () => {
       const parsedColumns = parseColumns([
         { description: "", extra: "", name: "fullName", type: "varchar" },
       ])
@@ -327,7 +354,7 @@ describe("query-schema file generator", () => {
       expect(occurrences).toBe(1)
     })
 
-    test("throws on conflicting transform field mappings", () => {
+    it("throws on conflicting transform field mappings", () => {
       const jsonSchema: JSONSchema7 = {
         additionalProperties: false,
         properties: {
@@ -362,7 +389,7 @@ describe("query-schema file generator", () => {
       )
     })
 
-    test("types empty dateFields as string array", async () => {
+    it("types empty dateFields as string array", async () => {
       const jsonSchema: JSONSchema7 = {
         additionalProperties: false,
         properties: {

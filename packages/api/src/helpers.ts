@@ -1,93 +1,70 @@
-import { swap } from "@lakeql/helpers/object-helper"
-import { error } from "@lakeql/logger/console"
-import { convertTrinoResponse, transform } from "@lakeql/response-transformer"
+import type { PermissionRule } from "@lakeql/config"
+import type { DataSourceErrorCategory } from "@lakeql/datasource"
+import { DataSourceError } from "@lakeql/datasource"
 import { AuthScopeFailureType } from "@pothos/plugin-scope-auth"
 import type { AuthFailure } from "@pothos/plugin-scope-auth"
 import { GraphQLError } from "graphql"
-import type { JSONSchema7 } from "json-schema"
 
-import type {
-  ErrorMessage,
-  TrinoArrayResponse,
-  WrappedTrinoResponse,
-} from "./types"
+export type { PermissionFields } from "./types"
 
-export interface SchemaConfigEntry {
-  catalog: string
-  schema: string
-  tableName: string
+/**
+ * Maps a {@link DataSourceErrorCategory} to an HTTP status code.
+ */
+const categoryToStatus: Record<DataSourceErrorCategory, number> = {
+  auth: 403,
+  cancelled: 499,
+  network: 502,
+  query: 400,
+  timeout: 504,
+  unsupported: 400,
 }
 
-export type TablesForCatalogAndSchema<
-  TConfig extends SchemaConfigEntry,
-  C extends TConfig["catalog"],
-  S extends Extract<TConfig, { catalog: C }>["schema"],
-> = Extract<
-  TConfig,
-  {
-    catalog: C
-    schema: S
-  }
->["tableName"]
+/**
+ * Maps a {@link DataSourceErrorCategory} to a GraphQL error extension code.
+ */
+const categoryToCode: Record<DataSourceErrorCategory, string> = {
+  auth: "PERMISSION_DENIED",
+  cancelled: "CANCELLED",
+  network: "NETWORK_ERROR",
+  query: "QUERY_ERROR",
+  timeout: "TIMEOUT",
+  unsupported: "UNSUPPORTED_OPERATION",
+}
 
-export type PermissionTableName<
-  TConfig extends SchemaConfigEntry,
-  C extends TConfig["catalog"],
-  S extends Extract<TConfig, { catalog: C }>["schema"],
-> = TablesForCatalogAndSchema<TConfig, C, S> | "*"
+/**
+ * Translates a `DataSourceError` into a `GraphQLError`.
+ *
+ * If the error is not a `DataSourceError`, it is re-thrown as a
+ * generic 500 `GraphQLError`.
+ *
+ * @param error - The error to handle.
+ * @throws {GraphQLError} Always throws.
+ */
+export const handleErrorResponse = (error: unknown): never => {
+  if (error instanceof DataSourceError) {
+    const status = categoryToStatus[error.category] ?? 500
+    const code = categoryToCode[error.category] ?? "UNKNOWN"
 
-export const handleErrorResponse = ({
-  errorMessage,
-}: {
-  errorMessage: ErrorMessage
-}) => {
-  const errorCode = errorMessage.errorCode ?? -1
-
-  const additionalInformation = errorMessage.additionalInformation ?? []
-  let message: string
-  let code: string
-  let status: number
-
-  switch (errorCode) {
-    case 1: {
-      message = "Invalid GraphQL query"
-      code = "SYNTAX_ERROR"
-      status = 400
-      break
-    }
-    case 4: {
-      message = "Access denied"
-      code = "PERMISSION_DENIED"
-      status = 403
-      break
-    }
-    case 100: {
-      error(errorMessage.message ?? "Unknown exception")
-      message = "Unknown exception"
-      code = "UNKNOWN"
-      status = 500
-      break
-    }
-    case 200: {
-      message = "Validation failed"
-      code = "VALIDATION_FAILED"
-      status = 400
-      break
-    }
-    default: {
-      message = errorMessage.message ?? "Unknown exception"
-      code = errorMessage.code ?? "UNKNOWN"
-      status = 400
-    }
-  }
-
-  throw new GraphQLError(message, {
-    extensions: {
-      additionalInformation,
-      code,
-      http: {
-        status,
+    throw new GraphQLError(error.message, {
+      // Preserve the DataSourceError as originalError so downstream consumers
+      // (e.g. the error-logging plugin) can read its category/dataSource/adapter.
+      originalError: error,
+      extensions: {
+        code,
+        dataSource: error.dataSource,
+        adapter: error.adapter,
+        http: { status },
       },
+    })
+  }
+
+  // Non-DataSourceError: wrap as a generic internal error
+  const message = error instanceof Error ? error.message : "Unknown exception"
+  throw new GraphQLError(message, {
+    originalError: error instanceof Error ? error : undefined,
+    extensions: {
+      code: "UNKNOWN",
+      http: { status: 500 },
     },
   })
 }
@@ -114,174 +91,28 @@ export const throwFirstError = (failure: AuthFailure) => {
   }
 }
 
-export const calculatePageInfoData = ({
-  totalCount,
-  perPage,
-  page,
-}: {
-  totalCount: number
-  perPage: number
-  page?: number
-}) => {
-  const maxPages = Math.ceil(totalCount / perPage)
-  const currentPage = page ?? 1
-
-  const hasPrevious = currentPage - 1 > 0
-  const previousPage = hasPrevious ? currentPage - 1 : null
-
-  const hasNext = currentPage < maxPages
-  const nextPage = hasNext ? currentPage + 1 : null
-
-  const limit = perPage
-  const offset =
-    currentPage > 1 ? Math.ceil(currentPage * perPage) - perPage : undefined
-
-  return {
-    currentPage,
-    hasNext,
-    hasPrevious,
-    limit,
-    maxPages,
-    nextPage,
-    offset,
-    previousPage,
-    totalCount,
-  }
-}
+/** Identity helper — returns the permission rule as-is. */
+const ruleIdentity = (r: PermissionRule): PermissionRule => r
 
 /**
- * Generates the expected config object for the permission check.
- * The provided tables will be deduplicated.
+ * Builds a permission entry for a single data source.
+ *
+ * @example
+ * ```ts
+ * const perm = createPermission("warehouse", (rule) => [
+ *   rule({ schema: "sales", tables: ["orders", "customers"] }),
+ *   rule({ catalog: "hive", schema: "finance", tables: ["*"] }),
+ * ])
+ * // → { dataSource: "warehouse", rules: [...] }
+ * ```
+ *
+ * @param dataSource - Runtime name of the data source.
+ * @param rulesFn - Builder callback receiving a `rule` helper that creates `PermissionRule` entries.
+ * @returns A permission entry with `dataSource` and `rules`.
  */
-export function createPermission<
-  const TConfig extends readonly SchemaConfigEntry[],
->(
-  allConfigs: TConfig
-): <
-  C extends TConfig[number]["catalog"],
-  S extends Extract<TConfig[number], { catalog: C }>["schema"],
-  TTable extends PermissionTableName<TConfig[number], C, S>,
->(
-  catalog: C,
-  schema: S,
-  tables: readonly TTable[]
-) => {
-  catalog: C
-  schema: S
-  tables: TTable[]
-}
-export function createPermission<
-  TConfig extends SchemaConfigEntry = SchemaConfigEntry,
-  C extends TConfig["catalog"] = TConfig["catalog"],
-  S extends Extract<TConfig, { catalog: C }>["schema"] = Extract<
-    TConfig,
-    { catalog: C }
-  >["schema"],
-  TTable extends PermissionTableName<TConfig, C, S> = PermissionTableName<
-    TConfig,
-    C,
-    S
-  >,
->(
-  catalog: C,
-  schema: S,
-  tables: readonly TTable[]
-): {
-  catalog: C
-  schema: S
-  tables: TTable[]
-}
-export function createPermission(allConfigs: readonly SchemaConfigEntry[]): (
-  catalog: string,
-  schema: string,
-  tables: readonly string[]
-) => {
-  catalog: string
-  schema: string
-  tables: string[]
-}
 export function createPermission(
-  catalog: string,
-  schema: string,
-  tables: readonly string[]
-): {
-  catalog: string
-  schema: string
-  tables: string[]
-}
-export function createPermission(
-  configOrCatalog: readonly SchemaConfigEntry[] | string,
-  schema?: string,
-  tables?: readonly string[]
-) {
-  if (Array.isArray(configOrCatalog)) {
-    return (
-      boundCatalog: string,
-      boundSchema: string,
-      boundTables: readonly string[]
-    ) => createPermission(boundCatalog, boundSchema, boundTables)
-  }
-
-  const catalog = configOrCatalog
-
-  if (!schema || !tables) {
-    throw new TypeError(
-      "createPermission requires either allConfigs or catalog, schema, and tables"
-    )
-  }
-
-  // Runtime check for duplicates (as a safety measure)
-  const uniqueTables = [...tables]
-  return { catalog, schema, tables: uniqueTables }
-}
-
-export const transformTrinoResponse = <T>({
-  response,
-  selectFields,
-  transformFields,
-  dateFields,
-  jsonSchema,
-  utcDates,
-}: {
-  response: TrinoArrayResponse<T>[]
-  selectFields: string[]
-  transformFields?: Record<string, string>
-  dateFields?: string[]
-  jsonSchema: JSONSchema7
-  utcDates?: string[]
-}): WrappedTrinoResponse<T> => {
-  // get the total count from the first record
-  const total_count = response[0]?.[0] ?? 0
-
-  const data = response.map((record) => {
-    // since we already fetched the `total_count` above, we can exclude it here
-    const [_count, ...rest] = record
-
-    // Map GraphQL field names back to DB column names for correct key assignment.
-    // The SQL query uses the DB column names (e.g. "2bs"), so the response values
-    // are in that order. We need to use those as keys for the JSON schema lookup.
-    const keys = selectFields.map((f) => transformFields?.[f] ?? f)
-
-    const dataAsObject = convertTrinoResponse({
-      keys,
-      values: rest,
-    })
-
-    const transformedResponse = transform({
-      data: dataAsObject,
-      dateFields,
-      definition: jsonSchema,
-      // swap transformFields from { graphqlName: dbName } to { dbName: graphqlName }
-      // so that transform() can map DB column names back to GraphQL field names
-      transformFields: transformFields ? swap(transformFields) : undefined,
-      utcDates,
-    })
-
-    return transformedResponse
-  }) as T[]
-
-  return {
-    data,
-    total_count,
-  }
+  dataSource: string,
+  rulesFn: (rule: (r: PermissionRule) => PermissionRule) => PermissionRule[]
+): { dataSource: string; rules: PermissionRule[] } {
+  return { dataSource, rules: rulesFn(ruleIdentity) }
 }

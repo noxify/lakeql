@@ -22,7 +22,7 @@ type DocsTableOfContentsProps = Omit<
   "children" | "components"
 >
 
-export function TableOfContents({ sections }: DocsTableOfContentsProps) {
+export const TableOfContents = ({ sections }: DocsTableOfContentsProps) => {
   const { isMobile } = useSidebar()
 
   if (isMobile) {
@@ -83,7 +83,9 @@ function collectAllSectionIds(
   return ids
 }
 
-export function MobileTableOfContents({ sections }: DocsTableOfContentsProps) {
+export const MobileTableOfContents = ({
+  sections,
+}: DocsTableOfContentsProps) => {
   const allItemIds = collectAllSectionIds(sections)
   const activeHeading = useActiveItem(allItemIds)
 

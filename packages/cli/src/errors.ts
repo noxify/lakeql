@@ -54,14 +54,21 @@ export function isPromptAbortError(error: unknown): boolean {
   )
 }
 
-export function createTrinoConnectionError(
+export function createDataSourceConnectionError(
   action: string,
   context: string,
   cause: unknown
 ): CliError {
+  // A CliError already carries a precise, user-facing message (e.g. an invalid
+  // namePrefix). Re-wrapping it as a generic connection failure would mask the
+  // root cause, so pass it through unchanged.
+  if (cause instanceof CliError) {
+    return cause
+  }
+
   return new CliError(`Failed to ${action}.`, {
-    code: "TRINO_REQUEST_FAILED",
-    hint: "Verify HIVE_HOST/HIVE_PORT, credentials and network reachability to Trino.",
+    code: "DATASOURCE_REQUEST_FAILED",
+    hint: "Verify data source connection settings in lakeql.config and that the endpoint is reachable.",
     details: [`Context: ${context}`],
     cause,
   })

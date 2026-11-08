@@ -1,4 +1,66 @@
 ---
 title: Server Setup
-description: Create and configure the LakeQL API server with defineConfig, createApiServer, and startApiServer.
+navTitle: Server Setup
+description: Compose and start the LakeQL GraphQL server.
 ---
+
+Most apps use [`createLakeQLApp`](/docs/api/server-setup/create-lakeql-app), which collapses the standard wiring into one call: load the config, derive the auth resolver, build the runtime, compose the server, and register graceful shutdown.
+
+```ts
+import { createLakeQLApp } from "@lakeql/api/create-app"
+
+import { tokenResolver } from "./auth"
+
+const app = await createLakeQLApp({
+  tokenResolver,
+  baseDir: import.meta.dirname,
+  schemaPath: "./schemas",
+})
+
+await app.start()
+```
+
+The wrapper stays fully ejectable. Under the hood it is explicit wiring: load the config, build the runtime, derive the auth resolver, then compose and start the API server around it. Your application owns the runtime lifecycle. The [eject example](/docs/api/server-setup/create-lakeql-app#eject) is the expanded form of the standard call, built on [`defineApiConfig`](/docs/api/server-setup/define-config) — the underlying primitive. The outline below is a teaser; see the [full eject example](/docs/api/server-setup/create-lakeql-app#eject) for the copy-paste form with the empty-permissions warning and graceful shutdown.
+
+```ts
+import { defineApiConfig } from "@lakeql/api/config"
+import { createApiResolveAuth } from "@lakeql/api/resolve-auth"
+import { createLakeQLRuntime, loadConfig } from "@lakeql/config"
+
+import { tokenResolver } from "./auth"
+
+const project = await loadConfig()
+
+const resolveAuth = createApiResolveAuth({
+  sources: Object.fromEntries(
+    Object.entries(project.config.dataSources).map(([name, def]) => [
+      name,
+      {
+        adapter: def.adapter,
+        impersonationResolver: def.impersonationResolver,
+      },
+    ])
+  ),
+  globalImpersonationResolver: project.config.auth?.impersonationResolver,
+})
+
+const runtime = await createLakeQLRuntime({
+  config: project.config,
+  adapters: project.adapters,
+  resolveAuth,
+})
+
+const server = defineApiConfig({
+  runtime,
+  tokenResolver,
+  permissions: project.config.auth?.permissions ?? [],
+  baseDir: import.meta.dirname,
+  schemaPath: "./schemas",
+  graphqlPath: "/graphql",
+  healthCheckEndpoint: "/live",
+})
+
+await server.startServer()
+```
+
+The pages below walk through [the `createLakeQLApp` wrapper](/docs/api/server-setup/create-lakeql-app), [creating the server](/docs/api/server-setup/create-api-server), [defining the config](/docs/api/server-setup/define-config), and [configuring Yoga](/docs/api/server-setup/yoga-configuration).

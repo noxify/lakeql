@@ -9,11 +9,10 @@ import { docSchema } from "./validations"
 
 export const availableCollections = [
   "lakeql",
-  "cli",
+  "data-sources",
   "api",
-  "adapters",
-  "query-builder",
-  "trino-client",
+  "cli",
+  "packages",
 ] as const
 export type AvailableCollection = (typeof availableCollections)[number]
 

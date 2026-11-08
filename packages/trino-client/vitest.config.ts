@@ -1,8 +1,3 @@
-import { defineConfig } from "vitest/config"
+import { defineLakeqlProject } from "@lakeql/vitest-config"
 
-export default defineConfig({
-  test: {
-    environment: "node",
-    include: ["tests/**/*.test.ts"],
-  },
-})
+export default defineLakeqlProject()

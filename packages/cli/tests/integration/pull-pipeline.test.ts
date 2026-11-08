@@ -9,8 +9,12 @@ import path from "node:path"
 import type { JSONType } from "@lakeql/column-parser"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
+import { columnsToDefinition } from "@/pipeline/columns-to-definition"
 import { endpointDefinitionSchema } from "@/pipeline/schema"
-import { trinoColumnsToDefinition } from "@/pipeline/trino-to-definition"
+
+import { trinoLikeTypeMapper } from "../pipeline/fixtures/type-mapper"
+
+const typeMapper = trinoLikeTypeMapper()
 
 // Mock the config-registry to avoid transitive env/options import
 vi.mock(import("@/commands/create-registry"), () => ({
@@ -65,7 +69,8 @@ describe("pull pipeline (integration)", () => {
 
   describe("pipeline produces all expected output files", () => {
     it("should generate config.ts, interface.ts, query-schema.ts, json-schema.json, and endpoint.json", async () => {
-      const definition = trinoColumnsToDefinition({
+      const definition = columnsToDefinition({
+        typeMapper,
         tableName: "orders",
         catalog: "commerce",
         schema: "sales",
@@ -109,7 +114,8 @@ describe("pull pipeline (integration)", () => {
         count: "integer",
       }
 
-      const definition = trinoColumnsToDefinition({
+      const definition = columnsToDefinition({
+        typeMapper,
         tableName: "simple_table",
         catalog: "test_catalog",
         schema: "test_schema",
@@ -140,7 +146,8 @@ describe("pull pipeline (integration)", () => {
     })
 
     it("should produce a valid endpoint.json for a complex table with nested types", async () => {
-      const definition = trinoColumnsToDefinition({
+      const definition = columnsToDefinition({
+        typeMapper,
         tableName: "orders",
         catalog: "commerce",
         schema: "sales",
@@ -188,8 +195,9 @@ describe("pull pipeline (integration)", () => {
   })
 
   describe("config.ts contains expected patterns", () => {
-    it("should export hiveConfig with catalog, schema, and tableName", async () => {
-      const definition = trinoColumnsToDefinition({
+    it("should export sourceConfig with catalog, schema, and tableName", async () => {
+      const definition = columnsToDefinition({
+        typeMapper,
         tableName: "orders",
         catalog: "commerce",
         schema: "sales",
@@ -207,8 +215,8 @@ describe("pull pipeline (integration)", () => {
         "utf-8"
       )
 
-      // Verify hiveConfig export exists
-      expect(configContent).toContain("hiveConfig")
+      // Verify sourceConfig export exists
+      expect(configContent).toContain("sourceConfig")
 
       // Verify catalog, schema, and tableName are present in the config
       expect(configContent).toContain("commerce")
@@ -219,7 +227,8 @@ describe("pull pipeline (integration)", () => {
     it("should include the catalog value in config.ts for different catalogs", async () => {
       const columns: Record<string, JSONType> = { id: "varchar" }
 
-      const definition = trinoColumnsToDefinition({
+      const definition = columnsToDefinition({
+        typeMapper,
         tableName: "metrics",
         catalog: "analytics_prod",
         schema: "reporting",
@@ -237,7 +246,7 @@ describe("pull pipeline (integration)", () => {
         "utf-8"
       )
 
-      expect(configContent).toContain("hiveConfig")
+      expect(configContent).toContain("sourceConfig")
       expect(configContent).toContain("analytics_prod")
       expect(configContent).toContain("reporting")
       expect(configContent).toContain("metrics")
@@ -246,7 +255,8 @@ describe("pull pipeline (integration)", () => {
 
   describe("interface.ts contains expected patterns", () => {
     it("should contain export interface declaration", async () => {
-      const definition = trinoColumnsToDefinition({
+      const definition = columnsToDefinition({
+        typeMapper,
         tableName: "orders",
         catalog: "commerce",
         schema: "sales",
@@ -270,7 +280,8 @@ describe("pull pipeline (integration)", () => {
 
   describe("query-schema.ts contains expected patterns", () => {
     it("should contain builder.queryFields", async () => {
-      const definition = trinoColumnsToDefinition({
+      const definition = columnsToDefinition({
+        typeMapper,
         tableName: "orders",
         catalog: "commerce",
         schema: "sales",
@@ -294,7 +305,8 @@ describe("pull pipeline (integration)", () => {
 
   describe("mutation-schema.ts is generated when mutation config is present", () => {
     it("should contain builder.mutationFields when mutation config is provided", async () => {
-      const definition = trinoColumnsToDefinition({
+      const definition = columnsToDefinition({
+        typeMapper,
         tableName: "orders",
         catalog: "commerce",
         schema: "sales",
@@ -306,8 +318,6 @@ describe("pull pipeline (integration)", () => {
         ...definition,
         mutation: {
           loadStrategy: "full_load" as const,
-          type: "s3" as const,
-          bucket: "commerce-datalake",
           basePath: "warehouse/sales/orders",
         },
       }
@@ -324,11 +334,17 @@ describe("pull pipeline (integration)", () => {
       )
 
       expect(mutationSchemaContent).toContain("builder.mutationFields")
-      expect(mutationSchemaContent).toContain("executeWritePipeline")
+      expect(mutationSchemaContent).toContain(
+        "context.getWriteStrategy(sourceConfig.dataSource)"
+      )
+      expect(mutationSchemaContent).toContain("writeStrategy.write")
+      expect(mutationSchemaContent).not.toContain("executeWritePipeline")
+      expect(mutationSchemaContent).not.toContain("TrinoClient")
     })
 
     it("should NOT generate mutation-schema.ts when mutation is false (pulled endpoints)", async () => {
-      const definition = trinoColumnsToDefinition({
+      const definition = columnsToDefinition({
+        typeMapper,
         tableName: "orders",
         catalog: "commerce",
         schema: "sales",
@@ -347,7 +363,8 @@ describe("pull pipeline (integration)", () => {
 
   describe("endpoint.json is usable as --from-file input", () => {
     it("should produce output that can be re-parsed and fed back to generateEndpoint", async () => {
-      const definition = trinoColumnsToDefinition({
+      const definition = columnsToDefinition({
+        typeMapper,
         tableName: "orders",
         catalog: "commerce",
         schema: "sales",
@@ -410,7 +427,8 @@ describe("pull pipeline (integration)", () => {
     })
 
     it("should produce identical config.ts when re-generated from endpoint.json", async () => {
-      const definition = trinoColumnsToDefinition({
+      const definition = columnsToDefinition({
+        typeMapper,
         tableName: "orders",
         catalog: "commerce",
         schema: "sales",

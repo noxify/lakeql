@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, test, vi } from "vitest"
+import { beforeEach, describe, expect, vi, it } from "vitest"
 
 // Import after mocks
 import { SYMBOLS } from "../src/constants"
@@ -37,7 +37,7 @@ describe("constants", () => {
     vi.resetModules()
   })
 
-  test("should export all required symbols", () => {
+  it("should export all required symbols", () => {
     expect(SYMBOLS).toHaveProperty("QuestionMark")
     expect(SYMBOLS).toHaveProperty("Tick")
     expect(SYMBOLS).toHaveProperty("Cross")
@@ -45,7 +45,7 @@ describe("constants", () => {
     expect(SYMBOLS).toHaveProperty("Previous")
   })
 
-  test("should export all required symbols (continued)", () => {
+  it("should export all required symbols (continued)", () => {
     expect(SYMBOLS).toHaveProperty("Next")
     expect(SYMBOLS).toHaveProperty("ShowCursor")
     expect(SYMBOLS).toHaveProperty("HideCursor")
@@ -53,7 +53,7 @@ describe("constants", () => {
     expect(SYMBOLS).toHaveProperty("Inactive")
   })
 
-  test("should use main symbols when unicode is supported", async () => {
+  it("should use main symbols when unicode is supported", async () => {
     // Set isUnicodeSupported to return true
     vi.mocked(utils.isUnicodeSupported).mockReturnValue(true)
 
@@ -67,7 +67,7 @@ describe("constants", () => {
     expect(SYMBOLS.Cross).toBe("red_bold_✖")
   })
 
-  test("should use fallback symbols when unicode is not supported", async () => {
+  it("should use fallback symbols when unicode is not supported", async () => {
     // Set isUnicodeSupported to return false
     vi.mocked(utils.isUnicodeSupported).mockReturnValue(false)
     vi.stubEnv("CI", "")

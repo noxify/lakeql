@@ -1,0 +1,33 @@
+---
+title: Load Strategies
+navTitle: Load Strategies
+description: How a write combines with existing data — full load, append, and more.
+---
+
+A load strategy decides how a write combines with the data already in the target table. It is independent of the write strategy. Both the storage and INSERT paths implement the same load-strategy semantics.
+
+You set the load strategy per endpoint, through the `loadStrategy` value in the `mutation` block of `endpoint.json`. See [Mutations](/docs/lakeql/endpoints/mutations) for that field and the rest of the `mutation` block. This page covers what each value does at write time.
+
+| Strategy | Behavior |
+| --- | --- |
+| `full_load` | Replace the target dataset with the written records. |
+| `full_load_append` | Replace the current dataset and extend the historical dataset. |
+| `append` | Append the new records, retaining the existing dataset. |
+
+**`append`** adds the new records to the target. It does not touch the existing data. The target keeps everything it already held, plus the new rows.
+
+**`full_load`** replaces the target completely. Records go to a pending table first. The original target is then dropped, and the pending table is renamed into place. The swap means a reader sees either the old dataset or the new one, never a half-written mix.
+
+**`full_load_append`** maintains two targets. A `_latest` table is fully replaced on every write, using the same pending-table swap as `full_load`. An `_all` table is appended to on every write. History accumulates in `_all` alongside the current snapshot in `_latest`.
+
+Each strategy defines explicit behavior for the tricky cases rather than letting it be inferred from a storage method name:
+
+- **Empty input.** A `full_load` with empty input has defined semantics for what happens to the existing dataset, instead of leaving it to the storage method.
+- **Errors.** A `full_load` swap drops the original only after the pending table is written, so a failure before the swap leaves the existing dataset in place.
+- **Retries.** Each strategy has defined behavior on a repeated write, so a retried request does not silently corrupt the target.
+
+<Note>
+  A write strategy is only offered when the adapter reports the capabilities it
+  needs. `INSERT INTO` does not by itself imply atomic replacement or DDL
+  support, so not every adapter exposes every load strategy.
+</Note>

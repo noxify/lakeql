@@ -1,11 +1,11 @@
 // oxlint-disable vitest/no-conditional-expect
 // oxlint-disable vitest/require-to-throw-message
 import { existsSync } from "node:fs"
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises"
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
 
-import { afterEach, beforeEach, describe, expect, test } from "vitest"
+import { afterEach, beforeEach, describe, expect, it } from "vitest"
 
 import {
   endpointDefinitionSchema,
@@ -16,8 +16,9 @@ describe("create-endpoint --from-file validation", () => {
   let testDir: string
 
   beforeEach(async () => {
-    testDir = path.join(tmpdir(), `from-file-test-${Date.now()}`)
-    await mkdir(testDir, { recursive: true })
+    // Unique dir per test (mkdtemp) so concurrent tests never share a path
+    // and rm each other's working directory in afterEach.
+    testDir = await mkdtemp(path.join(tmpdir(), "from-file-test-"))
   })
 
   afterEach(async () => {
@@ -27,18 +28,18 @@ describe("create-endpoint --from-file validation", () => {
   })
 
   describe("JSON parse errors", () => {
-    test("invalid JSON is detected", () => {
+    it("invalid JSON is detected", () => {
       const badJson = "{ not valid json"
       expect(() => JSON.parse(badJson)).toThrow("JSON")
     })
 
-    test("empty string is invalid JSON", () => {
+    it("empty string is invalid JSON", () => {
       expect(() => JSON.parse("")).toThrow("Unexpected end")
     })
   })
 
   describe("schema validation", () => {
-    test("valid definition passes validation", () => {
+    it("valid definition passes validation", () => {
       const valid = {
         version: "1.0",
         tableName: "test_table",
@@ -51,7 +52,7 @@ describe("create-endpoint --from-file validation", () => {
       expect(result.success).toBeTruthy()
     })
 
-    test("missing version fails validation", () => {
+    it("missing version fails validation", () => {
       const invalid = {
         tableName: "test_table",
         catalog: "my_catalog",
@@ -63,7 +64,7 @@ describe("create-endpoint --from-file validation", () => {
       expect(result.success).toBeFalsy()
     })
 
-    test("wrong version value fails validation", () => {
+    it("wrong version value fails validation", () => {
       const invalid = {
         version: "2.0",
         tableName: "test_table",
@@ -76,7 +77,7 @@ describe("create-endpoint --from-file validation", () => {
       expect(result.success).toBeFalsy()
     })
 
-    test("invalid tableName (leading digit) fails validation", () => {
+    it("invalid tableName (leading digit) fails validation", () => {
       const invalid = {
         version: "1.0",
         tableName: "1invalid",
@@ -89,7 +90,7 @@ describe("create-endpoint --from-file validation", () => {
       expect(result.success).toBeFalsy()
     })
 
-    test("invalid field type fails validation", () => {
+    it("invalid field type fails validation", () => {
       const invalid = {
         version: "1.0",
         tableName: "test_table",
@@ -102,7 +103,7 @@ describe("create-endpoint --from-file validation", () => {
       expect(result.success).toBeFalsy()
     })
 
-    test("invalid field name (has spaces) fails validation", () => {
+    it("invalid field name (has spaces) fails validation", () => {
       const invalid = {
         version: "1.0",
         tableName: "test_table",
@@ -115,7 +116,7 @@ describe("create-endpoint --from-file validation", () => {
       expect(result.success).toBeFalsy()
     })
 
-    test("Object field without fields property fails validation", () => {
+    it("Object field without fields property fails validation", () => {
       const invalid = {
         version: "1.0",
         tableName: "test_table",
@@ -128,7 +129,7 @@ describe("create-endpoint --from-file validation", () => {
       expect(result.success).toBeFalsy()
     })
 
-    test("Object field with empty fields array fails validation", () => {
+    it("Object field with empty fields array fails validation", () => {
       const invalid = {
         version: "1.0",
         tableName: "test_table",
@@ -141,7 +142,7 @@ describe("create-endpoint --from-file validation", () => {
       expect(result.success).toBeFalsy()
     })
 
-    test("Array field with valid items passes validation", () => {
+    it("Array field with valid items passes validation", () => {
       const valid = {
         version: "1.0",
         tableName: "test_table",
@@ -154,7 +155,7 @@ describe("create-endpoint --from-file validation", () => {
       expect(result.success).toBeTruthy()
     })
 
-    test("nested Object within Array passes validation", () => {
+    it("nested Object within Array passes validation", () => {
       const valid = {
         version: "1.0",
         tableName: "test_table",
@@ -178,7 +179,7 @@ describe("create-endpoint --from-file validation", () => {
   })
 
   describe("duplicate field detection", () => {
-    test("detects duplicate fields at root level", () => {
+    it("detects duplicate fields at root level", () => {
       const fields = [
         { name: "id", type: "String" as const },
         { name: "name", type: "String" as const },
@@ -190,7 +191,7 @@ describe("create-endpoint --from-file validation", () => {
       expect(duplicates[0]).toStrictEqual({ name: "id", path: [] })
     })
 
-    test("detects duplicate fields in nested object", () => {
+    it("detects duplicate fields in nested object", () => {
       const fields = [
         {
           name: "address",
@@ -207,7 +208,7 @@ describe("create-endpoint --from-file validation", () => {
       expect(duplicates[0]).toStrictEqual({ name: "street", path: ["address"] })
     })
 
-    test("no duplicates returns empty array", () => {
+    it("no duplicates returns empty array", () => {
       const fields = [
         { name: "id", type: "String" as const },
         { name: "name", type: "String" as const },
@@ -219,7 +220,7 @@ describe("create-endpoint --from-file validation", () => {
   })
 
   describe("error message formatting", () => {
-    test("schema validation errors include field paths", () => {
+    it("schema validation errors include field paths", () => {
       const invalid = {
         version: "1.0",
         tableName: "test_table",
@@ -241,19 +242,19 @@ describe("create-endpoint --from-file validation", () => {
   })
 
   describe("file not found handling", () => {
-    test("non-existent file path is detected via existsSync", () => {
+    it("non-existent file path is detected via existsSync", () => {
       const nonExistentPath = path.join(testDir, "does-not-exist.json")
       expect(existsSync(nonExistentPath)).toBeFalsy()
     })
 
-    test("reading a non-existent file throws an error", async () => {
+    it("reading a non-existent file throws an error", async () => {
       const nonExistentPath = path.join(testDir, "missing.json")
       await expect(readFile(nonExistentPath, "utf-8")).rejects.toThrow("ENOENT")
     })
   })
 
   describe("valid definition file loading", () => {
-    test("a complete valid definition file is parsed and validated successfully", async () => {
+    it("a complete valid definition file is parsed and validated successfully", async () => {
       const validDefinition = {
         version: "1.0",
         tableName: "user_events",

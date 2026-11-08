@@ -10,18 +10,21 @@ import { Button, buttonVariants } from "@/components/ui/button"
 import { useScrollVisibility } from "@/hooks/use-scroll-visibility"
 import { cn } from "@/lib/utils"
 
+import PlatformModifierKey from "./platform-modifier-key"
 import { SearchCommand } from "./search-command"
 import ThemeToggle from "./theme-toggle"
+import { Kbd } from "./ui/kbd"
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip"
 
 const spaceGrotesk = Space_Grotesk({ subsets: ["latin"] })
 
-export function SiteHeader({
+export const SiteHeader = ({
   fullWidth = false,
   bordered = false,
 }: {
   fullWidth?: boolean
   bordered?: boolean
-}) {
+}) => {
   const { hasScrolled: isScrolled } = useScrollVisibility({
     hideAfterScrollY: 0,
   })
@@ -70,28 +73,34 @@ export function SiteHeader({
             >
               Docs
             </Link>
-
-            <Link
-              href="/endpoint-builder"
-              prefetch={false}
-              className="text-muted-foreground hover:text-foreground rounded-md px-3 py-1.5 text-sm transition-colors"
-            >
-              Endpoint Builder
-            </Link>
           </nav>
         </div>
 
         {/* Right: search + github + theme */}
         <div className="ml-auto flex items-center gap-1">
-          <SearchCommand>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-muted-foreground size-8"
-            >
-              <Search className="size-4" />
-            </Button>
-          </SearchCommand>
+          <Tooltip>
+            <SearchCommand>
+              <TooltipTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-muted-foreground size-8"
+                  >
+                    <Search className="size-4" />
+                  </Button>
+                }
+              />
+            </SearchCommand>
+            <TooltipContent>
+              Open search{" "}
+              <Kbd>
+                <PlatformModifierKey />K
+              </Kbd>
+            </TooltipContent>
+          </Tooltip>
+
+          <ThemeToggle />
 
           <a
             href="https://github.com/noxify/lakeql"
@@ -105,8 +114,6 @@ export function SiteHeader({
           >
             <Github className="size-4" />
           </a>
-
-          <ThemeToggle />
         </div>
       </div>
     </header>

@@ -1,6 +1,5 @@
 // oxlint-disable typescript/no-non-null-assertion
 // oxlint-disable import/no-named-as-default-member
-// Feature: custom-endpoint-cli, Property 7: Serialization round-trip produces byte-identical output
 
 import fc from "fast-check"
 import { describe, it, expect } from "vitest"
@@ -163,7 +162,7 @@ function validDefinitionArb(
 
 // --- Tests ---
 
-describe("Property 7: Serialization round-trip produces byte-identical output", () => {
+describe("Serialization round-trip produces byte-identical output", () => {
   it("serialize → parse → re-serialize produces identical output", () => {
     fc.assert(
       fc.property(validDefinitionArb(5), (definition) => {

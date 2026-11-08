@@ -141,8 +141,6 @@ describe(generateMutationSchema, () => {
       mutationName: "createTrackingUserEvents",
       mutationConfig: {
         loadStrategy: "full_load",
-        type: "s3",
-        bucket: "test-bucket",
         basePath: "test/path",
       },
     })
@@ -192,8 +190,6 @@ describe(generateMutationSchema, () => {
       mutationName: "createTrackingUserEvents",
       mutationConfig: {
         loadStrategy: "full_load",
-        type: "s3",
-        bucket: "test-bucket",
         basePath: "test/path",
       },
     })
@@ -264,8 +260,6 @@ describe(generateMutationSchema, () => {
       mutationName: "createTrackingUserEvents",
       mutationConfig: {
         loadStrategy: "full_load",
-        type: "s3",
-        bucket: "test-bucket",
         basePath: "test/path",
       },
     })
@@ -287,8 +281,6 @@ describe(generateMutationSchema, () => {
       mutationName: "createSomething",
       mutationConfig: {
         loadStrategy: "full_load",
-        type: "s3",
-        bucket: "test-bucket",
         basePath: "test/path",
       },
     })
@@ -325,8 +317,6 @@ describe(generateMutationSchema, () => {
       mutationName: "createTestModel",
       mutationConfig: {
         loadStrategy: "full_load",
-        type: "s3",
-        bucket: "test-bucket",
         basePath: "test/path",
       },
     })
@@ -336,6 +326,9 @@ describe(generateMutationSchema, () => {
     expect(output).toContain("t.boolean(")
     expect(output).toContain("t.arg(")
     expect(output).toContain("Test_ModelInput")
+    // The input arg is an array type [<Model>Input!]! so a batch of records
+    // can be written in a single mutation.
+    expect(output).toContain("type: [Test_ModelInput]")
   })
 
   it("returns empty array when mutationConfig is false", () => {
@@ -371,7 +364,7 @@ describe(generateMutationSchema, () => {
     expect(result).toStrictEqual([])
   })
 
-  it("generates a real resolver with executeWritePipeline when mutationConfig is present", () => {
+  it("generates a resolver that writes via context.getWriteStrategy", () => {
     const models: Record<string, ModelResponse> = {
       Test_Model: {
         root: true,
@@ -400,58 +393,102 @@ describe(generateMutationSchema, () => {
       mutationName: "createTestModel",
       mutationConfig: {
         loadStrategy: "full_load",
-        type: "s3",
-        bucket: "test-bucket",
         basePath: "warehouse/test/data",
       },
     })
 
     const output = printNodes(result)
 
-    // Should have real resolver imports
-    expect(output).toContain(
-      'import { executeWritePipeline } from "@lakeql/adapters"'
-    )
-    expect(output).toContain(
-      'import { TrinoClient } from "@lakeql/trino-client"'
-    )
+    // Imports: sourceConfig + storageConfig from ./config; no stale imports
     expect(output).toContain('import { builder } from "@lakeql/api/builder"')
-    expect(output).toContain('import { env } from "~/env"')
     expect(output).toContain(
-      'import { hiveConfig, storageConfig } from "./config"'
+      'import { sourceConfig, storageConfig } from "./config"'
     )
     expect(output).toContain('import jsonSchema from "./json-schema.json"')
+    expect(output).not.toContain("@lakeql/trino-client")
+    expect(output).not.toContain("TrinoClient")
+    expect(output).not.toContain("executeWritePipeline")
+    expect(output).not.toContain('"~/env"')
+    expect(output).not.toContain("hiveConfig")
+    expect(output).not.toContain("HIVE_")
+
+    // Resolver resolves the write strategy from the context and writes
+    expect(output).toContain(
+      "context.getWriteStrategy(sourceConfig.dataSource)"
+    )
+    expect(output).toContain("writeStrategy.write")
+    expect(output).toContain("records: input")
+    expect(output).toContain("schema: jsonSchema")
+
+    // The input arg is an array type so the resolver receives a batch of records
+    expect(output).toContain("type: [Test_ModelInput]")
+
+    // Write config is built from sourceConfig + storageConfig
+    expect(output).toContain("sourceConfig.catalog")
+    expect(output).toContain("sourceConfig.schema")
+    expect(output).toContain("sourceConfig.tableName")
+    expect(output).toContain("storageConfig.loadStrategy")
+    expect(output).toContain("storageConfig.basePath")
 
     // Should NOT import validationSchema when hasValidations is not set
     expect(output).not.toContain("validationSchema")
-
-    // Should contain the executeWritePipeline call
-    expect(output).toContain("executeWritePipeline")
-
-    // Should contain storageConfig references instead of env.S3_* references
-    expect(output).toContain("storageConfig.loadStrategy")
-    expect(output).toContain("storageConfig.bucket")
-    expect(output).toContain("storageConfig.basePath")
-
-    // Should NOT contain env.S3_* references
-    expect(output).not.toContain("env.S3_BUCKET")
-    expect(output).not.toContain("env.S3_REGION")
-    expect(output).not.toContain("env.S3_ENDPOINT")
-    expect(output).not.toContain("env.S3_ACCESS_KEY_ID")
-    expect(output).not.toContain("env.S3_SECRET_ACCESS_KEY")
-
-    // Should contain hiveConfig references
-    expect(output).toContain("hiveConfig.catalog")
-    expect(output).toContain("hiveConfig.schema")
-    expect(output).toContain("hiveConfig.tableName")
 
     // Should still have input types and mutationFields
     expect(output).toContain("Test_ModelInput")
     expect(output).toContain("builder.mutationFields")
     expect(output).toContain("return true")
+  })
 
-    // Should NOT have the placeholder TODO
-    expect(output).not.toContain("TODO: Implement write logic here")
+  it("emits partitioning in the write config only when configured", () => {
+    const models: Record<string, ModelResponse> = {
+      Test_Model: {
+        root: true,
+        modelName: "Test_Model",
+        interfaceName: "Test_ModelInterface",
+        fields: {
+          id: {
+            name: "id",
+            rawFieldName: "id",
+            transformed: false,
+            interfaceType: "string",
+            graphqlType: "String",
+            graphqlTplType: "'String'",
+            isArray: false,
+            nullable: true,
+            filter: true,
+          },
+        },
+        transformFields: [],
+        dateTimeFields: [],
+      },
+    }
+
+    const withoutPartitioning = printNodes(
+      generateMutationSchema({
+        models,
+        mutationName: "createTestModel",
+        mutationConfig: {
+          loadStrategy: "full_load",
+          basePath: "warehouse/test/data",
+        },
+      })
+    )
+    expect(withoutPartitioning).not.toContain("storageConfig.partitioning")
+
+    const withPartitioning = printNodes(
+      generateMutationSchema({
+        models,
+        mutationName: "createTestModel",
+        mutationConfig: {
+          loadStrategy: "full_load_append",
+          basePath: "warehouse/test/data",
+          partitioning: "event_date",
+          partitioningFormat: "year/month/day",
+        },
+      })
+    )
+    expect(withPartitioning).toContain("storageConfig.partitioning")
+    expect(withPartitioning).toContain("storageConfig.partitioningFormat")
   })
 
   it("imports validationSchema when hasValidations is true", () => {
@@ -483,8 +520,6 @@ describe(generateMutationSchema, () => {
       mutationName: "createTestModel",
       mutationConfig: {
         loadStrategy: "append",
-        type: "s3",
-        bucket: "test-bucket",
         basePath: "warehouse/test/data",
       },
       hasValidations: true,
@@ -495,8 +530,10 @@ describe(generateMutationSchema, () => {
     // Should import validationSchema
     expect(output).toContain('import { validationSchema } from "./validations"')
 
-    // Should call validationSchema.parse(input)
-    expect(output).toContain("validationSchema.parse(input)")
+    // Should validate each record in the batch (input is an array)
+    expect(output).toContain("input.forEach(")
+    expect(output).toContain("validationSchema.parse(record)")
+    expect(output).not.toContain("validationSchema.parse(input)")
   })
 
   it("uses the configured loadStrategy in the generated resolver", () => {
@@ -528,8 +565,6 @@ describe(generateMutationSchema, () => {
       mutationName: "createTestModel",
       mutationConfig: {
         loadStrategy: "full_load_append",
-        type: "s3",
-        bucket: "test-bucket",
         basePath: "my/custom/path",
       },
     })

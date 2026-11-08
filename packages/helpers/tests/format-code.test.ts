@@ -1,5 +1,5 @@
 import * as prettier from "prettier"
-import { beforeEach, describe, expect, test, vi } from "vitest"
+import { beforeEach, describe, expect, vi, it } from "vitest"
 
 import formatCode from "../src/format-code"
 
@@ -22,7 +22,7 @@ describe(formatCode, () => {
     vi.clearAllMocks()
   })
 
-  test("formats code correctly", async () => {
+  it("formats code correctly", async () => {
     const unformattedCode = "const x=1;const y=2;"
     const formattedCode = "const x = 1;\nconst y = 2;\n"
     vi.mocked(prettier.format).mockResolvedValueOnce(formattedCode)
@@ -31,7 +31,7 @@ describe(formatCode, () => {
     expect(result).toBe(formattedCode)
   })
 
-  test("returns original code when formatting fails", async () => {
+  it("returns original code when formatting fails", async () => {
     const unformattedCode = "const x=1;const y=2;"
     // Set up the mock to throw an error
     vi.mocked(prettier.format).mockRejectedValueOnce(

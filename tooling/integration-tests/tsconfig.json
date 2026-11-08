@@ -1,0 +1,10 @@
+{
+  "extends": "@lakeql/tsconfig/base.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.json",
+    "strictNullChecks": true,
+    "noEmit": true
+  },
+  "include": ["*.ts", "tests"],
+  "exclude": ["node_modules"]
+}

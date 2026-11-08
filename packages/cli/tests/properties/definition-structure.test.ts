@@ -1,5 +1,4 @@
 // oxlint-disable typescript/no-non-null-assertion import/no-named-as-default-member
-// Feature: custom-endpoint-cli, Property 4: Valid definition structure constraints
 
 import fc from "fast-check"
 import { describe, it, expect } from "vitest"
@@ -216,7 +215,7 @@ function validDefinitionArb(
 
 // --- Tests ---
 
-describe("Property 4: Valid definition structure constraints", () => {
+describe("Valid definition structure constraints", () => {
   it("every Object field in a valid definition has at least 1 child field", () => {
     fc.assert(
       fc.property(validDefinitionArb(5), (definition) => {

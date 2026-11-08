@@ -1,12 +1,14 @@
 import formatCode from "@lakeql/helpers/format-code"
-import { describe, expect, test } from "vitest"
+import { describe, expect, it } from "vitest"
 
 import { generateCode } from "../src"
 import { generateConfig } from "../src/config"
 
 describe("config file generator", () => {
-  test("config file w/o mutation", async () => {
+  it("config file w/o mutation", async () => {
     const generatedFactoryCode = generateConfig({
+      adapter: "trino",
+      dataSourceName: "test",
       catalog: "vitest_catalog",
       queryName: "vitest_query_name",
       schema: "vitest_schema",
@@ -19,7 +21,9 @@ describe("config file generator", () => {
     })
 
     const expectedCode = await formatCode(`
-      export const hiveConfig = {
+      export const sourceConfig = {
+        dataSource: "test",
+        adapter: "trino",
         catalog: "vitest_catalog",
         schema: "vitest_schema",
         tableName: "vitest_table",
@@ -37,8 +41,10 @@ describe("config file generator", () => {
     expect(generatedCodeFromFactory.fileName).toBe("vitest_config.ts")
   })
 
-  test("config file w/ mutation", async () => {
+  it("config file w/ mutation", async () => {
     const generatedFactoryCode = generateConfig({
+      adapter: "trino",
+      dataSourceName: "test",
       catalog: "vitest_catalog",
       mutationName: ["vitest_mutation_name"],
       queryName: "vitest_query_name",
@@ -52,7 +58,9 @@ describe("config file generator", () => {
     })
 
     const expectedCode = await formatCode(`
-      export const hiveConfig = {
+      export const sourceConfig = {
+        dataSource: "test",
+        adapter: "trino",
         catalog: "vitest_catalog",
         schema: "vitest_schema",
         tableName: "vitest_table",
@@ -70,8 +78,10 @@ describe("config file generator", () => {
     expect(generatedCodeFromFactory.fileName).toBe("vitest_config.ts")
   })
 
-  test("config file w/ empty mutation list", async () => {
+  it("config file w/ empty mutation list", async () => {
     const generatedFactoryCode = generateConfig({
+      adapter: "trino",
+      dataSourceName: "test",
       catalog: "vitest_catalog",
       mutationName: [],
       queryName: "vitest_query_name",
@@ -85,7 +95,9 @@ describe("config file generator", () => {
     })
 
     const expectedCode = await formatCode(`
-      export const hiveConfig = {
+      export const sourceConfig = {
+        dataSource: "test",
+        adapter: "trino",
         catalog: "vitest_catalog",
         schema: "vitest_schema",
         tableName: "vitest_table",
@@ -103,8 +115,10 @@ describe("config file generator", () => {
     expect(generatedCodeFromFactory.fileName).toBe("vitest_config.ts")
   })
 
-  test("config file w/ storageConfig partitioning: true", async () => {
+  it("config file w/ storageConfig partitioning: true", async () => {
     const generatedFactoryCode = generateConfig({
+      adapter: "trino",
+      dataSourceName: "test",
       catalog: "vitest_catalog",
       mutationName: ["vitest_mutation_name"],
       queryName: "vitest_query_name",
@@ -112,7 +126,6 @@ describe("config file generator", () => {
       tableName: "vitest_table",
       storageConfig: {
         loadStrategy: "full_load_append",
-        bucket: "my-bucket",
         basePath: "data/events",
         partitioning: true,
         partitioningFormat: "year/month/day",
@@ -125,7 +138,9 @@ describe("config file generator", () => {
     })
 
     const expectedCode = await formatCode(`
-      export const hiveConfig = {
+      export const sourceConfig = {
+        dataSource: "test",
+        adapter: "trino",
         catalog: "vitest_catalog",
         schema: "vitest_schema",
         tableName: "vitest_table",
@@ -140,7 +155,6 @@ describe("config file generator", () => {
 
       export const storageConfig = {
         loadStrategy: "full_load_append",
-        bucket: "my-bucket",
         basePath: "data/events",
         partitioning: true,
         partitioningFormat: "year/month/day",
@@ -150,8 +164,10 @@ describe("config file generator", () => {
     expect(generatedCodeFromFactory.text).toBe(expectedCode)
   })
 
-  test("config file w/ storageConfig partitioning: false", async () => {
+  it("config file w/ storageConfig partitioning: false", async () => {
     const generatedFactoryCode = generateConfig({
+      adapter: "trino",
+      dataSourceName: "test",
       catalog: "vitest_catalog",
       mutationName: ["vitest_mutation_name"],
       queryName: "vitest_query_name",
@@ -159,7 +175,6 @@ describe("config file generator", () => {
       tableName: "vitest_table",
       storageConfig: {
         loadStrategy: "append",
-        bucket: "my-bucket",
         basePath: "data/events",
         partitioning: false,
       },
@@ -171,7 +186,9 @@ describe("config file generator", () => {
     })
 
     const expectedCode = await formatCode(`
-      export const hiveConfig = {
+      export const sourceConfig = {
+        dataSource: "test",
+        adapter: "trino",
         catalog: "vitest_catalog",
         schema: "vitest_schema",
         tableName: "vitest_table",
@@ -186,7 +203,6 @@ describe("config file generator", () => {
 
       export const storageConfig = {
         loadStrategy: "append",
-        bucket: "my-bucket",
         basePath: "data/events",
         partitioning: false,
       } as const
@@ -195,8 +211,10 @@ describe("config file generator", () => {
     expect(generatedCodeFromFactory.text).toBe(expectedCode)
   })
 
-  test("config file w/ storageConfig partitioning: field name string", async () => {
+  it("config file w/ storageConfig partitioning: field name string", async () => {
     const generatedFactoryCode = generateConfig({
+      adapter: "trino",
+      dataSourceName: "test",
       catalog: "vitest_catalog",
       mutationName: ["vitest_mutation_name"],
       queryName: "vitest_query_name",
@@ -204,7 +222,6 @@ describe("config file generator", () => {
       tableName: "vitest_table",
       storageConfig: {
         loadStrategy: "append",
-        bucket: "my-bucket",
         basePath: "data/events",
         partitioning: "event_date",
         partitioningFormat: "year/month",
@@ -217,7 +234,9 @@ describe("config file generator", () => {
     })
 
     const expectedCode = await formatCode(`
-      export const hiveConfig = {
+      export const sourceConfig = {
+        dataSource: "test",
+        adapter: "trino",
         catalog: "vitest_catalog",
         schema: "vitest_schema",
         tableName: "vitest_table",
@@ -232,7 +251,6 @@ describe("config file generator", () => {
 
       export const storageConfig = {
         loadStrategy: "append",
-        bucket: "my-bucket",
         basePath: "data/events",
         partitioning: "event_date",
         partitioningFormat: "year/month",
@@ -242,8 +260,10 @@ describe("config file generator", () => {
     expect(generatedCodeFromFactory.text).toBe(expectedCode)
   })
 
-  test("config file w/ storageConfig partitioningFormat: year", async () => {
+  it("config file w/ storageConfig partitioningFormat: year", async () => {
     const generatedFactoryCode = generateConfig({
+      adapter: "trino",
+      dataSourceName: "test",
       catalog: "vitest_catalog",
       mutationName: ["vitest_mutation_name"],
       queryName: "vitest_query_name",
@@ -251,7 +271,6 @@ describe("config file generator", () => {
       tableName: "vitest_table",
       storageConfig: {
         loadStrategy: "full_load_append",
-        bucket: "my-bucket",
         basePath: "data/events",
         partitioning: true,
         partitioningFormat: "year",
@@ -264,7 +283,9 @@ describe("config file generator", () => {
     })
 
     const expectedCode = await formatCode(`
-      export const hiveConfig = {
+      export const sourceConfig = {
+        dataSource: "test",
+        adapter: "trino",
         catalog: "vitest_catalog",
         schema: "vitest_schema",
         tableName: "vitest_table",
@@ -279,7 +300,6 @@ describe("config file generator", () => {
 
       export const storageConfig = {
         loadStrategy: "full_load_append",
-        bucket: "my-bucket",
         basePath: "data/events",
         partitioning: true,
         partitioningFormat: "year",

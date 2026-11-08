@@ -14,8 +14,22 @@ function parsePositiveInteger(value: string) {
   return parsed
 }
 
+export function createEnvOption() {
+  return new Option(
+    "--env [path]",
+    "Load environment variables from a file before reading the config (defaults to '.env' when given without a value)"
+  )
+}
+
 export function createCatalogOption() {
-  return new Option("--catalog <catalog>", "catalog to use").env("HIVE_CATALOG")
+  return new Option("--catalog <catalog>", "catalog to use")
+}
+
+export function createDataSourceOption() {
+  return new Option(
+    "--source <name>",
+    "Name of the configured data source to use"
+  )
 }
 
 export function createSchemaOption() {

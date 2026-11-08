@@ -4,16 +4,24 @@ policy:
       - id: [package]
         block-list: []
         label:
-          - name: "pkg:adapters"
-            keys: ["adapters"]
+          - name: "pkg:adapter-fabric"
+            keys: ["adapter-fabric"]
+          - name: "pkg:adapter-trino"
+            keys: ["adapter-trino"]
           - name: "pkg:api"
             keys: ["api"]
           - name: "pkg:cli"
             keys: ["cli"]
           - name: "pkg:column-parser"
             keys: ["column-parser"]
+          - name: "pkg:config"
+            keys: ["config"]
           - name: "pkg:create-app"
             keys: ["create-app"]
+          - name: "pkg:datasource"
+            keys: ["datasource"]
+          - name: "pkg:fabric-client"
+            keys: ["fabric-client"]
           - name: "pkg:file-generator"
             keys: ["file-generator"]
           - name: "pkg:helpers"
@@ -28,11 +36,13 @@ policy:
             keys: ["response-transformer"]
           - name: "pkg:schema-generator"
             keys: ["schema-generator"]
+          - name: "pkg:sql-read-strategy"
+            keys: ["sql-read-strategy"]
+          - name: "pkg:storage"
+            keys: ["storage"]
           - name: "pkg:trino-client"
             keys: ["trino-client"]
           - name: "site:documentation"
             keys: ["documentation"]
-          - name: "site:endpoint-builder"
-            keys: ["endpoint-builder"]
           - name: "other"
             keys: ["other"]

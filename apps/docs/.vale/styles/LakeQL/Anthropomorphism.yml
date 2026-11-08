@@ -1,0 +1,7 @@
+extends: existence
+message: "Don't anthropomorphize software with '%s'. It executes; it does not want, think, or decide."
+level: suggestion
+ignorecase: true
+# Flag "<subject> wants/thinks/knows/decides/believes" for common doc subjects.
+tokens:
+  - "(?:the )?(?:server|adapter|query|runtime|engine|builder|schema|CLI|parser) (?:wants|thinks|knows|believes|decides|feels|understands)"

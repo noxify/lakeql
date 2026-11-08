@@ -1,4 +1,4 @@
-import { http, HttpResponse } from "msw"
+import { http, HttpResponse } from "msw/http"
 import { setupServer } from "msw/node"
 import {
   afterAll,
@@ -7,7 +7,7 @@ import {
   beforeEach,
   describe,
   expect,
-  test,
+  it,
   vi,
 } from "vitest"
 
@@ -18,7 +18,7 @@ import { baseStats, createClient, mockUrl, State } from "./helpers"
 const server = setupServer()
 
 describe("retry behavior", () => {
-  beforeAll(() => server.listen({ onUnhandledRequest: "error" }))
+  beforeAll(() => server.listen({ onUnhandledFrame: "error" }))
   beforeEach(() => {
     vi.useFakeTimers()
   })
@@ -29,7 +29,7 @@ describe("retry behavior", () => {
 
   afterAll(() => server.close())
 
-  test("retries on 429 status code", async () => {
+  it("retries on 429 status code", async () => {
     let attempts = 0
 
     server.use(
@@ -58,7 +58,7 @@ describe("retry behavior", () => {
     expect(result).toStrictEqual([["ok"]])
   })
 
-  test("retries on 500, 502, 503, 504 status codes", async () => {
+  it("retries on 500, 502, 503, 504 status codes", async () => {
     const statusCodes = [500, 502, 503, 504]
 
     for (const statusCode of statusCodes) {
@@ -97,7 +97,7 @@ describe("retry behavior", () => {
     }
   })
 
-  test("does NOT retry on 400, 401, 403, 404", async () => {
+  it("does NOT retry on 400, 401, 403, 404", async () => {
     const statusCodes = [400, 401, 403, 404]
 
     for (const statusCode of statusCodes) {
@@ -124,7 +124,7 @@ describe("retry behavior", () => {
     }
   })
 
-  test("respects maxRetries config (stops after N attempts)", async () => {
+  it("respects maxRetries config (stops after N attempts)", async () => {
     let attempts = 0
 
     server.use(
@@ -153,7 +153,7 @@ describe("retry behavior", () => {
     expect(attempts).toBe(3)
   })
 
-  test("applies exponential backoff between retries", async () => {
+  it("applies exponential backoff between retries", async () => {
     let attempts = 0
     const timestamps: number[] = []
 
@@ -196,7 +196,7 @@ describe("retry behavior", () => {
     expect(delays[2]).toBe(4000)
   })
 
-  test("does not retry cancellation errors", async () => {
+  it("does not retry cancellation errors", async () => {
     let attempts = 0
 
     server.use(
@@ -231,7 +231,7 @@ describe("retry behavior", () => {
     expect(attempts).toBeLessThanOrEqual(1)
   })
 
-  test("retries on network errors (TypeError from fetch)", async () => {
+  it("retries on network errors (TypeError from fetch)", async () => {
     let attempts = 0
 
     server.use(
@@ -262,7 +262,7 @@ describe("retry behavior", () => {
     expect(result).toStrictEqual([["ok"]])
   })
 
-  test("default retries is 3", async () => {
+  it("default retries is 3", async () => {
     let attempts = 0
 
     server.use(

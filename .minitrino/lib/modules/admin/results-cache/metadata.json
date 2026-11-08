@@ -1,6 +1,9 @@
 {
   "description": "Results cache module",
   "incompatibleModules": [],
-  "dependentModules": ["minio", "insights"],
+  "dependentModules": [
+    "minio",
+    "insights"
+  ],
   "enterprise": true
 }

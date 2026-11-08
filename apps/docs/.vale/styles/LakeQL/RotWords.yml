@@ -1,0 +1,13 @@
+extends: existence
+message: "Avoid the time-relative word '%s'. It goes stale. State the behavior as it is."
+level: suggestion
+ignorecase: true
+tokens:
+  - currently
+  - at the moment
+  - for now
+  - right now
+  - recently
+  - soon
+  - in the near future
+  - going forward

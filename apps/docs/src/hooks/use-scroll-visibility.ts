@@ -77,7 +77,7 @@ export function useScrollVisibility(
     return () => {
       window.removeEventListener("scroll", handleScroll)
     }
-  }, [hideAfterScrollY, initiallyVisible, scrollDeltaThreshold])
+  }, [hideAfterScrollY, scrollDeltaThreshold])
 
   return state
 }

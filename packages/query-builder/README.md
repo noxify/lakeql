@@ -1,6 +1,6 @@
 # @lakeql/query-builder
 
-SQL query builder for Trino using Kysely, supporting dynamic filters (AND/OR), sorting, pagination, and field transformations.
+SQL query builder using Kysely, supporting dynamic filters (AND/OR), sorting, pagination, and field transformations across adapters.
 
 ## Installation
 

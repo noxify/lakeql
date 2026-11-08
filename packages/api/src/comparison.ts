@@ -17,110 +17,74 @@ type AllowedOperators =
   | "in"
   | "notIn"
 
-// Merge core types with our custom scalars
+/** The scalar types that receive a generated `FieldComparison` input type. */
+type ComparisonScalar = Extract<
+  BuilderScalar,
+  "String" | "Int" | "Float" | "ID" | "Boolean" | "Date" | "DateTime"
+>
+
+/** List-typed operators accept an array of the field's scalar type. */
+const LIST_OPERATORS = new Set<AllowedOperators>(["in", "notIn"])
+
+/** Boolean operators accept a plain boolean regardless of the field type. */
+const BOOLEAN_OPERATORS = new Set<AllowedOperators>(["is", "isNot"])
+
+/**
+ * The allowed comparison operators for each scalar type. The key becomes the
+ * generated GraphQL input type name (`${type}FieldComparison`) and the value is
+ * the exact, ordered set of operator fields that type exposes.
+ */
+const COMPARISONS: Record<ComparisonScalar, AllowedOperators[]> = {
+  String: ["eq", "neq", "like", "notLike", "in", "notIn"],
+  Int: ["eq", "neq", "lt", "lte", "gt", "gte", "in", "notIn"],
+  Float: ["eq", "neq", "lt", "lte", "gt", "gte", "in", "notIn"],
+  ID: ["eq", "neq", "in", "notIn"],
+  Boolean: ["is", "isNot"],
+  Date: ["eq", "neq", "lt", "lte", "gt", "gte"],
+  DateTime: ["eq", "neq", "lt", "lte", "gt", "gte"],
+}
+
+/**
+ * Registers one GraphQL input type per entry in {@link COMPARISONS}, each named
+ * `${type}FieldComparison` and exposing only that type's allowed operators.
+ *
+ * @param builder - The Pothos schema builder to register the input types on.
+ * @returns A record mapping each scalar type to its generated input type ref.
+ */
 export const createComparisonTypes = (builder: typeof SchemaBuilder) => {
-  const generateComparison = ({
-    name,
-    type,
-    allowedOperators,
-  }: {
-    name?: string
-    type: BuilderScalar
-    allowedOperators?: AllowedOperators[]
-  }) =>
-    builder.inputType(`${name ?? type}FieldComparison`, {
+  const generateComparison = (
+    type: ComparisonScalar,
+    allowedOperators: AllowedOperators[]
+  ) =>
+    builder.inputType(`${type}FieldComparison`, {
       fields: (t) => {
-        const operators = {
-          eq: t.field({ type }),
-          gt: t.field({ type }),
-          gte: t.field({ type }),
-          in: t.field({ type: [type] }),
-          is: t.boolean({}),
-          isNot: t.boolean({}),
-          like: t.field({ type }),
-          lt: t.field({ type }),
-          lte: t.field({ type }),
-          neq: t.field({ type }),
-          notIn: t.field({ type: [type] }),
-          notLike: t.field({ type }),
-        } as unknown as Record<string, InputFieldRef<SchemaTypes, SchemaTypes>>
+        const fields: Record<string, unknown> = {}
 
-        const operatorKeys =
-          allowedOperators ?? (Object.keys(operators) as AllowedOperators[])
-
-        const availableOperators: Record<
-          AllowedOperators,
-          InputFieldRef<SchemaTypes, SchemaTypes>
-        > = {} as Record<
-          AllowedOperators,
-          InputFieldRef<SchemaTypes, SchemaTypes>
-        >
-
-        for (const operatorKey of operatorKeys) {
-          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-          availableOperators[operatorKey] = operators[operatorKey]!
+        for (const operator of allowedOperators) {
+          if (BOOLEAN_OPERATORS.has(operator)) {
+            fields[operator] = t.boolean({})
+          } else if (LIST_OPERATORS.has(operator)) {
+            fields[operator] = t.field({ type: [type] })
+          } else {
+            fields[operator] = t.field({ type })
+          }
         }
 
-        return availableOperators
+        return fields as unknown as Record<
+          string,
+          InputFieldRef<SchemaTypes, SchemaTypes>
+        >
       },
     })
 
-  const createStringFieldComparison = ({ name }: { name?: string }) =>
-    generateComparison({
-      allowedOperators: ["eq", "neq", "like", "notLike", "in", "notIn"],
-      name,
-      type: "String",
-    })
+  const comparisonTypes = {} as Record<
+    ComparisonScalar,
+    ReturnType<typeof generateComparison>
+  >
 
-  const createIntFieldComparison = ({ name }: { name?: string }) =>
-    generateComparison({
-      allowedOperators: ["eq", "neq", "lt", "lte", "gt", "gte", "in", "notIn"],
-      name,
-      type: "Int",
-    })
-
-  const createFloatFieldComparison = ({ name }: { name?: string }) =>
-    generateComparison({
-      allowedOperators: ["eq", "neq", "lt", "lte", "gt", "gte", "in", "notIn"],
-      name,
-      type: "Float",
-    })
-
-  const createIDFieldComparison = ({ name }: { name?: string }) =>
-    generateComparison({
-      allowedOperators: ["eq", "neq", "in", "notIn"],
-      name,
-      type: "ID",
-    })
-
-  const createBooleanFieldComparison = ({ name }: { name?: string }) =>
-    generateComparison({
-      allowedOperators: ["is", "isNot"],
-      name,
-      type: "Boolean",
-    })
-
-  const createDateFieldComparison = ({ name }: { name?: string }) =>
-    generateComparison({
-      allowedOperators: ["eq", "neq", "lt", "lte", "gt", "gte"],
-      name,
-      type: "Date",
-    })
-
-  const createDateTimeFieldComparison = ({ name }: { name?: string }) =>
-    generateComparison({
-      allowedOperators: ["eq", "neq", "lt", "lte", "gt", "gte"],
-      name,
-      type: "DateTime",
-    })
-
-  return {
-    createBooleanFieldComparison,
-    createDateFieldComparison,
-    createDateTimeFieldComparison,
-    createFloatFieldComparison,
-    createIDFieldComparison,
-    createIntFieldComparison,
-    createStringFieldComparison,
+  for (const type of Object.keys(COMPARISONS) as ComparisonScalar[]) {
+    comparisonTypes[type] = generateComparison(type, COMPARISONS[type])
   }
+
+  return comparisonTypes
 }

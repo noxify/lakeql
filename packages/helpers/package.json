@@ -47,6 +47,10 @@
     "./special-characters": {
       "types": "./dist/special-characters.d.mts",
       "import": "./dist/special-characters.mjs"
+    },
+    "./string-case": {
+      "types": "./dist/string-case.d.mts",
+      "import": "./dist/string-case.mjs"
     }
   },
   "scripts": {
@@ -55,18 +59,20 @@
     "clean:cache": "git clean -xdf .cache .turbo",
     "clean:dist": "git clean -xdf dist",
     "dev": "tsdown --watch",
+    "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@ianvs/prettier-plugin-sort-imports": "^4.7.1",
-    "dot-path-value": "0.0.12",
-    "prettier": "3.9.6"
+    "es-toolkit": "1.53.2"
   },
   "devDependencies": {
+    "@ianvs/prettier-plugin-sort-imports": "4.7.1",
     "@lakeql/tsconfig": "workspace:*",
-    "@types/node": "24.13.3",
-    "tsdown": "0.22.13",
+    "@lakeql/vitest-config": "workspace:*",
+    "@types/node": "24.19.2",
+    "prettier": "3.9.10",
+    "tsdown": "0.23.7",
     "typescript": "6.0.3",
-    "vitest": "4.1.10"
+    "vitest": "5.1.0"
   }
 }

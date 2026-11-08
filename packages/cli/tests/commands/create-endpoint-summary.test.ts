@@ -13,6 +13,14 @@ function getMutationDisplay(definition: EndpointDefinitionFormat): string {
 }
 
 /**
+ * Replicates the dataSource summary logic from create-endpoint.ts:
+ * definition.dataSource ?? "default"
+ */
+function getDataSourceDisplay(definition: EndpointDefinitionFormat): string {
+  return definition.dataSource ?? "default"
+}
+
+/**
  * Tests for the create-endpoint command's mutation summary display logic.
  *
  * The command computes the display value as:
@@ -28,8 +36,6 @@ describe("create-endpoint summary mutation display", () => {
       fields: [{ name: "id", type: "String" }],
       mutation: {
         loadStrategy: "full_load",
-        type: "s3",
-        bucket: "analytics-datalake",
         basePath: "warehouse/analytics/user_events",
       },
     }
@@ -46,8 +52,6 @@ describe("create-endpoint summary mutation display", () => {
       fields: [{ name: "order_id", type: "String" }],
       mutation: {
         loadStrategy: "full_load_append",
-        type: "s3",
-        bucket: "commerce-datalake",
         basePath: "warehouse/sales/orders",
       },
     }
@@ -64,8 +68,6 @@ describe("create-endpoint summary mutation display", () => {
       fields: [{ name: "event", type: "String" }],
       mutation: {
         loadStrategy: "append",
-        type: "s3",
-        bucket: "logs-datalake",
         basePath: "warehouse/logs/events",
       },
     }
@@ -96,5 +98,32 @@ describe("create-endpoint summary mutation display", () => {
     }
 
     expect(getMutationDisplay(definition)).toBe("disabled")
+  })
+})
+
+describe("create-endpoint summary dataSource display", () => {
+  it("displays the dataSource value when present", () => {
+    const definition: EndpointDefinitionFormat = {
+      version: "1.0",
+      tableName: "user_events",
+      catalog: "analytics",
+      schema: "tracking",
+      dataSource: "trino",
+      fields: [{ name: "id", type: "String" }],
+    }
+
+    expect(getDataSourceDisplay(definition)).toBe("trino")
+  })
+
+  it("displays 'default' when dataSource is absent", () => {
+    const definition: EndpointDefinitionFormat = {
+      version: "1.0",
+      tableName: "user_events",
+      catalog: "analytics",
+      schema: "tracking",
+      fields: [{ name: "id", type: "String" }],
+    }
+
+    expect(getDataSourceDisplay(definition)).toBe("default")
   })
 })

@@ -1,9 +1,9 @@
-import { http, HttpResponse } from "msw"
+import { http, HttpResponse } from "msw/http"
 
 import type { QueryResult, Stats, TrinoClientProps } from "../src"
 import { State, TrinoClient } from "../src"
 
-export { http, HttpResponse } from "msw"
+export { http, HttpResponse } from "msw/http"
 
 export { type QueryResult, type Stats, type TrinoClientProps } from "../src"
 

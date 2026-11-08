@@ -1,0 +1,19 @@
+---
+title: Overview
+navTitle: Overview
+description: Which LakeQL packages you import directly, and which are internal.
+---
+
+An application imports these LakeQL packages directly:
+
+<PageList
+  variant="list"
+  items={[
+    "packages/query-builder",
+    "packages/config",
+    "packages/trino-client",
+    "packages/fabric-client",
+  ]}
+/>
+
+The GraphQL server (`@lakeql/api`) and the adapters live under [API](/docs/api) and [Data Sources](/docs/data-sources). To see how everything fits together, read the [package map](/docs/packages/overview/package-map).

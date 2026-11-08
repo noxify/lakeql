@@ -1,0 +1,21 @@
+{
+  "name": "@lakeql/integration-tests",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Runtime integration assertions that span multiple packages without adding cross-dependencies to published packages",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@lakeql/api": "workspace:*",
+    "@lakeql/config": "workspace:*",
+    "@lakeql/datasource": "workspace:*",
+    "@lakeql/tsconfig": "workspace:*",
+    "@lakeql/vitest-config": "workspace:*",
+    "@types/node": "24.19.2",
+    "typescript": "6.0.3",
+    "vitest": "5.1.0"
+  }
+}

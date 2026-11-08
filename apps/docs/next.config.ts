@@ -61,7 +61,11 @@ const nextConfig: NextConfig = {
     "@lakeql/create-app",
     "@lakeql/trino-client",
     "@lakeql/query-builder",
+    "@lakeql/config",
+    "@lakeql/cli",
+    "@lakeql/api",
   ],
+
   typescript: {
     ignoreBuildErrors: true,
   },

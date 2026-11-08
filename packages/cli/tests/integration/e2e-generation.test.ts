@@ -29,8 +29,6 @@ const complexDefinition: EndpointDefinitionFormat = {
   schema: "tracking",
   mutation: {
     loadStrategy: "full_load",
-    type: "s3",
-    bucket: "analytics-datalake",
     basePath: "warehouse/analytics/tracking/user_events",
     partitioning: true,
     partitioningFormat: "year/month/day",
@@ -87,8 +85,6 @@ const partitionedDefinition: EndpointDefinitionFormat = {
   schema: "tracking",
   mutation: {
     loadStrategy: "append",
-    type: "s3",
-    bucket: "analytics-datalake",
     basePath: "warehouse/analytics/tracking/partitioned_events",
     partitioning: "event_date",
     partitioningFormat: "year/month",
@@ -109,8 +105,6 @@ const fullLoadDefinition: EndpointDefinitionFormat = {
   schema: "tracking",
   mutation: {
     loadStrategy: "full_load",
-    type: "s3",
-    bucket: "analytics-datalake",
     basePath: "warehouse/analytics/tracking/full_load_events",
     partitioning: "event_date",
     partitioningFormat: "year/month",
@@ -131,8 +125,6 @@ const timestampPartitionedDefinition: EndpointDefinitionFormat = {
   schema: "tracking",
   mutation: {
     loadStrategy: "full_load_append",
-    type: "s3",
-    bucket: "analytics-datalake",
     basePath: "warehouse/analytics/tracking/timestamp_events",
     partitioning: true,
     partitioningFormat: "year/month/day",
@@ -185,8 +177,8 @@ describe("end-to-end generation (integration)", () => {
     })
   })
 
-  describe("config.ts exports hiveConfig with correct metadata", () => {
-    it("should export hiveConfig with catalog, schema, and tableName", async () => {
+  describe("config.ts exports sourceConfig with correct metadata", () => {
+    it("should export sourceConfig with catalog, schema, and tableName", async () => {
       await generateEndpoint({
         definition: complexDefinition,
         outputDir,
@@ -198,8 +190,8 @@ describe("end-to-end generation (integration)", () => {
         "utf-8"
       )
 
-      // Verify hiveConfig export
-      expect(configContent).toContain("hiveConfig")
+      // Verify sourceConfig export
+      expect(configContent).toContain("sourceConfig")
 
       // Verify catalog, schema, tableName values are present
       expect(configContent).toContain("analytics")
@@ -481,6 +473,81 @@ describe("end-to-end generation (integration)", () => {
           `Expected ${file.fileName} to have non-empty content`
         ).toBeGreaterThan(0)
       }
+    })
+  })
+
+  describe("namePrefix propagates to generated names end to end", () => {
+    const prefixDefinition: EndpointDefinitionFormat = {
+      version: "1.0",
+      tableName: "order_line_items",
+      catalog: "analytics",
+      schema: "analytics_sales",
+      fields: [{ name: "event_id", type: "String" }],
+    }
+
+    it("carries the prefixed type name into interface.ts", async () => {
+      await generateEndpoint({
+        definition: prefixDefinition,
+        outputDir,
+        skipRegistry: true,
+        namePrefix: "trino",
+      })
+
+      const interfaceContent = await readFile(
+        path.join(outputDir, "interface.ts"),
+        "utf-8"
+      )
+
+      expect(interfaceContent).toContain("Trino_AnalyticsSales_OrderLineItems")
+    })
+
+    it("carries the prefixed query name into query-schema.ts", async () => {
+      await generateEndpoint({
+        definition: prefixDefinition,
+        outputDir,
+        skipRegistry: true,
+        namePrefix: "trino",
+      })
+
+      const querySchemaContent = await readFile(
+        path.join(outputDir, "query-schema.ts"),
+        "utf-8"
+      )
+
+      expect(querySchemaContent).toContain("trinoAnalyticsSalesOrderLineItems")
+    })
+
+    it("carries the prefixed query and mutation names into config.ts", async () => {
+      await generateEndpoint({
+        definition: prefixDefinition,
+        outputDir,
+        skipRegistry: true,
+        namePrefix: "trino",
+      })
+
+      const configContent = await readFile(
+        path.join(outputDir, "config.ts"),
+        "utf-8"
+      )
+
+      expect(configContent).toContain("trinoAnalyticsSalesOrderLineItems")
+      expect(configContent).toContain("createTrinoAnalyticsSalesOrderLineItems")
+    })
+
+    it("leaves generated names unprefixed when namePrefix is unset", async () => {
+      await generateEndpoint({
+        definition: prefixDefinition,
+        outputDir,
+        skipRegistry: true,
+      })
+
+      const interfaceContent = await readFile(
+        path.join(outputDir, "interface.ts"),
+        "utf-8"
+      )
+
+      expect(interfaceContent).toContain("AnalyticsSales_OrderLineItems")
+      expect(interfaceContent).not.toContain("Trino_")
     })
   })
 
