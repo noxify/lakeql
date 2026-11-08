@@ -6,7 +6,7 @@ import type {
 } from "@/components/mdx/command-client"
 
 /** Package managers offered by every `Command` variant, in display order. */
-export const PACKAGE_MANAGERS: PackageManager[] = ["pnpm", "npm"]
+export const PACKAGE_MANAGERS: PackageManager[] = ["pnpm", "npm", "yarn"]
 
 /** Execution modes offered by the `exec` variant, in display order. */
 export const EXECUTION_MODES: ExecutionMode[] = ["local", "oneoff"]
@@ -27,22 +27,27 @@ const COMMAND_PREFIXES: Record<
   create: {
     npm: "npm create",
     pnpm: "pnpm create",
+    yarn: "yarn create",
   },
   exec: {
     npm: "npx",
     pnpm: "pnpm dlx",
+    yarn: "yarn dlx",
   },
   install: {
     npm: "npm install",
     pnpm: "pnpm add",
+    yarn: "yarn add",
   },
   "install-dev": {
     npm: "npm install --save-dev",
     pnpm: "pnpm add -D",
+    yarn: "yarn add -D",
   },
   run: {
     npm: "npm run",
     pnpm: "pnpm",
+    yarn: "yarn",
   },
 }
 
@@ -55,10 +60,12 @@ const EXEC_PREFIXES: Record<ExecutionMode, Record<PackageManager, string>> = {
   local: {
     npm: "npm exec",
     pnpm: "pnpm",
+    yarn: "yarn",
   },
   oneoff: {
     npm: "npx",
     pnpm: "pnpm dlx",
+    yarn: "yarn dlx",
   },
 }
 

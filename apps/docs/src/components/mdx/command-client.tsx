@@ -6,7 +6,7 @@ import { useEffect, useState } from "react"
 import { Switch } from "../ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs"
 
-export type PackageManager = "npm" | "pnpm"
+export type PackageManager = "npm" | "pnpm" | "yarn"
 export type ExecutionMode = "local" | "oneoff"
 
 declare global {
@@ -16,7 +16,7 @@ declare global {
   }
 }
 
-const PACKAGE_MANAGERS: PackageManager[] = ["pnpm", "npm"]
+const PACKAGE_MANAGERS: PackageManager[] = ["pnpm", "npm", "yarn"]
 
 const STORAGE_KEY = "lakeql:selected-package-manager"
 const LEGACY_STORAGE_KEY = "package-manager"
