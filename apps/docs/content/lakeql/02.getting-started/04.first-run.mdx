@@ -12,6 +12,8 @@ Introspect a table and generate its typed files with [`pull`](/docs/cli/commands
 
 <Command variant="exec">lakeql-cli pull --env .env</Command>
 
+The execution-mode toggles switch between the locally installed binary and a one-off run through `npx` or `pnpm dlx`. A scaffolded project installs `@lakeql/cli` as a dev dependency, so Local is the default. One-off fetches the scoped `@lakeql/cli` package for a run without a project install. Both toggle designs, a Switch and a segmented control, stay in sync.
+
 Run it interactively and it prompts for the source, schema, and table. You can also pass them as options. The generated files land under your configured source path. See [Key Concepts](/docs/lakeql/introduction/key-concepts) for the layout.
 
 ## Start the Server
