@@ -94,7 +94,10 @@ export const PanZoomViewport = ({
           )}
         >
           <TransformComponent
-            wrapperStyle={{ width: "100%", height: "100%" }}
+            // Small inset padding so the diagram content does not reach the
+            // container edge, leaving a clear gap for the focus ring (which is
+            // drawn inset on the outer container) instead of the SVG covering it.
+            wrapperStyle={{ width: "100%", height: "100%", padding: "1.25rem" }}
             contentStyle={{ width: "100%", height: "100%" }}
             // The library sets tabIndex=0 here, making this div the keyboard
             // focus target. Describe the controls for screen readers and track
