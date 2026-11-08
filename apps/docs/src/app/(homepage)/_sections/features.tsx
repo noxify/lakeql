@@ -28,7 +28,7 @@ const features = [
     icon: <Shield className="size-5" />,
     title: "Adapter-agnostic permissions",
     description:
-      "Define access rules per dataSource and table name. Enforce them consistently across every connected adapter.",
+      "Define access rules per data source and table name. Enforce them consistently across every connected adapter.",
   },
   {
     icon: <Activity className="size-5" />,
