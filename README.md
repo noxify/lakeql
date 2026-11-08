@@ -116,5 +116,3 @@ LakeQL was later rebuilt from the ground up as a fully type-safe, adapter-agnost
 
 - [Igal Klebanov](https://github.com/igalklebanov) and the [Kysely Team](https://github.com/kysely-org/kysely) - Kysely is used to generate valid SQL statements from GraphQL queries, and Igal helped make the query builder more generic.
 - [Michael Hayes](https://github.com/hayes/pothos) - He created Pothos GraphQL, which is the foundation of our GraphQL server and its code-first schema generation approach.
-
-test
