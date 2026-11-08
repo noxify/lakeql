@@ -1,12 +1,12 @@
 ---
 title: Debugging Identity & Credentials
 navTitle: Debugging Identity
-description: Observe which identity and credential a request actually runs as, and why removing impersonation silently changes it.
+description: Observe which identity and credential a request runs as, and why removing impersonation silently changes it.
 ---
 
 When a query still succeeds after you change your auth configuration, that is not proof it runs as the identity you expect. LakeQL resolves two separate things per request — _who the caller authenticated as_ and _which credential the query runs against the data source with_ — and the library does not log either on the auth path. This page shows how to make those decisions observable.
 
-The worked examples use Fabric, because that is the path we traced end to end. The underlying concept applies to any data source that supports [impersonation](/docs/api/authentication/authorization-model#resolving-layer-2-identity); see [Generalizing to other data sources](#generalizing-to-other-data-sources) for how Trino differs.
+The worked examples use Fabric, because that is the path traced end to end. The underlying concept applies to any data source that supports [impersonation](/docs/api/authentication/authorization-model#resolving-layer-2-identity); see [Generalizing to other data sources](#generalizing-to-other-data-sources) for how Trino differs.
 
 ## The Core Concept
 
@@ -39,9 +39,9 @@ This change is security-sensitive because of how it composes with the [authoriza
   Remove impersonation and the same human read still passes Layer 1, but Layer 2
   now sees the **service principal's** credential instead of the user's. The
   query is then authorized by the service principal's grants, which are usually
-  **broader** than any single user's — a potential over-grant, not just a
-  cosmetic change. Writes are unaffected: they stay denied until an explicit
-  `Mutation` rule exists.
+  **broader** than any single user's — a potential over-grant, not a cosmetic
+  change. Writes are unaffected: they stay denied until an explicit `Mutation`
+  rule exists.
 </Warning>
 
 ## Debugging Recipes
@@ -56,7 +56,7 @@ The fastest signal, and the clearest for _which credential type_ ran. `@azure/id
 AZURE_LOG_LEVEL=verbose
 ```
 
-Restart the app and run a Fabric query. With the resolver removed you will see `ClientSecretCredential` activity (the service principal). With the resolver present you would instead see `OnBehalfOfCredential` activity (the user). That difference is the single clearest proof of which credential acquired the token.
+Restart the app and run a Fabric query. With the resolver removed you see `ClientSecretCredential` activity (the service principal). With the resolver present you would instead see `OnBehalfOfCredential` activity (the user). That difference is the single clearest proof of which credential acquired the token.
 
 <Warning>
   `verbose` can print request and correlation detail that may include token
@@ -147,13 +147,13 @@ API_LOGGER=debug
 <Note>
   These give you request and error context, but the library does **not** log the
   resolved identity or the chosen credential on the auth path. Higher log levels
-  alone will not tell you whether a query ran as the service principal or the
-  user — combine them with recipe 1, 2, or 4 for that answer.
+  alone do not tell you whether a query ran as the service principal or the user
+  — combine them with recipe 1, 2, or 4 for that answer.
 </Note>
 
 ## Generalizing to Other Data Sources
 
-The identity-versus-credential split and the impersonation fallback apply to any data source that supports impersonation. The _mechanism_ differs by adapter, so the Fabric-specific recipes above do not all carry over verbatim:
+The identity-versus-credential split and the impersonation fallback apply to any data source that supports impersonation. The _mechanism_ differs by adapter, so the preceding Fabric-specific recipes do not all carry over verbatim:
 
 - **Fabric** forwards a request-scoped **bearer token** acquired through the OAuth2 on-behalf-of flow. Recipes 1 and 4 (Azure identity logging, token decoding) are Fabric-specific because they target that credential.
 - **Trino** impersonates through the `X-Trino-User` header via [`trinoUserImpersonation`](/docs/api/authentication/trino-user-impersonation) rather than a request-scoped bearer token. Its fallback is the same shape — no resolver means the query runs with the connection's own credentials — so recipes 2, 3, and 5 (the logging resolver, the identity wrapper, and the LakeQL log levels) apply to Trino too. The Azure-specific recipes do not.

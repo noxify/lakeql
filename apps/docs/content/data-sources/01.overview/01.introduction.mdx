@@ -4,7 +4,7 @@ navTitle: Introduction
 description: How adapters plug a query engine into LakeQL.
 ---
 
-LakeQL never talks to a query engine directly. Everything above the adapter layer works against the neutral contracts in `@lakeql/datasource`. That includes the GraphQL server, the CLI, and the query builder. An **adapter** implements those contracts for one engine.
+LakeQL never talks to a query engine directly. Everything layered on top of the adapter works against the neutral contracts in `@lakeql/datasource`. That includes the GraphQL server, the CLI, and the query builder. An **adapter** implements those contracts for one engine.
 
 ## What an Adapter Owns
 

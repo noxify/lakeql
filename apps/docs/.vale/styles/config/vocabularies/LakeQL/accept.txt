@@ -1,4 +1,6 @@
 LakeQL
+Trino
+Fabric
 Tegami
 Hono
 Kysely

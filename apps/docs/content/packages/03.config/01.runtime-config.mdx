@@ -41,7 +41,7 @@ export default defineConfig({
 
 ### Load
 
-[`loadConfig`](/docs/packages/config/api-reference#load-config) reads the config. It returns a `LoadedLakeQLProject`: the normalized `config` (serializable data-source metadata) plus the `adapters` factory list. The adapter-owned `connection` and `writeConfig` values stay opaque. They pass through to the adapter untouched, never cloned or serialized.
+[`loadConfig`](/docs/packages/config/api-reference#load-config) reads the config. It returns a `LoadedLakeQLProject`: the normalized `config` (serializable data-source metadata) plus the `adapters` factory list. The adapter-owned `connection` and `writeConfig` values stay opaque. They pass through to the adapter untouched and are never cloned or serialized.
 
 `loadConfig` does not run per-source validation against the adapter. That runs in `defineConfig` when the config module is evaluated, and again in the adapter factory when the data source is created. A config not authored with `defineConfig` therefore gets no per-source validation until composition.
 

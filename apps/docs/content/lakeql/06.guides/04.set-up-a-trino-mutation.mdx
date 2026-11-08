@@ -81,7 +81,7 @@ The generated files land under `schemas/custom/<catalog>/<schema>/<table>/`, her
 
 ## Grant a Mutation Permission
 
-Writes are denied by default, so add a positive `Mutation` rule scoped to the data source and table you just generated. It uses the same `createPermission`/`rule` builder as a `Query` rule, grouped under `Mutation`:
+Writes are denied by default, so add a positive `Mutation` rule scoped to the data source and table you generated. It uses the same `createPermission`/`rule` builder as a `Query` rule, grouped under `Mutation`:
 
 ```ts
 import { createPermission } from "@lakeql/api/helpers"
@@ -107,7 +107,7 @@ See [Granting Write Access](/docs/api/authentication/permissions#granting-write-
 
 ## Replace a Pulled Endpoint with a Mutation-Enabled One
 
-If you already ran `pull` for this table, you have a read-only endpoint under `schemas/generated/<dataSource>/<catalog>/<schema>/<table>/`. The steps above added a mutation-enabled custom one under `schemas/custom/<catalog>/<schema>/<table>/`. Follow these steps to avoid registering the same table twice:
+If you already ran `pull` for this table, you have a read-only endpoint under `schemas/generated/<dataSource>/<catalog>/<schema>/<table>/`. The preceding steps added a mutation-enabled custom one under `schemas/custom/<catalog>/<schema>/<table>/`. Follow these steps to avoid registering the same table twice:
 
 <Steps>
 

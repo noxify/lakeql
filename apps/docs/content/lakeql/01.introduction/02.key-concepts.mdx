@@ -12,7 +12,7 @@ LakeQL is a universal data access layer. It reaches a query engine through an ad
 
 - **Storage** — data lives in object storage (S3, MinIO, GCS, Azure, and the like) in open formats such as Parquet.
 - **Metastore** — a catalog service tracks table metadata, partitions, and file locations.
-- **Query engine** — a SQL engine provides access across catalogs and schemas. Adapters for Trino and Microsoft Fabric are available today, with ClickHouse and DuckDB on the roadmap.
+- **Query engine** — a SQL engine provides access across catalogs and schemas. Adapters for Trino and Microsoft Fabric are available today. ClickHouse and DuckDB are on the roadmap.
 
 LakeQL sits on top of the query engine and exposes the data through GraphQL, with no separate hand-written application layer.
 
