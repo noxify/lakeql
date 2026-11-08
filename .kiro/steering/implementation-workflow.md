@@ -10,6 +10,24 @@ Use the repository's local package manager and scripts.
 - Do not use `npx` for formatting, linting, typechecking, building, or tests.
 - Do not use globally installed `oxfmt`, `oxlint`, `tsc`, `turbo`, or `vitest` when a repository script or local executable is available.
 
+## Worktree Build Prerequisites
+
+Several root checks depend on the `@lakeql/*` packages being built first, because they resolve those packages' emitted `dist/` output and `.d.ts` types rather than their TypeScript source:
+
+- `pnpm build:docs` (`turbo build --filter='docs'`) — the docs app imports built package entry points (for example `@lakeql/cli` metadata and `@lakeql/create-app`); without a prior package build its build fails to resolve them.
+- `pnpm typecheck` (`turbo typecheck`) — type-checking against the `@lakeql/*` packages needs their emitted declaration files.
+
+In a freshly created worktree the Turbo cache and `dist/` are empty, so these fail unless the packages are built first. In the main checkout they often pass only because a previous build already populated `dist/`.
+
+Therefore, in a fresh worktree, build the packages before running the docs build or typecheck:
+
+```bash
+pnpm build:pkg   # turbo build --filter='@lakeql/*' — populates every package's dist/
+pnpm build:docs  # or: pnpm typecheck
+```
+
+`pnpm build:pkg` is the authoritative one-shot. If only one package's output is needed, `pnpm --filter @lakeql/<package> build` is enough. This ordering is a worktree/cache concern, not a substitute for the Validation Scope rules below — still validate only the surface you changed.
+
 ## Preferred Commands
 
 ```bash
