@@ -35,6 +35,7 @@ Rules:
 - Include at least one `#`, `##`, or `###` heading in the body
 - Write user-facing release notes under each heading
 - Do not edit the publish lock file (`.tegami/publish-lock.yaml`) or package `CHANGELOG.md` files directly
+- After creating or updating a `.tegami/` file, run `pnpm format:fix` so the note matches the repository's `oxfmt` formatting (for example, prose is not manually line-wrapped). The CI format check (`pnpm format`) runs `oxfmt --check` across the whole repo, including `.tegami/`, so an unformatted note fails CI even when all code paths are clean.
 
 ## TypeScript source conventions
 
