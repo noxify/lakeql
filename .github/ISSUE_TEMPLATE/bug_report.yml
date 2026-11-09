@@ -9,31 +9,18 @@ body:
         Thanks for taking the time to report this bug! Please fill out the sections below.
 
   - type: dropdown
-    id: package
+    id: category
     attributes:
-      label: Package
-      description: Which package is affected?
+      label: Area
+      description: Which area is affected? Maintainers may refine this with a more specific package label during triage.
       options:
-        - adapter-fabric
-        - adapter-trino
-        - api
+        - adapters
+        - core
+        - codegen
         - cli
-        - column-parser
-        - config
-        - create-app
-        - datasource
-        - fabric-client
-        - file-generator
-        - helpers
-        - logger
-        - parquet
-        - query-builder
-        - response-transformer
-        - schema-generator
-        - sql-read-strategy
-        - storage
-        - trino-client
-        - documentation
+        - api
+        - docs
+        - endpoint-builder
         - other
     validations:
       required: true
