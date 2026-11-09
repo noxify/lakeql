@@ -285,4 +285,158 @@ describe(generateValidationsSchema, () => {
     expect(output).toContain("email: z.string().email()")
     expect(output).toContain("age: z.number().int().min(0).max(150).nullable()")
   })
+
+  it("returns null when only nested fields exist but none have validations", () => {
+    const fields: FieldDefinition[] = [
+      {
+        name: "metadata",
+        type: "Object",
+        fields: [
+          { name: "source", type: "String", options: { required: true } },
+        ],
+      },
+    ]
+
+    const result = generateValidationsSchema(fields)
+    expect(result).toBeNull()
+  })
+
+  it("emits validations for a field nested inside an Object", () => {
+    const fields: FieldDefinition[] = [
+      {
+        name: "metadata",
+        type: "Object",
+        options: { required: true },
+        fields: [
+          {
+            name: "contact_email",
+            type: "String",
+            options: { required: true, validations: [{ type: "email" }] },
+          },
+          { name: "source", type: "String", options: { required: true } },
+        ],
+      },
+    ]
+
+    const result = generateValidationsSchema(fields)
+    expect(result).not.toBeNull()
+
+    const output = printNodes(result as ts.Node[])
+    expect(output).toContain("metadata: z.object(")
+    expect(output).toContain("contact_email: z.string().email()")
+    // Nested field without validations is omitted
+    expect(output).not.toContain("source:")
+  })
+
+  it("wraps a nested Object in .nullable() when the parent is not required", () => {
+    const fields: FieldDefinition[] = [
+      {
+        name: "metadata",
+        type: "Object",
+        fields: [
+          {
+            name: "contact_email",
+            type: "String",
+            options: { required: true, validations: [{ type: "email" }] },
+          },
+        ],
+      },
+    ]
+
+    const result = generateValidationsSchema(fields)
+    const output = printNodes(result as ts.Node[])
+    expect(output).toContain("metadata: z.object(")
+    expect(output).toContain(".nullable()")
+  })
+
+  it("emits validations for a field nested inside an Array-of-Object", () => {
+    const fields: FieldDefinition[] = [
+      {
+        name: "dimensions",
+        type: "Array",
+        options: { required: true },
+        items: {
+          type: "Object",
+          fields: [
+            {
+              name: "key",
+              type: "String",
+              options: {
+                required: true,
+                validations: [{ type: "min", value: 1 }],
+              },
+            },
+            { name: "value", type: "Float", options: { required: true } },
+          ],
+        },
+      },
+    ]
+
+    const result = generateValidationsSchema(fields)
+    expect(result).not.toBeNull()
+
+    const output = printNodes(result as ts.Node[])
+    const collapsed = output.replaceAll(/\s+/gu, "")
+    expect(collapsed).toContain("dimensions:z.array(z.object(")
+    expect(output).toContain("key: z.string().min(1)")
+    expect(output).not.toContain("value:")
+  })
+
+  it("emits validations for deeply nested Object fields", () => {
+    const fields: FieldDefinition[] = [
+      {
+        name: "metadata",
+        type: "Object",
+        options: { required: true },
+        fields: [
+          {
+            name: "nested_obj",
+            type: "Object",
+            options: { required: true },
+            fields: [
+              {
+                name: "deep_url",
+                type: "String",
+                options: { required: true, validations: [{ type: "url" }] },
+              },
+            ],
+          },
+        ],
+      },
+    ]
+
+    const result = generateValidationsSchema(fields)
+    const output = printNodes(result as ts.Node[])
+    expect(output).toContain("metadata: z.object(")
+    expect(output).toContain("nested_obj: z.object(")
+    expect(output).toContain("deep_url: z.string().url()")
+  })
+
+  it("emits both root and nested validations together", () => {
+    const fields: FieldDefinition[] = [
+      {
+        name: "email",
+        type: "String",
+        options: { required: true, validations: [{ type: "email" }] },
+      },
+      {
+        name: "metadata",
+        type: "Object",
+        options: { required: true },
+        fields: [
+          {
+            name: "homepage",
+            type: "String",
+            options: { required: true, validations: [{ type: "url" }] },
+          },
+        ],
+      },
+    ]
+
+    const result = generateValidationsSchema(fields)
+    const output = printNodes(result as ts.Node[])
+    expect(output).toContain("email: z.string().email()")
+    expect(output).toContain("metadata: z.object(")
+    expect(output).toContain("homepage: z.string().url()")
+  })
 })

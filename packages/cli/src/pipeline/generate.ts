@@ -17,6 +17,7 @@ import { deriveNames } from "./derive-names"
 import { generateMutationSchema } from "./mutation-schema"
 import type { EndpointDefinitionFormat } from "./schema"
 import { serializeDeterministic } from "./serialize"
+import { generateValidationsSchema } from "./validations-schema"
 
 /**
  * Options for the unified generation pipeline.
@@ -63,7 +64,11 @@ export interface GeneratePipelineResult {
 /**
  * Unified generation pipeline that transforms an EndpointDefinitionFormat
  * into all output files (config.ts, interface.ts, query-schema.ts,
- * mutation-schema.ts, json-schema.json, endpoint.json).
+ * mutation-schema.ts, validations.ts, json-schema.json, endpoint.json).
+ *
+ * When field validations exist and mutation is enabled, a validations.ts
+ * exporting `validationSchema` is written alongside mutation-schema.ts so that
+ * its `import { validationSchema } from "./validations"` reference resolves.
  *
  * This pipeline is shared by both the `create-endpoint` and `pull` commands.
  */
@@ -184,10 +189,12 @@ export async function generateEndpoint(
   })
 
   // 8. Generate mutation-schema.ts
-  const hasValidations = fields.some(
-    (field) =>
-      field.options?.validations && field.options.validations.length > 0
-  )
+  // Build the validations schema first so that hasValidations reflects
+  // validations at any nesting level (root, nested Object, Array-of-Object),
+  // mirroring the recursive field structure. When it is non-null the mutation
+  // schema imports and uses `./validations`, so the file must be written too.
+  const generatedValidationsSchema = generateValidationsSchema(fields)
+  const hasValidations = generatedValidationsSchema !== null
 
   const generatedMutationSchema = generateMutationSchema({
     models,
@@ -205,6 +212,18 @@ export async function generateEndpoint(
       nodes: generatedMutationSchema,
     })
     mutationSchemaContent = mutationSchemaTemplate.text
+  }
+
+  // Generate validations.ts whenever the mutation schema was emitted and
+  // validations exist. The mutation schema imports { validationSchema } from
+  // "./validations", so the file must accompany it for the import to resolve.
+  let validationsContent = ""
+  if (mutationSchemaContent && generatedValidationsSchema) {
+    const validationsTemplate = await generateCode({
+      fileName: "validations.ts",
+      nodes: generatedValidationsSchema,
+    })
+    validationsContent = validationsTemplate.text
   }
 
   // 9. Serialize json-schema.json
@@ -227,6 +246,15 @@ export async function generateEndpoint(
     files.push({
       fileName: "mutation-schema.ts",
       content: mutationSchemaContent,
+    })
+  }
+
+  // Include validations.ts alongside mutation-schema.ts when generated, so the
+  // `import { validationSchema } from "./validations"` reference resolves.
+  if (validationsContent) {
+    files.push({
+      fileName: "validations.ts",
+      content: validationsContent,
     })
   }
 
