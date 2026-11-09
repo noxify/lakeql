@@ -1,0 +1,29 @@
+{
+  "name": "editor",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "clean": "git clean -xdf .cache .turbo dist node_modules",
+    "clean:cache": "git clean -xdf .cache .turbo",
+    "clean:dist": "git clean -xdf dist",
+    "dev": "vite",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@lakeql/studio": "workspace:*",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
+  "devDependencies": {
+    "@lakeql/tsconfig": "workspace:*",
+    "@types/node": "24.19.2",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.3.0",
+    "typescript": "6.0.3",
+    "vite": "8.3.5"
+  }
+}
