@@ -1,94 +1,20 @@
 core:changelogs:
-  - content: "---\npackages:\n  npm:@lakeql/adapter-fabric:\n    type: patch\n  npm:@lakeql/adapter-trino:\n    type: patch\n  npm:@lakeql/api:\n    type: patch\n  npm:@lakeql/cli:\n    type: patch\n  npm:@lakeql/column-parser:\n    type: patch\n  npm:@lakeql/config:\n    type: patch\n  npm:@lakeql/create-app:\n    type: patch\n  npm:@lakeql/datasource:\n    type: patch\n  npm:@lakeql/fabric-client:\n    type: patch\n  npm:@lakeql/file-generator:\n    type: patch\n  npm:@lakeql/helpers:\n    type: patch\n  npm:@lakeql/logger:\n    type: patch\n  npm:@lakeql/parquet:\n    type: patch\n  npm:@lakeql/query-builder:\n    type: patch\n  npm:@lakeql/response-transformer:\n    type: patch\n  npm:@lakeql/scaffold:\n    type: patch\n  npm:@lakeql/schema-generator:\n    type: patch\n  npm:@lakeql/sql-read-strategy:\n    type: patch\n  npm:@lakeql/storage:\n    type: patch\n  npm:@lakeql/trino-client:\n    type: patch\n---\n\n### Package metadata and publishing\n\nAdd READMEs for the packages that shipped without one, refine npm keywords (and drop the Trino-specific keyword from adapter-neutral packages), and re-publish every package through npm trusted publishing (OIDC) to validate the configuration. No runtime or API changes.\n"
-    filename: 2026-11-08-readme-oidc.md
+  - content: "---\npackages:\n  \"@lakeql/cli\":\n    type: patch\n---\n\n### Generate validations.ts and emit nested-field validations\n\nEndpoints that combine field-level validations with an enabled mutation now generate a `validations.ts` exporting `validationSchema` alongside `mutation-schema.ts`, so the generated `import { validationSchema } from \"./validations\"` resolves. Validations declared on fields nested inside an `Object`, or inside an `Array`-of-`Object`, are now emitted into the generated schema instead of being dropped.\n"
+    filename: 2026-11-09-96b9165b.md
+    v: 0.0.0
+  - content: "---\npackages:\n  \"@lakeql/studio\":\n    type: minor\n---\n\n### New @lakeql/studio package for the Endpoint Builder\n\nAdds `@lakeql/studio`, the shared UI and logic package for the LakeQL Endpoint Builder. It exports a React `EndpointBuilder` component and a precompiled stylesheet (`@lakeql/studio/styles.css`), so a consumer can render the builder with no Tailwind configuration of its own. The package ships both a library build (ESM + types) and a standalone static bundle from the same source. This first release scaffolds the package, its shadcn/Base UI component set, and the build pipeline; the authoring UI arrives in later releases.\n"
+    filename: 2026-11-09-b220590a.md
+    v: 0.0.0
+  - content: "---\npackages:\n  \"@lakeql/studio\":\n    type: minor\n---\n\n### Endpoint Builder authoring experience\n\n`@lakeql/studio` now ships the full client-side Endpoint Builder. The `EndpointBuilder` component authors a LakeQL endpoint definition through a visual tree editor over a live, schema-validated state and exports a CLI-ready `endpoint.json`.\n\n- Author top-level metadata, add and nest fields of every supported type, set per-field options and validations, and configure the mutation write pipeline, all validated continuously against the canonical endpoint schema so an export can never be a file the CLI would reject.\n- See the live JSON alongside the tree, import an existing `endpoint.json` to keep editing it (round-trip stable), export the current definition as a download, and keep in-progress work across reloads via local autosave.\n- The field tree is keyboard-navigable with full tree semantics (roles, level, expand/collapse state, roving focus), every authoring action is operable by keyboard with a visible focus indicator, and validation changes are announced to assistive technology through a live region.\n\nThe builder is hosted by the new static `editor` app (unpublished).\n"
+    filename: 2026-11-10-46396611.md
     v: 0.0.0
 core:packages:
   - id: npm:lakeql
     updated: false
   - id: npm:docs
     updated: true
-  - changelogIds:
-      - 2026-11-08-readme-oidc.md
-    id: npm:@lakeql/adapter-fabric
+  - id: npm:editor
     updated: true
-  - changelogIds:
-      - 2026-11-08-readme-oidc.md
-    id: npm:@lakeql/adapter-trino
-    updated: true
-  - changelogIds:
-      - 2026-11-08-readme-oidc.md
-    id: npm:@lakeql/api
-    updated: true
-  - changelogIds:
-      - 2026-11-08-readme-oidc.md
-    id: npm:@lakeql/cli
-    updated: true
-  - changelogIds:
-      - 2026-11-08-readme-oidc.md
-    id: npm:@lakeql/column-parser
-    updated: true
-  - changelogIds:
-      - 2026-11-08-readme-oidc.md
-    id: npm:@lakeql/config
-    updated: true
-  - changelogIds:
-      - 2026-11-08-readme-oidc.md
-    id: npm:@lakeql/create-app
-    updated: true
-  - changelogIds:
-      - 2026-11-08-readme-oidc.md
-    id: npm:@lakeql/datasource
-    updated: true
-  - changelogIds:
-      - 2026-11-08-readme-oidc.md
-    id: npm:@lakeql/fabric-client
-    updated: true
-  - changelogIds:
-      - 2026-11-08-readme-oidc.md
-    id: npm:@lakeql/file-generator
-    updated: true
-  - changelogIds:
-      - 2026-11-08-readme-oidc.md
-    id: npm:@lakeql/helpers
-    updated: true
-  - changelogIds:
-      - 2026-11-08-readme-oidc.md
-    id: npm:@lakeql/logger
-    updated: true
-  - changelogIds:
-      - 2026-11-08-readme-oidc.md
-    id: npm:@lakeql/parquet
-    updated: true
-  - changelogIds:
-      - 2026-11-08-readme-oidc.md
-    id: npm:@lakeql/query-builder
-    updated: true
-  - changelogIds:
-      - 2026-11-08-readme-oidc.md
-    id: npm:@lakeql/response-transformer
-    updated: true
-  - changelogIds:
-      - 2026-11-08-readme-oidc.md
-    id: npm:@lakeql/scaffold
-    updated: true
-  - changelogIds:
-      - 2026-11-08-readme-oidc.md
-    id: npm:@lakeql/schema-generator
-    updated: true
-  - changelogIds:
-      - 2026-11-08-readme-oidc.md
-    id: npm:@lakeql/sql-read-strategy
-    updated: true
-  - changelogIds:
-      - 2026-11-08-readme-oidc.md
-    id: npm:@lakeql/storage
-    updated: true
-  - changelogIds:
-      - 2026-11-08-readme-oidc.md
-    id: npm:@lakeql/trino-client
-    updated: true
-  - id: npm:@lakeql/integration-tests
-    updated: false
   - id: npm:@lakeql/test-data
     updated: false
   - id: npm:@lakeql/type-tests
@@ -97,16 +23,70 @@ core:packages:
     updated: false
   - id: npm:@lakeql/vitest-config
     updated: false
-  - id: npm:lakeql-app
+  - id: npm:@lakeql/adapter-fabric
+    updated: false
+  - id: npm:@lakeql/api
+    updated: false
+  - changelogIds:
+      - 2026-11-09-96b9165b.md
+    id: npm:@lakeql/cli
     updated: true
+  - id: npm:@lakeql/column-parser
+    updated: false
+  - id: npm:@lakeql/adapter-trino
+    updated: false
+  - id: npm:@lakeql/config
+    updated: false
+  - id: npm:@lakeql/create-app
+    updated: false
+  - id: npm:@lakeql/datasource
+    updated: false
+  - id: npm:@lakeql/fabric-client
+    updated: false
+  - id: npm:@lakeql/file-generator
+    updated: false
+  - id: npm:@lakeql/helpers
+    updated: false
+  - id: npm:@lakeql/logger
+    updated: false
+  - id: npm:@lakeql/parquet
+    updated: false
+  - id: npm:@lakeql/query-builder
+    updated: false
+  - id: npm:@lakeql/scaffold
+    updated: false
+  - id: npm:@lakeql/response-transformer
+    updated: false
+  - id: npm:@lakeql/schema-generator
+    updated: false
+  - id: npm:@lakeql/storage
+    updated: false
+  - changelogIds:
+      - 2026-11-09-b220590a.md
+      - 2026-11-10-46396611.md
+    id: npm:@lakeql/studio
+    updated: true
+  - id: npm:@lakeql/trino-client
+    updated: false
+  - id: npm:lakeql-app
+    updated: false
+  - id: npm:@lakeql/sql-read-strategy
+    updated: false
+  - id: npm:@lakeql/integration-tests
+    updated: false
 npm:packages:
   - id: npm:lakeql
   - id: npm:docs
+  - id: npm:editor
+  - id: npm:@lakeql/test-data
+  - id: npm:@lakeql/type-tests
+  - id: npm:@lakeql/tsconfig
+  - id: npm:@lakeql/vitest-config
   - id: npm:@lakeql/adapter-fabric
-  - id: npm:@lakeql/adapter-trino
   - id: npm:@lakeql/api
   - id: npm:@lakeql/cli
   - id: npm:@lakeql/column-parser
+  - id: npm:@lakeql/adapter-trino
   - id: npm:@lakeql/config
   - id: npm:@lakeql/create-app
   - id: npm:@lakeql/datasource
@@ -116,15 +96,12 @@ npm:packages:
   - id: npm:@lakeql/logger
   - id: npm:@lakeql/parquet
   - id: npm:@lakeql/query-builder
-  - id: npm:@lakeql/response-transformer
   - id: npm:@lakeql/scaffold
+  - id: npm:@lakeql/response-transformer
   - id: npm:@lakeql/schema-generator
-  - id: npm:@lakeql/sql-read-strategy
   - id: npm:@lakeql/storage
+  - id: npm:@lakeql/studio
   - id: npm:@lakeql/trino-client
-  - id: npm:@lakeql/integration-tests
-  - id: npm:@lakeql/test-data
-  - id: npm:@lakeql/type-tests
-  - id: npm:@lakeql/tsconfig
-  - id: npm:@lakeql/vitest-config
   - id: npm:lakeql-app
+  - id: npm:@lakeql/sql-read-strategy
+  - id: npm:@lakeql/integration-tests

@@ -1,6 +1,6 @@
 {
   "name": "@lakeql/studio",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Shared Endpoint Builder UI and logic for LakeQL — a client-only authoring experience for endpoint definitions",
   "keywords": [
     "builder",
