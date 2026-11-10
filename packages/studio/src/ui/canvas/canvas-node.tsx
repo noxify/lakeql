@@ -4,9 +4,11 @@ import { CSS } from "@dnd-kit/utilities"
 import {
   GripVerticalIcon,
   MousePointerClickIcon,
+  MoveIcon,
   Trash2Icon,
 } from "lucide-react"
-import { useId } from "react"
+import type { KeyboardEvent as ReactKeyboardEvent } from "react"
+import { useCallback, useId } from "react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -34,7 +36,9 @@ import { useEditorContext } from "../use-editor"
 import type { NodeAnchorData } from "./dnd-types"
 import { containerChildren, isDropContainer, zoneId } from "./dnd-types"
 import { DropIndicator } from "./drop-indicator"
+import { indicatorAt } from "./indicator-state"
 import { useCanvasDndContext } from "./use-canvas-dnd"
+import { useKeyboardMoveContext } from "./use-keyboard-move"
 import { useTypeChangeContext } from "./use-type-change"
 
 /**
@@ -109,18 +113,16 @@ const ContainerZone = ({
   fields: EditorField[]
 }) => {
   const { drag } = useCanvasDndContext()
+  const keyboard = useKeyboardMoveContext()
   const { setNodeRef, isOver } = useDroppable({
     id: zoneId(field.id),
     data: { kind: "container-zone", containerId: field.id },
   })
 
-  // The append indicator shows when the hover resolves to appending into this
-  // container (its zone is the target, no node anchor under the pointer).
-  const appendingHere =
-    drag !== null &&
-    drag.target !== null &&
-    drag.target.containerId === field.id &&
-    drag.target.beforeId === null
+  // The append indicator shows when either a pointer drag or a keyboard move
+  // resolves to appending into this container (its zone is the target, no node
+  // anchor before which to insert).
+  const appendIndicator = indicatorAt(drag, keyboard.move, field.id, null)
 
   return (
     <div
@@ -146,8 +148,55 @@ const ContainerZone = ({
           ))}
         </SortableContext>
       )}
-      {appendingHere && <DropIndicator valid={drag?.plan?.ok ?? false} />}
+      {appendIndicator.show && <DropIndicator valid={appendIndicator.valid} />}
     </div>
+  )
+}
+
+/**
+ * The dedicated keyboard "Move field" affordance on a node: a focusable button
+ * that picks the field up (`Enter`/`Space`), then — while grabbed — routes the
+ * arrow keys to step the target cursor and `Enter`/`Escape` to drop/cancel
+ * (Requirement 5.2-5.4). Propagation is stopped on a handled key so neither the
+ * `@dnd-kit` pointer-drag sensor on the grip nor the global undo/redo shortcuts
+ * also fire. It registers its element with the keyboard-move controller so
+ * focus is restored here after a commit, and mirrors the grabbed state through
+ * `aria-grabbed`.
+ */
+const MoveFieldButton = ({ fieldId }: { fieldId: string }) => {
+  const keyboard = useKeyboardMoveContext()
+  const grabbed = keyboard.isGrabbed(fieldId)
+
+  const handleMoveKey = useCallback(
+    (event: ReactKeyboardEvent) => {
+      if (grabbed) {
+        if (keyboard.handleGrabbedKey(event.key)) {
+          event.preventDefault()
+          event.stopPropagation()
+        }
+        return
+      }
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault()
+        event.stopPropagation()
+        keyboard.grab(fieldId)
+      }
+    },
+    [grabbed, keyboard, fieldId]
+  )
+
+  return (
+    <button
+      type="button"
+      aria-label="Move field"
+      aria-grabbed={grabbed}
+      aria-keyshortcuts="Enter Space ArrowUp ArrowDown Escape"
+      ref={(element) => keyboard.registerNodeRef(fieldId, element)}
+      className="text-muted-foreground focus-visible:ring-ring/50 rounded-sm outline-none focus-visible:ring-3"
+      onKeyDown={handleMoveKey}
+    >
+      <MoveIcon className="size-4" />
+    </button>
   )
 }
 
@@ -184,9 +233,11 @@ export const CanvasNode = ({
 }) => {
   const editor = useEditorContext()
   const { drag } = useCanvasDndContext()
+  const keyboard = useKeyboardMoveContext()
   const typeChange = useTypeChangeContext()
   const nameId = useId()
   const nameErrorId = `${nameId}-error`
+  const grabbed = keyboard.isGrabbed(field.id)
 
   const anchorData: NodeAnchorData = {
     kind: "node-anchor",
@@ -214,13 +265,9 @@ export const CanvasNode = ({
   const nameErr = fieldNameError(field.name)
   const children = containerChildren(field)
 
-  // Show the "insert before this node" indicator when the live drag resolves
-  // to dropping before this field.
-  const indicatingBefore =
-    drag !== null &&
-    drag.target !== null &&
-    drag.target.containerId === containerId &&
-    drag.target.beforeId === field.id
+  // Show the "insert before this node" indicator when either the live pointer
+  // drag or the keyboard move resolves to dropping before this field.
+  const indicator = indicatorAt(drag, keyboard.move, containerId, field.id)
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -234,15 +281,18 @@ export const CanvasNode = ({
 
   return (
     <div>
-      {indicatingBefore && <DropIndicator valid={drag?.plan?.ok ?? false} />}
+      {indicator.show && <DropIndicator valid={indicator.valid} />}
       <div
         ref={setNodeRef}
         style={style}
         role="group"
         aria-label={field.name === "" ? "Unnamed field" : field.name}
+        aria-grabbed={grabbed}
+        data-grabbed={grabbed ? "true" : undefined}
         className={cn(
           "border-border bg-card text-card-foreground rounded-md border p-2",
           selected && "border-ring bg-accent/40",
+          grabbed && "ring-ring ring-2",
           isDragging && "opacity-50"
         )}
       >
@@ -256,6 +306,8 @@ export const CanvasNode = ({
           >
             <GripVerticalIcon className="size-4" />
           </button>
+
+          <MoveFieldButton fieldId={field.id} />
 
           <button
             type="button"

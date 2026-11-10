@@ -616,6 +616,73 @@ export function moveField(
 }
 
 /**
+ * A candidate insert position for a keyboard-driven move, addressed by stable
+ * ids rather than an index path (the same addressing {@link MoveTarget} uses).
+ *
+ * A slot names a container and an insert anchor: `containerId` is the owning
+ * field id of the destination container (or `null` for the top level), and
+ * `beforeId` is the stable id of the sibling to insert before, or `null` to
+ * append at the end of that container.
+ */
+export interface MoveSlot {
+  /**
+   * The destination container, identified by the stable id of its owning field,
+   * or `null` for the top-level `fields` array.
+   */
+  containerId: string | null
+  /**
+   * The stable id of the sibling to insert before, or `null` to append at the
+   * end of the container.
+   */
+  beforeId: string | null
+}
+
+/**
+ * Enumerates every valid insert position in the field tree, in DOM/reading
+ * order, as a flat list of {@link MoveSlot}s a keyboard move can step through.
+ *
+ * For each field-holding container — the top level and every `Object` /
+ * `Array`-of-`Object`, visited depth-first — the walk yields one slot before
+ * each child (`beforeId` = that child's id) plus a trailing append slot
+ * (`beforeId` = `null`). A container's own slots are emitted at the point it is
+ * reached, and its children's slots immediately after, so the order matches the
+ * nested reading order the canvas renders. A primitive and an
+ * `Array`-of-primitive hold no children (`childrenOf` returns `undefined` — the
+ * same predicate the drop logic's `isDropContainer`/`containerChildren` use), so
+ * they contribute no inner slot.
+ *
+ * The result is a superset of legal destinations: it is purely structural
+ * (reachable insert positions) and does not itself reject self-containment or
+ * other move rules. The keyboard mode gates each slot with {@link planMove} for
+ * a specific moved field, so a slot that would be self-containing for that field
+ * is filtered at navigation time, not here. Every emitted slot is a resolvable
+ * container position, so {@link planMove} accepts it for any trivially movable
+ * field.
+ *
+ * Pure and React-free.
+ *
+ * @param state - The editor state whose insert positions are enumerated.
+ * @returns The ordered list of candidate insert slots across the whole tree.
+ */
+export function enumerateMoveSlots(state: EditorState): MoveSlot[] {
+  const slots: MoveSlot[] = []
+
+  const walk = (fields: EditorField[], containerId: string | null): void => {
+    for (const field of fields) {
+      slots.push({ containerId, beforeId: field.id })
+      const children = childrenOf(field)
+      if (children !== undefined) {
+        walk(children, field.id)
+      }
+    }
+    slots.push({ containerId, beforeId: null })
+  }
+
+  walk(state.fields, null)
+  return slots
+}
+
+/**
  * The result of a type change computed as a dry run.
  *
  * `needsConfirmation` is `true` exactly when the transition is lossy — the

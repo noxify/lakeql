@@ -52,6 +52,7 @@ export { evaluate, isValidForExport } from "./validation"
 export type {
   FieldPath,
   MovePlan,
+  MoveSlot,
   MoveTarget,
   TypeChangePlan,
 } from "./field-ops"
@@ -60,6 +61,7 @@ export {
   changeArrayItemType,
   changeFieldType,
   createField,
+  enumerateMoveSlots,
   findContainerPath,
   findFieldPath,
   moveField,

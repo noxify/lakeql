@@ -8,6 +8,7 @@ import { useEditorContext } from "../use-editor"
 import { CanvasNode } from "./canvas-node"
 import { ROOT_ZONE_ID } from "./dnd-types"
 import { DropIndicator } from "./drop-indicator"
+import { indicatorAt } from "./indicator-state"
 import { Palette } from "./palette"
 import {
   CanvasDndProvider,
@@ -15,6 +16,11 @@ import {
   useCanvasDndContext,
   useCanvasSensors,
 } from "./use-canvas-dnd"
+import {
+  KeyboardMoveProvider,
+  useKeyboardMove,
+  useKeyboardMoveContext,
+} from "./use-keyboard-move"
 import {
   TypeChangeProvider,
   useCanvasTypeChange,
@@ -30,6 +36,7 @@ import {
 const CanvasSurface = () => {
   const editor = useEditorContext()
   const { drag, rejectionReason } = useCanvasDndContext()
+  const keyboard = useKeyboardMoveContext()
   const typeChange = useTypeChangeContext()
   const { confirm: handleTypeChangeConfirm, cancel: handleTypeChangeCancel } =
     typeChange
@@ -39,11 +46,17 @@ const CanvasSurface = () => {
     data: { kind: "container-zone", containerId: null },
   })
 
-  const appendingTop =
-    drag !== null &&
-    drag.target !== null &&
-    drag.target.containerId === null &&
-    drag.target.beforeId === null
+  // The top-level append indicator, driven by whichever of the pointer drag or
+  // the keyboard move resolves to appending at the top level.
+  const appendTop = indicatorAt(drag, keyboard.move, null, null)
+
+  // A structurally-impossible keyboard target surfaces its reason the same way
+  // the pointer path does (shared `role="alert"` surface).
+  const keyboardReason =
+    keyboard.move !== null && !keyboard.move.plan.ok
+      ? (keyboard.move.plan.reason ?? "This move is not possible.")
+      : null
+  const alertReason = keyboardReason ?? rejectionReason
 
   return (
     <div className="grid gap-2">
@@ -51,9 +64,9 @@ const CanvasSurface = () => {
         <h2 className="text-sm font-medium">Fields</h2>
       </div>
 
-      {rejectionReason !== null && (
+      {alertReason !== null && (
         <p role="alert" className="text-destructive text-xs">
-          {rejectionReason}
+          {alertReason}
         </p>
       )}
 
@@ -84,7 +97,7 @@ const CanvasSurface = () => {
             </div>
           </SortableContext>
         )}
-        {appendingTop && <DropIndicator valid={drag?.plan?.ok ?? false} />}
+        {appendTop.show && <DropIndicator valid={appendTop.valid} />}
       </div>
 
       {/* One shared type-change confirmation dialog for the whole canvas,
@@ -94,6 +107,27 @@ const CanvasSurface = () => {
         onConfirm={handleTypeChangeConfirm}
         onCancel={handleTypeChangeCancel}
       />
+    </div>
+  )
+}
+
+/**
+ * A visually hidden `aria-live` region announcing keyboard structural actions
+ * (pick up, target change, drop, cancel, palette add) reusing the Iteration-1
+ * announcer pattern (Requirement 5.4). Polite so it does not interrupt the user
+ * mid-navigation; atomic so each new message is read in full.
+ */
+const KeyboardMoveAnnouncer = () => {
+  const keyboard = useKeyboardMoveContext()
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+      className="sr-only"
+      data-testid="keyboard-move-announcer"
+    >
+      {keyboard.announcement}
     </div>
   )
 }
@@ -110,6 +144,7 @@ const CanvasSurface = () => {
  */
 export const Canvas = () => {
   const dnd = useCanvasDnd()
+  const keyboard = useKeyboardMove()
   const typeChange = useCanvasTypeChange()
   const sensors = useCanvasSensors()
   const { onDragStart: handleDragStart } = dnd
@@ -118,19 +153,22 @@ export const Canvas = () => {
 
   return (
     <CanvasDndProvider value={dnd}>
-      <TypeChangeProvider value={typeChange}>
-        <DndContext
-          sensors={sensors}
-          onDragStart={handleDragStart}
-          onDragOver={handleDragOver}
-          onDragEnd={handleDragEnd}
-        >
-          <div className="grid gap-4">
-            <Palette />
-            <CanvasSurface />
-          </div>
-        </DndContext>
-      </TypeChangeProvider>
+      <KeyboardMoveProvider value={keyboard}>
+        <TypeChangeProvider value={typeChange}>
+          <DndContext
+            sensors={sensors}
+            onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
+            onDragEnd={handleDragEnd}
+          >
+            <div className="grid gap-4">
+              <KeyboardMoveAnnouncer />
+              <Palette />
+              <CanvasSurface />
+            </div>
+          </DndContext>
+        </TypeChangeProvider>
+      </KeyboardMoveProvider>
     </CanvasDndProvider>
   )
 }

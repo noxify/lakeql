@@ -1,5 +1,6 @@
 import { useDraggable } from "@dnd-kit/core"
 import { GripVerticalIcon } from "lucide-react"
+import type { KeyboardEvent as ReactKeyboardEvent } from "react"
 
 import type { EditorFieldType } from "@/core"
 import { cn } from "@/lib/utils"
@@ -7,6 +8,7 @@ import { cn } from "@/lib/utils"
 import { fieldTypeOptions } from "../field-meta"
 import type { NewFieldDragData } from "./dnd-types"
 import { paletteDraggableId } from "./dnd-types"
+import { useKeyboardMoveContext } from "./use-keyboard-move"
 
 /**
  * One draggable palette source: a styled card that, when dragged onto the
@@ -14,10 +16,24 @@ import { paletteDraggableId } from "./dnd-types"
  */
 const PaletteSource = ({ fieldType }: { fieldType: EditorFieldType }) => {
   const data: NewFieldDragData = { kind: "new-field", fieldType }
+  const keyboard = useKeyboardMoveContext()
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: paletteDraggableId(fieldType),
     data,
   })
+
+  // Activate-to-insert by keyboard: Enter/Space adds a field of this type into
+  // the currently-selected container (Requirement 5.2). Declared after the
+  // `@dnd-kit` listeners so it wins the `onKeyDown`, and it stops propagation so
+  // the coordinate-based keyboard sensor does not also start a (useless) drag.
+  const onKeyDown = (event: ReactKeyboardEvent): void => {
+    if (event.key !== "Enter" && event.key !== " ") {
+      return
+    }
+    event.preventDefault()
+    event.stopPropagation()
+    keyboard.addFromPalette(fieldType)
+  }
 
   return (
     <button
@@ -25,11 +41,12 @@ const PaletteSource = ({ fieldType }: { fieldType: EditorFieldType }) => {
       type="button"
       aria-label={`Add ${fieldType} field`}
       className={cn(
-        "border-border bg-card text-card-foreground hover:border-ring flex w-full cursor-grab items-center gap-2 rounded-md border px-3 py-2 text-left text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
+        "border-border bg-card text-card-foreground hover:border-ring focus-visible:border-ring focus-visible:ring-ring/50 flex w-full cursor-grab items-center gap-2 rounded-md border px-3 py-2 text-left text-sm outline-none focus-visible:ring-3",
         isDragging && "opacity-50"
       )}
       {...attributes}
       {...listeners}
+      onKeyDown={onKeyDown}
     >
       <GripVerticalIcon className="text-muted-foreground size-4 shrink-0" />
       <span className="font-medium">{fieldType}</span>
