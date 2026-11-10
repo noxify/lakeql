@@ -34,14 +34,28 @@ describe("validation kinds per field type (task 13)", () => {
 })
 
 describe("validation defaults", () => {
-  it("seeds min/max with a numeric value and regex with an empty pattern", () => {
-    expect(createValidation("min")).toStrictEqual({ type: "min", value: 0 })
-    expect(createValidation("max")).toStrictEqual({ type: "max", value: 0 })
+  it("seeds min/max incomplete (NaN)", () => {
+    const min = createValidation("min")
+    expect(min.type).toBe("min")
+    expect(Number.isNaN((min as { value: number }).value)).toBeTruthy()
+    const max = createValidation("max")
+    expect(max.type).toBe("max")
+    expect(Number.isNaN((max as { value: number }).value)).toBeTruthy()
+  })
+
+  it("seeds regex with an empty pattern and value-less kinds bare", () => {
     expect(createValidation("regex")).toStrictEqual({
       type: "regex",
       pattern: "",
     })
     expect(createValidation("email")).toStrictEqual({ type: "email" })
+  })
+
+  it("seeds a min/max entry that the export gate blocks until filled", () => {
+    // A freshly added numeric bound is incomplete (NaN), so its inline error
+    // fires and — via the gate's finiteness check — Export stays blocked.
+    expect(validationError(createValidation("min"))).toBeDefined()
+    expect(validationError(createValidation("max"))).toBeDefined()
   })
 })
 
@@ -89,5 +103,12 @@ describe("partitioning mode derivation (task 14)", () => {
     expect(offersPartitioningFormat(false)).toBeFalsy()
     expect(offersPartitioningFormat("year/month/day")).toBeFalsy()
     expect(offersPartitioningFormat("created_at:day")).toBeFalsy()
+  })
+
+  it("hides the format control for the transient empty 'field' seed", () => {
+    // Entering field mode seeds "", which is incomplete, not a legacy
+    // single-field string — the granularity select must stay hidden until a
+    // field name is typed.
+    expect(offersPartitioningFormat("")).toBeFalsy()
   })
 })

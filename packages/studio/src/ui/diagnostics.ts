@@ -6,8 +6,8 @@ import type { ValidationResult } from "@/core"
  * rendering, and so the summary wording lives in one place.
  *
  * @param validation - The current validity-gate result from the core.
- * @returns One message per diagnostic, across the schema, duplicate, and regex
- *   diagnostic kinds, in that order.
+ * @returns One message per diagnostic, across the schema, duplicate, regex, and
+ *   numeric-bound diagnostic kinds, in that order.
  */
 export function summarizeDiagnostics(validation: ValidationResult): string[] {
   return [
@@ -22,6 +22,9 @@ export function summarizeDiagnostics(validation: ValidationResult): string[] {
     ),
     ...validation.badRegex.map(
       (bad) => `Invalid regex "${bad.pattern}": ${bad.message}`
+    ),
+    ...validation.badNumber.map(
+      (bad) => `${bad.kind === "min" ? "Min" : "Max"} must be a finite number`
     ),
   ]
 }

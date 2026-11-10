@@ -119,6 +119,9 @@ export function exportToJson(state: EditorState): ExportResult {
       ...result.badRegex.map(
         (bad) => `Invalid regex pattern "${bad.pattern}": ${bad.message}`
       ),
+      ...result.badNumber.map(
+        (bad) => `${bad.kind} bound must be a finite number`
+      ),
     ]
     return { ok: false, errors }
   }

@@ -13,6 +13,7 @@ describe("diagnostic summary", () => {
       schemaIssues: [],
       duplicates: [],
       badRegex: [],
+      badNumber: [],
     }
     expect(summarizeDiagnostics(valid)).toStrictEqual([])
   })
@@ -23,6 +24,7 @@ describe("diagnostic summary", () => {
       schemaIssues: [{ path: ["fields", 0, "name"], message: "Invalid input" }],
       duplicates: [],
       badRegex: [],
+      badNumber: [],
     }
     expect(summarizeDiagnostics(result)).toStrictEqual([
       "fields.0.name: Invalid input",
@@ -37,10 +39,24 @@ describe("diagnostic summary", () => {
       badRegex: [
         { pattern: "(", message: "Unterminated group", fieldId: "f1" },
       ],
+      badNumber: [],
     }
     expect(summarizeDiagnostics(result)).toStrictEqual([
       'Duplicate field "id"',
       'Invalid regex "(": Unterminated group',
+    ])
+  })
+
+  it("describes a non-finite numeric bound", () => {
+    const result: ValidationResult = {
+      validForExport: false,
+      schemaIssues: [],
+      duplicates: [],
+      badRegex: [],
+      badNumber: [{ kind: "min", value: Number.NaN, fieldId: "f1" }],
+    }
+    expect(summarizeDiagnostics(result)).toStrictEqual([
+      "Min must be a finite number",
     ])
   })
 

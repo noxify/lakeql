@@ -74,8 +74,10 @@ export function validationKindsForType(
 
 /**
  * Builds a default {@link FieldValidation} for a newly added kind, seeding the
- * value-carrying kinds (`min`/`max`/`regex`) with an empty/zero value the user
- * then edits.
+ * value-carrying kinds with an incomplete-until-filled value the user then
+ * edits: `min`/`max` seed `NaN` (rendered as an empty input and blocked by the
+ * export gate until a finite number is entered) and `regex` seeds an empty
+ * pattern. This avoids silently exporting an unintended default such as `0`.
  *
  * @param kind - The validation kind to create.
  * @returns A fresh {@link FieldValidation} of that kind.
@@ -83,10 +85,10 @@ export function validationKindsForType(
 export function createValidation(kind: ValidationKind): FieldValidation {
   switch (kind) {
     case "min": {
-      return { type: "min", value: 0 }
+      return { type: "min", value: Number.NaN }
     }
     case "max": {
-      return { type: "max", value: 0 }
+      return { type: "max", value: Number.NaN }
     }
     case "regex": {
       return { type: "regex", pattern: "" }
@@ -146,6 +148,10 @@ export function isCustomPartitioning(partitioning: boolean | string): boolean {
  * given partitioning value: only in the non-custom, enabled modes
  * (`timestamp`, or a legacy single-field string), never when off or custom.
  *
+ * An empty string — the transient seed when the user first enters "field" mode
+ * — is treated as incomplete, not a legacy single-field string, so the
+ * granularity control stays hidden until a non-empty field name is typed.
+ *
  * @param partitioning - The current partitioning value.
  * @returns `true` when the format control is active.
  */
@@ -153,6 +159,9 @@ export function offersPartitioningFormat(
   partitioning: boolean | string
 ): boolean {
   if (partitioning === false) {
+    return false
+  }
+  if (partitioning === "") {
     return false
   }
   return !isCustomPartitioning(partitioning)

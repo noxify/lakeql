@@ -46,13 +46,28 @@ export interface BadRegexDiagnostic {
 }
 
 /**
+ * A non-finite numeric-bound finding: a `min`/`max` validation whose `value` is
+ * `NaN` or infinite. The schema's `z.number()` admits these (they are
+ * `typeof === "number"`), but `JSON.stringify` serializes them as `null`,
+ * producing a file the CLI rejects — so the gate must block it.
+ */
+export interface BadNumberDiagnostic {
+  /** The validation kind carrying the bad value. */
+  kind: "min" | "max"
+  /** The non-finite value (`NaN` or `±Infinity`). */
+  value: number
+  /** The `id` of the editor field carrying the bound. */
+  fieldId: string
+}
+
+/**
  * The result of the "valid for export" gate.
  *
  * `validForExport` is the single boolean the export path consumes. It is the
- * conjunction of a schema parse, the absence of duplicate field names, and
- * every `regex` pattern being constructible. Each failure kind is reported
- * separately and, where possible, keyed to the editor field `id` so the UI can
- * render inline diagnostics.
+ * conjunction of a schema parse, the absence of duplicate field names, every
+ * `regex` pattern being constructible, and every `min`/`max` bound being a
+ * finite number. Each failure kind is reported separately and, where possible,
+ * keyed to the editor field `id` so the UI can render inline diagnostics.
  */
 export interface ValidationResult {
   /** Whether the current state may be exported. */
@@ -63,6 +78,8 @@ export interface ValidationResult {
   duplicates: DuplicateDiagnostic[]
   /** Unconstructible regex patterns, empty when all are constructible. */
   badRegex: BadRegexDiagnostic[]
+  /** Non-finite `min`/`max` bounds, empty when every bound is finite. */
+  badNumber: BadNumberDiagnostic[]
 }
 
 /**
@@ -194,6 +211,60 @@ function collectUnconstructibleRegex(
 }
 
 /**
+ * Collects every `min`/`max` validation whose numeric `value` is not finite
+ * (`NaN` or `±Infinity`), pairing each with the editor field it came from.
+ *
+ * The schema's `z.number()` accepts these values, but exporting them through
+ * `JSON.stringify` emits `null`, which the CLI then rejects on import. Keying
+ * the finding to the field `id` lets the UI surface it inline, and counting it
+ * against the gate keeps the "valid for export ⇒ CLI-consumable" guarantee.
+ *
+ * Mirrors the editor tree and candidate definition in lockstep, exactly as
+ * {@link collectUnconstructibleRegex} does.
+ */
+function collectNonFiniteNumericBounds(
+  editorFields: EditorField[],
+  defFields: FieldDefinition[]
+): BadNumberDiagnostic[] {
+  const findings: BadNumberDiagnostic[] = []
+
+  const walk = (editors: EditorField[], defs: FieldDefinition[]): void => {
+    for (const [i, def] of defs.entries()) {
+      const editor = editors[i]
+      if (editor === undefined) {
+        continue
+      }
+
+      for (const validation of def.options?.validations ?? []) {
+        if (validation.type !== "min" && validation.type !== "max") {
+          continue
+        }
+        if (!Number.isFinite(validation.value)) {
+          findings.push({
+            kind: validation.type,
+            value: validation.value,
+            fieldId: editor.id,
+          })
+        }
+      }
+
+      if (def.type === "Object" && def.fields !== undefined) {
+        walk(editor.fields ?? [], def.fields)
+      } else if (
+        def.type === "Array" &&
+        def.items?.type === "Object" &&
+        def.items.fields !== undefined
+      ) {
+        walk(editor.items?.fields ?? [], def.items.fields)
+      }
+    }
+  }
+
+  walk(editorFields, defFields)
+  return findings
+}
+
+/**
  * Resolves the editor field that owns a given duplicate finding so the
  * diagnostic can carry its `id`. The finding's `path` is a list of field names;
  * the duplicate is the second occurrence of `name` at that level.
@@ -243,9 +314,11 @@ function resolveDuplicateField(
  * Builds the candidate definition via {@link toDefinition}, then composes the
  * three checks in order: a parse against `endpointDefinitionSchema`, the
  * duplicate-field-name check (`findDuplicateFieldNames`, which the schema does
- * not itself enforce), and regex constructibility (each `regex` pattern must
- * survive `new RegExp(pattern)`, matching how the CLI emits it). The definition
- * is valid for export only when all three pass.
+ * not itself enforce), regex constructibility (each `regex` pattern must
+ * survive `new RegExp(pattern)`, matching how the CLI emits it), and numeric
+ * finiteness (each `min`/`max` bound must be a finite number, since `NaN`
+ * serializes to `null` and the CLI would then reject it). The definition is
+ * valid for export only when all four pass.
  *
  * @param state - The live editor state to evaluate.
  * @returns A {@link ValidationResult} with the gate result and field-keyed
@@ -282,10 +355,18 @@ export function evaluate(state: EditorState): ValidationResult {
 
   const badRegex = collectUnconstructibleRegex(state.fields, candidate.fields)
 
-  const validForExport =
-    parsed.success && duplicates.length === 0 && badRegex.length === 0
+  const badNumber = collectNonFiniteNumericBounds(
+    state.fields,
+    candidate.fields
+  )
 
-  return { validForExport, schemaIssues, duplicates, badRegex }
+  const validForExport =
+    parsed.success &&
+    duplicates.length === 0 &&
+    badRegex.length === 0 &&
+    badNumber.length === 0
+
+  return { validForExport, schemaIssues, duplicates, badRegex, badNumber }
 }
 
 /**

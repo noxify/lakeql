@@ -159,6 +159,103 @@ describe("valid-for-export gate", () => {
     expect(isValidForExport(state)).toBeTruthy()
   })
 
+  it("rejects a non-finite min/max bound with the field id", () => {
+    const state = fromDefinition({
+      version: "1.0",
+      tableName: "t",
+      catalog: "c",
+      schema: "s",
+      fields: [
+        {
+          name: "score",
+          type: "Integer",
+          options: { validations: [{ type: "min", value: Number.NaN }] },
+        },
+      ],
+      mutation: false,
+    })
+    const result = evaluate(state)
+    expect(result.validForExport).toBeFalsy()
+    expect(result.badNumber).toHaveLength(1)
+    const bad = defined(result.badNumber[0])
+    expect(bad.kind).toBe("min")
+    expect(bad.fieldId).toBe(defined(state.fields[0]).id)
+  })
+
+  it("rejects an infinite max bound", () => {
+    const state = fromDefinition({
+      version: "1.0",
+      tableName: "t",
+      catalog: "c",
+      schema: "s",
+      fields: [
+        {
+          name: "score",
+          type: "Float",
+          options: {
+            validations: [{ type: "max", value: Number.POSITIVE_INFINITY }],
+          },
+        },
+      ],
+      mutation: false,
+    })
+    const result = evaluate(state)
+    expect(result.validForExport).toBeFalsy()
+    expect(defined(result.badNumber[0]).kind).toBe("max")
+  })
+
+  it("accepts a finite min/max bound", () => {
+    const state = fromDefinition({
+      version: "1.0",
+      tableName: "t",
+      catalog: "c",
+      schema: "s",
+      fields: [
+        {
+          name: "score",
+          type: "Integer",
+          options: { validations: [{ type: "min", value: 0 }] },
+        },
+      ],
+      mutation: false,
+    })
+    const result = evaluate(state)
+    expect(result.validForExport).toBeTruthy()
+    expect(result.badNumber).toStrictEqual([])
+  })
+
+  it("detects a non-finite bound nested inside an Array-of-Object item", () => {
+    const state = fromDefinition({
+      version: "1.0",
+      tableName: "t",
+      catalog: "c",
+      schema: "s",
+      fields: [
+        {
+          name: "items",
+          type: "Array",
+          items: {
+            type: "Object",
+            fields: [
+              {
+                name: "qty",
+                type: "Integer",
+                options: { validations: [{ type: "min", value: Number.NaN }] },
+              },
+            ],
+          },
+        },
+      ],
+      mutation: false,
+    })
+    const result = evaluate(state)
+    expect(result.validForExport).toBeFalsy()
+    const itemFields = defined(defined(state.fields[0]).items).fields
+    expect(defined(result.badNumber[0]).fieldId).toBe(
+      defined(defined(itemFields)[0]).id
+    )
+  })
+
   it("detects a bad regex nested inside an Array-of-Object item", () => {
     const state = fromDefinition({
       version: "1.0",

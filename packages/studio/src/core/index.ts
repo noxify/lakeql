@@ -37,6 +37,7 @@ export { fromDefinition, toDefinition } from "./mapping"
 
 export type { EndpointDefinitionFormat } from "@lakeql/schema-generator/endpoint-schema"
 export type {
+  BadNumberDiagnostic,
   BadRegexDiagnostic,
   DuplicateDiagnostic,
   SchemaDiagnostic,
