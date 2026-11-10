@@ -335,7 +335,6 @@ const FieldNode = ({
         variant="ghost"
         size="icon-sm"
         aria-label="Remove field"
-        tabIndex={-1}
         onClick={() => editor.removeField(path)}
       >
         <Trash2Icon />
