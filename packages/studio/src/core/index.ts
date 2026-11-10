@@ -50,9 +50,12 @@ export {
   changeArrayItemType,
   changeFieldType,
   createField,
+  findFieldPath,
   planArrayItemTypeChange,
   planTypeChange,
   removeField,
+  renameField,
+  setFieldOptions,
 } from "./field-ops"
 
 export type { DownloadEnvironment, ExportResult, ImportResult } from "./io"

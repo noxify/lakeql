@@ -178,6 +178,36 @@ describe("mid-typing reload inside the debounce window", () => {
     reloaded.dispose()
   })
 
+  it("re-arms the flush listeners after a dispose (StrictMode remount)", () => {
+    const storage = fakeStorage()
+    const scheduler = manualScheduler()
+    const events = fakeEventTarget()
+
+    const session = createPersistence({
+      storage,
+      scheduler,
+      eventTarget: events,
+    })
+
+    // Dev StrictMode simulates an immediate unmount after the first mount; the
+    // dispose detaches the flush listeners from this still-live instance.
+    session.dispose()
+
+    // On the second mount the session keeps being used. A later save re-arms
+    // the listeners, so the best-effort flush must still fire.
+    session.save(stateNamed("kept"))
+    expect(storage.map.size).toBe(0)
+    events.dispatch("pagehide")
+
+    const reloaded = createPersistence({
+      storage,
+      scheduler,
+      eventTarget: events,
+    })
+    expect(reloaded.restore().tableName).toBe("kept")
+    reloaded.dispose()
+  })
+
   it("visibilitychange also flushes the pending state", () => {
     const storage = fakeStorage()
     const scheduler = manualScheduler()
@@ -235,6 +265,51 @@ describe("storage failure degrades gracefully", () => {
 
     // The in-memory mirror still serves the latest state.
     expect(session.restore().tableName).toBe("x")
+    session.dispose()
+  })
+
+  it("notifies onDegraded subscribers when a write fails after mount", () => {
+    const onWarning = vi.fn<(message: string, cause?: unknown) => void>()
+    const denying: StorageLike = {
+      getItem: () => null,
+      setItem: () => {
+        throw new Error("QuotaExceededError")
+      },
+      removeItem: () => {
+        /* no-op */
+      },
+    }
+    const scheduler = manualScheduler()
+    const session = createPersistence({
+      storage: denying,
+      scheduler,
+      eventTarget: undefined,
+      onWarning,
+    })
+
+    // Subscribe before any failure: not yet degraded, so no immediate call.
+    const degradedListener = vi.fn<() => void>()
+    session.onDegraded(degradedListener)
+    expect(degradedListener).not.toHaveBeenCalled()
+
+    // A post-subscribe write fails and must notify the subscriber reactively.
+    session.save(stateNamed("x"))
+    scheduler.fire()
+    expect(degradedListener).toHaveBeenCalledOnce()
+    session.dispose()
+  })
+
+  it("invokes an onDegraded subscriber immediately when already degraded", () => {
+    const onWarning = vi.fn<(message: string, cause?: unknown) => void>()
+    const session = createPersistence({
+      storage: undefined,
+      eventTarget: undefined,
+      onWarning,
+    })
+    expect(session.degraded).toBeTruthy()
+    const listener = vi.fn<() => void>()
+    session.onDegraded(listener)
+    expect(listener).toHaveBeenCalledOnce()
     session.dispose()
   })
 

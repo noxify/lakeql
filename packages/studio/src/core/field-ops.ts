@@ -1,3 +1,5 @@
+import type { FieldOptions } from "@lakeql/schema-generator/endpoint-schema"
+
 import type {
   EditorArrayItem,
   EditorArrayItemType,
@@ -169,6 +171,116 @@ export function removeField(state: EditorState, path: FieldPath): EditorState {
       children.filter((_, i) => i !== index)
     ),
   }
+}
+
+/**
+ * Renames the field addressed by `path`, preserving its type, structural
+ * children, and options.
+ *
+ * A field `name` is valid for every type and never touches structure, so this
+ * is the pure-core counterpart of a continuous (coalesced) text edit: the UI
+ * routes name edits through here rather than re-walking the tree itself, so all
+ * field mutation stays in one place.
+ *
+ * @param state - The current editor state.
+ * @param path - Path to the field to rename. Must be non-empty.
+ * @param name - The new field name (may be empty while the user is typing).
+ * @returns A new {@link EditorState}; the input is not mutated.
+ * @throws {Error} When `path` is empty.
+ */
+export function renameField(
+  state: EditorState,
+  path: FieldPath,
+  name: string
+): EditorState {
+  if (path.length === 0) {
+    throw new Error("renameField requires a non-empty path")
+  }
+  const parentPath = path.slice(0, -1)
+  const index = path.at(-1) as number
+  return {
+    ...state,
+    fields: updateFieldsAt(state.fields, parentPath, (children) =>
+      children.map((child, i) => (i === index ? { ...child, name } : child))
+    ),
+  }
+}
+
+/**
+ * Sets (or clears) the `options` of the field addressed by `path`.
+ *
+ * Passing `undefined` removes the `options` key entirely. The mapping layer
+ * already omits empty options on export, but clearing here keeps the live state
+ * tidy and makes "no options set" explicit. `name`, `type`, and structural
+ * children are untouched.
+ *
+ * @param state - The current editor state.
+ * @param path - Path to the field whose options are set. Must be non-empty.
+ * @param options - The new options, or `undefined` to clear them.
+ * @returns A new {@link EditorState}; the input is not mutated.
+ * @throws {Error} When `path` is empty.
+ */
+export function setFieldOptions(
+  state: EditorState,
+  path: FieldPath,
+  options: FieldOptions | undefined
+): EditorState {
+  if (path.length === 0) {
+    throw new Error("setFieldOptions requires a non-empty path")
+  }
+  const parentPath = path.slice(0, -1)
+  const index = path.at(-1) as number
+  return {
+    ...state,
+    fields: updateFieldsAt(state.fields, parentPath, (children) =>
+      children.map((child, i) => {
+        if (i !== index) {
+          return child
+        }
+        if (options === undefined) {
+          const { options: _dropped, ...rest } = child
+          return rest
+        }
+        return { ...child, options }
+      })
+    ),
+  }
+}
+
+/**
+ * Finds the path to the field carrying `fieldId`, searching the whole tree
+ * (top-level fields, `Object` children, and `Array`-of-`Object` item children).
+ *
+ * Returns `undefined` when no field has that id — for example when the selected
+ * field was just removed. Lets a panel that holds only a field `id` (selection)
+ * resolve the path the field ops require.
+ *
+ * @param fields - The top-level field array to search.
+ * @param fieldId - The client-side id to locate.
+ * @returns The {@link FieldPath} to the field, or `undefined` when not found.
+ */
+export function findFieldPath(
+  fields: EditorField[],
+  fieldId: string
+): FieldPath | undefined {
+  for (const [index, field] of fields.entries()) {
+    if (field.id === fieldId) {
+      return [index]
+    }
+    const children =
+      field.type === "Object"
+        ? field.fields
+        : field.type === "Array" && field.items?.type === "Object"
+          ? field.items.fields
+          : undefined
+    if (children !== undefined) {
+      const nested = findFieldPath(children, fieldId)
+      if (nested !== undefined) {
+        return [index, ...nested]
+      }
+    }
+  }
+  return undefined
 }
 
 /**

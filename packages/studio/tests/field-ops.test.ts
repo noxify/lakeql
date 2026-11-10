@@ -5,7 +5,10 @@ import {
   changeArrayItemType,
   changeFieldType,
   createField,
+  findFieldPath,
   removeField,
+  renameField,
+  setFieldOptions,
 } from "@/core/field-ops"
 import { fromDefinition } from "@/core/mapping"
 import type { EditorState } from "@/core/model"
@@ -87,6 +90,141 @@ describe("add / remove at any nesting level", () => {
     const fields = defined(defined(state.fields[0]).fields)
     expect(fields).toHaveLength(1)
     expect(defined(fields[0]).type).toBe("Integer")
+  })
+})
+
+describe("rename at any nesting level", () => {
+  it("renames a top-level field, preserving type and options", () => {
+    const state = fromDefinition({
+      version: "1.0",
+      tableName: "t",
+      catalog: "c",
+      schema: "s",
+      fields: [{ name: "old", type: "Integer", options: { required: true } }],
+      mutation: false,
+    })
+    const next = renameField(state, [0], "renamed")
+    const field = defined(next.fields[0])
+    expect(field.name).toBe("renamed")
+    expect(field.type).toBe("Integer")
+    expect(field.options).toStrictEqual({ required: true })
+  })
+
+  it("renames a nested Object child without touching siblings", () => {
+    let state = addField(baseState(), [], {
+      ...createField("Object"),
+      name: "obj",
+    })
+    state = addField(state, [0], { ...createField("String"), name: "a" })
+    state = addField(state, [0], { ...createField("String"), name: "b" })
+    const next = renameField(state, [0, 1], "b_renamed")
+    const children = defined(defined(next.fields[0]).fields)
+    expect(defined(children[0]).name).toBe("a")
+    expect(defined(children[1]).name).toBe("b_renamed")
+  })
+
+  it("renames a child inside an Array-of-Object item", () => {
+    const state = arrayOfObject()
+    const next = renameField(state, [0, 0], "sku_renamed")
+    const items = defined(defined(next.fields[0]).items)
+    expect(defined(defined(items.fields)[0]).name).toBe("sku_renamed")
+  })
+
+  it("does not mutate the input state", () => {
+    const state = fromDefinition({
+      version: "1.0",
+      tableName: "t",
+      catalog: "c",
+      schema: "s",
+      fields: [{ name: "old", type: "String" }],
+      mutation: false,
+    })
+    const next = renameField(state, [0], "new")
+    expect(defined(state.fields[0]).name).toBe("old")
+    expect(defined(next.fields[0]).name).toBe("new")
+  })
+
+  it("throws on an empty path", () => {
+    expect(() => renameField(baseState(), [], "x")).toThrow(
+      "requires a non-empty path"
+    )
+  })
+})
+
+describe("setting field options", () => {
+  it("sets options on a field", () => {
+    const state = addField(baseState(), [], {
+      ...createField("String"),
+      name: "x",
+    })
+    const next = setFieldOptions(state, [0], { required: true })
+    expect(defined(next.fields[0]).options).toStrictEqual({ required: true })
+  })
+
+  it("clears options with undefined", () => {
+    const state = fromDefinition({
+      version: "1.0",
+      tableName: "t",
+      catalog: "c",
+      schema: "s",
+      fields: [{ name: "x", type: "String", options: { required: true } }],
+      mutation: false,
+    })
+    const next = setFieldOptions(state, [0], undefined)
+    expect(defined(next.fields[0]).options).toBeUndefined()
+  })
+
+  it("sets options on a nested field without touching siblings", () => {
+    let state = addField(baseState(), [], {
+      ...createField("Object"),
+      name: "obj",
+    })
+    state = addField(state, [0], { ...createField("String"), name: "a" })
+    state = addField(state, [0], { ...createField("String"), name: "b" })
+    const next = setFieldOptions(state, [0, 1], {
+      validations: [{ type: "email" }],
+    })
+    const children = defined(defined(next.fields[0]).fields)
+    expect(defined(children[0]).options).toBeUndefined()
+    expect(defined(children[1]).options).toStrictEqual({
+      validations: [{ type: "email" }],
+    })
+  })
+
+  it("throws on an empty path", () => {
+    expect(() => setFieldOptions(baseState(), [], undefined)).toThrow(
+      "requires a non-empty path"
+    )
+  })
+})
+
+describe("finding a field path by id", () => {
+  it("finds a top-level field by id", () => {
+    const field = { ...createField("String"), name: "x" }
+    const state = addField(baseState(), [], field)
+    expect(findFieldPath(state.fields, field.id)).toStrictEqual([0])
+  })
+
+  it("finds a deeply nested Object child by id", () => {
+    const leaf = { ...createField("String"), name: "leaf" }
+    let state = addField(baseState(), [], {
+      ...createField("Object"),
+      name: "obj",
+    })
+    state = addField(state, [0], { ...createField("Object"), name: "inner" })
+    state = addField(state, [0, 0], leaf)
+    expect(findFieldPath(state.fields, leaf.id)).toStrictEqual([0, 0, 0])
+  })
+
+  it("finds a child inside an Array-of-Object item", () => {
+    const state = arrayOfObject()
+    const [child] = defined(defined(defined(state.fields[0]).items).fields)
+    expect(findFieldPath(state.fields, defined(child).id)).toStrictEqual([0, 0])
+  })
+
+  it("returns undefined for an unknown id", () => {
+    const state = addField(baseState(), [], createField("String"))
+    expect(findFieldPath(state.fields, "missing")).toBeUndefined()
   })
 })
 

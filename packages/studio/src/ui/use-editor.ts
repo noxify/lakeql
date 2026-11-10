@@ -1,3 +1,4 @@
+import type { FieldOptions } from "@lakeql/schema-generator/endpoint-schema"
 import {
   createContext,
   useCallback,
@@ -12,6 +13,7 @@ import type {
   EditorArrayItemType,
   EditorField,
   EditorFieldType,
+  EditorMutation,
   EditorState,
   FieldPath,
   ImportResult,
@@ -31,6 +33,8 @@ import {
   evaluate,
   importFromFile,
   removeField as removeFieldOp,
+  renameField as renameFieldOp,
+  setFieldOptions as setFieldOptionsOp,
 } from "@/core"
 
 /**
@@ -73,6 +77,26 @@ export interface EditorApi {
   addField: (parentPath: FieldPath, field?: EditorField) => void
   /** Removes the field at `path`. */
   removeField: (path: FieldPath) => void
+  /**
+   * Renames the field at `path` as a continuous (coalesced) edit. Routes
+   * through the core `renameField` op so all field mutation stays in one place.
+   */
+  renameField: (path: FieldPath, name: string) => void
+  /**
+   * Sets (or clears, with `undefined`) the options of the field at `path`.
+   * Commits immediately — toggling required/readOnly or adding/removing a
+   * validation is a discrete action.
+   */
+  setFieldOptions: (path: FieldPath, options: FieldOptions | undefined) => void
+  /**
+   * Replaces the mutation configuration. By default commits immediately (a
+   * discrete toggle/select); pass `commit: false` for a continuous text edit
+   * (such as typing `basePath`) that settles on blur via {@link commitEdits}.
+   */
+  setMutation: (
+    mutation: EditorMutation,
+    options?: { commit?: boolean }
+  ) => void
   /** Requests a field type change; lossy changes await confirmation. */
   changeFieldType: (
     path: FieldPath,
@@ -131,10 +155,29 @@ export function useEditor(): EditorApi {
 
   const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null)
 
+  // Mirror the persistence degraded flag into React state so a post-mount
+  // storage failure (a `save` that only fails once storage fills up or is
+  // denied mid-session) surfaces the non-blocking warning reactively, instead
+  // of being read off the getter during render where a later flip would not
+  // trigger a re-render.
+  const [persistenceDegraded, setPersistenceDegraded] = useState(
+    () => persistence.degraded
+  )
+
   const state = currentState(committer.history)
 
-  // Release persistence timers/listeners when the builder unmounts.
-  useEffect(() => () => persistence.dispose(), [persistence])
+  // Subscribe to degraded transitions and release persistence timers/listeners
+  // when the builder unmounts. The subscription fires immediately if the layer
+  // is already degraded at mount.
+  useEffect(() => {
+    const unsubscribe = persistence.onDegraded(() => {
+      setPersistenceDegraded(true)
+    })
+    return () => {
+      unsubscribe()
+      persistence.dispose()
+    }
+  }, [persistence])
 
   // Autosave the live state on every change (debounced inside persistence).
   useEffect(() => {
@@ -182,6 +225,34 @@ export function useEditor(): EditorApi {
       setSelectedFieldId(null)
     },
     [committer, commit]
+  )
+
+  const renameField = useCallback(
+    (path: FieldPath, name: string) => {
+      // A rename is a continuous (coalesced) edit — valid for every type and
+      // never structural — so it replaces the live state without committing a
+      // snapshot until the edit settles on blur.
+      replaceState(renameFieldOp(currentState(committer.history), path, name))
+    },
+    [committer, replaceState]
+  )
+
+  const setFieldOptions = useCallback(
+    (path: FieldPath, options: FieldOptions | undefined) => {
+      commit(setFieldOptionsOp(currentState(committer.history), path, options))
+    },
+    [committer, commit]
+  )
+
+  const setMutation = useCallback(
+    (mutation: EditorMutation, options: { commit?: boolean } = {}) => {
+      const shouldCommit = options.commit ?? true
+      replaceState(
+        { ...currentState(committer.history), mutation },
+        { commit: shouldCommit }
+      )
+    },
+    [committer, replaceState]
   )
 
   const changeFieldType = useCallback(
@@ -245,13 +316,16 @@ export function useEditor(): EditorApi {
   return {
     state,
     validation,
-    persistenceDegraded: persistence.degraded,
+    persistenceDegraded,
     selectedFieldId,
     selectField: setSelectedFieldId,
     replaceState,
     commitEdits,
     addField,
     removeField,
+    renameField,
+    setFieldOptions,
+    setMutation,
     changeFieldType,
     changeArrayItemType,
     importFile,

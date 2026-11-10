@@ -117,6 +117,22 @@ export interface Persistence {
    * or rejected a write.
    */
   readonly degraded: boolean
+  /**
+   * Subscribes to the one-way transition into the degraded state.
+   *
+   * Degradation can happen after mount — a `save` that only fails once storage
+   * fills up or is denied mid-session flips {@link degraded} without any other
+   * signal. A reactive consumer (the React hook) subscribes here so it can
+   * re-render and surface the non-blocking warning when that happens, instead
+   * of polling the getter. The listener fires at most once (degradation is
+   * one-way); if the layer is already degraded when you subscribe it is invoked
+   * immediately.
+   *
+   * @param listener - Called when the layer transitions into (or is already in)
+   *   the degraded state.
+   * @returns An unsubscribe function.
+   */
+  onDegraded: (listener: () => void) => () => void
   /** Releases timers and event listeners. */
   dispose: () => void
 }
@@ -234,11 +250,18 @@ export function createPersistence(
   let latest: EditorState | null = null
   let pending = false
   let handle: unknown = null
+  // Subscribers notified on the one-way transition into the degraded state, so
+  // a post-mount storage failure surfaces reactively rather than being read off
+  // the getter during render.
+  const degradedListeners = new Set<() => void>()
 
   function markDegraded(message: string, cause?: unknown): void {
     if (!degraded) {
       degraded = true
       warn(`[lakeql/studio] ${message}`, cause)
+      for (const listener of degradedListeners) {
+        listener()
+      }
     }
   }
 
@@ -326,7 +349,41 @@ export function createPersistence(
     }
   }
 
+  // Best-effort synchronous flush on tab hide / navigation.
+  const flushListener = (): void => {
+    flush()
+  }
+
+  // Whether the flush listeners are currently attached. Guarding attach/detach
+  // with this flag makes both idempotent: React StrictMode double-invokes the
+  // dispose/remount cycle in dev, and without the guard the first simulated
+  // unmount would detach the listeners from this still-live instance and never
+  // re-add them, silently weakening the flush. `ensureFlushListeners` re-arms
+  // them on the next write after such a remount.
+  let flushAttached = false
+
+  function attachFlushListeners(): void {
+    if (flushAttached || eventTarget === undefined) {
+      return
+    }
+    eventTarget.addEventListener("visibilitychange", flushListener)
+    eventTarget.addEventListener("pagehide", flushListener)
+    flushAttached = true
+  }
+
+  function detachFlushListeners(): void {
+    if (!flushAttached || eventTarget === undefined) {
+      return
+    }
+    eventTarget.removeEventListener("visibilitychange", flushListener)
+    eventTarget.removeEventListener("pagehide", flushListener)
+    flushAttached = false
+  }
+
   function save(state: EditorState): void {
+    // Re-arm the flush listeners if a prior dispose (e.g. a StrictMode remount)
+    // detached them, so the best-effort synchronous flush keeps working.
+    attachFlushListeners()
     latest = state
     pending = true
     cancelTimer()
@@ -336,14 +393,7 @@ export function createPersistence(
     }, debounceMs)
   }
 
-  // Best-effort synchronous flush on tab hide / navigation.
-  const flushListener = (): void => {
-    flush()
-  }
-  if (eventTarget !== undefined) {
-    eventTarget.addEventListener("visibilitychange", flushListener)
-    eventTarget.addEventListener("pagehide", flushListener)
-  }
+  attachFlushListeners()
 
   function restore(): EditorState {
     if (collection === null) {
@@ -366,12 +416,24 @@ export function createPersistence(
     }
   }
 
+  function onDegraded(listener: () => void): () => void {
+    if (degraded) {
+      // Already degraded (e.g. an init-time storage failure): notify at once so
+      // a late subscriber still surfaces the warning.
+      listener()
+      return () => {
+        /* no-op: nothing was registered */
+      }
+    }
+    degradedListeners.add(listener)
+    return () => {
+      degradedListeners.delete(listener)
+    }
+  }
+
   function dispose(): void {
     cancelTimer()
-    if (eventTarget !== undefined) {
-      eventTarget.removeEventListener("visibilitychange", flushListener)
-      eventTarget.removeEventListener("pagehide", flushListener)
-    }
+    detachFlushListeners()
   }
 
   return {
@@ -381,6 +443,7 @@ export function createPersistence(
     get degraded() {
       return degraded
     },
+    onDegraded,
     dispose,
   }
 }

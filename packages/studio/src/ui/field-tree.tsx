@@ -19,8 +19,8 @@ import type {
   EditorArrayItemType,
   EditorField,
   EditorFieldType,
-  EditorState,
   FieldPath,
+  TypeChangePlan,
 } from "@/core"
 import { createField } from "@/core"
 import { cn } from "@/lib/utils"
@@ -30,6 +30,7 @@ import {
   fieldNameError,
   fieldTypeOptions,
 } from "./field-meta"
+import { TypeChangeConfirmDialog } from "./type-change-dialog"
 import { useEditorContext } from "./use-editor"
 
 /**
@@ -45,46 +46,6 @@ function childrenOf(field: EditorField): EditorField[] | undefined {
     return field.items.fields ?? []
   }
   return undefined
-}
-
-/**
- * Immutably renames the field addressed by `path`, returning a new state. A
- * name is valid for every field type, so this never touches structure and is
- * safe as a continuous (coalesced) edit.
- */
-function renameAt(
-  state: EditorState,
-  path: FieldPath,
-  name: string
-): EditorState {
-  const rename = (
-    fields: EditorField[],
-    segments: FieldPath
-  ): EditorField[] => {
-    const [index, ...rest] = segments
-    return fields.map((field, i) => {
-      if (i !== index) {
-        return field
-      }
-      if (rest.length === 0) {
-        return { ...field, name }
-      }
-      if (field.type === "Object") {
-        return { ...field, fields: rename(field.fields ?? [], rest) }
-      }
-      if (field.type === "Array" && field.items?.type === "Object") {
-        return {
-          ...field,
-          items: {
-            ...field.items,
-            fields: rename(field.items.fields ?? [], rest),
-          },
-        }
-      }
-      return field
-    })
-  }
-  return { ...state, fields: rename(state.fields, path) }
 }
 
 /**
@@ -192,6 +153,59 @@ const FieldNode = ({
   const nameId = useId()
   const nameErrorId = `${nameId}-error`
 
+  // A lossy type change the user has not yet confirmed. When set, the
+  // confirmation dialog is open and the change is applied only on confirm.
+  const [pending, setPending] = useState<{
+    kind: "field" | "item"
+    nextType: EditorFieldType | EditorArrayItemType
+    plan: TypeChangePlan
+    targetLabel: string
+  } | null>(null)
+
+  const requestFieldType = (nextType: EditorFieldType): void => {
+    const outcome = editor.changeFieldType(path, nextType)
+    if (!outcome.applied && outcome.plan.needsConfirmation) {
+      setPending({
+        kind: "field",
+        nextType,
+        plan: outcome.plan,
+        targetLabel: nextType,
+      })
+    }
+  }
+
+  const requestArrayItemType = (nextType: EditorArrayItemType): void => {
+    const outcome = editor.changeArrayItemType(path, nextType)
+    if (!outcome.applied && outcome.plan.needsConfirmation) {
+      setPending({
+        kind: "item",
+        nextType,
+        plan: outcome.plan,
+        targetLabel: `Array of ${nextType}`,
+      })
+    }
+  }
+
+  const confirmPending = (): void => {
+    if (pending === null) {
+      return
+    }
+    if (pending.kind === "field") {
+      editor.changeFieldType(path, pending.nextType as EditorFieldType, {
+        confirm: true,
+      })
+    } else {
+      editor.changeArrayItemType(
+        path,
+        pending.nextType as EditorArrayItemType,
+        {
+          confirm: true,
+        }
+      )
+    }
+    setPending(null)
+  }
+
   const children = childrenOf(field)
   const isContainer = children !== undefined
   const selected = editor.selectedFieldId === field.id
@@ -233,9 +247,7 @@ const FieldNode = ({
           aria-describedby={nameErr === undefined ? undefined : nameErrorId}
           onFocus={() => editor.selectField(field.id)}
           onChange={(event) => {
-            editor.replaceState(
-              renameAt(editor.state, path, event.target.value)
-            )
+            editor.renameField(path, event.target.value)
           }}
           onBlur={() => editor.commitEdits()}
         />
@@ -249,7 +261,7 @@ const FieldNode = ({
       <FieldTypeSelect
         label="Field type"
         value={field.type}
-        onChange={(next) => editor.changeFieldType(path, next)}
+        onChange={requestFieldType}
       />
 
       {field.type === "Array" && (
@@ -257,7 +269,7 @@ const FieldNode = ({
           <span className="text-muted-foreground text-xs">of</span>
           <ArrayItemTypeSelect
             value={field.items?.type ?? "String"}
-            onChange={(next) => editor.changeArrayItemType(path, next)}
+            onChange={requestArrayItemType}
           />
         </>
       )}
@@ -274,8 +286,25 @@ const FieldNode = ({
     </div>
   )
 
+  const dialog = (
+    <TypeChangeConfirmDialog
+      pending={
+        pending === null
+          ? null
+          : { plan: pending.plan, targetLabel: pending.targetLabel }
+      }
+      onConfirm={confirmPending}
+      onCancel={() => setPending(null)}
+    />
+  )
+
   if (!isContainer) {
-    return row
+    return (
+      <>
+        {row}
+        {dialog}
+      </>
+    )
   }
 
   return (
@@ -297,6 +326,7 @@ const FieldNode = ({
           </div>
         </div>
       </CollapsibleContent>
+      {dialog}
     </Collapsible>
   )
 }
