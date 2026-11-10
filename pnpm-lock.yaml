@@ -298,7 +298,7 @@ importers:
         version: 8.0.0
       next:
         specifier: 16.4.5
-        version: 16.4.5(@babel/core@7.29.7(supports-color@10.2.2))(@types/node@24.19.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+        version: 16.4.5(@babel/core@7.29.7(supports-color@10.2.2))(@playwright/test@1.65.0)(@types/node@24.19.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       onedollarstats:
         specifier: 0.0.23
         version: 0.0.23(react@19.3.1)
@@ -466,9 +466,15 @@ importers:
         specifier: 19.3.1
         version: 19.3.1(react@19.3.1)
     devDependencies:
+      '@axe-core/playwright':
+        specifier: 4.14.0
+        version: 4.14.0(playwright-core@1.65.0)
       '@lakeql/tsconfig':
         specifier: workspace:*
         version: link:../../tooling/typescript
+      '@playwright/test':
+        specifier: 1.65.0
+        version: 1.65.0
       '@types/node':
         specifier: 24.19.2
         version: 24.19.2
@@ -572,7 +578,7 @@ importers:
         version: 4.10.2
       files-sdk:
         specifier: 3.1.2
-        version: 3.1.2(@aws-sdk/client-s3@3.1164.0)(@aws-sdk/lib-storage@3.1119.0(@aws-sdk/client-s3@3.1164.0))(@aws-sdk/s3-presigned-post@3.1164.0)(@aws-sdk/s3-request-presigner@3.1164.0)(@azure/core-auth@1.11.0(supports-color@10.2.2))(@azure/identity@4.14.1(supports-color@10.2.2))(hono@4.13.17)(next@16.4.5(@babel/core@7.29.7(supports-color@10.2.2))(@types/node@24.19.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@10.2.2)(zod@4.6.7)
+        version: 3.1.2(@aws-sdk/client-s3@3.1164.0)(@aws-sdk/lib-storage@3.1119.0(@aws-sdk/client-s3@3.1164.0))(@aws-sdk/s3-presigned-post@3.1164.0)(@aws-sdk/s3-request-presigner@3.1164.0)(@azure/core-auth@1.11.0(supports-color@10.2.2))(@azure/identity@4.14.1(supports-color@10.2.2))(hono@4.13.17)(next@16.4.5(@babel/core@7.29.7(supports-color@10.2.2))(@playwright/test@1.65.0)(@types/node@24.19.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@10.2.2)(zod@4.6.7)
       msw:
         specifier: 3.0.4
         version: 3.0.4(@types/node@24.19.2)(graphql@17.1.0)(supports-color@10.2.2)(typescript@6.0.3)(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))
@@ -1257,7 +1263,7 @@ importers:
         version: 4.10.2
       files-sdk:
         specifier: 3.1.2
-        version: 3.1.2(@aws-sdk/client-s3@3.1164.0)(@aws-sdk/lib-storage@3.1119.0(@aws-sdk/client-s3@3.1164.0))(@aws-sdk/s3-presigned-post@3.1164.0)(@aws-sdk/s3-request-presigner@3.1164.0)(@azure/core-auth@1.11.0(supports-color@10.2.2))(@azure/identity@4.14.1(supports-color@10.2.2))(hono@4.13.17)(next@16.4.5(@babel/core@7.29.7(supports-color@10.2.2))(@types/node@24.19.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@10.2.2)(zod@4.6.7)
+        version: 3.1.2(@aws-sdk/client-s3@3.1164.0)(@aws-sdk/lib-storage@3.1119.0(@aws-sdk/client-s3@3.1164.0))(@aws-sdk/s3-presigned-post@3.1164.0)(@aws-sdk/s3-request-presigner@3.1164.0)(@azure/core-auth@1.11.0(supports-color@10.2.2))(@azure/identity@4.14.1(supports-color@10.2.2))(hono@4.13.17)(next@16.4.5(@babel/core@7.29.7(supports-color@10.2.2))(@playwright/test@1.65.0)(@types/node@24.19.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@10.2.2)(zod@4.6.7)
       tsdown:
         specifier: 0.23.7
         version: 0.23.7(tsx@4.23.15)(typescript@6.0.3)
@@ -1484,7 +1490,7 @@ importers:
         version: 2.7.0
       files-sdk:
         specifier: 3.1.2
-        version: 3.1.2(@aws-sdk/client-s3@3.1164.0)(@aws-sdk/lib-storage@3.1119.0(@aws-sdk/client-s3@3.1164.0))(@aws-sdk/s3-presigned-post@3.1164.0)(@aws-sdk/s3-request-presigner@3.1164.0)(@azure/core-auth@1.11.0(supports-color@10.2.2))(@azure/identity@4.14.1(supports-color@10.2.2))(hono@4.13.17)(next@16.4.5(@babel/core@7.29.7(supports-color@10.2.2))(@types/node@24.19.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@10.2.2)(zod@4.6.7)
+        version: 3.1.2(@aws-sdk/client-s3@3.1164.0)(@aws-sdk/lib-storage@3.1119.0(@aws-sdk/client-s3@3.1164.0))(@aws-sdk/s3-presigned-post@3.1164.0)(@aws-sdk/s3-request-presigner@3.1164.0)(@azure/core-auth@1.11.0(supports-color@10.2.2))(@azure/identity@4.14.1(supports-color@10.2.2))(hono@4.13.17)(next@16.4.5(@babel/core@7.29.7(supports-color@10.2.2))(@playwright/test@1.65.0)(@types/node@24.19.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@10.2.2)(zod@4.6.7)
       hyparquet-writer:
         specifier: 0.18.0
         version: 0.18.0
@@ -1630,6 +1636,12 @@ packages:
   '@aws/lambda-invoke-store@0.3.0':
     resolution: {integrity: sha512-sl4Bm6yiMNYrZKkqqDFWN0UfnWhlS8ivKxrYl+6t0gCLrqr8y3B2IqZZbFRkfaVVp7C/baApyh71P+LeE1A2sQ==}
     engines: {node: '>=18.0.0'}
+
+  '@axe-core/playwright@4.14.0':
+    resolution: {integrity: sha512-SGUhG5PIHd2eMdpgBF2PyQLOhX+qyDR2PT4cmoS4Qk2ak+jX/rrSvst9l0PGv5WTHolKpUMvVmoHpr4cZgf1RQ==}
+    engines: {node: '>=22.12.0'}
+    peerDependencies:
+      playwright-core: '>= 1.0.0'
 
   '@azure-rest/core-client@2.9.0':
     resolution: {integrity: sha512-6933vNLqh06RR7rumnrq3UZIeBtRLeBHDPMrieDPIljiCaMMwt0nRw++nd3TOxiohtasNtm29rC+b/9ZVKCOqg==}
@@ -2987,6 +2999,11 @@ packages:
     cpu: [x64]
     os: [win32]
 
+  '@playwright/test@1.65.0':
+    resolution: {integrity: sha512-iGURLGuKDLakSEl7Pgfv8h7f+XLT+V861Wfhz0zlEl5nyFuKUopdkFBPKqTllTUp06aOwPuH8iuUEb3yp3MpbQ==}
+    engines: {node: '>=20'}
+    hasBin: true
+
   '@polka/url@1.0.0-next.29':
     resolution: {integrity: sha512-wwQAWhWSuHaag8c4q/KN/vCoeOJYshAIvMQwD4GpSb3OiZklFfvAgmj0VCBBImRpuF/aFgIRzllXlVX93Jevww==}
 
@@ -4074,6 +4091,10 @@ packages:
 
   aws4fetch@1.0.20:
     resolution: {integrity: sha512-/djoAN709iY65ETD6LKCtyyEI04XIBP5xVvfmNxsEP0uJB5tyaGBztSryRr4HqMStr9R06PisQE7m9zDTXKu6g==}
+
+  axe-core@4.14.0:
+    resolution: {integrity: sha512-9WTZxEjsZ7b13TH8JPmbV2z8CHbl80/2hm3XPEG4JgNdQLK81IBRXmSxHfMAOkSqQeRxT/0dwNDz2GOm3zzpcQ==}
+    engines: {node: '>=4'}
 
   bail@2.0.2:
     resolution: {integrity: sha512-0xO6mYd7JB2YesxDKplafRpsiOzPt9V02ddPCLbY1xYGPOX24NTyN50qnUxgCPcSoYMhKpAuBTjQoRZCAkUDRw==}
@@ -6064,6 +6085,16 @@ packages:
     resolution: {integrity: sha512-nDywThFk1i4BQK4twPQ6TA4RT8bDY96yeuCVBWL3ePARCiEKDRSrNGbFIgUJpLp+XeIR65v8ra7WuJOFUBtkMA==}
     engines: {node: '>=8'}
 
+  playwright-core@1.65.0:
+    resolution: {integrity: sha512-vNSKgH6YqtN7cdT/L334zo0a+YwkrpicyrHJlWWPIm/Q+Nn2SWInil01oT0mbu96U4GgoRtCYQD9CzJQgju+lA==}
+    engines: {node: '>=20'}
+    hasBin: true
+
+  playwright@1.65.0:
+    resolution: {integrity: sha512-F3AMWcR44qMBt4kq+6Kb6mX7bjGXshktKFOPULd7reED6ZJWevjbNRqysP7q+AATE9kdPEZBibex1BYsvpVoeA==}
+    engines: {node: '>=20'}
+    hasBin: true
+
   postcss-selector-parser@7.1.6:
     resolution: {integrity: sha512-7qASPzhKF2l2KLboRZux8CCTRMdGiV08vWmyKzPz22qZ7ZjQBOeY7rNzNoCLSUiftJ7HUq0GERHmxw/t0dCdMw==}
     engines: {node: '>=4'}
@@ -7477,6 +7508,11 @@ snapshots:
 
   '@aws/lambda-invoke-store@0.3.0': {}
 
+  '@axe-core/playwright@4.14.0(playwright-core@1.65.0)':
+    dependencies:
+      axe-core: 4.14.0
+      playwright-core: 1.65.0
+
   '@azure-rest/core-client@2.9.0(supports-color@10.2.2)':
     dependencies:
       '@azure/abort-controller': 2.2.0
@@ -8719,6 +8755,10 @@ snapshots:
   '@oxlint/binding-win32-x64-msvc@1.92.0':
     optional: true
 
+  '@playwright/test@1.65.0':
+    dependencies:
+      playwright: 1.65.0
+
   '@polka/url@1.0.0-next.29': {}
 
   '@pothos/core@4.16.0(graphql@17.1.0)':
@@ -9651,6 +9691,8 @@ snapshots:
 
   aws4fetch@1.0.20: {}
 
+  axe-core@4.14.0: {}
+
   bail@2.0.2: {}
 
   balanced-match@4.0.4: {}
@@ -10320,7 +10362,7 @@ snapshots:
     dependencies:
       is-unicode-supported: 2.1.0
 
-  files-sdk@3.1.2(@aws-sdk/client-s3@3.1164.0)(@aws-sdk/lib-storage@3.1119.0(@aws-sdk/client-s3@3.1164.0))(@aws-sdk/s3-presigned-post@3.1164.0)(@aws-sdk/s3-request-presigner@3.1164.0)(@azure/core-auth@1.11.0(supports-color@10.2.2))(@azure/identity@4.14.1(supports-color@10.2.2))(hono@4.13.17)(next@16.4.5(@babel/core@7.29.7(supports-color@10.2.2))(@types/node@24.19.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@10.2.2)(zod@4.6.7):
+  files-sdk@3.1.2(@aws-sdk/client-s3@3.1164.0)(@aws-sdk/lib-storage@3.1119.0(@aws-sdk/client-s3@3.1164.0))(@aws-sdk/s3-presigned-post@3.1164.0)(@aws-sdk/s3-request-presigner@3.1164.0)(@azure/core-auth@1.11.0(supports-color@10.2.2))(@azure/identity@4.14.1(supports-color@10.2.2))(hono@4.13.17)(next@16.4.5(@babel/core@7.29.7(supports-color@10.2.2))(@playwright/test@1.65.0)(@types/node@24.19.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@10.2.2)(zod@4.6.7):
     dependencies:
       aws4fetch: 1.0.20
       commander: 15.1.0
@@ -10338,7 +10380,7 @@ snapshots:
       '@azure/identity': 4.14.1(supports-color@10.2.2)
       '@modelcontextprotocol/sdk': 1.32.2(supports-color@10.2.2)(zod@4.6.7)
       hono: 4.13.17
-      next: 16.4.5(@babel/core@7.29.7(supports-color@10.2.2))(@types/node@24.19.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+      next: 16.4.5(@babel/core@7.29.7(supports-color@10.2.2))(@playwright/test@1.65.0)(@types/node@24.19.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       react: 19.3.1
       react-dom: 19.3.1(react@19.3.1)
       zod: 4.6.7
@@ -11597,7 +11639,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  next@16.4.5(@babel/core@7.29.7(supports-color@10.2.2))(@types/node@24.19.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
+  next@16.4.5(@babel/core@7.29.7(supports-color@10.2.2))(@playwright/test@1.65.0)(@types/node@24.19.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
     dependencies:
       '@next/env': 16.4.5
       '@swc/helpers': 0.5.23
@@ -11616,6 +11658,7 @@ snapshots:
       '@next/swc-linux-x64-musl': 16.4.5
       '@next/swc-win32-arm64-msvc': 16.4.5
       '@next/swc-win32-x64-msvc': 16.4.5
+      '@playwright/test': 1.65.0
       sharp: 0.35.5(@types/node@24.19.2)
     transitivePeerDependencies:
       - '@babel/core'
@@ -11863,6 +11906,12 @@ snapshots:
   pkg-up@3.1.0:
     dependencies:
       find-up: 3.0.0
+
+  playwright-core@1.65.0: {}
+
+  playwright@1.65.0:
+    dependencies:
+      playwright-core: 1.65.0
 
   postcss-selector-parser@7.1.6:
     dependencies:

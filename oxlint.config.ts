@@ -17,6 +17,20 @@ export default defineConfig({
 
   overrides: [
     {
+      // Playwright a11y E2E (apps/editor): a separate, browser-driven suite
+      // with Playwright conventions that differ from the Vitest unit rules —
+      // `@playwright/test`'s own `test`/`expect` (not Vitest globals), the
+      // `.spec.ts` filename, `process.env.CI` in the runner config, and chained
+      // `await`-member access on async locator helpers. Relax only those here.
+      files: ["**/e2e/**/*.ts", "**/playwright.config.ts"],
+      rules: {
+        "import/no-named-as-default": "off",
+        "no-restricted-properties": "off",
+        "unicorn/no-await-expression-member": "off",
+        "vitest/prefer-importing-vitest-globals": "off",
+      },
+    },
+    {
       files: [
         "apps/docs/src/app/**/*.{ts,tsx}",
         "packages/cli/src/**/*.ts",
