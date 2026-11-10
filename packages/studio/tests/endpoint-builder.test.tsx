@@ -218,11 +218,10 @@ describe("EndpointBuilder rendered-UI integration (canvas)", () => {
       expect(screen.getAllByLabelText("Field type")).toHaveLength(types.length)
     })
 
-    it("nests a field recursively by dropping into a container node", () => {
+    it("nests a field two levels deep, into an Array-of-Object container", () => {
       const { get } = renderCanvasBuilder()
 
-      // Drop an Object, then a String into that Object, then a String into an
-      // Array-of-Object nested inside — two levels of recursion.
+      // Level 1: drop an Object at the top level.
       act(() =>
         get().dnd.onDragEnd(
           dropEvent(paletteActive("Object"), {
@@ -233,21 +232,47 @@ describe("EndpointBuilder rendered-UI integration (canvas)", () => {
       )
       const objectId = defined(get().editor.state.fields[0]).id
 
+      // Level 2: drop an Array into that Object, then make its items Object so
+      // the Array itself becomes a field-holding container (Array-of-Object).
       act(() =>
         get().dnd.onDragEnd(
-          dropEvent(paletteActive("String"), {
+          dropEvent(paletteActive("Array"), {
             kind: "container-zone",
             containerId: objectId,
           })
         )
       )
+      // The Array lives at objectField.fields[0] → path [0, 0].
+      act(() => get().editor.changeArrayItemType([0, 0], "Object"))
+      const [arrayField] = defined(defined(get().editor.state.fields[0]).fields)
+      expect(defined(arrayField).type).toBe("Array")
+      expect(defined(arrayField).items?.type).toBe("Object")
+      const arrayId = defined(arrayField).id
 
-      const objectField = defined(get().editor.state.fields[0])
-      expect(defined(objectField.fields)).toHaveLength(1)
-      expect(defined(objectField.fields)[0]?.type).toBe("String")
+      // Level 3: drop a String into the Array-of-Object's item fields, through
+      // the real canvas drop handler (findContainerPath resolves the Array's
+      // item fields from its id).
+      act(() =>
+        get().dnd.onDragEnd(
+          dropEvent(paletteActive("String"), {
+            kind: "container-zone",
+            containerId: arrayId,
+          })
+        )
+      )
 
-      // The nested child renders its own "Field name" input on the canvas.
-      expect(screen.getAllByLabelText("Field name")).toHaveLength(2)
+      // The String landed inside the Array-of-Object's item fields — two
+      // container levels below the top (top → Object → Array-of-Object).
+      const nestedArray = defined(
+        defined(defined(get().editor.state.fields[0]).fields)[0]
+      )
+      const itemFields = defined(nestedArray.items?.fields)
+      expect(itemFields).toHaveLength(1)
+      expect(defined(itemFields[0]).type).toBe("String")
+
+      // The three named nodes (Object, Array, nested String) each render a
+      // "Field name" input on the canvas.
+      expect(screen.getAllByLabelText("Field name")).toHaveLength(3)
     })
 
     it("selects a node (drives the panel) and removes it from the canvas", async () => {

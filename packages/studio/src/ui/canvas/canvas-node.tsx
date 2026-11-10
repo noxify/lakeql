@@ -2,7 +2,8 @@ import { useDroppable } from "@dnd-kit/core"
 import { SortableContext, useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 import { GripVerticalIcon, Trash2Icon } from "lucide-react"
-import { useId, useState } from "react"
+import type { KeyboardEvent, MouseEvent } from "react"
+import { useId } from "react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -18,7 +19,6 @@ import type {
   EditorField,
   EditorFieldType,
   FieldPath,
-  TypeChangePlan,
 } from "@/core"
 import { cn } from "@/lib/utils"
 
@@ -27,12 +27,12 @@ import {
   fieldNameError,
   fieldTypeOptions,
 } from "../field-meta"
-import { TypeChangeConfirmDialog } from "../type-change-dialog"
 import { useEditorContext } from "../use-editor"
 import type { NodeAnchorData } from "./dnd-types"
 import { containerChildren, isDropContainer, zoneId } from "./dnd-types"
 import { DropIndicator } from "./drop-indicator"
 import { useCanvasDndContext } from "./use-canvas-dnd"
+import { useTypeChangeContext } from "./use-type-change"
 
 /**
  * A `Select` over the eight field types (six primitives + `Object` + `Array`),
@@ -157,9 +157,12 @@ const ContainerZone = ({
  *
  * The node reuses the Iteration-1 `aria-label`s (`"Field name"`,
  * `"Field type"`, `"Array item type"`, `"Remove field"`) so the Phase-D
- * integration tests target the same controls. Selecting the card drives the
- * properties panel; a lossy type change opens the confirmation dialog and is
- * applied only on confirm.
+ * integration tests target the same controls. The whole card is selectable —
+ * a pointer click or a keyboard `Enter`/`Space` on the focused card selects the
+ * field so the properties panel targets it (in addition to focusing the name
+ * input), while drag stays on the grip handle so selecting never starts a drag.
+ * A lossy type change routes through the single shared confirmation dialog and
+ * is applied only on confirm.
  */
 export const CanvasNode = ({
   field,
@@ -172,6 +175,7 @@ export const CanvasNode = ({
 }) => {
   const editor = useEditorContext()
   const { drag } = useCanvasDndContext()
+  const typeChange = useTypeChangeContext()
   const nameId = useId()
   const nameErrorId = `${nameId}-error`
 
@@ -189,55 +193,12 @@ export const CanvasNode = ({
     isDragging,
   } = useSortable({ id: field.id, data: anchorData })
 
-  const [pending, setPending] = useState<{
-    kind: "field" | "item"
-    nextType: EditorFieldType | EditorArrayItemType
-    plan: TypeChangePlan
-    targetLabel: string
-  } | null>(null)
-
   const requestFieldType = (nextType: EditorFieldType): void => {
-    const outcome = editor.changeFieldType(path, nextType)
-    if (!outcome.applied && outcome.plan.needsConfirmation) {
-      setPending({
-        kind: "field",
-        nextType,
-        plan: outcome.plan,
-        targetLabel: nextType,
-      })
-    }
+    typeChange.requestFieldType(path, nextType)
   }
 
   const requestArrayItemType = (nextType: EditorArrayItemType): void => {
-    const outcome = editor.changeArrayItemType(path, nextType)
-    if (!outcome.applied && outcome.plan.needsConfirmation) {
-      setPending({
-        kind: "item",
-        nextType,
-        plan: outcome.plan,
-        targetLabel: `Array of ${nextType}`,
-      })
-    }
-  }
-
-  const confirmPending = (): void => {
-    if (pending === null) {
-      return
-    }
-    if (pending.kind === "field") {
-      editor.changeFieldType(path, pending.nextType as EditorFieldType, {
-        confirm: true,
-      })
-    } else {
-      editor.changeArrayItemType(
-        path,
-        pending.nextType as EditorArrayItemType,
-        {
-          confirm: true,
-        }
-      )
-    }
-    setPending(null)
+    typeChange.requestArrayItemType(path, nextType)
   }
 
   const selected = editor.selectedFieldId === field.id
@@ -257,17 +218,36 @@ export const CanvasNode = ({
     transition,
   }
 
-  const dialog = (
-    <TypeChangeConfirmDialog
-      pending={
-        pending === null
-          ? null
-          : { plan: pending.plan, targetLabel: pending.targetLabel }
-      }
-      onConfirm={confirmPending}
-      onCancel={() => setPending(null)}
-    />
-  )
+  // Selecting the card drives the properties panel. The whole card is a select
+  // target for pointer users; for keyboard users it is focusable and activates
+  // on Enter/Space. Activation is handled only when the card itself is the
+  // event target, so it never hijacks the keys of the inner controls (name
+  // input, type selects, remove button, drag handle) that stop propagation of
+  // their own activation. Drag stays on the grip handle, so a card click/key
+  // never starts a drag.
+  const selectField = (): void => {
+    editor.selectField(field.id)
+  }
+
+  const onCardClick = (event: MouseEvent<HTMLDivElement>): void => {
+    // Stop at the innermost card so a click on a nested child does not also
+    // re-select its ancestor container through event bubbling.
+    event.stopPropagation()
+    selectField()
+  }
+
+  const onCardKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
+    // Only the focused card itself activates; keys from inner controls (name
+    // input, selects, buttons) are left untouched.
+    if (event.target !== event.currentTarget) {
+      return
+    }
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault()
+      event.stopPropagation()
+      selectField()
+    }
+  }
 
   return (
     <div>
@@ -275,10 +255,14 @@ export const CanvasNode = ({
       <div
         ref={setNodeRef}
         style={style}
-        role="group"
+        role="button"
+        tabIndex={0}
         aria-label={field.name === "" ? "Unnamed field" : field.name}
+        aria-pressed={selected}
+        onClick={onCardClick}
+        onKeyDown={onCardKeyDown}
         className={cn(
-          "border-border bg-card text-card-foreground rounded-md border p-2",
+          "border-border bg-card text-card-foreground focus-visible:ring-ring/50 cursor-pointer rounded-md border p-2 outline-none focus-visible:ring-3",
           selected && "border-ring bg-accent/40",
           isDragging && "opacity-50"
         )}
@@ -340,7 +324,6 @@ export const CanvasNode = ({
           <ContainerZone field={field} path={path} fields={children} />
         )}
       </div>
-      {dialog}
     </div>
   )
 }

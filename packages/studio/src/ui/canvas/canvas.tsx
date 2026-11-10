@@ -3,6 +3,7 @@ import { SortableContext } from "@dnd-kit/sortable"
 
 import { cn } from "@/lib/utils"
 
+import { TypeChangeConfirmDialog } from "../type-change-dialog"
 import { useEditorContext } from "../use-editor"
 import { CanvasNode } from "./canvas-node"
 import { ROOT_ZONE_ID } from "./dnd-types"
@@ -14,6 +15,11 @@ import {
   useCanvasDndContext,
   useCanvasSensors,
 } from "./use-canvas-dnd"
+import {
+  TypeChangeProvider,
+  useCanvasTypeChange,
+  useTypeChangeContext,
+} from "./use-type-change"
 
 /**
  * The top-level droppable surface rendering the editor's `fields` as sortable
@@ -24,6 +30,9 @@ import {
 const CanvasSurface = () => {
   const editor = useEditorContext()
   const { drag, rejectionReason } = useCanvasDndContext()
+  const typeChange = useTypeChangeContext()
+  const { confirm: handleTypeChangeConfirm, cancel: handleTypeChangeCancel } =
+    typeChange
   const { fields } = editor.state
   const { setNodeRef, isOver } = useDroppable({
     id: ROOT_ZONE_ID,
@@ -77,6 +86,14 @@ const CanvasSurface = () => {
         )}
         {appendingTop && <DropIndicator valid={drag?.plan?.ok ?? false} />}
       </div>
+
+      {/* One shared type-change confirmation dialog for the whole canvas,
+          driven by the currently-pending lossy change (Req 3.10). */}
+      <TypeChangeConfirmDialog
+        pending={typeChange.pending}
+        onConfirm={handleTypeChangeConfirm}
+        onCancel={handleTypeChangeCancel}
+      />
     </div>
   )
 }
@@ -93,6 +110,7 @@ const CanvasSurface = () => {
  */
 export const Canvas = () => {
   const dnd = useCanvasDnd()
+  const typeChange = useCanvasTypeChange()
   const sensors = useCanvasSensors()
   const { onDragStart: handleDragStart } = dnd
   const { onDragOver: handleDragOver } = dnd
@@ -100,17 +118,19 @@ export const Canvas = () => {
 
   return (
     <CanvasDndProvider value={dnd}>
-      <DndContext
-        sensors={sensors}
-        onDragStart={handleDragStart}
-        onDragOver={handleDragOver}
-        onDragEnd={handleDragEnd}
-      >
-        <div className="grid gap-4">
-          <Palette />
-          <CanvasSurface />
-        </div>
-      </DndContext>
+      <TypeChangeProvider value={typeChange}>
+        <DndContext
+          sensors={sensors}
+          onDragStart={handleDragStart}
+          onDragOver={handleDragOver}
+          onDragEnd={handleDragEnd}
+        >
+          <div className="grid gap-4">
+            <Palette />
+            <CanvasSurface />
+          </div>
+        </DndContext>
+      </TypeChangeProvider>
     </CanvasDndProvider>
   )
 }
