@@ -17,12 +17,15 @@ import type {
   EditorState,
   FieldPath,
   ImportResult,
+  MoveTarget,
   Persistence,
   TypeChangePlan,
   ValidationResult,
 } from "@/core"
 import {
   addField as addFieldOp,
+  canRedo as canRedoOp,
+  canUndo as canUndoOp,
   changeArrayItemType as changeArrayItemTypeOp,
   changeFieldType as changeFieldTypeOp,
   createCoalescingCommitter,
@@ -32,9 +35,12 @@ import {
   downloadEndpointJson,
   evaluate,
   importFromFile,
+  moveField as moveFieldOp,
+  redo as redoOp,
   removeField as removeFieldOp,
   renameField as renameFieldOp,
   setFieldOptions as setFieldOptionsOp,
+  undo as undoOp,
 } from "@/core"
 
 /**
@@ -73,8 +79,37 @@ export interface EditorApi {
   replaceState: (next: EditorState, options?: { commit?: boolean }) => void
   /** Flushes any pending coalesced edit into a committed snapshot. */
   commitEdits: () => void
-  /** Adds a field to the container at `parentPath`. */
-  addField: (parentPath: FieldPath, field?: EditorField) => void
+  /** Whether an undo is currently possible. */
+  canUndo: boolean
+  /** Whether a redo is currently possible. */
+  canRedo: boolean
+  /**
+   * Undoes the last committed change, restoring the previous snapshot as the
+   * live state. A no-op at the start of history. Any pending coalesced edit is
+   * flushed first so it is not lost.
+   */
+  undo: () => void
+  /**
+   * Redoes the next change after an undo, reapplying the following snapshot. A
+   * no-op at the end of history.
+   */
+  redo: () => void
+  /**
+   * Adds a field to the container at `parentPath`. Passing `beforeId` inserts
+   * the field before that sibling (a positional palette drop); appends when
+   * absent. Commits exactly one snapshot.
+   */
+  addField: (
+    parentPath: FieldPath,
+    field?: EditorField,
+    beforeId?: string | null
+  ) => void
+  /**
+   * Moves the field `fromId` to the drop target `to`, committing exactly one
+   * snapshot (one drag = one undo step). A drop onto the field itself is a
+   * no-op. The caller is expected to have gated the drop with `planMove`.
+   */
+  moveField: (fromId: string, to: MoveTarget) => void
   /** Removes the field at `path`. */
   removeField: (path: FieldPath) => void
   /**
@@ -204,6 +239,24 @@ export function useEditor(): EditorApi {
     bump()
   }, [committer, bump])
 
+  const canUndo = canUndoOp(committer.history)
+  const canRedo = canRedoOp(committer.history)
+
+  const undo = useCallback(() => {
+    // `undo` operates on the committed history; flush first so a pending edit
+    // is its own snapshot before the cursor moves back, then install the
+    // undone history (the autosave effect persists the restored state).
+    committer.flush()
+    committer.setHistory(undoOp(committer.history))
+    bump()
+  }, [committer, bump])
+
+  const redo = useCallback(() => {
+    committer.flush()
+    committer.setHistory(redoOp(committer.history))
+    bump()
+  }, [committer, bump])
+
   const commit = useCallback(
     (next: EditorState) => {
       replaceState(next, { commit: true })
@@ -212,9 +265,30 @@ export function useEditor(): EditorApi {
   )
 
   const addField = useCallback(
-    (parentPath: FieldPath, field: EditorField = createField()) => {
-      commit(addFieldOp(currentState(committer.history), parentPath, field))
+    (
+      parentPath: FieldPath,
+      field: EditorField = createField(),
+      beforeId: string | null = null
+    ) => {
+      commit(
+        addFieldOp(currentState(committer.history), parentPath, field, beforeId)
+      )
       setSelectedFieldId(field.id)
+    },
+    [committer, commit]
+  )
+
+  const moveField = useCallback(
+    (fromId: string, to: MoveTarget) => {
+      const current = currentState(committer.history)
+      const next = moveFieldOp(current, fromId, to)
+      // A no-op move (drop onto self) returns the same state; do not commit a
+      // redundant snapshot so one drag yields at most one undo step.
+      if (next === current) {
+        return
+      }
+      commit(next)
+      setSelectedFieldId(fromId)
     },
     [committer, commit]
   )
@@ -321,7 +395,12 @@ export function useEditor(): EditorApi {
     selectField: setSelectedFieldId,
     replaceState,
     commitEdits,
+    canUndo,
+    canRedo,
+    undo,
+    redo,
     addField,
+    moveField,
     removeField,
     renameField,
     setFieldOptions,

@@ -20,6 +20,8 @@ export type {
   HistoryState,
 } from "./model"
 export {
+  canRedo,
+  canUndo,
   COMMIT_DEBOUNCE_MS,
   commitSnapshot,
   createCoalescingCommitter,
@@ -30,7 +32,9 @@ export {
   DEFAULT_PARTITIONING,
   DEFAULT_PARTITIONING_FORMAT,
   HISTORY_CAP,
+  redo,
   replaceCurrent,
+  undo,
 } from "./model"
 
 export { fromDefinition, toDefinition } from "./mapping"
@@ -45,14 +49,22 @@ export type {
 } from "./validation"
 export { evaluate, isValidForExport } from "./validation"
 
-export type { FieldPath, TypeChangePlan } from "./field-ops"
+export type {
+  FieldPath,
+  MovePlan,
+  MoveTarget,
+  TypeChangePlan,
+} from "./field-ops"
 export {
   addField,
   changeArrayItemType,
   changeFieldType,
   createField,
+  findContainerPath,
   findFieldPath,
+  moveField,
   planArrayItemTypeChange,
+  planMove,
   planTypeChange,
   removeField,
   renameField,

@@ -128,26 +128,54 @@ function fieldAt(
 }
 
 /**
- * Adds a field as the last child of the container addressed by `parentPath`
- * (the empty path targets the top-level `fields`).
+ * Adds a field to the container addressed by `parentPath` (the empty path
+ * targets the top-level `fields`).
+ *
+ * By default the field is appended as the last child. Passing a `beforeId`
+ * inserts the field immediately before the sibling carrying that id, giving the
+ * canvas a positional palette-drop. When `beforeId` is absent, `null`, or does
+ * not match any sibling in the resolved container, the field is appended — the
+ * original append behaviour is preserved, so callers that omit `beforeId` are
+ * unaffected.
  *
  * @param state - The current editor state.
  * @param parentPath - Path to the container that receives the new field.
  * @param field - The field to add. Defaults to a fresh `String` field.
+ * @param beforeId - Optional stable id of the sibling to insert before;
+ *   appends when absent, `null`, or not found in the container.
  * @returns A new {@link EditorState}; the input is not mutated.
  */
 export function addField(
   state: EditorState,
   parentPath: FieldPath,
-  field: EditorField = createField()
+  field: EditorField = createField(),
+  beforeId: string | null = null
 ): EditorState {
   return {
     ...state,
-    fields: updateFieldsAt(state.fields, parentPath, (children) => [
-      ...children,
-      field,
-    ]),
+    fields: updateFieldsAt(state.fields, parentPath, (children) =>
+      insertBefore(children, field, beforeId)
+    ),
   }
+}
+
+/**
+ * Returns a new array with `field` inserted before the sibling carrying
+ * `beforeId`, or appended when `beforeId` is `null` or not found.
+ */
+function insertBefore(
+  children: EditorField[],
+  field: EditorField,
+  beforeId: string | null
+): EditorField[] {
+  if (beforeId === null) {
+    return [...children, field]
+  }
+  const index = children.findIndex((child) => child.id === beforeId)
+  if (index === -1) {
+    return [...children, field]
+  }
+  return [...children.slice(0, index), field, ...children.slice(index)]
 }
 
 /**
@@ -281,6 +309,309 @@ export function findFieldPath(
     }
   }
   return undefined
+}
+
+/**
+ * Resolves a container id to the {@link FieldPath} of the child-field array it
+ * owns, mirroring {@link findFieldPath}.
+ *
+ * The canvas addresses drop targets by the stable id of the container's owning
+ * field (or `null` for the top level), but the field ops take a `FieldPath`.
+ * This resolver bridges the two: `null` maps to the empty path (the top-level
+ * `fields`); a field id maps to the path of that field's child container — an
+ * `Object`'s `fields`, or an `Array`-of-`Object`'s item `fields`. A field that
+ * holds no child-field array (a primitive, or an `Array` of primitive) is not a
+ * container, so its id resolves to `undefined`.
+ *
+ * @param state - The editor state to resolve against.
+ * @param containerId - The container's owning-field id, or `null` for the top
+ *   level.
+ * @returns The {@link FieldPath} of the container's child array, or `undefined`
+ *   when `containerId` is unknown or does not name a field-holding container.
+ */
+export function findContainerPath(
+  state: EditorState,
+  containerId: string | null
+): FieldPath | undefined {
+  if (containerId === null) {
+    return []
+  }
+  const path = findFieldPath(state.fields, containerId)
+  if (path === undefined) {
+    return undefined
+  }
+  const field = fieldAt(state.fields, path)
+  if (field === undefined || childrenOf(field) === undefined) {
+    return undefined
+  }
+  return path
+}
+
+/**
+ * The destination of a move, addressed by stable field ids rather than index
+ * paths (which shift when the source is removed).
+ */
+export interface MoveTarget {
+  /**
+   * The destination container, identified by the stable id of its owning field,
+   * or `null` for the top-level `fields` array. For an `Array`-of-`Object`
+   * container this is the `Array` field's id (its item `fields`).
+   */
+  containerId: string | null
+  /**
+   * The stable id of the sibling to drop before, or `null` to append. The
+   * insert position is resolved relative to this anchor, not a raw index.
+   */
+  beforeId: string | null
+}
+
+/**
+ * The result of validating a proposed move against the schema's structural
+ * rules.
+ *
+ * A structurally-impossible move has `ok: false` with a `reason`. A permitted
+ * move has `ok: true`; `reason` may still carry a soft warning for a
+ * schema-invalid-but-representable result (an emptied source container, a
+ * duplicate name) that the validity gate will flag but that is not blocked.
+ */
+export interface MovePlan {
+  /** Whether the move is structurally possible and may be applied. */
+  ok: boolean
+  /**
+   * Why a move is rejected (`ok: false`), or a soft warning on an allowed move
+   * (`ok: true`) whose result is schema-invalid-but-representable.
+   */
+  reason?: string
+}
+
+/**
+ * Returns whether the subtree rooted at `field` contains a field with
+ * `targetId` (at any depth), used for the self-containment check.
+ */
+function subtreeContainsId(field: EditorField, targetId: string): boolean {
+  const children = childrenOf(field)
+  if (children === undefined) {
+    return false
+  }
+  for (const child of children) {
+    if (child.id === targetId) {
+      return true
+    }
+    if (subtreeContainsId(child, targetId)) {
+      return true
+    }
+  }
+  return false
+}
+
+/**
+ * Validates a proposed move of the field `fromId` to `to`, without mutating.
+ *
+ * Rejects (`ok: false`) only structurally-impossible moves: a destination that
+ * is not a field-holding container, a move that would place an `Array`'s items
+ * under another `Array` (`Array`-of-`Array`), or self-containment — the
+ * destination container is the moved field itself or lies inside its own
+ * subtree. Allows (`ok: true`) moves whose result is merely
+ * schema-invalid-but-representable — emptying the source container below its
+ * `min(1)`, or creating a duplicate name — surfacing each as a soft `reason`
+ * rather than blocking, consistent with how the editor already tolerates such
+ * transient-invalid states. Dropping a field onto itself (`beforeId === fromId`)
+ * is a permitted no-op.
+ *
+ * @param state - The editor state the move is evaluated against.
+ * @param fromId - The stable id of the field being moved.
+ * @param to - The destination container and insert anchor.
+ * @returns A {@link MovePlan} describing whether the move may be applied and
+ *   any soft warning.
+ */
+export function planMove(
+  state: EditorState,
+  fromId: string,
+  to: MoveTarget
+): MovePlan {
+  // Drop onto itself: a permitted no-op, regardless of container.
+  if (to.beforeId === fromId) {
+    return { ok: true }
+  }
+
+  const sourcePath = findFieldPath(state.fields, fromId)
+  if (sourcePath === undefined) {
+    return { ok: false, reason: "The field to move no longer exists." }
+  }
+  const sourceField = fieldAt(state.fields, sourcePath)
+  if (sourceField === undefined) {
+    return { ok: false, reason: "The field to move no longer exists." }
+  }
+
+  // Self-containment: a container cannot move into itself or its descendants.
+  if (to.containerId === fromId) {
+    return { ok: false, reason: "A field cannot be moved into itself." }
+  }
+  if (
+    to.containerId !== null &&
+    subtreeContainsId(sourceField, to.containerId)
+  ) {
+    return {
+      ok: false,
+      reason: "A field cannot be moved into one of its own descendants.",
+    }
+  }
+
+  // Destination must be a field-holding container (top level, Object, or
+  // Array-of-Object). `null` is the top-level fields array.
+  if (to.containerId !== null) {
+    const containerField = fieldAt(
+      state.fields,
+      findFieldPath(state.fields, to.containerId) ?? []
+    )
+    if (containerField === undefined) {
+      return {
+        ok: false,
+        reason: "The destination container no longer exists.",
+      }
+    }
+    const containerChildren = childrenOf(containerField)
+    if (containerChildren === undefined) {
+      return {
+        ok: false,
+        reason: "The destination is not a field-holding container.",
+      }
+    }
+    // Array-items-would-become-Array: an Array field cannot become the item of
+    // an Array-of-Object container (the schema forbids Array of Array).
+    if (containerField.type === "Array" && sourceField.type === "Array") {
+      return {
+        ok: false,
+        reason: "An array's items cannot themselves be an array.",
+      }
+    }
+  }
+
+  // Allowed-but-schema-invalid soft warnings. These never block the move.
+  const warning = moveWarning(state, sourcePath, sourceField, to)
+  return warning === undefined ? { ok: true } : { ok: true, reason: warning }
+}
+
+/**
+ * Computes a soft warning for an allowed move: emptying the source container
+ * below its required `min(1)`, or creating a duplicate name at the destination.
+ * Returns `undefined` when the move raises no such concern.
+ */
+function moveWarning(
+  state: EditorState,
+  sourcePath: FieldPath,
+  sourceField: EditorField,
+  to: MoveTarget
+): string | undefined {
+  const sourceParentPath = sourcePath.slice(0, -1)
+  const movingWithinSameContainer =
+    findContainerPath(state, to.containerId)?.join(",") ===
+    sourceParentPath.join(",")
+
+  // Emptied source: the source's container drops to zero children, but only
+  // when the move actually leaves that container (a within-container reorder
+  // keeps the count).
+  if (!movingWithinSameContainer && sourceParentPath.length > 0) {
+    const sourceContainer = fieldAt(state.fields, sourceParentPath)
+    const siblings =
+      sourceContainer === undefined ? undefined : childrenOf(sourceContainer)
+    if (siblings !== undefined && siblings.length <= 1) {
+      return "Moving this field empties its source container, which the schema requires to be non-empty."
+    }
+  }
+
+  // Duplicate name at the destination.
+  const destPath = findContainerPath(state, to.containerId)
+  if (destPath !== undefined) {
+    const destSiblings = destSiblingsExcludingSource(
+      state,
+      destPath,
+      sourceField.id
+    )
+    if (
+      sourceField.name !== "" &&
+      destSiblings.some((sibling) => sibling.name === sourceField.name)
+    ) {
+      return "The destination already has a field with this name."
+    }
+  }
+  return undefined
+}
+
+/**
+ * Resolves the siblings in the destination container, excluding the field being
+ * moved (so a within-container reorder does not flag the field against itself).
+ */
+function destSiblingsExcludingSource(
+  state: EditorState,
+  destPath: FieldPath,
+  sourceId: string
+): EditorField[] {
+  if (destPath.length === 0) {
+    return state.fields.filter((field) => field.id !== sourceId)
+  }
+  const container = fieldAt(state.fields, destPath)
+  const children = container === undefined ? undefined : childrenOf(container)
+  return (children ?? []).filter((field) => field.id !== sourceId)
+}
+
+/**
+ * Moves the field `fromId` into `to`, as a pure remove-then-insert addressed by
+ * stable id.
+ *
+ * The source is located and removed first, then the destination container and
+ * the insert anchor are resolved **in the post-removal state** — so a
+ * cross-level move lands in the intended container even though removing the
+ * source shifts the indices of its later siblings and shared ancestors. The
+ * returned state is never mutated in place and no history snapshot is committed:
+ * snapshot ownership lives in the `use-editor` layer (one commit per completed
+ * drop). Dropping a field onto itself (`beforeId === fromId`) returns the state
+ * unchanged.
+ *
+ * Callers are expected to gate with {@link planMove}; a structurally-impossible
+ * move that reaches here (an unknown/invalid destination) returns the state
+ * unchanged rather than throwing.
+ *
+ * @param state - The current editor state.
+ * @param fromId - The stable id of the field to move.
+ * @param to - The destination container and insert anchor.
+ * @returns A new {@link EditorState}; the input is not mutated.
+ */
+export function moveField(
+  state: EditorState,
+  fromId: string,
+  to: MoveTarget
+): EditorState {
+  // Drop onto itself: no-op.
+  if (to.beforeId === fromId) {
+    return state
+  }
+
+  const sourcePath = findFieldPath(state.fields, fromId)
+  if (sourcePath === undefined) {
+    return state
+  }
+  const sourceField = fieldAt(state.fields, sourcePath)
+  if (sourceField === undefined) {
+    return state
+  }
+
+  // Remove the source first, then resolve the destination against the
+  // post-removal state so ids map to the correct (shifted) positions.
+  const removed = removeField(state, sourcePath)
+
+  const destPath = findContainerPath(removed, to.containerId)
+  if (destPath === undefined) {
+    // Destination is not a resolvable container post-removal; leave unchanged.
+    return state
+  }
+
+  return {
+    ...removed,
+    fields: updateFieldsAt(removed.fields, destPath, (children) =>
+      insertBefore(children, sourceField, to.beforeId)
+    ),
+  }
 }
 
 /**

@@ -213,6 +213,56 @@ export function commitSnapshot(
 }
 
 /**
+ * Whether an undo is possible — the cursor is not already at the oldest
+ * snapshot.
+ *
+ * @param history - The history to inspect.
+ * @returns `true` when {@link undo} would move the cursor.
+ */
+export function canUndo(history: HistoryState): boolean {
+  return history.cursor > 0
+}
+
+/**
+ * Whether a redo is possible — the cursor is not already at the newest
+ * snapshot.
+ *
+ * @param history - The history to inspect.
+ * @returns `true` when {@link redo} would move the cursor.
+ */
+export function canRedo(history: HistoryState): boolean {
+  return history.cursor < history.snapshots.length - 1
+}
+
+/**
+ * Moves the cursor one snapshot toward the past, restoring the previous
+ * committed state. Clamped at the oldest snapshot: undoing past the start is a
+ * no-op that returns an equivalent history.
+ *
+ * @param history - The history to move the cursor in.
+ * @returns A new {@link HistoryState} with the cursor decremented (clamped);
+ *   the input is not mutated. The `snapshots` are unchanged (no truncation).
+ */
+export function undo(history: HistoryState): HistoryState {
+  const cursor = Math.max(0, history.cursor - 1)
+  return { snapshots: history.snapshots, cursor }
+}
+
+/**
+ * Moves the cursor one snapshot toward the future, reapplying the next
+ * committed state. Clamped at the newest snapshot: redoing past the end is a
+ * no-op that returns an equivalent history.
+ *
+ * @param history - The history to move the cursor in.
+ * @returns A new {@link HistoryState} with the cursor incremented (clamped);
+ *   the input is not mutated.
+ */
+export function redo(history: HistoryState): HistoryState {
+  const cursor = Math.min(history.snapshots.length - 1, history.cursor + 1)
+  return { snapshots: history.snapshots, cursor }
+}
+
+/**
  * Replaces the active snapshot in place without adding a new history entry.
  *
  * Used for the live, per-keystroke update of a continuous text edit: the
@@ -252,6 +302,19 @@ export interface CoalescingCommitter {
    * scheduled debounce. A no-op when nothing is pending.
    */
   flush: () => void
+  /**
+   * Replaces the committed history wholesale, after flushing any pending edit
+   * so it is not lost.
+   *
+   * This is the path undo/redo takes: the caller computes an undone/redone
+   * {@link HistoryState} (a cursor move over the same snapshots) and installs
+   * it as the new committed history. Any in-flight continuous edit is settled
+   * into its snapshot first, so switching the cursor never discards a pending
+   * keystroke.
+   *
+   * @param next - The history to install as the committed history.
+   */
+  setHistory: (next: HistoryState) => void
   /** The current history, reflecting live edits and committed snapshots. */
   readonly history: HistoryState
 }
@@ -325,6 +388,13 @@ export function createCoalescingCommitter(
     flush() {
       cancel()
       commitPending()
+    },
+    setHistory(next) {
+      // Settle any in-flight edit into the current committed history first, so
+      // a pending keystroke is not lost when the history is replaced.
+      cancel()
+      commitPending()
+      committed = next
     },
     get history() {
       // While an edit is pending, show it at the cursor without yet committing.
