@@ -69,6 +69,15 @@ export interface KeyboardMoveApi {
    */
   registerNodeRef: (fieldId: string, element: HTMLElement | null) => void
   /**
+   * Requests programmatic focus of the field carrying `fieldId`, used by
+   * jump-to-field: it sets the internal focus target so the post-render effect
+   * moves focus once that field's node ref is present. Unlike a committed
+   * move/add this drives focus alone (no state mutation), so a caller pairs it
+   * with `selectField` to also select the field. Harmless when `fieldId` names
+   * no current field — the effect simply never finds a node to focus.
+   */
+  focusField: (fieldId: string) => void
+  /**
    * Adds a field of `fieldType` from the palette by keyboard, inserting it into
    * the currently-selected container (the selected field if it is a container,
    * else its nearest container ancestor, else the top level). Focus lands on the
@@ -338,6 +347,13 @@ export function useKeyboardMove(): KeyboardMoveApi {
     [grabbedId]
   )
 
+  const focusField = useCallback((fieldId: string) => {
+    // Set the same focus target the commit path uses; the post-render effect
+    // moves focus once this field's node ref is present. Selection/view changes
+    // the caller makes alongside this drive the render that runs the effect.
+    focusTargetRef.current = fieldId
+  }, [])
+
   const addFromPalette = useCallback(
     (fieldType: EditorFieldType) => {
       const containerId = selectedContainerId(
@@ -364,6 +380,7 @@ export function useKeyboardMove(): KeyboardMoveApi {
       grab,
       handleGrabbedKey,
       registerNodeRef,
+      focusField,
       addFromPalette,
     }),
     [
@@ -373,6 +390,7 @@ export function useKeyboardMove(): KeyboardMoveApi {
       grab,
       handleGrabbedKey,
       registerNodeRef,
+      focusField,
       addFromPalette,
     ]
   )

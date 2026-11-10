@@ -103,9 +103,19 @@ function updateFieldsAt(
 
 /**
  * Resolves the field addressed by `path` (the last index into the container at
- * the preceding path).
+ * the preceding path), following each level's structural child container.
+ *
+ * An empty path addresses no field (the top-level container itself), so it
+ * returns `undefined`. A path segment that overruns a container — an index past
+ * the end, or a descent into a field that holds no children — also returns
+ * `undefined`.
+ *
+ * @param fields - The top-level field array to resolve against.
+ * @param path - The child-index {@link FieldPath} to the field.
+ * @returns The addressed {@link EditorField}, or `undefined` when the path does
+ *   not resolve to one.
  */
-function fieldAt(
+export function fieldAt(
   fields: EditorField[],
   path: FieldPath
 ): EditorField | undefined {
@@ -309,6 +319,52 @@ export function findFieldPath(
     }
   }
   return undefined
+}
+
+/**
+ * Resolves a `fieldId` to the ancestry of field **names** leading to it, from
+ * the top level down to (and including) the field itself.
+ *
+ * {@link findFieldPath} yields a path of numeric child **indices**, which the
+ * mutation ops consume but which carries no human-readable labels. This walk
+ * turns that index path into the list of names a UI can render as a
+ * breadcrumb — e.g. a `postalCode` field nested in an `address` `Object`
+ * resolves to `["address", "postalCode"]`, and an item field of an
+ * `Array`-of-`Object` resolves to the array's name followed by the item
+ * field's name. A field with an empty `name` contributes an empty string at its
+ * position (the caller decides how to render an unnamed field), and the walk
+ * never fabricates names.
+ *
+ * Returns `undefined` when no field carries `fieldId` (for example a stale
+ * selection after the field was removed), distinguishing "unknown field" from a
+ * resolved field whose own name happens to be empty.
+ *
+ * Pure and React-free.
+ *
+ * @param state - The editor state to resolve against.
+ * @param fieldId - The client-side id to resolve to a name ancestry.
+ * @returns The ancestry of field names from the top level to the field, or
+ *   `undefined` when no field has that id.
+ */
+export function fieldNamePath(
+  state: EditorState,
+  fieldId: string
+): string[] | undefined {
+  const path = findFieldPath(state.fields, fieldId)
+  if (path === undefined) {
+    return undefined
+  }
+  const names: string[] = []
+  // Walk the index path from the top level down, collecting the name at each
+  // level by resolving the field addressed by each path prefix.
+  for (let depth = 1; depth <= path.length; depth += 1) {
+    const field = fieldAt(state.fields, path.slice(0, depth))
+    if (field === undefined) {
+      return undefined
+    }
+    names.push(field.name)
+  }
+  return names
 }
 
 /**

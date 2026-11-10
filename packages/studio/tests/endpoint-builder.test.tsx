@@ -16,11 +16,13 @@ import { useEffect } from "react"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 
 import type { EditorFieldType } from "@/core"
-import { Canvas } from "@/ui/canvas/canvas"
+import { CanvasSurface } from "@/ui/canvas/canvas"
 import type { CanvasDropData } from "@/ui/canvas/dnd-types"
 import { paletteDraggableId } from "@/ui/canvas/dnd-types"
+import { Palette } from "@/ui/canvas/palette"
+import { CanvasShellRoot } from "@/ui/canvas/shell-root"
 import type { CanvasDndApi } from "@/ui/canvas/use-canvas-dnd"
-import { useCanvasDnd } from "@/ui/canvas/use-canvas-dnd"
+import { useCanvasDndContext } from "@/ui/canvas/use-canvas-dnd"
 import { EndpointBuilder } from "@/ui/endpoint-builder"
 import { FieldPropertiesPanel } from "@/ui/field-properties-panel"
 import type { EditorApi } from "@/ui/use-editor"
@@ -136,10 +138,30 @@ function dropEvent(
 }
 
 /**
- * Renders the real {@link Canvas} and {@link FieldPropertiesPanel} under one
- * live editor, exposing both the editor API and the canvas DnD API so a test
- * can invoke the drop handler (the drag-driven add/nest path) and then assert
- * against the rendered canvas DOM. Mirrors the Phase-C canvas harness.
+ * A probe that captures the hoisted canvas DnD API from context. Rendered
+ * inside {@link CanvasShellRoot} so it reads the single DnD instance the canvas
+ * surface and palette share.
+ */
+const DndProbe = ({
+  capture,
+}: {
+  capture: (dnd: CanvasDndApi) => void
+}): null => {
+  const dnd = useCanvasDndContext()
+  useEffect(() => {
+    capture(dnd)
+  })
+  return null
+}
+
+/**
+ * Renders the decomposed canvas ({@link Palette} + {@link CanvasSurface}) and
+ * {@link FieldPropertiesPanel} under one live editor and the hoisted
+ * {@link CanvasShellRoot}, exposing both the editor API and the shared canvas
+ * DnD API so a test can invoke the drop handler (the drag-driven add/nest path)
+ * and then assert against the rendered canvas DOM. After the Phase-B
+ * decomposition the providers/`DndContext` live in the shell root, not a
+ * self-providing `Canvas`.
  */
 function renderCanvasBuilder(): {
   get: () => { editor: EditorApi; dnd: CanvasDndApi }
@@ -149,14 +171,6 @@ function renderCanvasBuilder(): {
     dnd: null,
   }
 
-  const DndProbe = (): null => {
-    const dnd = useCanvasDnd()
-    useEffect(() => {
-      bag.dnd = dnd
-    })
-    return null
-  }
-
   const Harness = (): ReactNode => {
     const editor = useEditor()
     useEffect(() => {
@@ -164,8 +178,15 @@ function renderCanvasBuilder(): {
     })
     return (
       <EditorProvider value={editor}>
-        <DndProbe />
-        <Canvas />
+        <CanvasShellRoot>
+          <DndProbe
+            capture={(dnd) => {
+              bag.dnd = dnd
+            }}
+          />
+          <Palette />
+          <CanvasSurface />
+        </CanvasShellRoot>
         <FieldPropertiesPanel />
       </EditorProvider>
     )

@@ -1,13 +1,7 @@
 // @vitest-environment jsdom
 
 import type { DragEndEvent, DragStartEvent } from "@dnd-kit/core"
-import {
-  act,
-  cleanup,
-  render,
-  renderHook,
-  screen,
-} from "@testing-library/react"
+import { act, cleanup, render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import type { ReactNode } from "react"
 import { useEffect, useRef } from "react"
@@ -15,11 +9,13 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest"
 
 import type { EditorFieldType } from "@/core"
 import { createField } from "@/core"
-import { Canvas } from "@/ui/canvas/canvas"
+import { CanvasSurface } from "@/ui/canvas/canvas"
 import type { CanvasDropData } from "@/ui/canvas/dnd-types"
 import { paletteDraggableId, resolveDropTarget } from "@/ui/canvas/dnd-types"
+import { Palette } from "@/ui/canvas/palette"
+import { CanvasShellRoot } from "@/ui/canvas/shell-root"
 import type { CanvasDndApi } from "@/ui/canvas/use-canvas-dnd"
-import { useCanvasDnd } from "@/ui/canvas/use-canvas-dnd"
+import { useCanvasDndContext } from "@/ui/canvas/use-canvas-dnd"
 import { FieldPropertiesPanel } from "@/ui/field-properties-panel"
 import type { EditorApi } from "@/ui/use-editor"
 import { EditorProvider, useEditor } from "@/ui/use-editor"
@@ -31,7 +27,13 @@ import { defined } from "./helpers"
  * pointer drags, so the drag/drop handler logic is exercised by invoking the
  * `@dnd-kit` handlers with constructed events (per the design/testing-strategy)
  * — deep pointer behaviour is the Phase-E E2E layer. Rendering tests drive the
- * real `Canvas` DOM for structure, selection, and drop-zone presence.
+ * real canvas DOM for structure, selection, and drop-zone presence.
+ *
+ * After the Phase-B decomposition the canvas no longer self-provides its
+ * `DndContext`/providers: these harnesses mount the hoisted
+ * {@link CanvasShellRoot} and place the {@link Palette} + {@link CanvasSurface}
+ * inside it, and probe the shared DnD API via {@link useCanvasDndContext} (the
+ * one instance the surface uses) rather than a sibling `useCanvasDnd` call.
  */
 
 /** A minimal palette-source drag-start event for the given field type. */
@@ -75,9 +77,28 @@ function paletteActive(fieldType: EditorFieldType): DragStartEvent["active"] {
 }
 
 /**
- * Renders a harness exposing both the live editor API and the canvas DnD API
- * sharing one `EditorProvider`, so a test can invoke the DnD handlers and read
- * the resulting live state. Returns a `get()` returning the current pair.
+ * A probe that captures the hoisted canvas DnD API from context. Rendered
+ * inside {@link CanvasShellRoot} so it reads the single DnD instance the canvas
+ * surface and palette share, not a fresh sibling instance.
+ */
+const DndProbe = ({
+  capture,
+}: {
+  capture: (dnd: CanvasDndApi) => void
+}): null => {
+  const dnd = useCanvasDndContext()
+  useEffect(() => {
+    capture(dnd)
+  })
+  return null
+}
+
+/**
+ * Renders the hoisted shell root exposing both the live editor API and the
+ * shared canvas DnD API under one `EditorProvider`, so a test can invoke the
+ * DnD handlers and read the resulting live state. The shell root owns the
+ * `DndContext` and the provider chain; the probe reads the DnD context from
+ * inside it. Returns a `get()` returning the current pair.
  */
 function renderCanvasHarness(): {
   get: () => { editor: EditorApi; dnd: CanvasDndApi }
@@ -87,28 +108,25 @@ function renderCanvasHarness(): {
     dnd: null,
   }
 
-  const DndProbe = (): null => {
-    const dnd = useCanvasDnd()
-    useEffect(() => {
-      bag.dnd = dnd
-    })
-    return null
-  }
-
-  const Wrapper = ({ children }: { children: ReactNode }): ReactNode => {
+  const Wrapper = (): ReactNode => {
     const editor = useEditor()
     useEffect(() => {
       bag.editor = editor
     })
     return (
       <EditorProvider value={editor}>
-        <DndProbe />
-        {children}
+        <CanvasShellRoot>
+          <DndProbe
+            capture={(dnd) => {
+              bag.dnd = dnd
+            }}
+          />
+        </CanvasShellRoot>
       </EditorProvider>
     )
   }
 
-  renderHook(() => null, { wrapper: Wrapper })
+  render(<Wrapper />)
   return {
     get: () => ({
       editor: defined(bag.editor),
@@ -348,24 +366,34 @@ const Seed = ({ editor }: { editor: EditorApi }): null => {
   return null
 }
 
-/** The canvas under a fresh editor, seeded with the nested structure. */
+/**
+ * The decomposed canvas (palette + surface) under a fresh editor and the
+ * hoisted shell root, seeded with the nested structure. Mirrors how the
+ * iteration-3 shell mounts the pieces, so no self-providing `Canvas` is used.
+ */
 const SeededCanvas = (): ReactNode => {
   const editor = useEditor()
   return (
     <EditorProvider value={editor}>
       <Seed editor={editor} />
-      <Canvas />
+      <CanvasShellRoot>
+        <Palette />
+        <CanvasSurface />
+      </CanvasShellRoot>
     </EditorProvider>
   )
 }
 
-/** The seeded canvas plus the properties panel under one editor. */
+/** The seeded decomposed canvas plus the properties panel under one editor. */
 const SeededCanvasWithPanel = (): ReactNode => {
   const editor = useEditor()
   return (
     <EditorProvider value={editor}>
       <Seed editor={editor} />
-      <Canvas />
+      <CanvasShellRoot>
+        <Palette />
+        <CanvasSurface />
+      </CanvasShellRoot>
       <FieldPropertiesPanel />
     </EditorProvider>
   )

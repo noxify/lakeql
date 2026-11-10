@@ -1,4 +1,4 @@
-import { DndContext, useDroppable } from "@dnd-kit/core"
+import { useDroppable } from "@dnd-kit/core"
 import { SortableContext } from "@dnd-kit/sortable"
 
 import { cn } from "@/lib/utils"
@@ -10,30 +10,24 @@ import { ROOT_ZONE_ID } from "./dnd-types"
 import { DropIndicator } from "./drop-indicator"
 import { indicatorAt } from "./indicator-state"
 import { Palette } from "./palette"
-import {
-  CanvasDndProvider,
-  useCanvasDnd,
-  useCanvasDndContext,
-  useCanvasSensors,
-} from "./use-canvas-dnd"
-import {
-  KeyboardMoveProvider,
-  useKeyboardMove,
-  useKeyboardMoveContext,
-} from "./use-keyboard-move"
-import {
-  TypeChangeProvider,
-  useCanvasTypeChange,
-  useTypeChangeContext,
-} from "./use-type-change"
+import { CanvasShellRoot } from "./shell-root"
+import { useCanvasDndContext } from "./use-canvas-dnd"
+import { useKeyboardMoveContext } from "./use-keyboard-move"
+import { useTypeChangeContext } from "./use-type-change"
 
 /**
  * The top-level droppable surface rendering the editor's `fields` as sortable
  * canvas nodes. An append indicator shows at the end while a drag resolves to
  * appending at the top level; the rejection reason surfaces a
  * structurally-impossible drop.
+ *
+ * A separately-mountable piece of the decomposed canvas: it consumes the DnD,
+ * keyboard-move, and type-change contexts from the hoisted `CanvasShellRoot`
+ * rather than owning them, so it can render in the shell's main content while
+ * the {@link Palette} renders in a different subtree under the same single
+ * `DndContext`.
  */
-const CanvasSurface = () => {
+export const CanvasSurface = () => {
   const editor = useEditorContext()
   const { drag, rejectionReason } = useCanvasDndContext()
   const keyboard = useKeyboardMoveContext()
@@ -112,63 +106,22 @@ const CanvasSurface = () => {
 }
 
 /**
- * A visually hidden `aria-live` region announcing keyboard structural actions
- * (pick up, target change, drop, cancel, palette add) reusing the Iteration-1
- * announcer pattern (Requirement 5.4). Polite so it does not interrupt the user
- * mid-navigation; atomic so each new message is read in full.
- */
-const KeyboardMoveAnnouncer = () => {
-  const keyboard = useKeyboardMoveContext()
-  return (
-    <div
-      role="status"
-      aria-live="polite"
-      aria-atomic="true"
-      className="sr-only"
-      data-testid="keyboard-move-announcer"
-    >
-      {keyboard.announcement}
-    </div>
-  )
-}
-
-/**
- * The drag-and-drop authoring canvas (Requirement 1.1 center region). A single
- * `DndContext` wraps the palette and the recursive node surface; every
- * structural change routes through the `use-editor` commit path (`addField` for
- * a palette source, `moveField` for a node), so the canvas is a pure
- * presentation layer over `@/core`.
+ * The drag-and-drop authoring canvas (Requirement 1.1 center region): the
+ * {@link Palette} and the {@link CanvasSurface} mounted together under a single
+ * hoisted {@link CanvasShellRoot}.
  *
- * The palette renders inline above the surface so a single `DndContext` spans
- * both the draggable sources and their drop targets.
+ * This is now a thin composition over the decomposed pieces — the providers and
+ * `DndContext` live in `CanvasShellRoot`, and the palette and surface are
+ * separately-mountable. It keeps a working authoring surface (palette above the
+ * canvas) for the pre-shell layout; the iteration-3 shell instead mounts
+ * `CanvasShellRoot` once and places `Palette` and `CanvasSurface` in its own
+ * subtrees.
  */
-export const Canvas = () => {
-  const dnd = useCanvasDnd()
-  const keyboard = useKeyboardMove()
-  const typeChange = useCanvasTypeChange()
-  const sensors = useCanvasSensors()
-  const { onDragStart: handleDragStart } = dnd
-  const { onDragOver: handleDragOver } = dnd
-  const { onDragEnd: handleDragEnd } = dnd
-
-  return (
-    <CanvasDndProvider value={dnd}>
-      <KeyboardMoveProvider value={keyboard}>
-        <TypeChangeProvider value={typeChange}>
-          <DndContext
-            sensors={sensors}
-            onDragStart={handleDragStart}
-            onDragOver={handleDragOver}
-            onDragEnd={handleDragEnd}
-          >
-            <div className="grid gap-4">
-              <KeyboardMoveAnnouncer />
-              <Palette />
-              <CanvasSurface />
-            </div>
-          </DndContext>
-        </TypeChangeProvider>
-      </KeyboardMoveProvider>
-    </CanvasDndProvider>
-  )
-}
+export const Canvas = () => (
+  <CanvasShellRoot>
+    <div className="grid gap-4">
+      <Palette />
+      <CanvasSurface />
+    </div>
+  </CanvasShellRoot>
+)

@@ -62,6 +62,8 @@ export {
   changeFieldType,
   createField,
   enumerateMoveSlots,
+  fieldAt,
+  fieldNamePath,
   findContainerPath,
   findFieldPath,
   moveField,
