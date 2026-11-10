@@ -1,3 +1,9 @@
+## @lakeql/cli@1.0.2
+
+### Generate validations.ts and emit nested-field validations
+
+Endpoints that combine field-level validations with an enabled mutation now generate a `validations.ts` exporting `validationSchema` alongside `mutation-schema.ts`, so the generated `import { validationSchema } from "./validations"` resolves. Validations declared on fields nested inside an `Object`, or inside an `Array`-of-`Object`, are now emitted into the generated schema instead of being dropped.
+
 ## @lakeql/cli@1.0.1
 
 ### Package metadata and publishing
