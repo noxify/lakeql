@@ -293,6 +293,29 @@ describe("moveField — remove-then-insert by id", () => {
     const next = moveField(state, id, { containerId: null, beforeId: id })
     expect(next).toBe(state)
   })
+
+  it("returns the state unchanged for a structurally-impossible destination that bypasses planMove", () => {
+    // A primitive is not a field-holding container, so `findContainerPath`
+    // yields `undefined` and the ungated fallback must leave state untouched
+    // (callers are expected to gate with `planMove`, but moveField must not
+    // throw or corrupt state when reached without that gate).
+    const first = appendedWithId(baseState(), "a", "String")
+    const second = appendedWithId(first.state, "b", "String")
+    const next = moveField(second.state, first.id, {
+      containerId: second.id,
+      beforeId: null,
+    })
+    expect(next).toBe(second.state)
+  })
+
+  it("returns the state unchanged for an unknown destination container id", () => {
+    const { state, id } = appendedWithId(baseState(), "a", "String")
+    const next = moveField(state, id, {
+      containerId: "missing",
+      beforeId: null,
+    })
+    expect(next).toBe(state)
+  })
 })
 
 describe("addField positional insert-anchor", () => {

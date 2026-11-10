@@ -504,9 +504,11 @@ function moveWarning(
   to: MoveTarget
 ): string | undefined {
   const sourceParentPath = sourcePath.slice(0, -1)
+  // Resolve the destination container once; both the emptied-source and the
+  // duplicate-name checks reuse it.
+  const destPath = findContainerPath(state, to.containerId)
   const movingWithinSameContainer =
-    findContainerPath(state, to.containerId)?.join(",") ===
-    sourceParentPath.join(",")
+    destPath?.join(",") === sourceParentPath.join(",")
 
   // Emptied source: the source's container drops to zero children, but only
   // when the move actually leaves that container (a within-container reorder
@@ -521,7 +523,6 @@ function moveWarning(
   }
 
   // Duplicate name at the destination.
-  const destPath = findContainerPath(state, to.containerId)
   if (destPath !== undefined) {
     const destSiblings = destSiblingsExcludingSource(
       state,

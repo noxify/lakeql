@@ -5,12 +5,13 @@ import {
 } from "@/components/ui/resizable"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
+import { Canvas } from "./canvas/canvas"
 import { FieldPropertiesPanel } from "./field-properties-panel"
-import { FieldTree } from "./field-tree"
 import { ImportExportBar } from "./import-export-bar"
 import { JsonView } from "./json-view"
 import { MetadataForm } from "./metadata-form"
 import { MutationConfigForm } from "./mutation-config-form"
+import { UndoRedoControls } from "./undo-redo-controls"
 import { EditorProvider, useEditor } from "./use-editor"
 import { ValidationAnnouncer } from "./validation-announcer"
 
@@ -32,11 +33,11 @@ const LeftRegion = () => (
 )
 
 /**
- * The center region: the recursive field tree.
+ * The center region: the drag-and-drop canvas (palette + recursive nodes).
  */
 const CenterRegion = () => (
   <div className="h-full overflow-y-auto p-4">
-    <FieldTree />
+    <Canvas />
   </div>
 )
 
@@ -75,7 +76,10 @@ const EndpointBuilderLayout = () => (
           Visual authoring for LakeQL endpoint definitions.
         </p>
       </div>
-      <ImportExportBar />
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <ImportExportBar />
+        <UndoRedoControls />
+      </div>
     </header>
 
     <ResizablePanelGroup orientation="horizontal" className="flex-1">
@@ -97,8 +101,9 @@ const EndpointBuilderLayout = () => (
 /**
  * Root component of the LakeQL Endpoint Builder.
  *
- * Composes the three-region layout (metadata + mutation slot / field tree /
- * properties + JSON tabs) and the import/export bar over the framework-agnostic
+ * Composes the three-region layout (metadata + mutation slot / drag-and-drop
+ * canvas / properties + JSON tabs) and the import/export bar over the
+ * framework-agnostic
  * `@/core`: the live `EditorState` drives rendering and validation, structural
  * actions route through the core field operations, and the draft autosaves via
  * the core persistence layer.
