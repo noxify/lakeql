@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 
+import type { DragEndEvent } from "@dnd-kit/core"
 import type { EndpointDefinitionFormat } from "@lakeql/schema-generator/endpoint-schema"
 import {
+  act,
   cleanup,
   render,
   screen,
@@ -9,16 +11,38 @@ import {
   within,
 } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
+import type { ReactNode } from "react"
+import { useEffect } from "react"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 
+import type { EditorFieldType } from "@/core"
+import { Canvas } from "@/ui/canvas/canvas"
+import type { CanvasDropData } from "@/ui/canvas/dnd-types"
+import { paletteDraggableId } from "@/ui/canvas/dnd-types"
+import type { CanvasDndApi } from "@/ui/canvas/use-canvas-dnd"
+import { useCanvasDnd } from "@/ui/canvas/use-canvas-dnd"
 import { EndpointBuilder } from "@/ui/endpoint-builder"
+import { FieldPropertiesPanel } from "@/ui/field-properties-panel"
+import type { EditorApi } from "@/ui/use-editor"
+import { EditorProvider, useEditor } from "@/ui/use-editor"
+
+import { defined } from "./helpers"
 
 /**
- * Rendered-UI integration tests for the Phase-2/3 criteria that the pure core
- * tests cannot reach (Req 8.1, 8.2, 9.1, 9.3, 3.10). They render the real
- * `EndpointBuilder` in jsdom and drive it the way a user would, so they assert
- * the wiring between the UI and the already-unit-tested core — not the core
- * logic again.
+ * Rendered-UI integration tests for the Endpoint Builder — the Iteration-1
+ * behaviours the pure core tests cannot reach (Req 1.5 parity, 8.1, 8.2, 9.1,
+ * 9.3, 3.10), rewritten for the Iteration-2 **canvas** surface (the tree is
+ * gone). They render the real UI in jsdom and drive it the way a user would, so
+ * they assert the wiring between the UI and the already-unit-tested core.
+ *
+ * The canvas reuses the Iteration-1 `aria-label`s (`"Field name"`,
+ * `"Field type"`, `"Array item type"`, `"Remove field"`), so the metadata /
+ * import / export / dialog assertions survive the surface swap and drive the
+ * full {@link EndpointBuilder}. Only the structural actions differ: on the
+ * canvas, adding and nesting a field is drag-driven. jsdom cannot perform real
+ * pointer drags, so — exactly as the Phase-C canvas component tests do — those
+ * actions are exercised by invoking the `@dnd-kit` drop handler with
+ * constructed events over a live `Canvas`.
  *
  * Assertions use plain Vitest matchers over DOM properties (no `jest-dom`
  * dependency), reading `.value`/`.disabled`/`aria-checked` directly.
@@ -57,14 +81,14 @@ function fileInput(): HTMLInputElement {
   return input
 }
 
-/** The current values of every "Field name" input in the tree. */
+/** The current values of every "Field name" input on the canvas. */
 function fieldNameValues(): string[] {
   return screen
     .getAllByLabelText("Field name")
     .map((node) => (node as HTMLInputElement).value)
 }
 
-/** The "Field type" select at a given tree-row index. */
+/** The "Field type" select at a given canvas-node index. */
 function typeSelectAt(index: number): HTMLElement {
   const select = screen.getAllByLabelText("Field type")[index]
   if (select === undefined) {
@@ -90,7 +114,70 @@ async function selectOption(
   await user.click(option)
 }
 
-describe("EndpointBuilder rendered-UI integration", () => {
+/** The active descriptor for a palette source of the given field type. */
+function paletteActive(fieldType: EditorFieldType): DragEndEvent["active"] {
+  return {
+    id: paletteDraggableId(fieldType),
+    data: { current: { kind: "new-field", fieldType } },
+    rect: { current: { initial: null, translated: null } },
+  } as unknown as DragEndEvent["active"]
+}
+
+/** A drag-end event dropping the given active draggable over `over`. */
+function dropEvent(
+  active: DragEndEvent["active"],
+  over: CanvasDropData
+): DragEndEvent {
+  return {
+    active,
+    over: { id: "over", data: { current: over }, rect: {}, disabled: false },
+    delta: { x: 0, y: 0 },
+  } as unknown as DragEndEvent
+}
+
+/**
+ * Renders the real {@link Canvas} and {@link FieldPropertiesPanel} under one
+ * live editor, exposing both the editor API and the canvas DnD API so a test
+ * can invoke the drop handler (the drag-driven add/nest path) and then assert
+ * against the rendered canvas DOM. Mirrors the Phase-C canvas harness.
+ */
+function renderCanvasBuilder(): {
+  get: () => { editor: EditorApi; dnd: CanvasDndApi }
+} {
+  const bag: { editor: EditorApi | null; dnd: CanvasDndApi | null } = {
+    editor: null,
+    dnd: null,
+  }
+
+  const DndProbe = (): null => {
+    const dnd = useCanvasDnd()
+    useEffect(() => {
+      bag.dnd = dnd
+    })
+    return null
+  }
+
+  const Harness = (): ReactNode => {
+    const editor = useEditor()
+    useEffect(() => {
+      bag.editor = editor
+    })
+    return (
+      <EditorProvider value={editor}>
+        <DndProbe />
+        <Canvas />
+        <FieldPropertiesPanel />
+      </EditorProvider>
+    )
+  }
+
+  render(<Harness />)
+  return {
+    get: () => ({ editor: defined(bag.editor), dnd: defined(bag.dnd) }),
+  }
+}
+
+describe("EndpointBuilder rendered-UI integration (canvas)", () => {
   beforeEach(() => {
     // Each test starts from empty persistence so the fresh default seeds.
     window.localStorage.clear()
@@ -100,8 +187,116 @@ describe("EndpointBuilder rendered-UI integration", () => {
     cleanup()
   })
 
+  describe("authoring on the canvas — Req 1.5 parity", () => {
+    it("adds a field of every type via a palette drop onto the canvas", () => {
+      const { get } = renderCanvasBuilder()
+      const types: EditorFieldType[] = [
+        "String",
+        "Integer",
+        "Float",
+        "Boolean",
+        "Date",
+        "DateTime",
+        "Object",
+        "Array",
+      ]
+
+      for (const type of types) {
+        act(() =>
+          get().dnd.onDragEnd(
+            dropEvent(paletteActive(type), {
+              kind: "container-zone",
+              containerId: null,
+            })
+          )
+        )
+      }
+
+      // One canvas node per dropped type, each carrying the dropped type.
+      expect(get().editor.state.fields.map((f) => f.type)).toStrictEqual(types)
+      // The canvas rendered a "Field type" control per node.
+      expect(screen.getAllByLabelText("Field type")).toHaveLength(types.length)
+    })
+
+    it("nests a field recursively by dropping into a container node", () => {
+      const { get } = renderCanvasBuilder()
+
+      // Drop an Object, then a String into that Object, then a String into an
+      // Array-of-Object nested inside — two levels of recursion.
+      act(() =>
+        get().dnd.onDragEnd(
+          dropEvent(paletteActive("Object"), {
+            kind: "container-zone",
+            containerId: null,
+          })
+        )
+      )
+      const objectId = defined(get().editor.state.fields[0]).id
+
+      act(() =>
+        get().dnd.onDragEnd(
+          dropEvent(paletteActive("String"), {
+            kind: "container-zone",
+            containerId: objectId,
+          })
+        )
+      )
+
+      const objectField = defined(get().editor.state.fields[0])
+      expect(defined(objectField.fields)).toHaveLength(1)
+      expect(defined(objectField.fields)[0]?.type).toBe("String")
+
+      // The nested child renders its own "Field name" input on the canvas.
+      expect(screen.getAllByLabelText("Field name")).toHaveLength(2)
+    })
+
+    it("selects a node (drives the panel) and removes it from the canvas", async () => {
+      const user = userEvent.setup()
+      const { get } = renderCanvasBuilder()
+
+      act(() =>
+        get().dnd.onDragEnd(
+          dropEvent(paletteActive("String"), {
+            kind: "container-zone",
+            containerId: null,
+          })
+        )
+      )
+      act(() =>
+        get().dnd.onDragEnd(
+          dropEvent(paletteActive("Integer"), {
+            kind: "container-zone",
+            containerId: null,
+          })
+        )
+      )
+      expect(fieldNameValues()).toHaveLength(2)
+
+      // A palette drop auto-selects the dropped node; clear the selection so
+      // the panel shows its hint, proving selection genuinely drives it.
+      act(() => get().editor.selectField(null))
+      expect(
+        screen.getByText(/Select a field to edit its options/u)
+      ).toBeDefined()
+
+      // Selecting a node (focusing its name input) drives the properties panel
+      // from its hint to the per-field option controls.
+      const firstName = defined(screen.getAllByLabelText("Field name")[0])
+      await user.click(firstName)
+      expect(
+        screen.queryByText(/Select a field to edit its options/u)
+      ).toBeNull()
+      expect(screen.getByText("Validations")).toBeDefined()
+
+      // Removing a node drops it from the canvas.
+      const removeButtons = screen.getAllByLabelText("Remove field")
+      await user.click(defined(removeButtons[0]))
+      expect(fieldNameValues()).toHaveLength(1)
+    })
+  })
+
   describe("import into the rendered builder (Req 9.1, 9.3)", () => {
-    it("populates the tree, metadata, and mutation from a valid file", async () => {
+    it("populates the canvas, metadata, and mutation from a valid file", async () => {
       const user = userEvent.setup()
       render(<EndpointBuilder />)
 
@@ -117,9 +312,10 @@ describe("EndpointBuilder rendered-UI integration", () => {
         "main"
       )
 
-      // The tree is populated — the two top-level field names are present.
+      // The canvas is populated — the top-level names and the nested "city".
       expect(fieldNameValues()).toContain("id")
       expect(fieldNameValues()).toContain("profile")
+      expect(fieldNameValues()).toContain("city")
 
       // Mutation was enabled from the file.
       expect(screen.getByRole("switch").getAttribute("aria-checked")).toBe(
@@ -197,8 +393,8 @@ describe("EndpointBuilder rendered-UI integration", () => {
         ).toBe("events")
       })
 
-      // The "profile" row is the Object with a child; find its type select by
-      // matching the row index of the "profile" name input.
+      // The "profile" node is the Object with a child; find its type select by
+      // matching the index of the "profile" name input on the canvas.
       const profileIndex = fieldNameValues().indexOf("profile")
       expect(profileIndex).toBeGreaterThanOrEqual(0)
 
