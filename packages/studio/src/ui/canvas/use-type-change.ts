@@ -103,26 +103,29 @@ export function useCanvasTypeChange(): TypeChangeApi {
   )
 
   const confirm = useCallback(() => {
-    setPending((current) => {
-      if (current === null) {
-        return null
-      }
-      if (current.kind === "field") {
-        editor.changeFieldType(
-          current.path,
-          current.nextType as EditorFieldType,
-          { confirm: true }
-        )
-      } else {
-        editor.changeArrayItemType(
-          current.path,
-          current.nextType as EditorArrayItemType,
-          { confirm: true }
-        )
-      }
-      return null
-    })
-  }, [editor])
+    // Apply the confirmed change as a side effect in the callback body, not
+    // inside a `setPending` updater: updaters must be pure, and StrictMode
+    // (on in both shipped entry points) double-invokes them, which would
+    // re-apply the change twice. Read the current pending change, apply it,
+    // then clear it.
+    if (pending === null) {
+      return
+    }
+    if (pending.kind === "field") {
+      editor.changeFieldType(
+        pending.path,
+        pending.nextType as EditorFieldType,
+        { confirm: true }
+      )
+    } else {
+      editor.changeArrayItemType(
+        pending.path,
+        pending.nextType as EditorArrayItemType,
+        { confirm: true }
+      )
+    }
+    setPending(null)
+  }, [editor, pending])
 
   const cancel = useCallback(() => {
     setPending(null)

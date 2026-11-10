@@ -1,8 +1,11 @@
 import { useDroppable } from "@dnd-kit/core"
 import { SortableContext, useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
-import { GripVerticalIcon, Trash2Icon } from "lucide-react"
-import type { KeyboardEvent, MouseEvent } from "react"
+import {
+  GripVerticalIcon,
+  MousePointerClickIcon,
+  Trash2Icon,
+} from "lucide-react"
 import { useId } from "react"
 
 import { Button } from "@/components/ui/button"
@@ -157,12 +160,18 @@ const ContainerZone = ({
  *
  * The node reuses the Iteration-1 `aria-label`s (`"Field name"`,
  * `"Field type"`, `"Array item type"`, `"Remove field"`) so the Phase-D
- * integration tests target the same controls. The whole card is selectable —
- * a pointer click or a keyboard `Enter`/`Space` on the focused card selects the
- * field so the properties panel targets it (in addition to focusing the name
- * input), while drag stays on the grip handle so selecting never starts a drag.
- * A lossy type change routes through the single shared confirmation dialog and
- * is applied only on confirm.
+ * integration tests target the same controls. The card is a labelled
+ * `role="group"` region, not a button, so its interactive children (name
+ * input, type selects, remove button, grip) are not nested under a button
+ * role. Selection targets the field so the properties panel can edit it: the
+ * card exposes a dedicated `"Select field"` control — a focusable button with
+ * an `aria-pressed` state and a visible focus ring, operable by pointer and
+ * keyboard — as a clear select affordance scoped to the card, in addition to
+ * the name-input focus path. Making the whole card a single selectable control
+ * would nest its interactive children under a button role, so the select
+ * target is kept scoped to this dedicated control instead. Drag stays on the
+ * grip handle, so selecting never starts a drag. A lossy type change routes
+ * through the single shared confirmation dialog and is applied only on confirm.
  */
 export const CanvasNode = ({
   field,
@@ -218,35 +227,9 @@ export const CanvasNode = ({
     transition,
   }
 
-  // Selecting the card drives the properties panel. The whole card is a select
-  // target for pointer users; for keyboard users it is focusable and activates
-  // on Enter/Space. Activation is handled only when the card itself is the
-  // event target, so it never hijacks the keys of the inner controls (name
-  // input, type selects, remove button, drag handle) that stop propagation of
-  // their own activation. Drag stays on the grip handle, so a card click/key
-  // never starts a drag.
+  // Selecting a field drives the properties panel.
   const selectField = (): void => {
     editor.selectField(field.id)
-  }
-
-  const onCardClick = (event: MouseEvent<HTMLDivElement>): void => {
-    // Stop at the innermost card so a click on a nested child does not also
-    // re-select its ancestor container through event bubbling.
-    event.stopPropagation()
-    selectField()
-  }
-
-  const onCardKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
-    // Only the focused card itself activates; keys from inner controls (name
-    // input, selects, buttons) are left untouched.
-    if (event.target !== event.currentTarget) {
-      return
-    }
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault()
-      event.stopPropagation()
-      selectField()
-    }
   }
 
   return (
@@ -255,14 +238,10 @@ export const CanvasNode = ({
       <div
         ref={setNodeRef}
         style={style}
-        role="button"
-        tabIndex={0}
+        role="group"
         aria-label={field.name === "" ? "Unnamed field" : field.name}
-        aria-pressed={selected}
-        onClick={onCardClick}
-        onKeyDown={onCardKeyDown}
         className={cn(
-          "border-border bg-card text-card-foreground focus-visible:ring-ring/50 cursor-pointer rounded-md border p-2 outline-none focus-visible:ring-3",
+          "border-border bg-card text-card-foreground rounded-md border p-2",
           selected && "border-ring bg-accent/40",
           isDragging && "opacity-50"
         )}
@@ -276,6 +255,24 @@ export const CanvasNode = ({
             {...listeners}
           >
             <GripVerticalIcon className="size-4" />
+          </button>
+
+          <button
+            type="button"
+            aria-label="Select field"
+            aria-pressed={selected}
+            className="text-muted-foreground focus-visible:ring-ring/50 rounded-sm outline-none focus-visible:ring-3"
+            onClick={(event) => {
+              // The card's select affordance: a sibling of the other controls,
+              // never their ancestor, so the card carries no button role over
+              // its interactive children. Keyboard- and pointer-operable with a
+              // visible focus ring; stopPropagation keeps a nested card's
+              // selection from bubbling up to re-select its ancestor container.
+              event.stopPropagation()
+              selectField()
+            }}
+          >
+            <MousePointerClickIcon className="size-4" />
           </button>
 
           <div className="grid min-w-40 flex-1 gap-1">
