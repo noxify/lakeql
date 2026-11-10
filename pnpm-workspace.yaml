@@ -20,6 +20,7 @@ auditConfig:
 minimumReleaseAgeExclude:
   - "@azure/identity@4.14.1"
   - "@vitejs/plugin-react@6.3.0"
+  - "@testing-library/user-event@14.6.9"
 overrides:
   # Security fixes for transitive dependencies. Only the entries still
   # load-bearing are kept — verified with `pnpm dlx pnpm-override-prune`, which
