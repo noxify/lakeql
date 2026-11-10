@@ -12,6 +12,7 @@ import { JsonView } from "./json-view"
 import { MetadataForm } from "./metadata-form"
 import { MutationConfigForm } from "./mutation-config-form"
 import { EditorProvider, useEditor } from "./use-editor"
+import { ValidationAnnouncer } from "./validation-announcer"
 
 /**
  * The left region: endpoint-level settings — the metadata form and the mutation
@@ -66,6 +67,7 @@ const RightRegion = () => (
  */
 const EndpointBuilderLayout = () => (
   <div className="bg-background text-foreground flex h-svh flex-col">
+    <ValidationAnnouncer />
     <header className="border-border border-b p-4">
       <div className="mb-3">
         <h1 className="text-base font-semibold">LakeQL Endpoint Builder</h1>

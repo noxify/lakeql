@@ -206,9 +206,12 @@ export function validationError(
 
   if (
     (validation.type === "min" || validation.type === "max") &&
-    Number.isNaN(validation.value)
+    !Number.isFinite(validation.value)
   ) {
-    return "Enter a number."
+    // Aligns with the export gate and the validity summary, which both reject a
+    // non-finite bound (`NaN`/`±Infinity`) as "must be a finite number": `NaN`
+    // serializes to `null` and the CLI would reject the file.
+    return "Enter a finite number."
   }
 
   return undefined
