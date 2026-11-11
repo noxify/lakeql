@@ -201,10 +201,12 @@ export const CommandPalette = () => {
   return (
     <>
       {/* The visible affordance announcing the ⌘K palette. Its accessible name
-          is the visible "Commands" text (no overriding `aria-label`), so it
+          is the "Commands" label text (no overriding `aria-label`), so it
           satisfies WCAG 2.5.3 (label-content-name-mismatch); the decorative
           "⌘K" hint is `aria-hidden`, and the real shortcut stays exposed to
-          assistive tech via `aria-keyshortcuts`. */}
+          assistive tech via `aria-keyshortcuts`. Below `sm` the label is
+          `sr-only` (icon-only visually) rather than removed, so the button
+          keeps its accessible name at phone widths where the text is hidden. */}
       <Button
         type="button"
         variant="outline"
@@ -213,7 +215,7 @@ export const CommandPalette = () => {
         onClick={() => setOpen(true)}
       >
         <SearchIcon />
-        <span className="hidden sm:inline">Commands</span>
+        <span className="sr-only sm:not-sr-only">Commands</span>
         <kbd
           aria-hidden="true"
           className="bg-muted text-muted-foreground pointer-events-none hidden rounded border px-1 text-[0.625rem] font-medium sm:inline"

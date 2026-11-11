@@ -2,10 +2,20 @@ import {
   BracesIcon,
   CircleAlertIcon,
   LayersIcon,
+  PanelRightIcon,
   SettingsIcon,
 } from "lucide-react"
+import type { ReactNode } from "react"
 import { useState } from "react"
 
+import { Button } from "@/components/ui/button"
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet"
 import {
   Sidebar,
   SidebarContent,
@@ -20,8 +30,10 @@ import {
   SidebarMenuItem,
   SidebarProvider,
   SidebarTrigger,
+  useSidebar,
 } from "@/components/ui/sidebar"
 import { TooltipProvider } from "@/components/ui/tooltip"
+import { useIsNarrow } from "@/hooks/use-narrow"
 
 import { LakeqlLogo } from "../components/lakeql-logo"
 import { CanvasSurface } from "./canvas/canvas"
@@ -66,8 +78,19 @@ const RAIL_SECTIONS: RailSection[] = [
  */
 const Rail = () => {
   const { view, setView } = useShellView()
+  const { isMobile, setOpenMobile } = useSidebar()
   const editor = useEditorContext()
   const issueCount = summarizeDiagnostics(editor.validation).length
+
+  // On mobile the rail is an off-canvas sheet; selecting a view should also
+  // dismiss it so the chosen view's content (and its contextual secondary nav)
+  // is visible. On desktop the rail stays put, so this is a no-op there.
+  const selectView = (next: ShellView) => {
+    setView(next)
+    if (isMobile) {
+      setOpenMobile(false)
+    }
+  }
 
   return (
     <Sidebar collapsible="icon">
@@ -99,7 +122,7 @@ const Rail = () => {
                       tooltip={section.label}
                       isActive={view === section.view}
                       aria-current={view === section.view ? "page" : undefined}
-                      onClick={() => setView(section.view)}
+                      onClick={() => selectView(section.view)}
                     >
                       <Icon />
                       <span>{section.label}</span>
@@ -121,36 +144,120 @@ const Rail = () => {
 }
 
 /**
- * The contextual secondary sidebar, whose content depends on the active view:
- * the field-type palette in the Fields view, the consolidated issue list in the
- * Validations view, and nothing (collapsed) for Settings and JSON.
+ * Describes the active view's contextual secondary panel: its accessible
+ * label, the inline column's width class, and the panel content. Fields shows
+ * the field-type palette, Validations the consolidated issue list; Settings and
+ * JSON have no secondary panel (so `null`).
  */
-const SecondarySidebar = () => {
+interface SecondaryPanel {
+  /** The accessible name for the panel region (and its mobile sheet title). */
+  label: string
+  /** The inline column's width utility class (desktop / tablet layout). */
+  widthClass: string
+  /** Whether the panel body needs the palette's `p-3` padding. */
+  padded: boolean
+  /** The panel's content. */
+  content: ReactNode
+}
+
+/**
+ * Resolves the {@link SecondaryPanel} for the active view, or `null` for views
+ * (Settings, JSON) that have no contextual secondary navigation.
+ */
+const useSecondaryPanel = (): SecondaryPanel | null => {
   const { view } = useShellView()
 
   if (view === "fields") {
-    return (
-      <aside
-        aria-label="Field palette"
-        className="border-border w-64 shrink-0 overflow-y-auto border-r p-3"
-      >
-        <Palette />
-      </aside>
-    )
+    return {
+      label: "Field palette",
+      widthClass: "w-64",
+      padded: true,
+      content: <Palette />,
+    }
   }
-
   if (view === "validations") {
-    return (
-      <aside
-        aria-label="Validation issues"
-        className="border-border w-72 shrink-0 overflow-y-auto border-r"
-      >
-        <ValidationsView />
-      </aside>
-    )
+    return {
+      label: "Validation issues",
+      widthClass: "w-72",
+      padded: false,
+      content: <ValidationsView />,
+    }
+  }
+  return null
+}
+
+/**
+ * The contextual secondary sidebar, rendered as an inline column on viewports
+ * wider than the phone breakpoint ({@link useIsNarrow}). At phone widths
+ * (`≤560px`) it renders nothing inline — a fixed side column there would steal
+ * horizontal space and clip the main content's field rows — and the panel is
+ * reached on demand through the header's contextual-nav sheet
+ * ({@link SecondaryNavSheet}) instead. Desktop and tablet (`>560px`) layout is
+ * unchanged.
+ */
+const SecondarySidebar = () => {
+  const panel = useSecondaryPanel()
+  const isNarrow = useIsNarrow()
+
+  if (panel === null || isNarrow) {
+    return null
   }
 
-  return null
+  return (
+    <aside
+      aria-label={panel.label}
+      className={`border-border shrink-0 overflow-y-auto border-r ${panel.widthClass} ${panel.padded ? "p-3" : ""}`}
+    >
+      {panel.content}
+    </aside>
+  )
+}
+
+/**
+ * The phone-width (`≤560px`) presentation of the contextual secondary
+ * navigation: a header trigger (shown alongside the primary-nav trigger)
+ * opening a right-side {@link Sheet} that holds the active view's secondary
+ * panel. It mounts only when the viewport is narrow and the active view
+ * actually has a secondary panel, so Settings and JSON show no trigger. This
+ * keeps the main content full-width on phones while the secondary nav stays
+ * reachable. Desktop and tablet (`>560px`) are unaffected (the inline
+ * {@link SecondarySidebar} column renders there instead).
+ */
+const SecondaryNavSheet = () => {
+  const panel = useSecondaryPanel()
+  const isNarrow = useIsNarrow()
+  const [open, setOpen] = useState(false)
+
+  if (panel === null || !isNarrow) {
+    return null
+  }
+
+  return (
+    <Sheet open={open} onOpenChange={setOpen}>
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        aria-label={`Open ${panel.label}`}
+        aria-expanded={open}
+        onClick={() => setOpen(true)}
+      >
+        <PanelRightIcon />
+      </Button>
+      <SheetContent
+        side="right"
+        aria-label={panel.label}
+        className="w-80 max-w-[90vw] gap-0 overflow-y-auto p-0"
+      >
+        <SheetHeader className="sr-only">
+          <SheetTitle>{panel.label}</SheetTitle>
+          <SheetDescription>
+            The contextual navigation for the current view.
+          </SheetDescription>
+        </SheetHeader>
+        <div className={panel.padded ? "p-3" : ""}>{panel.content}</div>
+      </SheetContent>
+    </Sheet>
+  )
 }
 
 /**
@@ -269,7 +376,24 @@ const EndpointBuilderShell = () => {
             </p>
           </div> */}
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <ImportExportBar />
+            <div className="flex items-center gap-2">
+              {/* The always-visible mobile navigation trigger. It lives in the
+                  header (never inside an off-canvas sidebar), so it is the one
+                  affordance that can open the rail sheet on mobile, where the
+                  rail — and the rail's own trigger — are off-canvas. Hidden on
+                  desktop (`md:hidden`), where the icon rail is always visible,
+                  so desktop behavior is unchanged. */}
+              <SidebarTrigger
+                className="md:hidden"
+                aria-label="Open navigation"
+              />
+              {/* The phone-width contextual-nav trigger, mounted beside the
+                  primary-nav trigger. It only renders at ≤560px for views that
+                  have a secondary panel, opening that panel in a sheet so the
+                  main content keeps full width on phones. */}
+              <SecondaryNavSheet />
+              <ImportExportBar />
+            </div>
             <div className="flex items-center gap-2">
               <CommandPalette />
               <ThemeToggle />
