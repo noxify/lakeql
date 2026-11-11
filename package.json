@@ -16,6 +16,7 @@
   "scripts": {
     "dev": "turbo dev",
     "build": "turbo build",
+    "dev:editor": "turbo dev --filter='editor'...",
     "dev:docs": "turbo dev --filter='docs'",
     "build:docs": "turbo build --filter='docs'",
     "preview:docs": "pnpm -F docs preview",
