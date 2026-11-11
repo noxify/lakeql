@@ -234,7 +234,7 @@ describe("studio shell — Validations summary and jump-to-field", () => {
   })
 })
 
-describe("studio shell — logo, content-fixed toolbar, global shortcut", () => {
+describe("studio shell — logo, header affordances, content-fixed toolbar, global shortcut", () => {
   beforeEach(() => {
     window.localStorage.clear()
   })
@@ -249,6 +249,56 @@ describe("studio shell — logo, content-fixed toolbar, global shortcut", () => 
     // The rail items are still uniquely resolvable by their button names.
     expect(screen.getByRole("button", { name: "Fields" })).toBeDefined()
     expect(screen.getByRole("button", { name: "JSON" })).toBeDefined()
+  })
+
+  it("wires the global-header affordances (theme toggle + ⌘K command palette) into the shell on every view", async () => {
+    const user = userEvent.setup()
+    render(<EndpointBuilder />)
+
+    // The theme toggle and the ⌘K palette affordance are mounted in the global
+    // header, so they are present regardless of the active view — assert them
+    // on the default Settings view and after navigating to Fields. The deep
+    // behavior of each lives in `theme-toggle.test.tsx` / `command-palette.test.tsx`;
+    // this is the shell-wiring check that the header actually renders them.
+    expect(screen.getByRole("button", { name: "Toggle theme" })).toBeDefined()
+    expect(screen.getByRole("button", { name: "Commands" })).toBeDefined()
+
+    await gotoView(user, "Fields")
+    expect(screen.getByRole("button", { name: "Toggle theme" })).toBeDefined()
+    expect(screen.getByRole("button", { name: "Commands" })).toBeDefined()
+  })
+
+  it("shows the issue count only in the global header (no inline validation alert)", async () => {
+    const user = userEvent.setup()
+    render(<EndpointBuilder />)
+
+    // Import a definition carrying one field-keyed issue so the gate blocks
+    // export and the header count is non-zero.
+    await user.upload(fileInput(), jsonFile(badRegexDefinition))
+
+    // The compact validity span in the global header is the single count
+    // surface — "N issue(s) blocking export". It is a plain status span, not a
+    // destructive `role="alert"`: the redundant raw-diagnostics alert was
+    // removed, so no alert is announced for the count.
+    await waitFor(() => {
+      expect(screen.getByText(/1 issue blocking export/u)).toBeDefined()
+    })
+    expect(
+      screen.queryByText(
+        /Validation pattern is not a valid regular expression/u,
+        { selector: '[role="alert"] *' }
+      )
+    ).toBeNull()
+    // The details still live in the Validations view, not a header alert.
+    await gotoView(user, "Validations")
+    const issueList = screen.getByRole("complementary", {
+      name: "Validation issues",
+    })
+    expect(
+      within(issueList).getByText(
+        /Validation pattern is not a valid regular expression/u
+      )
+    ).toBeDefined()
   })
 
   it("shows the Undo/Redo toolbar in the Fields view and nowhere else", async () => {

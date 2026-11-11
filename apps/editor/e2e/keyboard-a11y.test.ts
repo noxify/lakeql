@@ -333,6 +333,90 @@ test("rail navigation is keyboard-operable (Tab/Enter switches views)", async ({
   await expectNoAxeViolations(page)
 })
 
+test("the command palette opens on ⌘K and a command runs", async ({ page }) => {
+  // The palette is mounted in the global header with a global ⌘K / Ctrl-K
+  // listener (disjoint from the undo/redo z/y shortcut). The structural
+  // beforeEach leaves focus on the Fields rail item (not a text input), so the
+  // shortcut is not ignored as text entry. `ControlOrMeta` picks the right
+  // modifier per OS.
+  await page.keyboard.press("ControlOrMeta+k")
+
+  // The command input is focused and the navigation commands are listed.
+  const commandInput = page.getByPlaceholder("Type a command or search…")
+  await expect(commandInput).toBeFocused()
+  const toJson = page.getByText("Go to JSON")
+  await expect(toJson).toBeVisible()
+
+  // Running a command routes to the editor action and closes the palette: the
+  // "Go to JSON" command switches to the JSON view (its copy action appears).
+  await toJson.click()
+  await expect(page.getByRole("button", { name: "Copy JSON" })).toBeVisible()
+  await expect(commandInput).toBeHidden()
+
+  await expectNoAxeViolations(page)
+})
+
+test("the dark-mode toggle switches the applied theme", async ({ page }) => {
+  // The host app (apps/editor) owns the `ThemeProvider` with attribute="class",
+  // so the active theme is reflected by the `.dark` class on <html>. The studio
+  // toggle (in the global header) cycles light → dark → system through the same
+  // resolved better-themes copy. Drive it until <html> carries `.dark`, proving
+  // the toggle and provider bind to one another (a split copy would no-op).
+  const toggle = page.getByRole("button", { name: "Toggle theme" })
+  const isDark = () =>
+    page.evaluate(() => document.documentElement.classList.contains("dark"))
+
+  // The cycle has at most three steps (light/dark/system), so clicking three
+  // times is guaranteed to pass through dark regardless of the resolved start
+  // theme. The clicks are inherently sequential (each reads the DOM the prior
+  // click mutated), so they are written out rather than looped — asserting that
+  // at least one of the resulting states applied `.dark` to <html>.
+  const sawDark: boolean[] = [await isDark()]
+  await toggle.click()
+  sawDark.push(await isDark())
+  await toggle.click()
+  sawDark.push(await isDark())
+  await toggle.click()
+  sawDark.push(await isDark())
+  expect(sawDark).toContain(true)
+
+  await expectNoAxeViolations(page)
+})
+
+test("keyboard on the reorder grip starts no drag (ghost-image regression guard)", async ({
+  page,
+}) => {
+  // Regression guard for the keyboard-move ghost: the "Reorder field" grip is a
+  // pointer-only drag handle (`setActivatorNodeRef` + `tabIndex=-1`, and the
+  // @dnd-kit KeyboardSensor is removed), so a keyboard press on it must NOT
+  // start a sortable drag. The dedicated "Move field" button remains the
+  // keyboard path (covered by the reorder/move tests above).
+  await addNamed(page, "String", "only")
+
+  const grip = page.getByLabel("Reorder field").first()
+  // The grip is intentionally out of the Tab order; focus it programmatically
+  // the way a scripted keyboard user reaching it would, then press the keys
+  // that used to start a drag.
+  await grip.evaluate((node) => (node as HTMLElement).focus())
+  await page.keyboard.press("Space")
+  await page.keyboard.press("ArrowDown")
+
+  // No @dnd-kit keyboard drag started: the node carries no inline transform and
+  // is not dimmed (`opacity-50` is only applied while dragging). Target the
+  // field's `role="group"` card by its accessible name (the field value).
+  const node = page.getByRole("group", { name: "only" })
+  await expect(node).toHaveCount(1)
+  const transform = await node.evaluate(
+    (element) => (element as HTMLElement).style.transform
+  )
+  expect(transform).toBe("")
+  await expect(node).not.toHaveClass(/opacity-50/u)
+  // The single field is still present and unmoved.
+  expect(await fieldNames(page)).toEqual(["only"])
+
+  await expectNoAxeViolations(page)
+})
+
 test("jump-to-field from the Validations view selects and focuses the field", async ({
   page,
 }) => {

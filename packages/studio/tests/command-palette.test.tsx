@@ -80,9 +80,7 @@ describe("command palette — open and run", () => {
     const user = userEvent.setup()
     render(<EndpointBuilder />)
 
-    await user.click(
-      screen.getByRole("button", { name: "Open command palette" })
-    )
+    await user.click(screen.getByRole("button", { name: "Commands" }))
     await waitFor(() => expect(paletteInput()).toBeDefined())
   })
 
