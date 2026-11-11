@@ -19,6 +19,7 @@ import { Switch } from "@/components/ui/switch"
 import type { EditorMutation } from "@/core"
 import { DEFAULT_PARTITIONING_FORMAT } from "@/core"
 
+import { metadataInputId } from "./metadata-nav"
 import {
   hasLoadTimestampCollision,
   partitioningValueForMode,
@@ -166,7 +167,10 @@ export const MutationConfigForm = () => {
   const editor = useEditorContext()
   const { mutation } = editor.state
   const loadStrategyId = useId()
-  const basePathId = useId()
+  // A stable, deterministic id so the Validations jump can target the base path
+  // input (it exists only while mutation is enabled, which is also the only
+  // state in which a basePath issue can arise).
+  const basePathId = metadataInputId("basePath")
   const enabledId = useId()
 
   return (

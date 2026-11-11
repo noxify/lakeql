@@ -214,7 +214,75 @@ describe("readable-mapping layer", () => {
     expect(numberIssue.navigable).toBeTruthy()
   })
 
-  it("shows a metadata issue with no fieldId as non-navigable", () => {
+  it.each([
+    { path: ["tableName"], metadataKey: "tableName", label: "Table name" },
+    { path: ["catalog"], metadataKey: "catalog", label: "Catalog" },
+    { path: ["schema"], metadataKey: "schema", label: "Schema" },
+    { path: ["dataSource"], metadataKey: "dataSource", label: "Data source" },
+    {
+      path: ["mutation", "basePath"],
+      metadataKey: "basePath",
+      label: "Base path",
+    },
+  ] as const)(
+    "marks the metadata issue for $metadataKey navigable with the right metadataKey",
+    ({ path, metadataKey, label }) => {
+      const state = nestedState()
+      const result: ValidationResult = {
+        validForExport: false,
+        schemaIssues: [{ path: [...path], message: "Invalid input" }],
+        duplicates: [],
+        badRegex: [],
+        badNumber: [],
+      }
+
+      const issues = toReadableIssues(state, result)
+      expect(issues).toHaveLength(1)
+      const issue = defined(issues[0])
+      expect(issue.navigable).toBeTruthy()
+      expect(issue.fieldId).toBeUndefined()
+      expect(issue.metadataKey).toBe(metadataKey)
+      expect(issue.label).toBe(label)
+    }
+  )
+
+  it("keeps a version metadata issue non-navigable with no metadataKey", () => {
+    const state = nestedState()
+    const result: ValidationResult = {
+      validForExport: false,
+      schemaIssues: [{ path: ["version"], message: "Invalid input" }],
+      duplicates: [],
+      badRegex: [],
+      badNumber: [],
+    }
+
+    const issues = toReadableIssues(state, result)
+    expect(issues).toHaveLength(1)
+    const issue = defined(issues[0])
+    expect(issue.navigable).toBeFalsy()
+    expect(issue.fieldId).toBeUndefined()
+    expect(issue.metadataKey).toBeUndefined()
+    expect(issue.label).toBe("Version")
+  })
+
+  it("shows an unknown metadata leaf as non-navigable", () => {
+    const state = nestedState()
+    const result: ValidationResult = {
+      validForExport: false,
+      schemaIssues: [{ path: ["somethingElse"], message: "Invalid input" }],
+      duplicates: [],
+      badRegex: [],
+      badNumber: [],
+    }
+
+    const issues = toReadableIssues(state, result)
+    expect(issues).toHaveLength(1)
+    const issue = defined(issues[0])
+    expect(issue.navigable).toBeFalsy()
+    expect(issue.metadataKey).toBeUndefined()
+  })
+
+  it("shows a tableName metadata issue as navigable", () => {
     const state = nestedState()
     const result: ValidationResult = {
       validForExport: false,
@@ -227,8 +295,8 @@ describe("readable-mapping layer", () => {
     const issues = toReadableIssues(state, result)
     expect(issues).toHaveLength(1)
     const issue = defined(issues[0])
-    expect(issue.navigable).toBeFalsy()
-    expect(issue.fieldId).toBeUndefined()
+    expect(issue.navigable).toBeTruthy()
+    expect(issue.metadataKey).toBe("tableName")
     expect(issue.label).toBe("Table name")
     expect(issue.message).toBe("Table name is invalid")
   })

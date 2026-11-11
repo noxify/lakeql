@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
 import { metadataFieldError } from "./field-meta"
+import { metadataInputId } from "./metadata-nav"
 import { useEditorContext } from "./use-editor"
 
 /**
@@ -28,7 +29,9 @@ const MetadataField = ({
   label: string
 }) => {
   const editor = useEditorContext()
-  const id = useId()
+  // A stable, deterministic id so the Validations jump can target this input;
+  // it also anchors the label's `htmlFor` and the error's `aria-describedby`.
+  const id = metadataInputId(fieldKey)
   const errorId = `${id}-error`
   const value = editor.state[fieldKey]
   const error = metadataFieldError(value)
@@ -71,7 +74,9 @@ const MetadataField = ({
  */
 export const MetadataForm = () => {
   const editor = useEditorContext()
-  const dataSourceId = useId()
+  // A stable, deterministic id so the Validations jump can target the data
+  // source input; `version` has no navigable target so it keeps a `useId()`.
+  const dataSourceId = metadataInputId("dataSource")
   const versionId = useId()
 
   return (

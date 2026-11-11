@@ -1,6 +1,7 @@
 import { CheckCircle2Icon, CircleAlertIcon } from "lucide-react"
 
 import { useKeyboardMoveContext } from "./canvas/use-keyboard-move"
+import { metadataInputId } from "./metadata-nav"
 import { useShellView } from "./shell-view"
 import { useEditorContext } from "./use-editor"
 import type { ReadableIssue } from "./validation-readable"
@@ -8,9 +9,13 @@ import { toReadableIssues } from "./validation-readable"
 
 /**
  * A single clickable (navigable) issue entry. Activating it jumps to the
- * offending field: switch to the Fields view, select the field, and move
- * keyboard focus to its node. The jump is ignored while a keyboard grab is in
- * progress so two focus drivers never collide (Req 5.6).
+ * offending target:
+ *
+ * - a field issue switches to the Fields view, selects the field, and moves
+ *   keyboard focus to its node (the jump is ignored while a keyboard grab is in
+ *   progress so two focus drivers never collide — Req 5.6);
+ * - a metadata issue switches to the Settings view and moves keyboard focus to
+ *   the matching form input, after the view has rendered.
  */
 const NavigableIssue = ({ issue }: { issue: ReadableIssue }) => {
   const editor = useEditorContext()
@@ -18,6 +23,19 @@ const NavigableIssue = ({ issue }: { issue: ReadableIssue }) => {
   const { setView } = useShellView()
 
   const jump = (): void => {
+    const { metadataKey } = issue
+    if (metadataKey !== undefined) {
+      setView("settings")
+      // The Settings view mounts on the render triggered by `setView`, so its
+      // input is not in the DOM yet. Defer focus to the next frame — the same
+      // post-render timing the field path gets from `focusField`'s effect —
+      // rather than focusing synchronously before the input exists.
+      const targetId = metadataInputId(metadataKey)
+      requestAnimationFrame(() => {
+        document.querySelector<HTMLElement>(`#${CSS.escape(targetId)}`)?.focus()
+      })
+      return
+    }
     // A keyboard grab owns focus while active; ignore the jump (not cancel) so
     // the in-flight move keeps driving focus.
     if (keyboard.move !== null) {
@@ -50,9 +68,9 @@ const NavigableIssue = ({ issue }: { issue: ReadableIssue }) => {
 }
 
 /**
- * A single non-navigable issue entry (a metadata violation with no `fieldId`):
- * shown with its readable description but not clickable, so there is no dead
- * jump target (Req 5.3).
+ * A single non-navigable issue entry (a metadata violation with no focusable
+ * input, such as `version`): shown with its readable description but not
+ * clickable, so there is no dead jump target (Req 5.3).
  */
 const NonNavigableIssue = ({ issue }: { issue: ReadableIssue }) => (
   <li>
@@ -73,8 +91,10 @@ const NonNavigableIssue = ({ issue }: { issue: ReadableIssue }) => (
  * none (Req 5.1).
  *
  * Field-keyed issues render as clickable entries that jump to and focus the
- * offending field (Req 5.4, 5.6); non-field issues render as shown-but-not-
- * clickable entries (Req 5.3). The list is live — it is derived from the same
+ * offending field (Req 5.4, 5.6); navigable metadata issues render as clickable
+ * entries that jump to the Settings view and focus the matching input; only a
+ * non-navigable metadata issue (e.g. `version`) renders as a shown-but-not-
+ * clickable entry (Req 5.3). The list is live — it is derived from the same
  * `evaluate()` result the gate uses, so the issue count here matches the export
  * gate exactly (Req 5.5).
  */

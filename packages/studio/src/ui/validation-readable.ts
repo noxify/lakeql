@@ -8,6 +8,9 @@ import type {
 } from "@/core"
 import { fieldNamePath } from "@/core"
 
+import type { MetadataNavKey } from "./metadata-nav"
+import { isMetadataNavKey } from "./metadata-nav"
+
 /**
  * A single validity-gate diagnostic reformatted for on-screen presentation: a
  * human-readable field label, a rule-level message, and whether the entry can
@@ -22,10 +25,19 @@ export interface ReadableIssue {
   /** A stable key for list rendering, unique within one result. */
   id: string
   /**
-   * The id of the field the issue resolves to, when any. Present exactly when
-   * {@link ReadableIssue.navigable} is `true`.
+   * The id of the field the issue resolves to, when it is a field-navigation
+   * target. Present for a navigable field issue; mutually exclusive with
+   * {@link ReadableIssue.metadataKey}.
    */
   fieldId?: string
+  /**
+   * The navigable metadata input the issue resolves to, when it is a
+   * metadata-navigation target (e.g. an invalid `tableName`). Present for a
+   * navigable metadata issue; mutually exclusive with
+   * {@link ReadableIssue.fieldId}. Absent for a non-navigable metadata leaf
+   * such as `version`.
+   */
+  metadataKey?: MetadataNavKey
   /**
    * The field and its ancestry as a breadcrumb label (e.g.
    * `"address › postalCode"`), or a metadata field name for a non-field issue.
@@ -33,7 +45,11 @@ export interface ReadableIssue {
   label: string
   /** The rule-level wording describing what is wrong (not the raw Zod text). */
   message: string
-  /** Whether the entry resolves to a field a UI can select and focus. */
+  /**
+   * Whether the entry resolves to a target a UI can navigate to: `true` when a
+   * resolvable {@link ReadableIssue.fieldId} (a field) or a
+   * {@link ReadableIssue.metadataKey} (a Settings input) is present.
+   */
   navigable: boolean
 }
 
@@ -139,9 +155,13 @@ function schemaMessage(issue: SchemaDiagnostic): string {
 }
 
 /**
- * Maps a schema diagnostic to a {@link ReadableIssue}. Navigable only when the
- * issue resolved to a field id; a metadata violation (no `fieldId`) is shown
- * with its leaf-derived label but is not clickable.
+ * Maps a schema diagnostic to a {@link ReadableIssue}.
+ *
+ * A field-keyed issue resolves to a navigable field (`fieldId`). A metadata
+ * violation (no `fieldId`) is navigable when its path leaf names a focusable
+ * Settings input (see {@link isMetadataNavKey}) — it then carries a
+ * `metadataKey` the Validations jump focuses. A metadata leaf with no editable
+ * input (e.g. `version`) stays shown-but-not-navigable.
  */
 function fromSchema(
   state: EditorState,
@@ -150,9 +170,19 @@ function fromSchema(
 ): ReadableIssue {
   const message = schemaMessage(issue)
   if (issue.fieldId === undefined) {
+    const leaf = pathLeaf(issue.path)
+    if (isMetadataNavKey(leaf)) {
+      return {
+        id: `schema-${index}`,
+        metadataKey: leaf,
+        label: metadataLabel(leaf),
+        message,
+        navigable: true,
+      }
+    }
     return {
       id: `schema-${index}`,
-      label: metadataLabel(pathLeaf(issue.path)),
+      label: metadataLabel(leaf),
       message,
       navigable: false,
     }
@@ -249,9 +279,10 @@ function withoutEmptyNameDuplicates(
  * Each diagnostic kind maps to a {@link ReadableIssue}: schema, regex, and
  * numeric-bound issues resolve their `fieldId` to a name/ancestry breadcrumb via
  * {@link fieldNamePath}; a duplicate issue uses its already-name `path` directly.
- * An issue with no `fieldId` (a metadata violation such as an invalid
- * `tableName`) is still returned, with `navigable: false`, so it is shown in the
- * summary but not presented as a clickable jump target.
+ * A metadata violation (no `fieldId`, such as an invalid `tableName`) is still
+ * returned; it is navigable via a `metadataKey` when its leaf names a focusable
+ * Settings input, and non-navigable otherwise (e.g. `version`), in which case it
+ * is shown in the summary but not a clickable jump target.
  *
  * This is a pure reformatting of what `evaluate()` already returns — not a second
  * validation path and not a replacement for `summarizeDiagnostics` (which stays
