@@ -1,10 +1,5 @@
 import type { DragEndEvent, DragOverEvent, DragStartEvent } from "@dnd-kit/core"
-import {
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-} from "@dnd-kit/core"
+import { PointerSensor, useSensor, useSensors } from "@dnd-kit/core"
 import {
   createContext,
   useCallback,
@@ -182,9 +177,14 @@ export function useCanvasDnd(): CanvasDndApi {
 
 /**
  * Builds the `@dnd-kit` sensors for the canvas: a pointer sensor with a small
- * activation distance (so a click to select is not swallowed as a drag) and a
- * keyboard sensor (enabled where it comes cheaply, per the Requirement-5
- * trade-off — drag keyboard parity is not a conformance goal this iteration).
+ * activation distance (so a click to select is not swallowed as a drag).
+ *
+ * No `KeyboardSensor` is registered: `@dnd-kit` keyboard drag parity is a
+ * documented non-goal, and the dedicated "Move field" button plus
+ * `use-keyboard-move` is the single supported keyboard path. Registering it
+ * previously let Space/Enter on the grip start a genuine sortable keyboard drag
+ * (the distorted "ghost"); dropping it removes that path at its source while
+ * leaving pointer drag on the grip untouched.
  *
  * @returns The sensor descriptors passed to the `DndContext`.
  */
@@ -192,8 +192,7 @@ export function useCanvasSensors(): ReturnType<typeof useSensors> {
   const pointer = useSensor(PointerSensor, {
     activationConstraint: { distance: 4 },
   })
-  const keyboard = useSensor(KeyboardSensor)
-  return useSensors(pointer, keyboard)
+  return useSensors(pointer)
 }
 
 const CanvasDndContext = createContext<CanvasDndApi | null>(null)

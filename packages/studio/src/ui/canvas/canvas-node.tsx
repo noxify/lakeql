@@ -250,6 +250,7 @@ export const CanvasNode = ({
     attributes,
     listeners,
     setNodeRef,
+    setActivatorNodeRef,
     transform,
     transition,
     isDragging,
@@ -307,9 +308,20 @@ export const CanvasNode = ({
           <button
             type="button"
             aria-label="Reorder field"
+            // Pointer-only drag handle. `setActivatorNodeRef` registers this as
+            // the sortable's activator so `@dnd-kit`'s KeyboardSensor guard is
+            // well-defined, and `tabIndex={-1}` routes keyboard users to the
+            // dedicated "Move field" affordance instead of this (keyboard-inert)
+            // drag handle — together they keep a keyboard press here from
+            // starting a drag (Requirement 5.3).
+            ref={setActivatorNodeRef}
             className="text-muted-foreground focus-visible:ring-ring/50 cursor-grab rounded-sm outline-none focus-visible:ring-3"
             {...attributes}
             {...listeners}
+            // Spread last so it wins over `attributes.tabIndex` (0): the grip
+            // stays out of the Tab order, routing keyboard users to "Move
+            // field".
+            tabIndex={-1}
           >
             <GripVerticalIcon className="size-4" />
           </button>

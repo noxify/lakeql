@@ -6,18 +6,26 @@ import { useEffect } from "react"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 
 import { createField } from "@/core"
-import { UndoRedoControls } from "@/ui/undo-redo-controls"
+import { UndoRedoControls, useUndoRedoShortcuts } from "@/ui/undo-redo-controls"
 import type { EditorApi } from "@/ui/use-editor"
 import { EditorProvider, useEditor } from "@/ui/use-editor"
 
 import { defined } from "./helpers"
 
 /**
- * Tests for the on-screen undo/redo controls and their keyboard shortcuts
- * (task 11). They render the real controls over a live editor and assert the
- * buttons move the live state, disable at the ends, and that the
- * `Ctrl/Cmd+Z` / `Ctrl/Cmd+Shift+Z` shortcuts drive the same path.
+ * Tests for the on-screen undo/redo controls and their keyboard shortcuts.
+ * They render the real controls over a live editor and assert the buttons move
+ * the live state, disable at the ends, and that the `Ctrl/Cmd+Z` /
+ * `Ctrl/Cmd+Shift+Z` shortcuts drive the same path. The shortcut listener now
+ * lives in {@link useUndoRedoShortcuts} (mounted globally at the shell root),
+ * so the keyboard harness mounts the hook alongside the buttons.
  */
+
+/** Mounts the global undo/redo shortcut hook without rendering any UI. */
+const Shortcuts = (): null => {
+  useUndoRedoShortcuts()
+  return null
+}
 
 /** Captures the live editor API while rendering the controls under it. */
 function renderControls(): { get: () => EditorApi } {
@@ -29,6 +37,7 @@ function renderControls(): { get: () => EditorApi } {
     })
     return (
       <EditorProvider value={editor}>
+        <Shortcuts />
         <UndoRedoControls />
       </EditorProvider>
     )

@@ -14,12 +14,14 @@ import { useEditorContext } from "./use-editor"
 
 /**
  * The top bar: an import picker, an export button gated on `validForExport`,
- * and a validity summary surfacing the core diagnostics.
+ * and a compact validity span (the single header issue count — "N issue(s)
+ * blocking export" / "Valid for export").
  *
  * Import routes through the editor's no-partial-apply importer; a parse failure
  * is reported inline and leaves the current state untouched. Export is disabled
  * whenever the gate is not satisfied, so an artifact the CLI would reject is
- * never produced.
+ * never produced. The detailed diagnostics live in the Validations view and the
+ * per-field badges, not here — this bar only summarizes the count.
  */
 export const ImportExportBar = () => {
   const editor = useEditorContext()
@@ -109,20 +111,6 @@ export const ImportExportBar = () => {
           <AlertDescription>
             <ul className="list-disc pl-4">
               {importErrors.map((message, index) => (
-                <li key={index}>{message}</li>
-              ))}
-            </ul>
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {!valid && diagnostics.length > 0 && (
-        <Alert variant="destructive">
-          <AlertTriangleIcon />
-          <AlertTitle>Validation</AlertTitle>
-          <AlertDescription>
-            <ul className="list-disc pl-4">
-              {diagnostics.map((message, index) => (
                 <li key={index}>{message}</li>
               ))}
             </ul>

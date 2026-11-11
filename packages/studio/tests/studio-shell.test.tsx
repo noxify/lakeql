@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 
 import {
+  act,
   cleanup,
+  fireEvent,
   render,
   screen,
   waitFor,
@@ -228,6 +230,97 @@ describe("studio shell — Validations summary and jump-to-field", () => {
       expect(
         screen.getByRole("note", { name: "Ready to export" })
       ).toBeDefined()
+    })
+  })
+})
+
+describe("studio shell — logo, content-fixed toolbar, global shortcut", () => {
+  beforeEach(() => {
+    window.localStorage.clear()
+  })
+  afterEach(() => cleanup())
+
+  it("renders the labelled LakeQL logo in the sidebar header without colliding with rail button queries", () => {
+    render(<EndpointBuilder />)
+
+    // The logo is an accessible image, not a button, so the rail's
+    // `getByRole("button", { name })` queries are unaffected.
+    expect(screen.getByRole("img", { name: "LakeQL logo" })).toBeDefined()
+    // The rail items are still uniquely resolvable by their button names.
+    expect(screen.getByRole("button", { name: "Fields" })).toBeDefined()
+    expect(screen.getByRole("button", { name: "JSON" })).toBeDefined()
+  })
+
+  it("shows the Undo/Redo toolbar in the Fields view and nowhere else", async () => {
+    const user = userEvent.setup()
+    render(<EndpointBuilder />)
+
+    // Settings (default) has no content-fixed Undo/Redo toolbar.
+    expect(screen.queryByRole("button", { name: "Undo" })).toBeNull()
+    expect(screen.queryByRole("button", { name: "Redo" })).toBeNull()
+
+    // Fields view shows the toolbar buttons.
+    await gotoView(user, "Fields")
+    expect(screen.getByRole("button", { name: "Undo" })).toBeDefined()
+    expect(screen.getByRole("button", { name: "Redo" })).toBeDefined()
+
+    // JSON view drops it again.
+    await gotoView(user, "JSON")
+    expect(screen.queryByRole("button", { name: "Undo" })).toBeNull()
+  })
+
+  it("keyboard undo/redo works on a non-Fields view (global shortcut)", async () => {
+    const user = userEvent.setup()
+    render(<EndpointBuilder />)
+
+    // Commit a field by importing a one-field definition (one undoable step).
+    await user.upload(
+      fileInput(),
+      jsonFile(
+        JSON.stringify({
+          version: "1.0",
+          tableName: "events",
+          catalog: "main",
+          schema: "public",
+          fields: [{ name: "id", type: "String" }],
+          mutation: false,
+        })
+      )
+    )
+
+    // Confirm the field landed (seen on the Fields view).
+    await gotoView(user, "Fields")
+    await waitFor(() => {
+      expect(fieldNameValues()).toContain("id")
+    })
+
+    // Navigate to a NON-Fields view (Settings). The Undo/Redo buttons are
+    // absent here, but the global keyboard shortcut (mounted at the shell root
+    // via useUndoRedoShortcuts) must still undo. Dispatch on the window — the
+    // target is not a text-entry control, so the shortcut is not ignored.
+    await gotoView(user, "General Settings")
+    expect(screen.queryByRole("button", { name: "Undo" })).toBeNull()
+
+    act(() => {
+      fireEvent.keyDown(window, { key: "z", ctrlKey: true })
+    })
+
+    // Back on Fields the field list is empty (no "Field name" inputs). Use a
+    // query that tolerates zero matches rather than the throwing getAll.
+    await gotoView(user, "Fields")
+    await waitFor(() => {
+      expect(screen.queryAllByLabelText("Field name")).toHaveLength(0)
+    })
+
+    // Ctrl+Shift+Z from a non-Fields view redoes it.
+    await gotoView(user, "General Settings")
+    act(() => {
+      fireEvent.keyDown(window, { key: "z", ctrlKey: true, shiftKey: true })
+    })
+
+    await gotoView(user, "Fields")
+    await waitFor(() => {
+      expect(fieldNameValues()).toContain("id")
     })
   })
 })

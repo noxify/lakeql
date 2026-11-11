@@ -399,6 +399,40 @@ const SeededCanvasWithPanel = (): ReactNode => {
   )
 }
 
+describe("canvas grip — keyboard starts no @dnd-kit drag (ghost regression)", () => {
+  beforeEach(() => {
+    window.localStorage.clear()
+  })
+  afterEach(() => cleanup())
+
+  it("focusing the Reorder grip and pressing Space+ArrowDown starts no drag", async () => {
+    const user = userEvent.setup()
+    render(<SeededCanvas />)
+
+    // The grip handle for the first node. With `KeyboardSensor` removed and
+    // `setActivatorNodeRef` wired, a keyboard press here must not start a
+    // sortable drag.
+    const grips = screen.getAllByRole("button", { name: "Reorder field" })
+    const grip = defined(grips[0])
+
+    // The owning node card (role="group"). The field "id" is the first node.
+    const node = grip.closest('[role="group"]') as HTMLElement
+    expect(node).not.toBeNull()
+
+    grip.focus()
+    await user.keyboard("[Space]")
+    await user.keyboard("{ArrowDown}")
+
+    // No @dnd-kit keyboard drag started: the node carries no inline transform
+    // and is not dimmed (`opacity-50` is only added while `isDragging`).
+    expect(node.style.transform).toBe("")
+    expect(node.className).not.toContain("opacity-50")
+    // The grip is kept out of the Tab order, routing keyboard users to the
+    // dedicated "Move field" affordance instead.
+    expect(grip.tabIndex).toBe(-1)
+  })
+})
+
 describe("canvas rendering", () => {
   beforeEach(() => {
     window.localStorage.clear()

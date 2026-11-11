@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/sidebar"
 import { TooltipProvider } from "@/components/ui/tooltip"
 
+import { LakeqlLogo } from "../components/lakeql-logo"
 import { CanvasSurface } from "./canvas/canvas"
 import { Palette } from "./canvas/palette"
 import { CanvasShellRoot } from "./canvas/shell-root"
@@ -35,7 +36,7 @@ import { MetadataForm } from "./metadata-form"
 import { MutationConfigForm } from "./mutation-config-form"
 import type { ShellView } from "./shell-view"
 import { ShellViewProvider, useShellView } from "./shell-view"
-import { UndoRedoControls } from "./undo-redo-controls"
+import { UndoRedoControls, useUndoRedoShortcuts } from "./undo-redo-controls"
 import { EditorProvider, useEditor, useEditorContext } from "./use-editor"
 import { ValidationAnnouncer } from "./validation-announcer"
 import { ValidationsView } from "./validations-view"
@@ -69,7 +70,17 @@ const Rail = () => {
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
-        <SidebarTrigger aria-label="Toggle navigation" />
+        <div className="flex items-center gap-2">
+          <SidebarTrigger aria-label="Toggle navigation" />
+          {/* The logo mark (`role="img"`, so it never collides with the rail's
+              `getByRole("button")` queries) stays visible in both rail states;
+              the wordmark hides when the rail collapses to icons, leaving the
+              icon-only mark. */}
+          <LakeqlLogo className="size-6 shrink-0" />
+          <span className="text-sm font-semibold group-data-[collapsible=icon]:hidden">
+            LakeQL
+          </span>
+        </div>
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
@@ -169,19 +180,28 @@ const FieldsContent = () => {
   const empty = editor.state.fields.length === 0
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[1fr_20rem]">
-      <div className="grid content-start gap-3">
-        <KeyboardHint />
-        {empty && <FieldsEmptyState />}
-        <CanvasSurface />
+    <div className="grid gap-4">
+      {/* Content-fixed toolbar: the Undo/Redo buttons pinned to the top of the
+          Fields content so they stay reachable while the field list scrolls.
+          Scoped to the Fields view (Req 3.1, 3.3); the keyboard shortcut is
+          global via `useUndoRedoShortcuts` at the shell root. */}
+      <div className="bg-background sticky top-0 z-10 -mx-4 -mt-4 flex items-center border-b px-4 py-2">
+        <UndoRedoControls />
       </div>
-      <aside
-        aria-label="Field properties"
-        className="border-border/60 h-fit rounded-md border p-3"
-      >
-        <h2 className="mb-3 text-sm font-medium">Properties</h2>
-        <FieldPropertiesPanel />
-      </aside>
+      <div className="grid gap-4 lg:grid-cols-[1fr_20rem]">
+        <div className="grid content-start gap-3">
+          <KeyboardHint />
+          {empty && <FieldsEmptyState />}
+          <CanvasSurface />
+        </div>
+        <aside
+          aria-label="Field properties"
+          className="border-border/60 h-fit rounded-md border p-3"
+        >
+          <h2 className="mb-3 text-sm font-medium">Properties</h2>
+          <FieldPropertiesPanel />
+        </aside>
+      </div>
     </div>
   )
 }
@@ -219,37 +239,45 @@ const MainContent = () => {
 }
 
 /**
- * The sidebar-based shell: the icon rail, the contextual secondary sidebar, the
- * header bar (title + import/export + undo/redo + the live-region announcer),
- * and the switched main content — all inside one hoisted `DndContext` so a
- * palette→canvas drag spans the secondary sidebar and the main content.
+ * The sidebar-based shell: the icon rail (with the LakeQL logo in its header),
+ * the contextual secondary sidebar, the header bar (title + import/export + the
+ * compact issue count + the live-region announcer), and the switched main
+ * content — all inside one hoisted `DndContext` so a palette→canvas drag spans
+ * the secondary sidebar and the main content. The Undo/Redo buttons live in the
+ * Fields view's content-fixed toolbar, while the keyboard undo/redo shortcut is
+ * mounted globally here via {@link useUndoRedoShortcuts}.
  */
-const EndpointBuilderShell = () => (
-  <SidebarProvider>
-    <ValidationAnnouncer />
-    <Rail />
-    <SidebarInset>
-      <header className="border-border flex flex-col gap-2 border-b p-3">
-        <div>
-          <h1 className="text-base font-semibold">LakeQL Endpoint Builder</h1>
-          <p className="text-muted-foreground text-sm">
-            Visual authoring for LakeQL endpoint definitions.
-          </p>
+const EndpointBuilderShell = () => {
+  // Global, view-independent keyboard undo/redo. Mounted once here (not in the
+  // Fields-only Undo/Redo toolbar) so the shortcut works on every view.
+  useUndoRedoShortcuts()
+
+  return (
+    <SidebarProvider>
+      <ValidationAnnouncer />
+      <Rail />
+      <SidebarInset>
+        <header className="border-border flex flex-col gap-2 border-b p-3">
+          <div>
+            <h1 className="text-base font-semibold">LakeQL Endpoint Builder</h1>
+            <p className="text-muted-foreground text-sm">
+              Visual authoring for LakeQL endpoint definitions.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <ImportExportBar />
+          </div>
+        </header>
+        <div className="flex min-h-0 flex-1">
+          <SecondarySidebar />
+          <div className="min-w-0 flex-1 overflow-y-auto p-4">
+            <MainContent />
+          </div>
         </div>
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <ImportExportBar />
-          <UndoRedoControls />
-        </div>
-      </header>
-      <div className="flex min-h-0 flex-1">
-        <SecondarySidebar />
-        <div className="min-w-0 flex-1 overflow-y-auto p-4">
-          <MainContent />
-        </div>
-      </div>
-    </SidebarInset>
-  </SidebarProvider>
-)
+      </SidebarInset>
+    </SidebarProvider>
+  )
+}
 
 /**
  * Root component of the LakeQL Endpoint Builder.
