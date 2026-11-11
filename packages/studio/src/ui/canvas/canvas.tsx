@@ -73,10 +73,10 @@ export const CanvasSurface = () => {
         )}
       >
         {fields.length === 0 ? (
-          <p className="text-muted-foreground text-sm">
-            No fields yet. Drag a type from the palette to add one. A top-level
-            definition with no fields is valid.
-          </p>
+          // The empty-state guidance is the shell's single `role="note"`
+          // `FieldsEmptyState` (Req 7.1); the surface renders only the bordered
+          // drop target here so two empty-state messages never stack.
+          <span className="sr-only">Canvas is empty.</span>
         ) : (
           <SortableContext items={fields.map((field) => field.id)}>
             <div className="grid gap-1">
