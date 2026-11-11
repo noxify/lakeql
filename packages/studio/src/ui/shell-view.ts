@@ -9,6 +9,29 @@ import { createContext, useContext } from "react"
 export type ShellView = "settings" | "fields" | "validations" | "json"
 
 /**
+ * The set of all valid {@link ShellView} ids, in rail order. Centralized here
+ * so that anything needing to validate an external value (for example a URL
+ * hash) against the view union has a single source of truth.
+ */
+export const SHELL_VIEWS: readonly ShellView[] = [
+  "settings",
+  "fields",
+  "validations",
+  "json",
+]
+
+/**
+ * Narrows an arbitrary string to a {@link ShellView} when it is one of the
+ * four valid view ids.
+ *
+ * @param value - The candidate string (for example the URL hash sans `#`).
+ * @returns `true` when `value` is a valid {@link ShellView}.
+ */
+export function isShellView(value: string): value is ShellView {
+  return (SHELL_VIEWS as readonly string[]).includes(value)
+}
+
+/**
  * The shell-view controller: the active rail section and a setter to switch it.
  * Held by the shell root (a `useState`) and read by the rail, the secondary
  * sidebar, the main content, and the Validations jump-to-field action.

@@ -51,6 +51,7 @@ import { ShellViewProvider, useShellView } from "./shell-view"
 import { ThemeToggle } from "./theme-toggle"
 import { UndoRedoControls, useUndoRedoShortcuts } from "./undo-redo-controls"
 import { EditorProvider, useEditor, useEditorContext } from "./use-editor"
+import { useHashView } from "./use-hash-view"
 import { ValidationAnnouncer } from "./validation-announcer"
 import { ValidationsView } from "./validations-view"
 
@@ -426,7 +427,9 @@ const EndpointBuilderShell = () => {
  */
 export const EndpointBuilder = () => {
   const editor = useEditor()
-  const [view, setView] = useState<ShellView>("settings")
+  // The active view is synced with the URL hash (`#settings` / `#fields` /
+  // `#validations` / `#json`) so a reload or a shared deep link restores it.
+  const [view, setView] = useHashView()
 
   return (
     <EditorProvider value={editor}>
