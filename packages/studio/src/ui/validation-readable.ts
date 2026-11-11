@@ -226,6 +226,23 @@ function fromBadNumber(
 }
 
 /**
+ * Drops duplicate-name findings whose field name is still the empty string.
+ *
+ * Two not-yet-named fields share the empty-string name `""`, so the core gate's
+ * `findDuplicateFieldNames` reports them as duplicates. But an empty-named field
+ * already surfaces a "Field name is invalid" schema issue, so showing the
+ * duplicate finding too double-signals the same not-yet-filled-in state. This
+ * display-layer filter suppresses only that redundant readable issue; the core
+ * gate is unchanged, so two empty-named fields remain non-exportable via their
+ * invalid-name schema issues.
+ */
+function withoutEmptyNameDuplicates(
+  duplicates: DuplicateDiagnostic[]
+): DuplicateDiagnostic[] {
+  return duplicates.filter((duplicate) => duplicate.name !== "")
+}
+
+/**
  * Reformats every validity-gate diagnostic into a readable, optionally-navigable
  * entry for the Validations summary and per-field details.
  *
@@ -241,6 +258,12 @@ function fromBadNumber(
  * the flat count/line source for the announcer and the import/export bar). Both
  * derive from the same {@link ValidationResult}. No DOM, no React.
  *
+ * A duplicate-name finding for an empty-named field is suppressed here (see
+ * {@link withoutEmptyNameDuplicates}): such a field already surfaces a "Field
+ * name is invalid" schema issue, so the duplicate entry would only double-signal
+ * the same not-yet-named state. This is display-only; the core export gate still
+ * counts those fields as invalid.
+ *
  * @param state - The live editor state, used to resolve field-keyed labels.
  * @param result - The validity-gate result to reformat.
  * @returns The readable issues in a stable order: schema, duplicate, regex, then
@@ -254,7 +277,7 @@ export function toReadableIssues(
     ...result.schemaIssues.map((issue, index) =>
       fromSchema(state, issue, index)
     ),
-    ...result.duplicates.map((duplicate, index) =>
+    ...withoutEmptyNameDuplicates(result.duplicates).map((duplicate, index) =>
       fromDuplicate(duplicate, index)
     ),
     ...result.badRegex.map((bad, index) => fromBadRegex(state, bad, index)),
@@ -278,7 +301,7 @@ export function fieldIdsWithIssues(result: ValidationResult): Set<string> {
       ids.add(issue.fieldId)
     }
   }
-  for (const duplicate of result.duplicates) {
+  for (const duplicate of withoutEmptyNameDuplicates(result.duplicates)) {
     if (duplicate.fieldId !== undefined) {
       ids.add(duplicate.fieldId)
     }

@@ -86,6 +86,70 @@ describe("readable-mapping layer", () => {
     expect(issue.fieldId).toBe("dup-1")
   })
 
+  it("suppresses the duplicate issue for two empty-named fields, surfacing only the invalid-name issue per field", () => {
+    // Two top-level fields, both still unnamed. The core gate reports each as an
+    // invalid name AND the pair as a duplicate (both share name ""). The display
+    // layer must drop the duplicate noise and keep one invalid-name issue each.
+    const state = fromDefinition({
+      version: "1.0",
+      tableName: "t",
+      catalog: "c",
+      schema: "s",
+      fields: [
+        { name: "", type: "String" },
+        { name: "", type: "String" },
+      ],
+      mutation: false,
+    })
+    const result = evaluate(state)
+    // The underlying export block must remain: empty names are non-exportable.
+    expect(result.validForExport).toBeFalsy()
+    expect(result.duplicates.length).toBeGreaterThan(0)
+
+    const issues = toReadableIssues(state, result)
+    const messages = issues.map((issue) => issue.message)
+    expect(messages).not.toContain("Duplicate field name at this level")
+    expect(
+      messages.filter((message) => message === "Field name is invalid")
+    ).toHaveLength(2)
+  })
+
+  it("still surfaces the duplicate issue for two fields with the same non-empty name", () => {
+    const result: ValidationResult = {
+      validForExport: false,
+      schemaIssues: [],
+      duplicates: [{ name: "sku", path: [], fieldId: "dup-1" }],
+      badRegex: [],
+      badNumber: [],
+    }
+
+    const issues = toReadableIssues(nestedState(), result)
+    expect(issues).toHaveLength(1)
+    const issue = defined(issues[0])
+    expect(issue.message).toBe("Duplicate field name at this level")
+    expect(issue.label).toBe("sku")
+  })
+
+  it("does not emit a duplicate issue for a single empty-named field", () => {
+    const state = fromDefinition({
+      version: "1.0",
+      tableName: "t",
+      catalog: "c",
+      schema: "s",
+      fields: [{ name: "", type: "String" }],
+      mutation: false,
+    })
+    const result = evaluate(state)
+    expect(result.duplicates).toHaveLength(0)
+
+    const issues = toReadableIssues(state, result)
+    const messages = issues.map((issue) => issue.message)
+    expect(messages).not.toContain("Duplicate field name at this level")
+    expect(
+      messages.filter((message) => message === "Field name is invalid")
+    ).toHaveLength(1)
+  })
+
   it("resolves a bad-regex issue (fieldId-only) via the name walk", () => {
     // A real gate result: an unconstructible regex on the nested field.
     const state = fromDefinition({
