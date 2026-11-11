@@ -70,6 +70,31 @@ function fieldLabel(state: EditorState, fieldId: string): string {
   return names === undefined ? DEFINITION_LABEL : labelFromNames(names)
 }
 
+/**
+ * Human-readable labels for the top-level metadata keys, so a non-field
+ * (metadata) issue reads "Table name" rather than the raw path leaf `tableName`.
+ */
+const METADATA_LEAF_LABELS: Record<string, string> = {
+  tableName: "Table name",
+  catalog: "Catalog",
+  schema: "Schema",
+  dataSource: "Data source",
+  basePath: "Base path",
+  version: "Version",
+}
+
+/**
+ * Renders a non-field (metadata) issue's label from its path leaf: a known
+ * metadata key gets its human-readable name, anything else falls back to the
+ * leaf itself or the {@link DEFINITION_LABEL}.
+ */
+function metadataLabel(leaf: string | undefined): string {
+  if (leaf === undefined) {
+    return DEFINITION_LABEL
+  }
+  return METADATA_LEAF_LABELS[leaf] ?? leaf
+}
+
 /** The last string segment of a Zod issue path, or `undefined` when none. */
 function pathLeaf(path: (string | number)[]): string | undefined {
   for (let index = path.length - 1; index >= 0; index -= 1) {
@@ -125,10 +150,9 @@ function fromSchema(
 ): ReadableIssue {
   const message = schemaMessage(issue)
   if (issue.fieldId === undefined) {
-    const leaf = pathLeaf(issue.path)
     return {
       id: `schema-${index}`,
-      label: leaf ?? DEFINITION_LABEL,
+      label: metadataLabel(pathLeaf(issue.path)),
       message,
       navigable: false,
     }
@@ -196,7 +220,7 @@ function fromBadNumber(
     id: `number-${index}`,
     fieldId: bad.fieldId,
     label: fieldLabel(state, bad.fieldId),
-    message: `${bad.kind === "min" ? "min" : "max"} bound is not a finite number`,
+    message: `${bad.kind} bound is not a finite number`,
     navigable: true,
   }
 }
@@ -236,4 +260,53 @@ export function toReadableIssues(
     ...result.badRegex.map((bad, index) => fromBadRegex(state, bad, index)),
     ...result.badNumber.map((bad, index) => fromBadNumber(state, bad, index)),
   ]
+}
+
+/**
+ * Collects the set of field ids that any diagnostic in `result` keys to, so a
+ * canvas node can cheaply answer "do I have a validation issue?" against the
+ * live gate result. Derived from the same {@link ValidationResult} the summary
+ * uses, so a node badge and the summary entry for a field cannot disagree.
+ *
+ * @param result - The validity-gate result to scan.
+ * @returns A set of field ids carrying at least one issue.
+ */
+export function fieldIdsWithIssues(result: ValidationResult): Set<string> {
+  const ids = new Set<string>()
+  for (const issue of result.schemaIssues) {
+    if (issue.fieldId !== undefined) {
+      ids.add(issue.fieldId)
+    }
+  }
+  for (const duplicate of result.duplicates) {
+    if (duplicate.fieldId !== undefined) {
+      ids.add(duplicate.fieldId)
+    }
+  }
+  for (const bad of result.badRegex) {
+    ids.add(bad.fieldId)
+  }
+  for (const bad of result.badNumber) {
+    ids.add(bad.fieldId)
+  }
+  return ids
+}
+
+/**
+ * The readable issues that resolve to a specific field, for the field
+ * properties panel's per-field detail list.
+ *
+ * @param state - The live editor state, used to resolve labels.
+ * @param result - The validity-gate result to reformat.
+ * @param fieldId - The field whose issues to return.
+ * @returns The subset of {@link toReadableIssues} whose `fieldId` matches.
+ */
+export function readableIssuesForField(
+  state: EditorState,
+  result: ValidationResult,
+  fieldId: string
+): ReadableIssue[] {
+  return toReadableIssues(state, result).filter(
+    (issue) => issue.fieldId === fieldId
+  )
 }

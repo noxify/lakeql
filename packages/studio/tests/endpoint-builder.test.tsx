@@ -116,6 +116,20 @@ async function selectOption(
   await user.click(option)
 }
 
+/**
+ * Navigates the shell to the Fields view by activating the rail's Fields item.
+ * The sidebar-based shell lands on General Settings by default, so a test that
+ * needs the canvas (field inputs, type selects) must switch to Fields first —
+ * the same navigate-to-Fields step the Playwright E2E takes after `goto("/")`.
+ * The rail item is the only "Fields" control before the canvas mounts, so the
+ * role query is unambiguous at this point.
+ */
+async function gotoFields(
+  user: ReturnType<typeof userEvent.setup>
+): Promise<void> {
+  await user.click(screen.getByRole("button", { name: "Fields" }))
+}
+
 /** The active descriptor for a palette source of the given field type. */
 function paletteActive(fieldType: EditorFieldType): DragEndEvent["active"] {
   return {
@@ -358,15 +372,18 @@ describe("EndpointBuilder rendered-UI integration (canvas)", () => {
         "main"
       )
 
-      // The canvas is populated — the top-level names and the nested "city".
-      expect(fieldNameValues()).toContain("id")
-      expect(fieldNameValues()).toContain("profile")
-      expect(fieldNameValues()).toContain("city")
-
-      // Mutation was enabled from the file.
+      // Mutation was enabled from the file (the switch lives in the Settings
+      // view, asserted before navigating away to the Fields view).
       expect(screen.getByRole("switch").getAttribute("aria-checked")).toBe(
         "true"
       )
+
+      // The canvas lives in the Fields view; switch to it, then assert the
+      // populated field names (top-level plus the nested "city").
+      await gotoFields(user)
+      expect(fieldNameValues()).toContain("id")
+      expect(fieldNameValues()).toContain("profile")
+      expect(fieldNameValues()).toContain("city")
     })
 
     it("rejects a malformed file, shows errors, and leaves state untouched (no partial apply)", async () => {
@@ -392,6 +409,7 @@ describe("EndpointBuilder rendered-UI integration (canvas)", () => {
       expect(
         (screen.getByLabelText("Table name") as HTMLInputElement).value
       ).toBe("events")
+      await gotoFields(user)
       expect(fieldNameValues()).toContain("profile")
     })
   })
@@ -438,6 +456,9 @@ describe("EndpointBuilder rendered-UI integration (canvas)", () => {
           (screen.getByLabelText("Table name") as HTMLInputElement).value
         ).toBe("events")
       })
+
+      // The canvas type selects live in the Fields view.
+      await gotoFields(user)
 
       // The "profile" node is the Object with a child; find its type select by
       // matching the index of the "profile" name input on the canvas.

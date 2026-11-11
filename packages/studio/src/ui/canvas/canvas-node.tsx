@@ -2,6 +2,7 @@ import { useDroppable } from "@dnd-kit/core"
 import { SortableContext, useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 import {
+  CircleAlertIcon,
   GripVerticalIcon,
   MousePointerClickIcon,
   MoveIcon,
@@ -33,6 +34,7 @@ import {
   fieldTypeOptions,
 } from "../field-meta"
 import { useEditorContext } from "../use-editor"
+import { fieldIdsWithIssues } from "../validation-readable"
 import type { NodeAnchorData } from "./dnd-types"
 import { containerChildren, isDropContainer, zoneId } from "./dnd-types"
 import { DropIndicator } from "./drop-indicator"
@@ -265,6 +267,11 @@ export const CanvasNode = ({
   const nameErr = fieldNameError(field.name)
   const children = containerChildren(field)
 
+  // Derived live from the current validity-gate result: the node carries an
+  // issue indicator whenever any diagnostic keys to its id, and it clears the
+  // instant the gate no longer reports one (Req 4.1, 4.2).
+  const hasIssue = fieldIdsWithIssues(editor.validation).has(field.id)
+
   // Show the "insert before this node" indicator when either the live pointer
   // drag or the keyboard move resolves to dropping before this field.
   const indicator = indicatorAt(drag, keyboard.move, containerId, field.id)
@@ -326,6 +333,17 @@ export const CanvasNode = ({
           >
             <MousePointerClickIcon className="size-4" />
           </button>
+
+          {hasIssue && (
+            <span
+              role="img"
+              aria-label="has validation issue"
+              title="This field has a validation issue"
+              className="text-destructive inline-flex shrink-0 items-center"
+            >
+              <CircleAlertIcon className="size-4" />
+            </span>
+          )}
 
           <div className="grid min-w-40 flex-1 gap-1">
             <Input

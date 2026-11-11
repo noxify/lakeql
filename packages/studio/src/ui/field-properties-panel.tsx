@@ -27,6 +27,7 @@ import {
   validationKindLabels,
   validationKindsForType,
 } from "./validation-meta"
+import { readableIssuesForField } from "./validation-readable"
 
 /**
  * Normalizes the `options` of a field for editing: always returns an object the
@@ -310,6 +311,14 @@ export const FieldPropertiesPanel = () => {
     editor.setFieldOptions(path, normalizeOptions({ ...options, [key]: value }))
   }
 
+  // The selected field's own validity-gate issues, in readable terms, derived
+  // live from the same result the canvas badge reads (Req 4.3).
+  const fieldIssues = readableIssuesForField(
+    editor.state,
+    editor.validation,
+    field.id
+  )
+
   return (
     <div className="grid gap-4">
       <div className="grid gap-0.5">
@@ -320,6 +329,27 @@ export const FieldPropertiesPanel = () => {
           Type: {field.type}
         </span>
       </div>
+
+      {fieldIssues.length > 0 && (
+        <div
+          role="note"
+          aria-label="Field validation issues"
+          className="border-destructive/40 bg-destructive/5 grid gap-1 rounded-md border p-2"
+        >
+          <span className="text-destructive text-xs font-medium">
+            {fieldIssues.length === 1
+              ? "1 validation issue"
+              : `${fieldIssues.length} validation issues`}
+          </span>
+          <ul className="grid gap-0.5">
+            {fieldIssues.map((issue) => (
+              <li key={issue.id} className="text-destructive text-xs">
+                {issue.message}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className="grid gap-3">
         <OptionToggle

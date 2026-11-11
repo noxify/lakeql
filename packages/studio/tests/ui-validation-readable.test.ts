@@ -165,7 +165,7 @@ describe("readable-mapping layer", () => {
     const issue = defined(issues[0])
     expect(issue.navigable).toBeFalsy()
     expect(issue.fieldId).toBeUndefined()
-    expect(issue.label).toBe("tableName")
+    expect(issue.label).toBe("Table name")
     expect(issue.message).toBe("Table name is invalid")
   })
 
