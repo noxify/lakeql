@@ -6,8 +6,8 @@ import { MutationConfigForm } from "../mutation-config-form"
  * config form, both reused unchanged (Req 2.1).
  */
 export const SettingsContent = () => (
-  <div className="flex flex-1 flex-col gap-4 p-4">
-    <div className="grid max-w-2xl gap-6">
+  <div className="flex flex-1 flex-col gap-4 px-4 py-10">
+    <div className="mx-auto w-full max-w-3xl">
       <section className="grid gap-3">
         <h2 className="text-sm font-medium">Metadata</h2>
         <MetadataForm />

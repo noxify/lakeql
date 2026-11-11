@@ -99,7 +99,7 @@ const PartitioningControls = ({
           value={mode}
           onValueChange={(next) => setMode(next as PartitioningMode)}
         >
-          {(["timestamp", "off", "field"] as const).map((value) => {
+          {(["off", "timestamp", "field"] as const).map((value) => {
             const itemId = `${stringId}-${value}`
             return (
               <div key={value} className="flex items-center gap-2">
