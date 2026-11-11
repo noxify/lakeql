@@ -146,6 +146,42 @@ describe("use-editor undo/redo + drop-commit wiring", () => {
     expect(result.current.canRedo).toBe(canRedoBefore)
   })
 
+  it("reset clears to a fresh state and commits exactly one undoable snapshot", () => {
+    const { result } = renderHook(() => useEditor())
+
+    act(() => {
+      result.current.addField([], { ...createField("String"), name: "a" })
+    })
+    act(() => {
+      result.current.selectField(result.current.state.fields[0]?.id ?? null)
+    })
+    expect(result.current.selectedFieldId).not.toBeNull()
+
+    act(() => {
+      result.current.reset()
+    })
+
+    // The live state is fresh (no fields, no table name) and the selection is
+    // cleared.
+    expect({
+      fieldCount: result.current.state.fields.length,
+      tableName: result.current.state.tableName,
+      selectedFieldId: result.current.selectedFieldId,
+      canUndo: result.current.canUndo,
+    }).toStrictEqual({
+      fieldCount: 0,
+      tableName: "",
+      selectedFieldId: null,
+      canUndo: true,
+    })
+
+    // The reset is one committed snapshot, so a single undo restores the field.
+    act(() => {
+      result.current.undo()
+    })
+    expect(result.current.state.fields.map((f) => f.name)).toStrictEqual(["a"])
+  })
+
   it("autosave persists the state after a move and after an undo", () => {
     const { result } = renderHook(() => useEditor())
 

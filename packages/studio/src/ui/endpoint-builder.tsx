@@ -27,6 +27,7 @@ import { LakeqlLogo } from "../components/lakeql-logo"
 import { CanvasSurface } from "./canvas/canvas"
 import { Palette } from "./canvas/palette"
 import { CanvasShellRoot } from "./canvas/shell-root"
+import { CommandPalette } from "./command-palette"
 import { summarizeDiagnostics } from "./diagnostics"
 import { FieldPropertiesPanel } from "./field-properties-panel"
 import { FieldsEmptyState, KeyboardHint } from "./fields-extras"
@@ -246,7 +247,9 @@ const MainContent = () => {
  * content — all inside one hoisted `DndContext` so a palette→canvas drag spans
  * the secondary sidebar and the main content. The Undo/Redo buttons live in the
  * Fields view's content-fixed toolbar, while the keyboard undo/redo shortcut is
- * mounted globally here via {@link useUndoRedoShortcuts}.
+ * mounted globally here via {@link useUndoRedoShortcuts}. The {@link
+ * CommandPalette} in the header mounts the global ⌘K listener (disjoint from
+ * undo/redo) alongside its visible affordance.
  */
 const EndpointBuilderShell = () => {
   // Global, view-independent keyboard undo/redo. Mounted once here (not in the
@@ -267,7 +270,10 @@ const EndpointBuilderShell = () => {
           </div>
           <div className="flex flex-wrap items-center justify-between gap-2">
             <ImportExportBar />
-            <ThemeToggle />
+            <div className="flex items-center gap-2">
+              <CommandPalette />
+              <ThemeToggle />
+            </div>
           </div>
         </header>
         <div className="flex min-h-0 flex-1">

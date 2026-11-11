@@ -30,6 +30,7 @@ import {
   changeFieldType as changeFieldTypeOp,
   createCoalescingCommitter,
   createField,
+  createFreshState,
   createPersistence,
   currentState,
   downloadEndpointJson,
@@ -148,6 +149,13 @@ export interface EditorApi {
   importFile: (file: File) => Promise<ImportResult>
   /** Exports the current state as a download; blocked unless valid. */
   exportFile: () => void
+  /**
+   * Resets the editor to a fresh, empty definition, committing the reset as one
+   * history snapshot (so it is itself undoable) and clearing the field
+   * selection. Discards the authored definition — the caller is expected to
+   * gate this behind a confirmation.
+   */
+  reset: () => void
 }
 
 /**
@@ -385,6 +393,11 @@ export function useEditor(): EditorApi {
     downloadEndpointJson(currentState(committer.history))
   }, [committer])
 
+  const reset = useCallback(() => {
+    replaceState(createFreshState(), { commit: true })
+    setSelectedFieldId(null)
+  }, [replaceState])
+
   const validation = useMemo(() => evaluate(state), [state])
 
   return {
@@ -409,6 +422,7 @@ export function useEditor(): EditorApi {
     changeArrayItemType,
     importFile,
     exportFile,
+    reset,
   }
 }
 
