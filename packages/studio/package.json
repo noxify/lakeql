@@ -49,6 +49,8 @@
     "clean:cache": "git clean -xdf .cache .turbo",
     "clean:dist": "git clean -xdf dist",
     "dev": "tsdown --watch",
+    "dev:css": "vite build --config vite.css.config.ts --watch",
+    "dev:prep": "tsdown && vite build --config vite.css.config.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
