@@ -125,6 +125,81 @@ describe("command palette — open and run", () => {
     })
   })
 
+  it("entering the Add-field sub-view highlights the first item", async () => {
+    const user = userEvent.setup()
+    render(<EndpointBuilder />)
+
+    pressCmdK()
+    await waitFor(() => expect(paletteInput()).toBeDefined())
+    await user.click(screen.getByText("Add field…"))
+
+    // The first field-type item is the active (highlighted) one, so the group
+    // heading and first option are visible without scrolling.
+    const firstItem = await screen.findByText("Add String field")
+    const firstRow = firstItem.closest<HTMLElement>(
+      "[data-slot='command-item']"
+    )
+    expect(firstRow).not.toBeNull()
+    await waitFor(() => {
+      expect(firstRow?.dataset.selected).toBe("true")
+    })
+  })
+
+  it("Escape in the Add-field sub-view returns to the main view", async () => {
+    const user = userEvent.setup()
+    render(<EndpointBuilder />)
+
+    pressCmdK()
+    await waitFor(() => expect(paletteInput()).toBeDefined())
+    await user.click(screen.getByText("Add field…"))
+    await waitFor(() =>
+      expect(screen.getByText("Add String field")).toBeDefined()
+    )
+
+    // Escape goes back to the root command list, not closing the palette.
+    await user.keyboard("{Escape}")
+
+    await waitFor(() => {
+      expect(screen.getByText("Add field…")).toBeDefined()
+    })
+    // Still open, and the sub-view is gone.
+    expect(paletteInput()).toBeDefined()
+    expect(screen.queryByText("Add String field")).toBeNull()
+  })
+
+  it("Escape in the main view closes the palette", async () => {
+    const user = userEvent.setup()
+    render(<EndpointBuilder />)
+
+    pressCmdK()
+    await waitFor(() => expect(paletteInput()).toBeDefined())
+
+    await user.keyboard("{Escape}")
+
+    await waitFor(() => {
+      expect(screen.queryByPlaceholderText(/type a command/iu)).toBeNull()
+    })
+  })
+
+  it("the Back item in the sub-view returns to the main view", async () => {
+    const user = userEvent.setup()
+    render(<EndpointBuilder />)
+
+    pressCmdK()
+    await waitFor(() => expect(paletteInput()).toBeDefined())
+    await user.click(screen.getByText("Add field…"))
+    await waitFor(() =>
+      expect(screen.getByText("Add String field")).toBeDefined()
+    )
+
+    await user.click(screen.getByText("Back"))
+
+    await waitFor(() => {
+      expect(screen.getByText("Add field…")).toBeDefined()
+    })
+    expect(screen.queryByText("Add String field")).toBeNull()
+  })
+
   it("Reset editor confirms before clearing, then clears the definition", async () => {
     const user = userEvent.setup()
     render(<EndpointBuilder />)

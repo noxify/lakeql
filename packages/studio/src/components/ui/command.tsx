@@ -38,18 +38,23 @@ function Command({
  * @param props.title - The accessible dialog title (visually hidden).
  * @param props.description - The accessible dialog description (visually
  *   hidden).
+ * @param props.commandProps - Props forwarded to the inner {@link Command}
+ *   root, e.g. the controlled `value`/`onValueChange` pair that drives the
+ *   active item.
  * @param props.children - The {@link Command} subtree to render inside.
  */
 function CommandDialog({
   title = "Command Palette",
   description = "Search for a command to run...",
   className,
+  commandProps,
   children,
   ...props
 }: Omit<DialogPrimitive.Root.Props, "children"> & {
   title?: string
   description?: string
   className?: string
+  commandProps?: React.ComponentProps<typeof CommandPrimitive>
   children: React.ReactNode
 }) {
   return (
@@ -78,7 +83,10 @@ function CommandDialog({
           >
             {description}
           </DialogPrimitive.Description>
-          <Command className="[&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-input-wrapper]_svg]:size-5 [&_[cmdk-input]]:h-12 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-3 [&_[cmdk-item]_svg]:size-5">
+          <Command
+            className="[&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-input-wrapper]_svg]:size-5 [&_[cmdk-input]]:h-12 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-3 [&_[cmdk-item]_svg]:size-5"
+            {...commandProps}
+          >
             {children}
           </Command>
         </DialogPrimitive.Popup>

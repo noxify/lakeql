@@ -1,4 +1,5 @@
 import {
+  ArrowLeftIcon,
   BracesIcon,
   CircleAlertIcon,
   DownloadIcon,
@@ -9,6 +10,7 @@ import {
   SettingsIcon,
   UploadIcon,
 } from "lucide-react"
+import type { KeyboardEvent as ReactKeyboardEvent } from "react"
 import { useCallback, useEffect, useRef, useState } from "react"
 
 import {
@@ -71,6 +73,17 @@ const NAV_COMMANDS: NavCommand[] = [
   { view: "json", label: "Go to JSON", icon: BracesIcon },
 ]
 
+/** The stable cmdk `value` for an Add-field sub-view item. */
+function addFieldValue(fieldType: EditorFieldType): string {
+  return `add-field:${fieldType}`
+}
+
+/** The stable cmdk `value` of the first command on each page. */
+const FIRST_VALUE: Record<PalettePage, string> = {
+  root: "nav:settings",
+  "add-field": addFieldValue(fieldTypeOptions[0] ?? "String"),
+}
+
 /**
  * The editor command palette: a ⌘K / Ctrl-K command menu over the shell's
  * actions.
@@ -97,10 +110,25 @@ export const CommandPalette = () => {
   const [open, setOpen] = useState(false)
   const [page, setPage] = useState<PalettePage>("root")
   const [confirmingReset, setConfirmingReset] = useState(false)
+  // Controlled active item. cmdk scrolls the active item into view when this
+  // changes, so pointing it at the first item of a page also resets the list's
+  // scroll to the top — the fix for the sub-view not starting at the top.
+  const [activeValue, setActiveValue] = useState<string>(FIRST_VALUE.root)
+  // Controlled search query, cleared on every page switch so the destination
+  // page shows its full, unfiltered list from the first item.
+  const [search, setSearch] = useState("")
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const { validForExport } = editor.validation
   const issueCount = summarizeDiagnostics(editor.validation).length
+
+  // Switches the palette page, clearing the search and pointing the active item
+  // at the destination page's first command.
+  const goToPage = useCallback((next: PalettePage) => {
+    setPage(next)
+    setSearch("")
+    setActiveValue(FIRST_VALUE[next])
+  }, [])
 
   // Global ⌘K / Ctrl-K toggle. Kept separate from the undo/redo listener (which
   // owns z/y) and ignored while typing, so the two never contend.
@@ -124,18 +152,38 @@ export const CommandPalette = () => {
 
   // Always reopen on the root page so a prior Add-field sub-view does not leak
   // into the next session.
-  const onOpenChange = useCallback((next: boolean) => {
-    setOpen(next)
-    if (!next) {
-      setPage("root")
-    }
-  }, [])
+  const onOpenChange = useCallback(
+    (next: boolean) => {
+      setOpen(next)
+      if (!next) {
+        goToPage("root")
+      }
+    },
+    [goToPage]
+  )
 
-  const run = useCallback((action: () => void) => {
-    action()
-    setOpen(false)
-    setPage("root")
-  }, [])
+  const run = useCallback(
+    (action: () => void) => {
+      action()
+      setOpen(false)
+      goToPage("root")
+    },
+    [goToPage]
+  )
+
+  // Escape in the Add-field sub-view returns to the root page instead of
+  // closing the palette; Escape on the root page still closes it (handled by
+  // the dialog). Captured before the dialog's own Escape handler runs.
+  const onKeyDownCapture = useCallback(
+    (event: ReactKeyboardEvent) => {
+      if (event.key === "Escape" && page === "add-field") {
+        event.preventDefault()
+        event.stopPropagation()
+        goToPage("root")
+      }
+    },
+    [page, goToPage]
+  )
 
   const onPickFile = useCallback(
     async (file: File | undefined) => {
@@ -188,8 +236,20 @@ export const CommandPalette = () => {
         }}
       />
 
-      <CommandDialog open={open} onOpenChange={onOpenChange}>
-        <CommandInput placeholder="Type a command or search…" />
+      <CommandDialog
+        open={open}
+        onOpenChange={onOpenChange}
+        commandProps={{
+          value: activeValue,
+          onValueChange: setActiveValue,
+          onKeyDownCapture,
+        }}
+      >
+        <CommandInput
+          placeholder="Type a command or search…"
+          value={search}
+          onValueChange={setSearch}
+        />
         <CommandList>
           <CommandEmpty>No matching command.</CommandEmpty>
 
@@ -201,6 +261,7 @@ export const CommandPalette = () => {
                   return (
                     <CommandItem
                       key={command.view}
+                      value={`nav:${command.view}`}
                       onSelect={() => run(() => setView(command.view))}
                     >
                       <Icon />
@@ -214,12 +275,14 @@ export const CommandPalette = () => {
 
               <CommandGroup heading="Actions">
                 <CommandItem
+                  value="action:import"
                   onSelect={() => run(() => fileInputRef.current?.click())}
                 >
                   <UploadIcon />
                   Import…
                 </CommandItem>
                 <CommandItem
+                  value="action:export"
                   disabled={!validForExport}
                   onSelect={() => run(() => editor.exportFile())}
                 >
@@ -230,15 +293,22 @@ export const CommandPalette = () => {
                         issueCount === 1 ? "" : "s"
                       } blocking)`}
                 </CommandItem>
-                <CommandItem onSelect={() => run(() => setView("validations"))}>
+                <CommandItem
+                  value="action:show-validations"
+                  onSelect={() => run(() => setView("validations"))}
+                >
                   <CircleAlertIcon />
                   Show open validations
                 </CommandItem>
-                <CommandItem onSelect={() => setPage("add-field")}>
+                <CommandItem
+                  value="action:add-field"
+                  onSelect={() => goToPage("add-field")}
+                >
                   <PlusIcon />
                   Add field…
                 </CommandItem>
                 <CommandItem
+                  value="action:reset"
                   className="text-destructive data-[selected=true]:text-destructive"
                   onSelect={() => {
                     setOpen(false)
@@ -257,6 +327,7 @@ export const CommandPalette = () => {
               {fieldTypeOptions.map((fieldType: EditorFieldType) => (
                 <CommandItem
                   key={fieldType}
+                  value={addFieldValue(fieldType)}
                   onSelect={() =>
                     run(() => editor.addField([], createField(fieldType)))
                   }
@@ -265,6 +336,14 @@ export const CommandPalette = () => {
                   Add {fieldType} field
                 </CommandItem>
               ))}
+              <CommandSeparator />
+              <CommandItem
+                value="add-field:back"
+                onSelect={() => goToPage("root")}
+              >
+                <ArrowLeftIcon />
+                Back
+              </CommandItem>
             </CommandGroup>
           )}
         </CommandList>
