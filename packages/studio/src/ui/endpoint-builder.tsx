@@ -93,23 +93,17 @@ const Rail = () => {
   }
 
   return (
-    <Sidebar collapsible="icon">
+    <Sidebar
+      collapsible="none"
+      className="w-[calc(var(--sidebar-width-icon)+1px)]! border-r"
+    >
       <SidebarHeader>
         <div className="flex items-center gap-2">
-          <SidebarTrigger aria-label="Toggle navigation" />
-          {/* The logo mark (`role="img"`, so it never collides with the rail's
-              `getByRole("button")` queries) stays visible in both rail states;
-              the wordmark hides when the rail collapses to icons, leaving the
-              icon-only mark. */}
           <LakeqlLogo className="size-6 shrink-0 group-data-[collapsible=icon]:hidden" />
-          <span className="text-sm font-semibold group-data-[collapsible=icon]:hidden">
-            LakeQL
-          </span>
         </div>
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Views</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {RAIL_SECTIONS.map((section) => {
@@ -265,15 +259,17 @@ const SecondaryNavSheet = () => {
  * config form, both reused unchanged (Req 2.1).
  */
 const SettingsContent = () => (
-  <div className="grid max-w-2xl gap-6">
-    <section className="grid gap-3">
-      <h2 className="text-sm font-medium">Metadata</h2>
-      <MetadataForm />
-    </section>
-    <section className="grid gap-3">
-      <h2 className="text-sm font-medium">Mutation</h2>
-      <MutationConfigForm />
-    </section>
+  <div className="flex flex-1 flex-col gap-4 p-4">
+    <div className="grid max-w-2xl gap-6">
+      <section className="grid gap-3">
+        <h2 className="text-sm font-medium">Metadata</h2>
+        <MetadataForm />
+      </section>
+      <section className="grid gap-3">
+        <h2 className="text-sm font-medium">Mutation</h2>
+        <MutationConfigForm />
+      </section>
+    </div>
   </div>
 )
 
