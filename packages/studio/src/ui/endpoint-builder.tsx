@@ -92,10 +92,25 @@ const Rail = () => {
     }
   }
 
+  // The rail's collapse behavior is viewport-aware (the `useIsMobile` 768px
+  // breakpoint, surfaced here as the sidebar context's `isMobile`):
+  //
+  // - Mobile (≤767px): an off-canvas Sidebar so the shadcn Sheet path engages
+  //   and the header's always-visible "Open navigation" trigger has a rail
+  //   sheet to open. `collapsible="none"` would render a plain inline column at
+  //   every viewport, leaving mobile with no reachable rail — the regression
+  //   this restores.
+  // - Desktop (≥768px): a slim, fixed icon-only column (`collapsible="none"`)
+  //   with no expand/collapse chrome, no in-rail trigger, and no wordmark —
+  //   just the logo and the view icons.
   return (
     <Sidebar
-      collapsible="none"
-      className="w-[calc(var(--sidebar-width-icon)+1px)]! border-r"
+      collapsible={isMobile ? "offcanvas" : "none"}
+      className={
+        isMobile
+          ? undefined
+          : "w-[calc(var(--sidebar-width-icon)+1px)]! border-r"
+      }
     >
       <SidebarHeader>
         <div className="flex items-center gap-2">

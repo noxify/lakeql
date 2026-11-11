@@ -251,6 +251,25 @@ describe("studio shell — logo, header affordances, content-fixed toolbar, glob
     expect(screen.getByRole("button", { name: "JSON" })).toBeDefined()
   })
 
+  it("keeps the desktop rail a slim fixed icon column: no in-rail expand/collapse trigger and no wordmark", () => {
+    // The jsdom default viewport (1024px) is the desktop path, where the rail
+    // is a fixed icon-only column (`collapsible="none"`) — not the mobile
+    // off-canvas sheet. It must carry no expand/collapse chrome: the shadcn
+    // in-rail trigger renders an "Toggle Sidebar" button, which must be absent
+    // here (the only sidebar trigger is the header's `md:hidden` "Open
+    // navigation" one, for mobile). The rail header shows just the logo, with
+    // no separate wordmark text beside it.
+    render(<EndpointBuilder />)
+
+    // No in-rail expand/collapse trigger on desktop.
+    expect(screen.queryByRole("button", { name: "Toggle Sidebar" })).toBeNull()
+    // The rail header renders the logo image and nothing else text-wise — no
+    // wordmark label (the logo SVG already carries the brand, `aria-label`
+    // "LakeQL logo"), so no "LakeQL" text node sits beside it.
+    expect(screen.getByRole("img", { name: "LakeQL logo" })).toBeDefined()
+    expect(screen.queryByText("LakeQL")).toBeNull()
+  })
+
   it("wires the global-header affordances (theme toggle + ⌘K command palette) into the shell on every view", async () => {
     const user = userEvent.setup()
     render(<EndpointBuilder />)
