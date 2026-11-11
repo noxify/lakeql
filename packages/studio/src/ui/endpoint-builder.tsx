@@ -78,7 +78,7 @@ const Rail = () => {
               `getByRole("button")` queries) stays visible in both rail states;
               the wordmark hides when the rail collapses to icons, leaving the
               icon-only mark. */}
-          <LakeqlLogo className="size-6 shrink-0" />
+          <LakeqlLogo className="size-6 shrink-0 group-data-[collapsible=icon]:hidden" />
           <span className="text-sm font-semibold group-data-[collapsible=icon]:hidden">
             LakeQL
           </span>
@@ -262,12 +262,12 @@ const EndpointBuilderShell = () => {
       <Rail />
       <SidebarInset>
         <header className="border-border flex flex-col gap-2 border-b p-3">
-          <div>
+          {/* <div>
             <h1 className="text-base font-semibold">LakeQL Endpoint Builder</h1>
             <p className="text-muted-foreground text-sm">
               Visual authoring for LakeQL endpoint definitions.
             </p>
-          </div>
+          </div> */}
           <div className="flex flex-wrap items-center justify-between gap-2">
             <ImportExportBar />
             <div className="flex items-center gap-2">
