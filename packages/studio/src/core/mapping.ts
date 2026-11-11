@@ -15,6 +15,7 @@ import {
   createFieldId,
   DEFAULT_PARTITIONING,
   DEFAULT_PARTITIONING_FORMAT,
+  LOAD_TIMESTAMP_FIELD_NAME,
 } from "./model"
 
 /**
@@ -158,16 +159,40 @@ function toDefinitionMutation(
  * (the editor may hold transient invalid states). Validation is the concern of
  * the validity gate, which is built on top of this function.
  *
+ * In timestamp partitioning mode (the mutation is enabled and `partitioning`
+ * is `true`) a bare derived `{ name: "load_timestamp", type: "DateTime" }`
+ * field is appended to the exported `fields` — it is never stored in
+ * {@link EditorState.fields}. A guard prevents emitting a second
+ * `load_timestamp` when one is already present, so export never yields a
+ * duplicate-name error. Exporting this JSON and re-importing it turns the
+ * derived field into an ordinary, editable field ({@link fromDefinition} has
+ * no special case for the name); that round-trip is intended by design.
+ *
  * @param state - The live editor state.
  * @returns A candidate {@link EndpointDefinitionFormat} with minimal keys.
  */
 export function toDefinition(state: EditorState): EndpointDefinitionFormat {
+  const fields = state.fields.map(toDefinitionField)
+
+  // Inject the derived load-timestamp field only in timestamp mode. The
+  // canonical mode derivation is `partitioningModeOf` in
+  // `ui/validation-meta.ts` (`partitioning === true` is exactly "timestamp");
+  // it is inlined here to avoid a forbidden `core → ui` import. The
+  // `!fields.some(...)` guard is the duplicate-name backstop (never emit two).
+  if (
+    state.mutation.enabled &&
+    state.mutation.partitioning === true &&
+    !fields.some((field) => field.name === LOAD_TIMESTAMP_FIELD_NAME)
+  ) {
+    fields.push({ name: LOAD_TIMESTAMP_FIELD_NAME, type: "DateTime" })
+  }
+
   const definition: EndpointDefinitionFormat = {
     version: state.version,
     tableName: state.tableName,
     catalog: state.catalog,
     schema: state.schema,
-    fields: state.fields.map(toDefinitionField),
+    fields,
     mutation: toDefinitionMutation(state.mutation),
   }
 

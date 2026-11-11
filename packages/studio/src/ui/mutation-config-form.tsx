@@ -2,13 +2,12 @@ import type { LoadStrategy } from "@lakeql/schema-generator/endpoint-schema"
 import {
   loadStrategies,
   partitioningFormats,
-  validatePartitioningFormat,
 } from "@lakeql/schema-generator/endpoint-schema"
 import { useId } from "react"
 
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { RadioCardGroup, RadioCardItem } from "@/components/ui/radio-card-group"
 import {
   Select,
   SelectContent,
@@ -20,22 +19,30 @@ import { Switch } from "@/components/ui/switch"
 import type { EditorMutation } from "@/core"
 import { DEFAULT_PARTITIONING_FORMAT } from "@/core"
 
+import {
+  hasLoadTimestampCollision,
+  partitioningValueForMode,
+} from "./partition-format"
+import { PartitioningFieldPicker } from "./partitioning-field-picker"
 import { useEditorContext } from "./use-editor"
 import type { PartitioningMode } from "./validation-meta"
 import { offersPartitioningFormat, partitioningModeOf } from "./validation-meta"
 
 /**
  * The effective-default enabled mutation config, prefilled so the controls have
- * concrete values to show (Req 5.6). `partitioning: true` and
- * `partitioningFormat: "year/month/day"` are the documented runtime defaults;
- * the mapping layer omits them from the export when left at these values.
+ * concrete values to show. A freshly-enabled mutation now starts in `off`
+ * partitioning mode (`partitioning: false`): nothing is imposed on the author,
+ * and because `false !== DEFAULT_PARTITIONING` the export serializes
+ * `partitioning: false` explicitly. `partitioningFormat` is still prefilled
+ * with the runtime default so the granularity control has a value if the author
+ * switches to timestamp mode.
  */
 function defaultEnabledMutation(): Extract<EditorMutation, { enabled: true }> {
   return {
     enabled: true,
     loadStrategy: "append",
     basePath: "",
-    partitioning: true,
+    partitioning: false,
     partitioningFormat: DEFAULT_PARTITIONING_FORMAT,
   }
 }
@@ -46,16 +53,19 @@ const LOAD_STRATEGY_LABELS: Record<LoadStrategy, string> = {
   append: "Append",
 }
 
-const PARTITIONING_MODE_LABELS: Record<PartitioningMode, string> = {
-  timestamp: "By write timestamp",
-  off: "Off (flat layout)",
-  field: "By field / custom format",
-}
+const TIMESTAMP_COLLISION_REASON =
+  "A field named load_timestamp already exists; remove or rename it to use timestamp partitioning."
 
 /**
- * The partitioning sub-form: a radio choice of mode, the field/custom string
- * input (with `validatePartitioningFormat` feedback) when in field mode, and
- * the granularity select when a non-custom, enabled mode is active.
+ * The partitioning sub-form: a rich radio-card choice of mode (off / by write
+ * timestamp / by field), the multi-field {@link PartitioningFieldPicker} in
+ * field mode, and the granularity select when a non-custom, enabled mode is
+ * active.
+ *
+ * The `timestamp` card is disabled when a real top-level `load_timestamp` field
+ * already exists, so export never produces a duplicate-name error. Mode→value
+ * mapping routes through {@link partitioningValueForMode}; {@link
+ * partitioningModeOf} is the reverse.
  */
 const PartitioningControls = ({
   mutation,
@@ -63,88 +73,49 @@ const PartitioningControls = ({
   mutation: Extract<EditorMutation, { enabled: true }>
 }) => {
   const editor = useEditorContext()
-  const stringId = useId()
-  const stringErrorId = `${stringId}-error`
   const mode = partitioningModeOf(mutation.partitioning)
+  const collision = hasLoadTimestampCollision(editor.state.fields)
 
   const setMode = (next: PartitioningMode): void => {
-    if (next === "timestamp") {
-      editor.setMutation({ ...mutation, partitioning: true })
-    } else if (next === "off") {
-      editor.setMutation({ ...mutation, partitioning: false })
-    } else {
-      // Entering field mode: seed with an empty string the user then fills.
-      editor.setMutation({
-        ...mutation,
-        partitioning:
-          typeof mutation.partitioning === "string"
-            ? mutation.partitioning
-            : "",
-      })
-    }
+    editor.setMutation({
+      ...mutation,
+      partitioning: partitioningValueForMode(next, mutation.partitioning),
+    })
   }
-
-  const partitionString =
-    typeof mutation.partitioning === "string" ? mutation.partitioning : ""
-  const partitionError =
-    mode === "field" && partitionString !== ""
-      ? validatePartitioningFormat(partitionString)
-      : null
 
   return (
     <div className="grid gap-3">
-      <div className="grid gap-1.5" role="group" aria-label="Partitioning mode">
+      <div className="grid gap-1.5">
         <span className="text-sm font-medium">Partitioning</span>
-        <RadioGroup
+        <RadioCardGroup
+          aria-label="Partitioning mode"
           value={mode}
           onValueChange={(next) => setMode(next as PartitioningMode)}
         >
-          {(["off", "timestamp", "field"] as const).map((value) => {
-            const itemId = `${stringId}-${value}`
-            return (
-              <div key={value} className="flex items-center gap-2">
-                <RadioGroupItem id={itemId} value={value} />
-                <Label htmlFor={itemId} className="font-normal">
-                  {PARTITIONING_MODE_LABELS[value]}
-                </Label>
-              </div>
-            )
-          })}
-        </RadioGroup>
+          <RadioCardItem
+            value="off"
+            title="Off (flat layout)"
+            description="No partitioning (flat layout)."
+          />
+          <RadioCardItem
+            value="timestamp"
+            disabled={collision}
+            title="By write timestamp"
+            description={
+              collision
+                ? TIMESTAMP_COLLISION_REASON
+                : "Adds a managed load_timestamp DateTime field automatically; the CLI/runtime fills its value."
+            }
+          />
+          <RadioCardItem
+            value="field"
+            title="By field / custom format"
+            description="Choose fields (and date components) to build a custom partition path."
+          />
+        </RadioCardGroup>
       </div>
 
-      {mode === "field" && (
-        <div className="grid gap-1.5">
-          <Label htmlFor={stringId}>Partition format</Label>
-          <Input
-            id={stringId}
-            className="font-mono"
-            placeholder="created_at or year/month/created_at:day"
-            aria-invalid={partitionError !== null}
-            aria-describedby={
-              partitionError === null ? undefined : stringErrorId
-            }
-            value={partitionString}
-            onChange={(event) => {
-              editor.setMutation(
-                { ...mutation, partitioning: event.target.value },
-                { commit: false }
-              )
-            }}
-            onBlur={() => editor.commitEdits()}
-          />
-          {partitionError === null ? (
-            <p className="text-muted-foreground text-xs">
-              A field name, or a custom <code>fieldname:component</code> format
-              with <code>/</code> separators.
-            </p>
-          ) : (
-            <p id={stringErrorId} className="text-destructive text-xs">
-              {partitionError}
-            </p>
-          )}
-        </div>
-      )}
+      {mode === "field" && <PartitioningFieldPicker mutation={mutation} />}
 
       {offersPartitioningFormat(mutation.partitioning) && (
         <div className="grid gap-1.5">

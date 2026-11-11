@@ -75,8 +75,17 @@ describe("export gate", () => {
 
   it("produces minimal JSON for a valid state", () => {
     const result = expectOk(exportToJson(goodState()))
-    // Round-trips back to the original definition.
-    expect(JSON.parse(result.json)).toStrictEqual(validDefinition)
+    // `validDefinition` is in timestamp mode (partitioning omitted ⇒ `true`),
+    // so the export materializes the derived `load_timestamp` DateTime field —
+    // the intended derived-field behavior. Otherwise the JSON is minimal and
+    // round-trips back to the original definition.
+    expect(JSON.parse(result.json)).toStrictEqual({
+      ...validDefinition,
+      fields: [
+        ...validDefinition.fields,
+        { name: "load_timestamp", type: "DateTime" },
+      ],
+    })
   })
 })
 

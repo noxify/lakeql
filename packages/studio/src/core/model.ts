@@ -124,6 +124,22 @@ export const DEFAULT_PARTITIONING = true
 export const DEFAULT_PARTITIONING_FORMAT = "year/month/day"
 
 /**
+ * The single owner of the derived "load timestamp" field name.
+ *
+ * In timestamp partitioning mode the mapping layer injects a bare
+ * `{ name: "load_timestamp", type: "DateTime" }` field on export only (see
+ * `toDefinition`); it is never persisted in {@link EditorState.fields}. Every
+ * consumer — the mapping layer, the partition-format helpers, and the
+ * Fields-list derived-row predicate — references this constant rather than the
+ * literal string so there is exactly one spelling of the name.
+ *
+ * An export→import round-trip turns the derived field into an ordinary,
+ * editable field (the importer has no special case for this name); that is
+ * intended by design, not a round-trip bug.
+ */
+export const LOAD_TIMESTAMP_FIELD_NAME = "load_timestamp"
+
+/**
  * The maximum number of snapshots the in-memory history retains. Pushing past
  * the cap drops the oldest snapshot so memory and persistence work stay
  * bounded.

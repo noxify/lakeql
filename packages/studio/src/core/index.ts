@@ -32,6 +32,7 @@ export {
   DEFAULT_PARTITIONING,
   DEFAULT_PARTITIONING_FORMAT,
   HISTORY_CAP,
+  LOAD_TIMESTAMP_FIELD_NAME,
   redo,
   replaceCurrent,
   undo,

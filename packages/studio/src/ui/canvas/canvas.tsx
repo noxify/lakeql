@@ -1,11 +1,13 @@
 import { useDroppable } from "@dnd-kit/core"
 import { SortableContext } from "@dnd-kit/sortable"
 
+import { LOAD_TIMESTAMP_FIELD_NAME } from "@/core"
 import { cn } from "@/lib/utils"
 
 import { TypeChangeConfirmDialog } from "../type-change-dialog"
 import { useEditorContext } from "../use-editor"
 import { CanvasNode } from "./canvas-node"
+import { DerivedLoadTimestampRow } from "./derived-field-row"
 import { ROOT_ZONE_ID } from "./dnd-types"
 import { DropIndicator } from "./drop-indicator"
 import { indicatorAt } from "./indicator-state"
@@ -34,11 +36,22 @@ export const CanvasSurface = () => {
   const typeChange = useTypeChangeContext()
   const { confirm: handleTypeChangeConfirm, cancel: handleTypeChangeCancel } =
     typeChange
-  const { fields } = editor.state
+  const { state } = editor
+  const { fields, mutation } = state
   const { setNodeRef, isOver } = useDroppable({
     id: ROOT_ZONE_ID,
     data: { kind: "container-zone", containerId: null },
   })
+
+  // The managed `load_timestamp` row is shown purely from mutation state while
+  // timestamp mode is active (`partitioning === true`; the canonical mode
+  // derivation is `partitioningModeOf`), unless a real field already owns the
+  // name. It is never part of `state.fields`, so toggling it never mutates
+  // fields or the undo/redo history.
+  const showDerivedRow =
+    mutation.enabled &&
+    mutation.partitioning === true &&
+    !fields.some((field) => field.name === LOAD_TIMESTAMP_FIELD_NAME)
 
   // The top-level append indicator, driven by whichever of the pointer drag or
   // the keyboard move resolves to appending at the top level.
@@ -93,6 +106,12 @@ export const CanvasSurface = () => {
         )}
         {appendTop.show && <DropIndicator valid={appendTop.valid} />}
       </div>
+
+      {/* The managed `load_timestamp` row is rendered outside the
+          `fields.length === 0 ? … : …` branch and outside the
+          `SortableContext`, so it appears even with zero authored fields and is
+          never a sortable/movable node. */}
+      {showDerivedRow && <DerivedLoadTimestampRow />}
 
       {/* One shared type-change confirmation dialog for the whole canvas,
           driven by the currently-pending lossy change (Req 3.10). */}
