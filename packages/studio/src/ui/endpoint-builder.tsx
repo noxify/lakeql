@@ -36,6 +36,7 @@ import { MetadataForm } from "./metadata-form"
 import { MutationConfigForm } from "./mutation-config-form"
 import type { ShellView } from "./shell-view"
 import { ShellViewProvider, useShellView } from "./shell-view"
+import { ThemeToggle } from "./theme-toggle"
 import { UndoRedoControls, useUndoRedoShortcuts } from "./undo-redo-controls"
 import { EditorProvider, useEditor, useEditorContext } from "./use-editor"
 import { ValidationAnnouncer } from "./validation-announcer"
@@ -266,6 +267,7 @@ const EndpointBuilderShell = () => {
           </div>
           <div className="flex flex-wrap items-center justify-between gap-2">
             <ImportExportBar />
+            <ThemeToggle />
           </div>
         </header>
         <div className="flex min-h-0 flex-1">
