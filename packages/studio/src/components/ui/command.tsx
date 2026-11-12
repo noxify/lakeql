@@ -101,13 +101,22 @@ function CommandDialog({
  */
 function CommandInput({
   className,
+  leading,
   ...props
-}: React.ComponentProps<typeof CommandPrimitive.Input>) {
+}: React.ComponentProps<typeof CommandPrimitive.Input> & {
+  /**
+   * Optional element rendered inside the input row, before the search icon —
+   * e.g. a back button. Kept inside the bordered wrapper so the row's border
+   * and padding span the full width rather than splitting the layout.
+   */
+  leading?: React.ReactNode
+}) {
   return (
     <div
       data-slot="command-input-wrapper"
       className="flex items-center gap-2 border-b px-3"
     >
+      {leading}
       <SearchIcon className="size-4 shrink-0 opacity-50" />
       <CommandPrimitive.Input
         data-slot="command-input"

@@ -283,28 +283,27 @@ export const CommandPalette = () => {
           onKeyDownCapture,
         }}
       >
-        <div className="flex items-center">
-          {page === "add-field" && (
-            <button
-              type="button"
-              aria-label="Back to commands"
-              onClick={() => goToPage("root")}
-              className="hover:text-foreground focus-visible:ring-ring/50 text-muted-foreground ml-2 flex size-7 shrink-0 items-center justify-center rounded-md outline-none focus-visible:ring-2"
-            >
-              <ArrowLeftIcon className="size-4" />
-            </button>
-          )}
-          <CommandInput
-            className="flex-1"
-            placeholder={
-              page === "add-field"
-                ? "Search field types…"
-                : "Type a command or search…"
-            }
-            value={search}
-            onValueChange={setSearch}
-          />
-        </div>
+        <CommandInput
+          leading={
+            page === "add-field" ? (
+              <button
+                type="button"
+                aria-label="Back to commands"
+                onClick={() => goToPage("root")}
+                className="hover:text-foreground focus-visible:ring-ring/50 text-muted-foreground -ml-1 flex size-6 shrink-0 items-center justify-center rounded-md outline-none focus-visible:ring-2"
+              >
+                <ArrowLeftIcon className="size-4" />
+              </button>
+            ) : undefined
+          }
+          placeholder={
+            page === "add-field"
+              ? "Search field types…"
+              : "Type a command or search…"
+          }
+          value={search}
+          onValueChange={setSearch}
+        />
         <CommandList ref={listRef}>
           <CommandEmpty>No matching command.</CommandEmpty>
 
