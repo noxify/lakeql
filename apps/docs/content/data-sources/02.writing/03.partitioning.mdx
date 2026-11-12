@@ -8,18 +8,47 @@ The external-storage write strategy can partition the files it writes, producing
 
 ## Partitioning Modes
 
-`partitioning` accepts a boolean or a string, resolving to one of four modes:
+`partitioning` accepts `false` or a string, resolving to one of three modes:
 
 | Value | Mode | Behavior |
 | --- | --- | --- |
-| `true` (default) | timestamp | Partition by the write timestamp. |
-| `false` | disabled | Write a flat path, no partitioning. |
+| `false` (default) | disabled | Write a flat path, no partitioning. |
 | `"fieldName"` | field | Partition by a record field's date value. |
 | `"a:year/b"` | custom | Partition by a custom format string (contains `/` or `:`). |
 
+There is no implicit timestamp mode. To partition by the write time, declare an [auto-fill field](/docs/lakeql/endpoints/mutations#auto-fill-fields) and reference it in a custom partition string (see [Partitioning by write time](#partitioning-by-write-time) below). An absent `partitioning` key resolves to `false`, never to a timestamp.
+
 ## Format Granularity
 
-`partitioningFormat` sets the granularity for timestamp and field modes. It defaults to `"year/month/day"`, producing paths like `year=2026/month=08/day=29/<uuid>.parquet`.
+`partitioningFormat` sets the granularity for field mode. It defaults to `"year/month/day"`, producing paths like `year=2026/month=08/day=29/<uuid>.parquet`.
+
+## Partitioning by Write Time
+
+Partitioning by a server-assigned write time uses a declared auto-fill `DateTime` field rather than an implicit mode. Given an endpoint field:
+
+```json
+{
+  "name": "load_timestamp",
+  "type": "DateTime",
+  "options": { "autoFill": "write_timestamp" }
+}
+```
+
+the write pipeline populates `load_timestamp` from the write clock on every `append`/`full_load_append` write and derives two companion `Integer` columns, `load_timestamp_year` and `load_timestamp_month`, from the same value. All three are visible in the query type and exist as table columns; none appears in the mutation input.
+
+Reference the primary field with the component form in the partition string to lay the files out by those components:
+
+```json
+"partitioning": "load_timestamp:year/load_timestamp:month/load_timestamp:day"
+```
+
+This reproduces the old timestamp layout (`year=…/month=…/day=…`) with every column explicit and self-describing. Reference the **primary** field (`load_timestamp:year`), not the derived companion columns: a segment whose field name is a companion (`load_timestamp_year`, in any form) is rejected at validation time, because a companion holds an integer rather than a parseable date.
+
+<Warning>
+  Auto-fill fields require a `version: "2.0"` endpoint definition. Version
+  `"1.0"` is no longer supported and is rejected with a clear message; there is
+  no compatibility shim.
+</Warning>
 
 ## Field and Custom Partitioning
 

@@ -16,9 +16,27 @@ Add a `mutation` block to `endpoint.json` to make the endpoint writable. It's ei
 
 ### Where the data goes
 
-`basePath`, `partitioning`, and `partitioningFormat` describe _where inside the configured object store_ this endpoint's data lands and how it is laid out. They do **not** configure the store itself. The bucket, region, and credentials come from the `files-sdk` instance on the data source's `writeConfig`, not from the endpoint. For example, with `basePath: "sales/orders"` and timestamp partitioning, an `append` write lands at `sales/orders/all.parquet/year=2026/month=08/day=29/<uuid>.parquet` in whatever bucket the data source is wired to.
+`basePath`, `partitioning`, and `partitioningFormat` describe _where inside the configured object store_ this endpoint's data lands and how it is laid out. They do **not** configure the store itself. The bucket, region, and credentials come from the `files-sdk` instance on the data source's `writeConfig`, not from the endpoint. `partitioning` is either `false` (write flat, no partition path) or a partition string that names the fields to lay out by. For example, with `basePath: "sales/orders"` and `partitioning: "load_timestamp:year/load_timestamp:month/load_timestamp:day"`, an `append` write lands at `sales/orders/all.parquet/year=2026/month=08/day=29/<uuid>.parquet` in whatever bucket the data source is wired to.
 
 See [Writing data](/docs/data-sources/writing) for how the storage write strategy is configured and [Partitioning](/docs/data-sources/writing/partitioning) for the full path layout.
+
+### Auto-fill fields
+
+Partitioning by a write time needs a column that carries that timestamp. Rather than synthesizing one implicitly, declare a field with `options.autoFill`. A write-timestamp auto-fill field is a top-level `DateTime` field:
+
+```json
+{
+  "name": "load_timestamp",
+  "type": "DateTime",
+  "options": { "autoFill": "write_timestamp" }
+}
+```
+
+The server populates it from the write clock on every `append` and `full_load_append` write, and it is **excluded from the mutation input** — clients neither send it nor can override it. It is visible in the GraphQL query type and becomes a real table column, alongside two derived companion columns, `load_timestamp_year` and `load_timestamp_month` (both `Integer`), so you can partition by the extracted components without the client supplying them.
+
+Auto-fill and partitioning are independent. The field is populated and its columns created whenever auto-fill is declared, regardless of `partitioning`; `partitioning` only governs the on-disk path layout. To partition by the derived components, reference the primary field with the component form in the partition string — `load_timestamp:year/load_timestamp:month` — never the companion column names directly. See [Partitioning](/docs/data-sources/writing/partitioning) for the full path layout.
+
+Auto-fill is only valid under an enabled `append` or `full_load_append` mutation; combining it with `full_load`, placing it on a nested or non-`DateTime` field, or declaring it without an enabled mutation is a validation error.
 
 ## Load strategies
 
@@ -43,7 +61,7 @@ These are the config-facing meanings. For the full runtime behavior of each valu
 
 ```json
 {
-  "version": "1.0",
+  "version": "2.0",
   "catalog": "hive",
   "schema": "sales",
   "tableName": "orders",
@@ -55,13 +73,21 @@ These are the config-facing meanings. For the full runtime behavior of each valu
       "type": "String",
       "options": { "required": true, "validations": [{ "type": "email" }] }
     },
-    { "name": "status", "type": "String", "options": { "readOnly": true } }
+    { "name": "status", "type": "String", "options": { "readOnly": true } },
+    {
+      "name": "load_timestamp",
+      "type": "DateTime",
+      "options": { "autoFill": "write_timestamp" }
+    }
   ],
   "mutation": {
     "loadStrategy": "append",
-    "basePath": "sales/orders"
+    "basePath": "sales/orders",
+    "partitioning": "load_timestamp:year/load_timestamp:month/load_timestamp:day"
   }
 }
 ```
+
+The `load_timestamp` field here is server-populated and excluded from the mutation input; the write lays out under `year=/month=/day=` from its derived components. See [Auto-fill fields](#auto-fill-fields) above.
 
 Generating this definition with [`create-endpoint`](/docs/cli/commands/create-endpoint) also writes a `mutation-schema.ts` file and registers a mutation field in the GraphQL schema, alongside the query field every endpoint gets. See the [mutations guide](/docs/lakeql/guides/mutations) for how that field is authorized and resolved at runtime, or [Set Up a Trino Mutation](/docs/lakeql/guides/set-up-a-trino-mutation) for the end-to-end task.

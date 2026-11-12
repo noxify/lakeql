@@ -8,7 +8,7 @@ LakeQL validates an `endpoint.json` file against a Zod schema at generation time
 
 | Key | Required | Type | Notes |
 | --- | --- | --- | --- |
-| `version` | yes | literal `"1.0"` | The only accepted value today. |
+| `version` | yes | literal `"2.0"` | The only accepted value. `"1.0"` definitions are no longer supported and are rejected with a clear message. |
 | `catalog` | yes | `string` | Must match the metadata name pattern below. |
 | `schema` | yes | `string` | Must match the metadata name pattern below. |
 | `tableName` | yes | `string` | Must match the metadata name pattern below. |
@@ -40,7 +40,7 @@ A read-only endpoint with three flat fields and no mutation:
 
 ```json
 {
-  "version": "1.0",
+  "version": "2.0",
   "catalog": "hive",
   "schema": "sales",
   "tableName": "orders",
