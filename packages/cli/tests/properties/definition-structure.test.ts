@@ -204,7 +204,7 @@ function validDefinitionArb(
         string,
         FieldDefinition[],
       ]) => ({
-        version: "1.0" as const,
+        version: "2.0" as const,
         tableName,
         catalog,
         schema,
@@ -256,7 +256,7 @@ describe("Valid definition structure constraints", () => {
           string,
           string,
         ]) => ({
-          version: "1.0",
+          version: "2.0",
           tableName,
           catalog,
           schema,
@@ -318,7 +318,7 @@ describe("Valid definition structure constraints", () => {
           // This creates: names[0] > names[1] > names[2] > names[3] > names[4] > names[5]
           // That's 6 levels deep (names[0] is level 1, names[5] is level 6)
           return {
-            version: "1.0",
+            version: "2.0",
             tableName,
             catalog,
             schema,

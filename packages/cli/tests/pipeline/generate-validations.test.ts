@@ -23,14 +23,14 @@ const { generateEndpoint } = await import("@/pipeline/generate")
  * well as fields nested inside an Object and inside an Array-of-Object.
  */
 const validatedDefinition: EndpointDefinitionFormat = {
-  version: "1.0",
+  version: "2.0",
   tableName: "user_events",
   catalog: "analytics",
   schema: "tracking",
   mutation: {
     loadStrategy: "full_load",
     basePath: "warehouse/analytics/tracking/user_events",
-    partitioning: true,
+    partitioning: "event_date",
     partitioningFormat: "year/month/day",
   },
   fields: [
@@ -78,7 +78,7 @@ const validatedDefinition: EndpointDefinitionFormat = {
  * Endpoint definition with mutation enabled but no validations anywhere.
  */
 const noValidationDefinition: EndpointDefinitionFormat = {
-  version: "1.0",
+  version: "2.0",
   tableName: "plain_events",
   catalog: "analytics",
   schema: "tracking",
@@ -93,7 +93,7 @@ const noValidationDefinition: EndpointDefinitionFormat = {
  * Endpoint definition with validations but mutation disabled.
  */
 const validationsNoMutationDefinition: EndpointDefinitionFormat = {
-  version: "1.0",
+  version: "2.0",
   tableName: "query_only",
   catalog: "analytics",
   schema: "tracking",

@@ -30,7 +30,7 @@ const _validPrimitiveField = fc.record({
 /** Build a minimal valid definition for mutation purposes */
 function buildValidBase() {
   return {
-    version: "1.0" as const,
+    version: "2.0" as const,
     tableName: "test_table",
     catalog: "test_catalog",
     schema: "test_schema",

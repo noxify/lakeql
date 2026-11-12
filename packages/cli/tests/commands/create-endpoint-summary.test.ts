@@ -29,7 +29,7 @@ function getDataSourceDisplay(definition: EndpointDefinitionFormat): string {
 describe("create-endpoint summary mutation display", () => {
   it("displays load strategy when mutation config is present with full_load", () => {
     const definition: EndpointDefinitionFormat = {
-      version: "1.0",
+      version: "2.0",
       tableName: "user_events",
       catalog: "analytics",
       schema: "tracking",
@@ -45,7 +45,7 @@ describe("create-endpoint summary mutation display", () => {
 
   it("displays load strategy when mutation config is present with full_load_append", () => {
     const definition: EndpointDefinitionFormat = {
-      version: "1.0",
+      version: "2.0",
       tableName: "orders",
       catalog: "commerce",
       schema: "sales",
@@ -61,7 +61,7 @@ describe("create-endpoint summary mutation display", () => {
 
   it("displays load strategy when mutation config is present with append", () => {
     const definition: EndpointDefinitionFormat = {
-      version: "1.0",
+      version: "2.0",
       tableName: "events",
       catalog: "logs",
       schema: "ingestion",
@@ -77,7 +77,7 @@ describe("create-endpoint summary mutation display", () => {
 
   it("displays 'disabled' when mutation is false", () => {
     const definition: EndpointDefinitionFormat = {
-      version: "1.0",
+      version: "2.0",
       tableName: "user_events",
       catalog: "analytics",
       schema: "tracking",
@@ -90,7 +90,7 @@ describe("create-endpoint summary mutation display", () => {
 
   it("displays 'disabled' when mutation is absent (undefined)", () => {
     const definition: EndpointDefinitionFormat = {
-      version: "1.0",
+      version: "2.0",
       tableName: "user_events",
       catalog: "analytics",
       schema: "tracking",
@@ -104,7 +104,7 @@ describe("create-endpoint summary mutation display", () => {
 describe("create-endpoint summary dataSource display", () => {
   it("displays the dataSource value when present", () => {
     const definition: EndpointDefinitionFormat = {
-      version: "1.0",
+      version: "2.0",
       tableName: "user_events",
       catalog: "analytics",
       schema: "tracking",
@@ -117,7 +117,7 @@ describe("create-endpoint summary dataSource display", () => {
 
   it("displays 'default' when dataSource is absent", () => {
     const definition: EndpointDefinitionFormat = {
-      version: "1.0",
+      version: "2.0",
       tableName: "user_events",
       catalog: "analytics",
       schema: "tracking",

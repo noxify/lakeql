@@ -15,6 +15,7 @@ import {
   property,
   stringLiteral,
 } from "@lakeql/file-generator/ast-builders"
+import { autoFillCompanionNames } from "@lakeql/schema-generator/endpoint-schema"
 import type {
   FieldDefinition,
   MutationConfig,
@@ -72,6 +73,12 @@ export function generateMutationSchema({
   // Build a set of field names that are read-only (excluded from mutation input)
   const excludedSet = buildExcludedSet(fieldDefinitions)
 
+  // Whether any declared field carries an autoFill directive. When true the
+  // generated storageConfig emits `autoFillFields`, so the resolver forwards it.
+  const hasAutoFillFields =
+    fieldDefinitions?.some((field) => field.options?.autoFill !== undefined) ??
+    false
+
   // Separate nested models from root model
   const nestedModels = Object.values(models).filter((model) => !model.root)
 
@@ -86,7 +93,8 @@ export function generateMutationSchema({
       mutationName,
       rootModel,
       mutationConfig,
-      hasValidations
+      hasValidations,
+      hasAutoFillFields
     ),
   ]
 }
@@ -112,8 +120,12 @@ function buildRequiredMap(
 }
 
 /**
- * Builds a set of field names that have readOnly: true.
- * These fields should be excluded from mutation input types.
+ * Builds the set of field names excluded from mutation input types (DD4).
+ *
+ * A field is excluded when it is `readOnly`, when it carries an `autoFill`
+ * directive, or when it is a derived companion column of an `autoFill` field
+ * (`<name>_year`/`<name>_month`). Query and interface generation never apply
+ * this set, so those fields remain query-visible while being mutation-hidden.
  */
 function buildExcludedSet(fieldDefinitions?: FieldDefinition[]): Set<string> {
   const set = new Set<string>()
@@ -123,6 +135,12 @@ function buildExcludedSet(fieldDefinitions?: FieldDefinition[]): Set<string> {
   for (const field of fieldDefinitions) {
     if (field.options?.readOnly === true) {
       set.add(field.name)
+    }
+    if (field.options?.autoFill !== undefined) {
+      set.add(field.name)
+      for (const companion of autoFillCompanionNames(field)) {
+        set.add(companion)
+      }
     }
   }
   return set
@@ -294,7 +312,8 @@ function generateRealMutationFields(
   mutationName: string,
   rootModel: ModelResponse,
   mutationConfig: MutationConfig,
-  hasValidations?: boolean
+  hasValidations?: boolean,
+  hasAutoFillFields?: boolean
 ): ts.Node {
   const rootInputTypeName = `${rootModel.modelName}Input`
 
@@ -366,6 +385,12 @@ function generateRealMutationFields(
         "partitioningFormat",
         access("storageConfig", "partitioningFormat")
       )
+    )
+  }
+  // Forward autoFillFields only when the storageConfig actually carries them.
+  if (hasAutoFillFields) {
+    configProperties.push(
+      property("autoFillFields", access("storageConfig", "autoFillFields"))
     )
   }
 

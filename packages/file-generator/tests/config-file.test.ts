@@ -115,7 +115,7 @@ describe("config file generator", () => {
     expect(generatedCodeFromFactory.fileName).toBe("vitest_config.ts")
   })
 
-  it("config file w/ storageConfig partitioning: true", async () => {
+  it("config file w/ storageConfig autoFill partition string", async () => {
     const generatedFactoryCode = generateConfig({
       adapter: "trino",
       dataSourceName: "test",
@@ -127,8 +127,8 @@ describe("config file generator", () => {
       storageConfig: {
         loadStrategy: "full_load_append",
         basePath: "data/events",
-        partitioning: true,
-        partitioningFormat: "year/month/day",
+        partitioning: "load_timestamp:year/load_timestamp:month",
+        autoFillFields: [{ name: "load_timestamp", kind: "write_timestamp" }],
       },
     })
 
@@ -156,8 +156,8 @@ describe("config file generator", () => {
       export const storageConfig = {
         loadStrategy: "full_load_append",
         basePath: "data/events",
-        partitioning: true,
-        partitioningFormat: "year/month/day",
+        partitioning: "load_timestamp:year/load_timestamp:month",
+        autoFillFields: [{ name: "load_timestamp", kind: "write_timestamp" }],
       } as const
     `)
 
@@ -272,7 +272,7 @@ describe("config file generator", () => {
       storageConfig: {
         loadStrategy: "full_load_append",
         basePath: "data/events",
-        partitioning: true,
+        partitioning: "event_date",
         partitioningFormat: "year",
       },
     })
@@ -301,7 +301,7 @@ describe("config file generator", () => {
       export const storageConfig = {
         loadStrategy: "full_load_append",
         basePath: "data/events",
-        partitioning: true,
+        partitioning: "event_date",
         partitioningFormat: "year",
       } as const
     `)

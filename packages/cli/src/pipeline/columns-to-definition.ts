@@ -1,6 +1,7 @@
 import type { JSONType } from "@lakeql/column-parser"
 import type { TypeMapper } from "@lakeql/datasource"
 
+import { ENDPOINT_SCHEMA_VERSION } from "./schema"
 import type {
   ArrayItemDefinition,
   EndpointDefinitionFormat,
@@ -134,7 +135,7 @@ export function columnsToDefinition(options: {
   const { tableName, catalog, schema, parsedColumns, typeMapper } = options
 
   return {
-    version: "1.0",
+    version: ENDPOINT_SCHEMA_VERSION,
     tableName,
     catalog,
     schema,

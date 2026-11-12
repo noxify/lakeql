@@ -7,6 +7,7 @@ import { generateCode } from "@lakeql/file-generator"
 import { generateConfig } from "@lakeql/file-generator/config"
 import { generateInterface } from "@lakeql/file-generator/interface"
 import { generateQuerySchema } from "@lakeql/file-generator/query-schema"
+import { deriveAutoFillColumns } from "@lakeql/schema-generator/endpoint-schema"
 import type { GenerateModelProps } from "@lakeql/schema-generator/graphql-schema"
 import { generateModel } from "@lakeql/schema-generator/graphql-schema"
 import { generateJsonSchemaFromFields } from "@lakeql/schema-generator/json-schema"
@@ -95,8 +96,18 @@ export async function generateEndpoint(
     dataSourceName
   )
 
-  // 2. Convert FieldDefinition[] → JSON Schema
-  const jsonSchema = generateJsonSchemaFromFields(fields)
+  // Codegen-local field list (Option Y): declared fields plus the derived
+  // companion columns of any autoFill field. These companions drive the query
+  // type, the TS interface, and the DDL (json-schema.json) but are NEVER
+  // persisted into endpoint.json, which stays minimal and self-describing
+  // (NFR2). deriveAutoFillColumns returns [] for non-autoFill fields, and
+  // validation (C11/C16) guarantees an autoFill field only reaches here with an
+  // enabled append/full_load_append mutation, so expansion is field-driven and
+  // never gated on the partitioning mode (C10).
+  const codegenFields = [...fields, ...fields.flatMap(deriveAutoFillColumns)]
+
+  // 2. Convert the codegen-local fields → JSON Schema (companions included)
+  const jsonSchema = generateJsonSchemaFromFields(codegenFields)
 
   // 3. Generate models from JSON Schema
   const models = generateModel({
@@ -157,6 +168,17 @@ export async function generateEndpoint(
             definition.mutation.loadStrategy === "full_load"
               ? undefined
               : definition.mutation.partitioningFormat,
+          // Thread an explicit directive for each declared autoFill field so
+          // the runtime populates its column + companions from the write clock
+          // (DD5). Validation (C11/C16) guarantees autoFill fields only reach
+          // here with an enabled append/full_load_append mutation, so there is
+          // no "null it for full_load" case to handle.
+          autoFillFields: definition.fields
+            .filter((field) => field.options?.autoFill !== undefined)
+            .map((field) => ({
+              name: field.name,
+              kind: "write_timestamp" as const,
+            })),
         }
       : undefined,
   })
@@ -193,7 +215,7 @@ export async function generateEndpoint(
   // validations at any nesting level (root, nested Object, Array-of-Object),
   // mirroring the recursive field structure. When it is non-null the mutation
   // schema imports and uses `./validations`, so the file must be written too.
-  const generatedValidationsSchema = generateValidationsSchema(fields)
+  const generatedValidationsSchema = generateValidationsSchema(codegenFields)
   const hasValidations = generatedValidationsSchema !== null
 
   const generatedMutationSchema = generateMutationSchema({
@@ -201,7 +223,7 @@ export async function generateEndpoint(
     mutationName,
     mutationConfig: definition.mutation,
     hasValidations,
-    fieldDefinitions: fields,
+    fieldDefinitions: codegenFields,
   })
 
   // Only generate the file if there are nodes (stub returns empty)

@@ -9,8 +9,11 @@ import { resolveSourcePath } from "@/config"
 import { CliError, createAbortError } from "@/errors"
 import { generateEndpoint } from "@/pipeline/generate"
 import {
+  ENDPOINT_SCHEMA_VERSION,
   endpointDefinitionSchema,
   findDuplicateFieldNames,
+  findReservedNameCollisions,
+  isSupportedVersion,
 } from "@/pipeline/schema"
 import type { FieldDefinition } from "@/pipeline/schema"
 
@@ -54,6 +57,31 @@ export function formatFieldTree(fields: FieldDefinition[], indent = 0): string {
   return lines.filter((line) => line.length > 0).join("\n")
 }
 
+/**
+ * Throws the FR5.2 version error (C1/C9/DD6) when the parsed definition's
+ * `version` is not the supported `"2.0"` literal. v1 is no longer supported —
+ * the write-timestamp partitioning mode became an explicit `autoFill` field.
+ *
+ * @param parsed - The raw parsed JSON value read from the endpoint file.
+ * @param filePath - The source file path, used in the error message.
+ * @throws {CliError} When `parsed.version` is not `"2.0"`.
+ */
+function assertSupportedVersion(parsed: unknown, filePath: string): void {
+  const version =
+    typeof parsed === "object" && parsed !== null && "version" in parsed
+      ? (parsed as { version?: unknown }).version
+      : undefined
+
+  if (!isSupportedVersion(version)) {
+    throw new CliError(
+      `Endpoint definition version ${JSON.stringify(version)} in ${filePath} is not supported. v1 is no longer supported — upgrade to version "${ENDPOINT_SCHEMA_VERSION}". The write-timestamp partitioning mode became an explicit auto-fill field (declare a DateTime field with options.autoFill: "write_timestamp").`,
+      {
+        code: "ENDPOINT_UNSUPPORTED_VERSION",
+      }
+    )
+  }
+}
+
 export default function createEndpointCommand() {
   const program = buildCreateEndpointCommandStructure().action(async (opts) => {
     const { fromFile, sourcePath, skipRegistry: skipReg, force } = opts
@@ -94,6 +122,11 @@ export default function createEndpointCommand() {
       })
     }
 
+    // Version gate (C1/C9/DD6): reject a v1 (or any non-"2.0") file BEFORE the
+    // schema parse so it gets the actionable FR5.2 message rather than a generic
+    // "invalid literal" Zod issue.
+    assertSupportedVersion(parsed, filePath)
+
     // Validate against endpointDefinitionSchema
     const result = endpointDefinitionSchema.safeParse(parsed)
     if (!result.success) {
@@ -125,6 +158,25 @@ export default function createEndpointCommand() {
 
       throw new CliError(`Validation failed for ${filePath}.`, {
         code: "ENDPOINT_DUPLICATE_FIELDS",
+        details: [details],
+      })
+    }
+
+    // Check for reserved-name collisions (C3/C14): a declared field may not take
+    // the name of an auto-fill field's derived companion column
+    // (`<name>_year`/`<name>_month`). Companions are codegen-local (Option Y),
+    // so this derives the reserved set instead of reusing findDuplicateFieldNames.
+    const collisions = findReservedNameCollisions(definition.fields)
+    if (collisions.length > 0) {
+      const details = collisions
+        .map(
+          (c) =>
+            `  - Field "${c.name}" collides with a reserved auto-fill companion column "${c.reservedName}". Rename the field.`
+        )
+        .join("\n")
+
+      throw new CliError(`Validation failed for ${filePath}.`, {
+        code: "ENDPOINT_RESERVED_NAME_COLLISION",
         details: [details],
       })
     }

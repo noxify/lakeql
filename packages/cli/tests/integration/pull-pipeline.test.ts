@@ -138,7 +138,7 @@ describe("pull pipeline (integration)", () => {
       expect(result.success).toBeTruthy()
 
       // Verify key structural properties
-      expect(parsed.version).toBe("1.0")
+      expect(parsed.version).toBe("2.0")
       expect(parsed.tableName).toBe("simple_table")
       expect(parsed.catalog).toBe("test_catalog")
       expect(parsed.schema).toBe("test_schema")

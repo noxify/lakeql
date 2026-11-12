@@ -10,6 +10,8 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest"
 import {
   endpointDefinitionSchema,
   findDuplicateFieldNames,
+  findReservedNameCollisions,
+  isSupportedVersion,
 } from "../../src/pipeline/schema"
 
 describe("create-endpoint --from-file validation", () => {
@@ -41,7 +43,7 @@ describe("create-endpoint --from-file validation", () => {
   describe("schema validation", () => {
     it("valid definition passes validation", () => {
       const valid = {
-        version: "1.0",
+        version: "2.0",
         tableName: "test_table",
         catalog: "my_catalog",
         schema: "my_schema",
@@ -64,9 +66,22 @@ describe("create-endpoint --from-file validation", () => {
       expect(result.success).toBeFalsy()
     })
 
-    it("wrong version value fails validation", () => {
+    it("v1 version value fails validation (v2 is the only supported version)", () => {
       const invalid = {
-        version: "2.0",
+        version: "1.0",
+        tableName: "test_table",
+        catalog: "my_catalog",
+        schema: "my_schema",
+        fields: [{ name: "id", type: "String" }],
+      }
+
+      const result = endpointDefinitionSchema.safeParse(invalid)
+      expect(result.success).toBeFalsy()
+    })
+
+    it("an unknown version value fails validation", () => {
+      const invalid = {
+        version: "3.0",
         tableName: "test_table",
         catalog: "my_catalog",
         schema: "my_schema",
@@ -79,7 +94,7 @@ describe("create-endpoint --from-file validation", () => {
 
     it("invalid tableName (leading digit) fails validation", () => {
       const invalid = {
-        version: "1.0",
+        version: "2.0",
         tableName: "1invalid",
         catalog: "my_catalog",
         schema: "my_schema",
@@ -92,7 +107,7 @@ describe("create-endpoint --from-file validation", () => {
 
     it("invalid field type fails validation", () => {
       const invalid = {
-        version: "1.0",
+        version: "2.0",
         tableName: "test_table",
         catalog: "my_catalog",
         schema: "my_schema",
@@ -105,7 +120,7 @@ describe("create-endpoint --from-file validation", () => {
 
     it("invalid field name (has spaces) fails validation", () => {
       const invalid = {
-        version: "1.0",
+        version: "2.0",
         tableName: "test_table",
         catalog: "my_catalog",
         schema: "my_schema",
@@ -118,7 +133,7 @@ describe("create-endpoint --from-file validation", () => {
 
     it("Object field without fields property fails validation", () => {
       const invalid = {
-        version: "1.0",
+        version: "2.0",
         tableName: "test_table",
         catalog: "my_catalog",
         schema: "my_schema",
@@ -131,7 +146,7 @@ describe("create-endpoint --from-file validation", () => {
 
     it("Object field with empty fields array fails validation", () => {
       const invalid = {
-        version: "1.0",
+        version: "2.0",
         tableName: "test_table",
         catalog: "my_catalog",
         schema: "my_schema",
@@ -144,7 +159,7 @@ describe("create-endpoint --from-file validation", () => {
 
     it("Array field with valid items passes validation", () => {
       const valid = {
-        version: "1.0",
+        version: "2.0",
         tableName: "test_table",
         catalog: "my_catalog",
         schema: "my_schema",
@@ -157,7 +172,7 @@ describe("create-endpoint --from-file validation", () => {
 
     it("nested Object within Array passes validation", () => {
       const valid = {
-        version: "1.0",
+        version: "2.0",
         tableName: "test_table",
         catalog: "my_catalog",
         schema: "my_schema",
@@ -219,10 +234,122 @@ describe("create-endpoint --from-file validation", () => {
     })
   })
 
+  describe("version gate (C1/C9)", () => {
+    it("rejects a v1 version via isSupportedVersion", () => {
+      expect(isSupportedVersion("1.0")).toBeFalsy()
+    })
+
+    it("accepts the v2 version via isSupportedVersion", () => {
+      expect(isSupportedVersion("2.0")).toBeTruthy()
+    })
+
+    it("rejects an absent/unknown version via isSupportedVersion", () => {
+      expect(isSupportedVersion(undefined)).toBeFalsy()
+      expect(isSupportedVersion("3.0")).toBeFalsy()
+    })
+  })
+
+  describe("reserved-name collision detection (C3/C14)", () => {
+    it("detects a declared field colliding with an auto-fill companion column", () => {
+      const fields = [
+        {
+          name: "load_timestamp",
+          type: "DateTime" as const,
+          options: { autoFill: "write_timestamp" as const },
+        },
+        { name: "load_timestamp_year", type: "Integer" as const },
+      ]
+
+      const collisions = findReservedNameCollisions(fields)
+      expect(collisions).toStrictEqual([
+        { name: "load_timestamp_year", reservedName: "load_timestamp_year" },
+      ])
+    })
+
+    it("detects the event_year vs event auto-fill collision (C14)", () => {
+      const fields = [
+        {
+          name: "event",
+          type: "DateTime" as const,
+          options: { autoFill: "write_timestamp" as const },
+        },
+        { name: "event_year", type: "Integer" as const },
+      ]
+
+      const collisions = findReservedNameCollisions(fields)
+      expect(collisions).toHaveLength(1)
+      expect(collisions[0]?.name).toBe("event_year")
+    })
+
+    it("returns no collisions for distinct field names", () => {
+      const fields = [
+        {
+          name: "load_timestamp",
+          type: "DateTime" as const,
+          options: { autoFill: "write_timestamp" as const },
+        },
+        { name: "event_id", type: "String" as const },
+      ]
+
+      expect(findReservedNameCollisions(fields)).toHaveLength(0)
+    })
+  })
+
+  describe("auto-fill mutation contract (C11/C16)", () => {
+    it("rejects an auto-fill field combined with full_load (C11)", () => {
+      const invalid = {
+        version: "2.0",
+        tableName: "events",
+        catalog: "analytics",
+        schema: "tracking",
+        mutation: {
+          loadStrategy: "full_load",
+          basePath: "warehouse/analytics/tracking/events",
+        },
+        fields: [
+          { name: "event_id", type: "String" },
+          {
+            name: "load_timestamp",
+            type: "DateTime",
+            options: { autoFill: "write_timestamp" },
+          },
+        ],
+      }
+
+      const result = endpointDefinitionSchema.safeParse(invalid)
+      expect(result.success).toBeFalsy()
+    })
+
+    it("accepts an auto-fill field with append (C11/C16)", () => {
+      const valid = {
+        version: "2.0",
+        tableName: "events",
+        catalog: "analytics",
+        schema: "tracking",
+        mutation: {
+          loadStrategy: "append",
+          basePath: "warehouse/analytics/tracking/events",
+          partitioning: false,
+        },
+        fields: [
+          { name: "event_id", type: "String" },
+          {
+            name: "load_timestamp",
+            type: "DateTime",
+            options: { autoFill: "write_timestamp" },
+          },
+        ],
+      }
+
+      const result = endpointDefinitionSchema.safeParse(valid)
+      expect(result.success).toBeTruthy()
+    })
+  })
+
   describe("error message formatting", () => {
     it("schema validation errors include field paths", () => {
       const invalid = {
-        version: "1.0",
+        version: "2.0",
         tableName: "test_table",
         catalog: "my_catalog",
         schema: "my_schema",
@@ -256,7 +383,7 @@ describe("create-endpoint --from-file validation", () => {
   describe("valid definition file loading", () => {
     it("a complete valid definition file is parsed and validated successfully", async () => {
       const validDefinition = {
-        version: "1.0",
+        version: "2.0",
         tableName: "user_events",
         catalog: "analytics",
         schema: "tracking",
