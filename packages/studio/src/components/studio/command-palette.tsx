@@ -329,6 +329,15 @@ export const CommandPalette = () => {
 
               <CommandGroup heading="Actions">
                 <CommandItem
+                  value="action:add-field"
+                  onSelect={() => {
+                    goToPage("add-field")
+                  }}
+                >
+                  <PlusIcon />
+                  Add field…
+                </CommandItem>
+                <CommandItem
                   value="action:import"
                   onSelect={() => run(() => fileInputRef.current?.click())}
                 >
@@ -354,15 +363,7 @@ export const CommandPalette = () => {
                   <CircleAlertIcon />
                   Show open validations
                 </CommandItem>
-                <CommandItem
-                  value="action:add-field"
-                  onSelect={() => {
-                    goToPage("add-field")
-                  }}
-                >
-                  <PlusIcon />
-                  Add field…
-                </CommandItem>
+
                 <CommandItem
                   value="action:reset"
                   className="text-destructive data-[selected=true]:text-destructive"

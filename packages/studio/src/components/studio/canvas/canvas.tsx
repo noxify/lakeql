@@ -1,8 +1,8 @@
 import { useDroppable } from "@dnd-kit/core"
 import { SortableContext } from "@dnd-kit/sortable"
+import { cn } from "cn"
 
 import { LOAD_TIMESTAMP_FIELD_NAME } from "@/core"
-import { cn } from "@/lib/utils"
 
 import { TypeChangeConfirmDialog } from "../type-change-dialog"
 import { useEditorContext } from "../use-editor"

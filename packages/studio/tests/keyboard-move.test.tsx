@@ -6,10 +6,10 @@ import type { ReactNode } from "react"
 import { useEffect, useRef } from "react"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 
+import { Canvas } from "@/components/studio/canvas/canvas"
+import type { EditorApi } from "@/components/studio/use-editor"
+import { EditorProvider, useEditor } from "@/components/studio/use-editor"
 import { createField } from "@/core"
-import { Canvas } from "@/ui/canvas/canvas"
-import type { EditorApi } from "@/ui/use-editor"
-import { EditorProvider, useEditor } from "@/ui/use-editor"
 
 import { defined } from "./helpers"
 

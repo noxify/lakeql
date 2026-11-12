@@ -13,9 +13,8 @@ import {
   useSortable,
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
+import { cn } from "cn"
 import { XIcon } from "lucide-react"
-
-import { cn } from "@/lib/utils"
 
 import type { PartitionSegment } from "./partition-format"
 import { serializePartitionSegments } from "./partition-format"

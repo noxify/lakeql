@@ -10,8 +10,8 @@ import {
 import userEvent from "@testing-library/user-event"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 
-import { EndpointBuilder } from "@/ui/endpoint-builder"
-import { metadataInputId } from "@/ui/metadata-nav"
+import { EndpointBuilder } from "@/components/studio/endpoint-builder"
+import { metadataInputId } from "@/components/studio/metadata-nav"
 
 /**
  * Component tests for the metadata jump-to-field in the Validations summary: a

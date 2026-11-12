@@ -10,7 +10,7 @@ import {
 import { ThemeProvider } from "better-themes"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 
-import { ThemeToggle } from "@/ui/theme-toggle"
+import { ThemeToggle } from "@/components/studio/theme-toggle"
 
 /**
  * End-to-end theme-flip test for the studio {@link ThemeToggle}.

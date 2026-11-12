@@ -1,6 +1,7 @@
 "use client"
 
 import { SiGithub as Github } from "@icons-pack/react-simple-icons"
+import { cn } from "cn"
 import { Search } from "lucide-react"
 import { Space_Grotesk } from "next/font/google"
 import Link from "next/link"
@@ -8,7 +9,6 @@ import Link from "next/link"
 import { LakeqlLogo } from "@/components/lakeql-logo"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { useScrollVisibility } from "@/hooks/use-scroll-visibility"
-import { cn } from "@/lib/utils"
 
 import PlatformModifierKey from "./platform-modifier-key"
 import { SearchCommand } from "./search-command"

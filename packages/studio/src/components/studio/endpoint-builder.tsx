@@ -5,6 +5,7 @@ import {
 } from "@/components/ui/sidebar"
 import { TooltipProvider } from "@/components/ui/tooltip"
 
+import { Toaster } from "../ui/toast"
 import { CanvasShellRoot } from "./canvas/shell-root"
 import { CommandPalette } from "./command-palette"
 import { ImportExportBar } from "./import-export-bar"
@@ -107,16 +108,19 @@ export const EndpointBuilder = () => {
   const [view, setView] = useHashView()
 
   return (
-    <EditorProvider value={editor}>
-      <CanvasShellRoot>
-        <ShellViewProvider value={{ view, setView }}>
-          <TooltipProvider>
-            <div className="bg-background text-foreground flex min-h-svh w-full">
-              <EndpointBuilderShell />
-            </div>
-          </TooltipProvider>
-        </ShellViewProvider>
-      </CanvasShellRoot>
-    </EditorProvider>
+    <>
+      <EditorProvider value={editor}>
+        <CanvasShellRoot>
+          <ShellViewProvider value={{ view, setView }}>
+            <TooltipProvider>
+              <div className="bg-background text-foreground flex min-h-svh w-full">
+                <EndpointBuilderShell />
+              </div>
+            </TooltipProvider>
+          </ShellViewProvider>
+        </CanvasShellRoot>
+      </EditorProvider>
+      <Toaster />
+    </>
   )
 }

@@ -1,8 +1,7 @@
 "use client"
 
 import { Combobox as ComboboxPrimitive } from "@base-ui/react/combobox"
-
-import { cn } from "@/lib/utils"
+import { cn } from "cn"
 
 /**
  * The combobox root, grouping all parts. Controlled by the consumer via

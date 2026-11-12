@@ -1,10 +1,9 @@
 "use client"
 
+import { cn } from "cn"
 import { Search } from "lucide-react"
 import { Space_Grotesk } from "next/font/google"
 import Link from "next/link"
-
-import { cn } from "@/lib/utils"
 
 import { LakeqlLogo } from "./lakeql-logo"
 import { SearchCommand } from "./search-command"

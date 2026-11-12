@@ -1,4 +1,5 @@
 import "./globals.css"
+import { cn } from "cn"
 import type { Metadata } from "next"
 import { RootProvider } from "renoun"
 
@@ -7,7 +8,6 @@ import { SearchCommandProvider } from "@/components/search-command"
 import { TailwindIndicator } from "@/components/tailwind-indicator"
 import { ThemeProvider } from "@/components/theme-provider"
 import { TooltipProvider } from "@/components/ui/tooltip"
-import { cn } from "@/lib/utils"
 
 const SITE_URL = "https://lakeql.dev"
 

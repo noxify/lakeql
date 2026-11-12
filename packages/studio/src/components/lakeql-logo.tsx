@@ -1,6 +1,5 @@
+import { cn } from "cn"
 import { useId } from "react"
-
-import { cn } from "@/lib/utils"
 
 /**
  * The LakeQL brand mark: a self-contained, inline SVG logo (icon + wordmark)

@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest"
 
-import type { EditorField } from "@/core"
 import {
   hasLoadTimestampCollision,
   parsePartitionSegments,
@@ -8,7 +7,8 @@ import {
   partitionOptionsFor,
   serializePartitionSegments,
   topLevelPartitionCandidates,
-} from "@/ui/partition-format"
+} from "@/components/studio/partition-format"
+import type { EditorField } from "@/core"
 
 /** Builds a bare top-level editor field for candidate tests. */
 function field(

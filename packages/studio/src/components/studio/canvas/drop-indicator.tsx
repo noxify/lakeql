@@ -1,4 +1,4 @@
-import { cn } from "@/lib/utils"
+import { cn } from "cn"
 
 /**
  * The horizontal line shown where a dragged field will land (Requirement 2.4).

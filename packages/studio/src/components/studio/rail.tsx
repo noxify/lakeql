@@ -18,7 +18,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 
-import { LakeqlLogo } from "../components/lakeql-logo"
+import { LakeqlLogo } from "../lakeql-logo"
 import { summarizeDiagnostics } from "./diagnostics"
 import type { ShellView } from "./shell-view"
 import { useShellView } from "./shell-view"

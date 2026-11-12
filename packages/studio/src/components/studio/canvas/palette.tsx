@@ -1,9 +1,9 @@
 import { useDraggable } from "@dnd-kit/core"
+import { cn } from "cn"
 import { GripVerticalIcon } from "lucide-react"
 import type { KeyboardEvent as ReactKeyboardEvent } from "react"
 
 import type { EditorFieldType } from "@/core"
-import { cn } from "@/lib/utils"
 
 import { fieldTypeOptions } from "../field-meta"
 import type { NewFieldDragData } from "./dnd-types"

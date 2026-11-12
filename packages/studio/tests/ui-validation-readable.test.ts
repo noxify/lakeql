@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest"
 
+import { toReadableIssues } from "@/components/studio/validation-readable"
 import type { EditorState, ValidationResult } from "@/core"
 import { evaluate } from "@/core"
 import { fromDefinition } from "@/core/mapping"
-import { toReadableIssues } from "@/ui/validation-readable"
 
 import { defined } from "./helpers"
 

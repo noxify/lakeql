@@ -4,7 +4,7 @@ import { act, cleanup, render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 
-import { EndpointBuilder } from "@/ui/endpoint-builder"
+import { EndpointBuilder } from "@/components/studio/endpoint-builder"
 
 /**
  * Component tests for the URL-hash syncing of the active shell view: the shell

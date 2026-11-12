@@ -60,13 +60,13 @@
     "@dnd-kit/sortable": "10.0.0",
     "@dnd-kit/utilities": "3.2.2",
     "@lakeql/schema-generator": "workspace:*",
+    "@shadcn/react": "0.3.1",
     "@tanstack/db": "1.0.0-rc.1.4",
     "class-variance-authority": "0.7.1",
-    "clsx": "2.1.1",
     "cmdk": "1.1.1",
+    "cn": "0.5.2",
     "lucide-react": "1.70.0",
-    "react-resizable-panels": "4.20.0",
-    "tailwind-merge": "3.7.0"
+    "react-resizable-panels": "4.20.0"
   },
   "devDependencies": {
     "@lakeql/tsconfig": "workspace:*",

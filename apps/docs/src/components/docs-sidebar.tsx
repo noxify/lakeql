@@ -1,6 +1,7 @@
 "use client"
 
 import { SiGithub as Github } from "@icons-pack/react-simple-icons"
+import { cn } from "cn"
 import { Space_Grotesk } from "next/font/google"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
@@ -19,7 +20,6 @@ import {
   SidebarSeparator,
 } from "@/components/ui/sidebar"
 import type { NavigationGroup, TreeItem } from "@/lib/navigation"
-import { cn } from "@/lib/utils"
 
 import { LakeqlLogo } from "./lakeql-logo"
 import PlatformModifierKey from "./platform-modifier-key"

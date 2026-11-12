@@ -1,11 +1,11 @@
 "use client"
 
+import { cn } from "cn"
 import { Expand } from "lucide-react"
 import * as React from "react"
 
 import { PanZoomViewport } from "@/components/pan-zoom/pan-zoom-viewport"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
-import { cn } from "@/lib/utils"
 
 export interface PanZoomLightboxProps {
   /** Content to display in both the preview card and the dialog viewport. */

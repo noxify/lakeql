@@ -7,7 +7,7 @@ import {
   partitioningModeOf,
   validationError,
   validationKindsForType,
-} from "@/ui/validation-meta"
+} from "@/components/studio/validation-meta"
 
 describe("validation kinds per field type (task 13)", () => {
   it("offers all refinements for String", () => {

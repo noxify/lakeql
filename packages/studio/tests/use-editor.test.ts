@@ -3,9 +3,9 @@
 import { act, cleanup, renderHook } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
+import { useEditor } from "@/components/studio/use-editor"
 import { createField } from "@/core/field-ops"
 import { createPersistence } from "@/core/persistence"
-import { useEditor } from "@/ui/use-editor"
 
 import { defined } from "./helpers"
 

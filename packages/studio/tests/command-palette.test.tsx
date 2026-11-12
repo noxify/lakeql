@@ -12,7 +12,7 @@ import {
 import userEvent from "@testing-library/user-event"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 
-import { EndpointBuilder } from "@/ui/endpoint-builder"
+import { EndpointBuilder } from "@/components/studio/endpoint-builder"
 
 /**
  * Component tests for the Phase C command palette: the ⌘K open path, the

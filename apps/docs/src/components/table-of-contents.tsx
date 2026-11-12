@@ -1,13 +1,13 @@
 // oxlint-disable react/no-unstable-nested-components
 "use client"
 
+import { cn } from "cn"
 import { CheckIcon, ChevronsUpDown, SquareChartGanttIcon } from "lucide-react"
 import type { ReactNode } from "react"
 import { useEffect, useReducer, useRef } from "react"
 import type { TableOfContentsProps } from "renoun"
 
 import { TableOfContents as RenounTableOfContents } from "@/components/toc"
-import { cn } from "@/lib/utils"
 
 import {
   DropdownMenu,

@@ -1,9 +1,8 @@
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog"
 import { Command as CommandPrimitive } from "cmdk"
+import { cn } from "cn"
 import { SearchIcon } from "lucide-react"
 import * as React from "react"
-
-import { cn } from "@/lib/utils"
 
 /**
  * The `cmdk` command menu root, styled for the studio popover surface. Owns the

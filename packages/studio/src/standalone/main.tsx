@@ -1,7 +1,7 @@
 import { StrictMode } from "react"
 import { createRoot } from "react-dom/client"
 
-import { EndpointBuilder } from "@/ui/endpoint-builder"
+import { EndpointBuilder } from "@/components/studio/endpoint-builder"
 
 import "@/styles/studio.css"
 

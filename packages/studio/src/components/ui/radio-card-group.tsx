@@ -1,8 +1,7 @@
 import { Radio as RadioPrimitive } from "@base-ui/react/radio"
 import { RadioGroup as RadioGroupPrimitive } from "@base-ui/react/radio-group"
+import { cn } from "cn"
 import type * as React from "react"
-
-import { cn } from "@/lib/utils"
 
 /**
  * A radio group laid out as a vertical stack of rich option cards.

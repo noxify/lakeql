@@ -1,3 +1,4 @@
+import { cn } from "cn"
 import Link from "next/link"
 
 import type { getSections } from "@/collection-helpers"
@@ -15,7 +16,6 @@ import {
   ItemGroup,
   ItemTitle,
 } from "@/components/ui/item"
-import { cn } from "@/lib/utils"
 
 interface SectionGridItem {
   title: string

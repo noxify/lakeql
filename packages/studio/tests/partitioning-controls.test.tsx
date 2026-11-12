@@ -6,13 +6,13 @@ import type { ReactNode } from "react"
 import { useEffect } from "react"
 import { afterEach, describe, expect, it } from "vitest"
 
+import { CanvasSurface } from "@/components/studio/canvas/canvas"
+import { CanvasShellRoot } from "@/components/studio/canvas/shell-root"
+import { MutationConfigForm } from "@/components/studio/mutation-config-form"
+import type { EditorApi } from "@/components/studio/use-editor"
+import { EditorProvider, useEditor } from "@/components/studio/use-editor"
 import type { EditorState } from "@/core"
 import { createFreshState } from "@/core"
-import { CanvasSurface } from "@/ui/canvas/canvas"
-import { CanvasShellRoot } from "@/ui/canvas/shell-root"
-import { MutationConfigForm } from "@/ui/mutation-config-form"
-import type { EditorApi } from "@/ui/use-editor"
-import { EditorProvider, useEditor } from "@/ui/use-editor"
 
 import { defined } from "./helpers"
 

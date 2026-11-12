@@ -1,6 +1,7 @@
 import { useDroppable } from "@dnd-kit/core"
 import { SortableContext, useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
+import { cn } from "cn"
 import {
   CircleAlertIcon,
   GripVerticalIcon,
@@ -26,7 +27,6 @@ import type {
   EditorFieldType,
   FieldPath,
 } from "@/core"
-import { cn } from "@/lib/utils"
 
 import {
   arrayItemTypeOptions,

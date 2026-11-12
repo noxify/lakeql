@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest"
 
+import { summarizeDiagnostics } from "@/components/studio/diagnostics"
 import type { ValidationResult } from "@/core"
 import { evaluate } from "@/core"
 import { fromDefinition } from "@/core/mapping"
 import { createFreshState } from "@/core/model"
-import { summarizeDiagnostics } from "@/ui/diagnostics"
 
 describe("diagnostic summary", () => {
   it("returns no lines for a valid state", () => {
