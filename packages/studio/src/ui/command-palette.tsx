@@ -6,8 +6,8 @@ import {
   LayersIcon,
   PlusIcon,
   RotateCcwIcon,
-  SearchIcon,
   SettingsIcon,
+  TerminalIcon,
   UploadIcon,
 } from "lucide-react"
 import type { KeyboardEvent as ReactKeyboardEvent } from "react"
@@ -78,10 +78,17 @@ function addFieldValue(fieldType: EditorFieldType): string {
   return `add-field:${fieldType}`
 }
 
-/** The stable cmdk `value` of the first command on each page. */
+/**
+ * The stable cmdk `value` of the first command on each page. Must match the
+ * first rendered item's `value` exactly, so pointing the controlled active item
+ * here on a page switch lands on a real item and cmdk scrolls the list to the
+ * top. The Add-field page's first item is the first `fieldTypeOptions` entry
+ * (`"String"`), whose value is `addFieldValue("String")` — not the bare type —
+ * so it must be derived the same way.
+ */
 const FIRST_VALUE: Record<PalettePage, string> = {
   root: "nav:settings",
-  "add-field": addFieldValue(fieldTypeOptions[0] ?? "String"),
+  "add-field": addFieldValue("String"),
 }
 
 /**
@@ -214,7 +221,7 @@ export const CommandPalette = () => {
         aria-keyshortcuts="Meta+K Control+K"
         onClick={() => setOpen(true)}
       >
-        <SearchIcon />
+        <TerminalIcon />
         <span className="sr-only sm:not-sr-only">Commands</span>
         <kbd
           aria-hidden="true"
@@ -304,7 +311,9 @@ export const CommandPalette = () => {
                 </CommandItem>
                 <CommandItem
                   value="action:add-field"
-                  onSelect={() => goToPage("add-field")}
+                  onSelect={() => {
+                    goToPage("add-field")
+                  }}
                 >
                   <PlusIcon />
                   Add field…
@@ -341,7 +350,10 @@ export const CommandPalette = () => {
               <CommandSeparator />
               <CommandItem
                 value="add-field:back"
-                onSelect={() => goToPage("root")}
+                onSelect={() => {
+                  goToPage("root")
+                  setActiveValue(FIRST_VALUE.root)
+                }}
               >
                 <ArrowLeftIcon />
                 Back
