@@ -125,6 +125,24 @@ export const CommandPalette = () => {
   // page shows its full, unfiltered list from the first item.
   const [search, setSearch] = useState("")
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const listRef = useRef<HTMLDivElement>(null)
+
+  // cmdk moves the active item on a page switch, but it runs its scroll-into-
+  // view against the OLD list (the destination page's items are not in the DOM
+  // yet), so the scroll container keeps its previous offset and the first item
+  // can be scrolled out of view. When the page changes, reset the destination
+  // list's scroll to the top once it has rendered.
+  useEffect(() => {
+    // Read `page` in the body so the effect genuinely depends on it: the reset
+    // must run for whichever page we switched to.
+    const destination = page
+    const frame = requestAnimationFrame(() => {
+      if (destination !== null && listRef.current !== null) {
+        listRef.current.scrollTop = 0
+      }
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [page])
 
   const { validForExport } = editor.validation
   const issueCount = summarizeDiagnostics(editor.validation).length
@@ -259,7 +277,7 @@ export const CommandPalette = () => {
           value={search}
           onValueChange={setSearch}
         />
-        <CommandList>
+        <CommandList ref={listRef}>
           <CommandEmpty>No matching command.</CommandEmpty>
 
           {page === "root" && (
