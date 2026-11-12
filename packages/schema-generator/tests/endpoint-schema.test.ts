@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  ENDPOINT_SCHEMA_VERSION,
   endpointDefinitionSchema,
+  isSupportedVersion,
   mutationConfigSchema,
   partitioningFormats,
   validatePartitioningFormat,
@@ -20,12 +22,11 @@ function validConfig(overrides: Record<string, unknown> = {}) {
 
 describe("mutationConfigSchema - partitioning field", () => {
   describe("valid partitioning values", () => {
-    it("accepts partitioning: true", () => {
+    it("rejects partitioning: true (no longer a valid value)", () => {
       const result = mutationConfigSchema.safeParse(
         validConfig({ partitioning: true })
       )
-      expect(result.success).toBeTruthy()
-      expect(String(result.data?.partitioning)).toBe("true")
+      expect(result.success).toBeFalsy()
     })
 
     it("accepts partitioning: false", () => {
@@ -92,12 +93,15 @@ describe("mutationConfigSchema - partitioning field", () => {
 })
 
 describe("mutationConfigSchema - partitioningFormat field", () => {
-  describe("valid format values when partitioning is not false", () => {
+  describe("valid format values for a non-custom field string", () => {
     it.each(partitioningFormats)(
       'accepts partitioningFormat: "%s"',
       (format) => {
         const result = mutationConfigSchema.safeParse(
-          validConfig({ partitioning: true, partitioningFormat: format })
+          validConfig({
+            partitioning: "event_date",
+            partitioningFormat: format,
+          })
         )
         expect(result.success).toBeTruthy()
         expect(result.data?.partitioningFormat).toBe(format)
@@ -106,18 +110,18 @@ describe("mutationConfigSchema - partitioningFormat field", () => {
 
     it("leaves partitioningFormat as undefined when omitted", () => {
       const result = mutationConfigSchema.safeParse(
-        validConfig({ partitioning: true })
+        validConfig({ partitioning: "event_date" })
       )
       expect(result.success).toBeTruthy()
       expect(result.data?.partitioningFormat).toBeUndefined()
     })
   })
 
-  describe("invalid format values when partitioning is not false", () => {
-    it("rejects an invalid format string when partitioning is true", () => {
+  describe("invalid format values for a non-custom field string", () => {
+    it("rejects an invalid format string for a field-name partitioning", () => {
       const result = mutationConfigSchema.safeParse(
         validConfig({
-          partitioning: true,
+          partitioning: "event_date",
           partitioningFormat: "day/month/year",
         })
       )
@@ -290,7 +294,7 @@ describe(validatePartitioningFormat, () => {
 /** Minimal valid endpoint definition for exercising the optional dataSource field. */
 function validDefinition(overrides: Record<string, unknown> = {}) {
   return {
-    version: "1.0",
+    version: "2.0",
     tableName: "test_table",
     catalog: "my_catalog",
     schema: "my_schema",
@@ -332,5 +336,262 @@ describe("partitioningComponents constant", () => {
       "minute",
       "second",
     ])
+  })
+})
+
+describe("endpointDefinitionSchema - version gate", () => {
+  it("exposes ENDPOINT_SCHEMA_VERSION as '2.0'", () => {
+    expect(ENDPOINT_SCHEMA_VERSION).toBe("2.0")
+  })
+
+  it("isSupportedVersion accepts '2.0' and rejects '1.0'/others", () => {
+    expect(isSupportedVersion("2.0")).toBeTruthy()
+    expect(isSupportedVersion("1.0")).toBeFalsy()
+    expect(isSupportedVersion(undefined)).toBeFalsy()
+    expect(isSupportedVersion(2)).toBeFalsy()
+  })
+
+  it("rejects a definition with version '1.0'", () => {
+    const result = endpointDefinitionSchema.safeParse(
+      validDefinition({ version: "1.0" })
+    )
+    expect(result.success).toBeFalsy()
+  })
+
+  it("accepts a definition with version '2.0'", () => {
+    const result = endpointDefinitionSchema.safeParse(validDefinition())
+    expect(result.success).toBeTruthy()
+  })
+})
+
+describe("endpointDefinitionSchema - partitioning union", () => {
+  it("rejects a mutation with partitioning: true", () => {
+    const result = endpointDefinitionSchema.safeParse(
+      validDefinition({
+        mutation: {
+          loadStrategy: "append",
+          basePath: "/",
+          partitioning: true,
+        },
+      })
+    )
+    expect(result.success).toBeFalsy()
+  })
+})
+
+/** DateTime auto-fill field with the write_timestamp option. */
+function autoFillField(name = "load_timestamp") {
+  return {
+    name,
+    type: "DateTime",
+    options: { autoFill: "write_timestamp" },
+  }
+}
+
+/** Enabled append mutation with the given partitioning value. */
+function appendMutation(partitioning: unknown = false) {
+  return { loadStrategy: "append", basePath: "/", partitioning }
+}
+
+describe("endpointDefinitionSchema - autoFill field contract", () => {
+  it("accepts a top-level DateTime autoFill field under an append mutation", () => {
+    const result = endpointDefinitionSchema.safeParse(
+      validDefinition({
+        fields: [{ name: "id", type: "String" }, autoFillField()],
+        mutation: appendMutation(false),
+      })
+    )
+    expect(result.success).toBeTruthy()
+  })
+
+  it("accepts a top-level DateTime autoFill field under full_load_append", () => {
+    const result = endpointDefinitionSchema.safeParse(
+      validDefinition({
+        fields: [{ name: "id", type: "String" }, autoFillField()],
+        mutation: {
+          loadStrategy: "full_load_append",
+          basePath: "/",
+          partitioning: false,
+        },
+      })
+    )
+    expect(result.success).toBeTruthy()
+  })
+
+  it.each(["String", "Integer", "Float", "Boolean", "Date"])(
+    "rejects autoFill on a non-DateTime primitive (%s) without silently stripping the key",
+    (type) => {
+      const result = endpointDefinitionSchema.safeParse(
+        validDefinition({
+          fields: [
+            { name: "field", type, options: { autoFill: "write_timestamp" } },
+          ],
+          mutation: appendMutation(false),
+        })
+      )
+      expect(result.success).toBeFalsy()
+    }
+  )
+
+  it("rejects autoFill on an Object field", () => {
+    const result = endpointDefinitionSchema.safeParse(
+      validDefinition({
+        fields: [
+          {
+            name: "nested",
+            type: "Object",
+            fields: [{ name: "inner", type: "String" }],
+            options: { autoFill: "write_timestamp" },
+          },
+        ],
+        mutation: appendMutation(false),
+      })
+    )
+    expect(result.success).toBeFalsy()
+  })
+
+  it("rejects autoFill on an Array field", () => {
+    const result = endpointDefinitionSchema.safeParse(
+      validDefinition({
+        fields: [
+          {
+            name: "tags",
+            type: "Array",
+            items: { type: "String" },
+            options: { autoFill: "write_timestamp" },
+          },
+        ],
+        mutation: appendMutation(false),
+      })
+    )
+    expect(result.success).toBeFalsy()
+  })
+})
+
+describe("endpointDefinitionSchema - autoFill top-level-only rule", () => {
+  it("rejects a nested autoFill field at depth 1 (inside an Object)", () => {
+    const result = endpointDefinitionSchema.safeParse(
+      validDefinition({
+        fields: [
+          {
+            name: "nested",
+            type: "Object",
+            fields: [autoFillField("inner_ts")],
+          },
+        ],
+        mutation: appendMutation(false),
+      })
+    )
+    expect(result.success).toBeFalsy()
+  })
+
+  it("rejects a nested autoFill field at depth 2 (inside an Array-of-Object)", () => {
+    const result = endpointDefinitionSchema.safeParse(
+      validDefinition({
+        fields: [
+          {
+            name: "rows",
+            type: "Array",
+            items: {
+              type: "Object",
+              fields: [autoFillField("inner_ts")],
+            },
+          },
+        ],
+        mutation: appendMutation(false),
+      })
+    )
+    expect(result.success).toBeFalsy()
+  })
+})
+
+describe("endpointDefinitionSchema - autoFill mutation requirement", () => {
+  it("rejects autoFill with loadStrategy full_load (C11)", () => {
+    const result = endpointDefinitionSchema.safeParse(
+      validDefinition({
+        fields: [autoFillField()],
+        mutation: {
+          loadStrategy: "full_load",
+          basePath: "/",
+          partitioning: false,
+        },
+      })
+    )
+    expect(result.success).toBeFalsy()
+  })
+
+  it("rejects autoFill with mutation disabled (false) (C16)", () => {
+    const result = endpointDefinitionSchema.safeParse(
+      validDefinition({
+        fields: [autoFillField()],
+        mutation: false,
+      })
+    )
+    expect(result.success).toBeFalsy()
+  })
+
+  it("rejects autoFill with an absent mutation (C16)", () => {
+    const result = endpointDefinitionSchema.safeParse(
+      validDefinition({
+        fields: [autoFillField()],
+      })
+    )
+    expect(result.success).toBeFalsy()
+  })
+})
+
+describe("endpointDefinitionSchema - autoFill name-length cap", () => {
+  it("accepts a 58-character autoFill field name", () => {
+    const result = endpointDefinitionSchema.safeParse(
+      validDefinition({
+        fields: [autoFillField("a".repeat(58))],
+        mutation: appendMutation(false),
+      })
+    )
+    expect(result.success).toBeTruthy()
+  })
+
+  it("rejects a 59-character autoFill field name", () => {
+    const result = endpointDefinitionSchema.safeParse(
+      validDefinition({
+        fields: [autoFillField("a".repeat(59))],
+        mutation: appendMutation(false),
+      })
+    )
+    expect(result.success).toBeFalsy()
+  })
+})
+
+describe("endpointDefinitionSchema - companion partition segment rejection", () => {
+  it("rejects a bare companion segment (load_timestamp_year)", () => {
+    const result = endpointDefinitionSchema.safeParse(
+      validDefinition({
+        fields: [autoFillField()],
+        mutation: appendMutation("load_timestamp_year"),
+      })
+    )
+    expect(result.success).toBeFalsy()
+  })
+
+  it("rejects a component companion segment (load_timestamp_year:year)", () => {
+    const result = endpointDefinitionSchema.safeParse(
+      validDefinition({
+        fields: [autoFillField()],
+        mutation: appendMutation(
+          "load_timestamp_year:year/load_timestamp:month"
+        ),
+      })
+    )
+    expect(result.success).toBeFalsy()
+  })
+
+  it("accepts the primary-field component form (load_timestamp:year)", () => {
+    const result = endpointDefinitionSchema.safeParse(
+      validDefinition({
+        fields: [autoFillField()],
+        mutation: appendMutation("load_timestamp:year/load_timestamp:month"),
+      })
+    )
+    expect(result.success).toBeTruthy()
   })
 })

@@ -35,6 +35,14 @@ export interface DataSourceWriteConfig {
   partitioning?: unknown
   /** Adapter-owned format for partition values. */
   partitioningFormat?: string
+  /**
+   * Server-populated auto-fill fields for this write. Each entry names a
+   * top-level field the write pipeline fills at write time (and whose derived
+   * companion columns it also populates). Currently only the
+   * `"write_timestamp"` kind is supported, which stamps the field and its
+   * `_year`/`_month` companions from the single write-clock value.
+   */
+  autoFillFields?: { name: string; kind: "write_timestamp" }[]
 }
 
 /**
