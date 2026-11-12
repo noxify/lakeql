@@ -13,7 +13,7 @@ import { defined } from "./helpers"
 
 function baseState(): EditorState {
   return fromDefinition({
-    version: "1.0",
+    version: "2.0",
     tableName: "t",
     catalog: "c",
     schema: "s",
@@ -53,7 +53,7 @@ describe("enumerateMoveSlots — ordered candidate insert positions", () => {
   it("walks nested Object and Array-of-Object containers in reading order", () => {
     // Top: [ id(String), profile(Object{ city }), items(Array<Object>{ sku }) ]
     const state = fromDefinition({
-      version: "1.0",
+      version: "2.0",
       tableName: "t",
       catalog: "c",
       schema: "s",
@@ -125,7 +125,7 @@ describe("enumerateMoveSlots — ordered candidate insert positions", () => {
     // so no slot can be self-containing, and moving it never empties a nested
     // source container.
     const state = fromDefinition({
-      version: "1.0",
+      version: "2.0",
       tableName: "t",
       catalog: "c",
       schema: "s",

@@ -2,7 +2,7 @@ import type {
   FieldOptions,
   FieldValidation,
 } from "@lakeql/schema-generator/endpoint-schema"
-import { PlusIcon, Trash2Icon } from "lucide-react"
+import { LockIcon, PlusIcon, Trash2Icon } from "lucide-react"
 import { useId } from "react"
 
 import { Button } from "@/components/ui/button"
@@ -47,7 +47,8 @@ function normalizeOptions(options: FieldOptions): FieldOptions | undefined {
   const hasReadOnly = options.readOnly === true
   const hasValidations =
     options.validations !== undefined && options.validations.length > 0
-  if (!hasRequired && !hasReadOnly && !hasValidations) {
+  const hasAutoFill = options.autoFill !== undefined
+  if (!hasRequired && !hasReadOnly && !hasValidations && !hasAutoFill) {
     return undefined
   }
   const next: FieldOptions = {}
@@ -59,6 +60,9 @@ function normalizeOptions(options: FieldOptions): FieldOptions | undefined {
   }
   if (hasValidations) {
     next.validations = options.validations
+  }
+  if (hasAutoFill) {
+    next.autoFill = options.autoFill
   }
   return next
 }
@@ -306,6 +310,7 @@ export const FieldPropertiesPanel = () => {
   }
 
   const options = readOptions(field)
+  const isAutoFill = options.autoFill !== undefined
 
   const setOption = (key: "required" | "readOnly", value: boolean): void => {
     editor.setFieldOptions(path, normalizeOptions({ ...options, [key]: value }))
@@ -322,12 +327,29 @@ export const FieldPropertiesPanel = () => {
   return (
     <div className="grid gap-4">
       <div className="grid gap-0.5">
-        <h3 className="text-sm font-medium">
-          {field.name === "" ? "(unnamed field)" : field.name}
-        </h3>
+        <div className="flex items-center gap-2">
+          <h3 className="text-sm font-medium">
+            {field.name === "" ? "(unnamed field)" : field.name}
+          </h3>
+          {isAutoFill && (
+            <span
+              className="bg-accent text-accent-foreground inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-xs font-medium"
+              aria-label="Auto-filled field (server-populated, read-only)"
+            >
+              <LockIcon className="size-3" aria-hidden="true" />
+              Auto-fill
+            </span>
+          )}
+        </div>
         <span className="text-muted-foreground text-xs">
           Type: {field.type}
         </span>
+        {isAutoFill && (
+          <span className="text-muted-foreground text-xs">
+            Server-populated on every write; excluded from the mutation input.
+            Derived _year and _month columns are added automatically.
+          </span>
+        )}
       </div>
 
       {fieldIssues.length > 0 && (

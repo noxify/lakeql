@@ -43,7 +43,7 @@ function withName(state: EditorState, name: string): EditorState {
 describe("fresh-state seeding", () => {
   it("seeds version 1.0, empty metadata/fields, mutation disabled", () => {
     expect(createFreshState()).toStrictEqual({
-      version: "1.0",
+      version: "2.0",
       tableName: "",
       catalog: "",
       schema: "",

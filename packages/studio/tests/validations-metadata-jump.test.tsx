@@ -56,7 +56,7 @@ function metadataInput(
  * but the validity gate flags a navigable `tableName` metadata issue.
  */
 const badTableNameDefinition = JSON.stringify({
-  version: "1.0",
+  version: "2.0",
   tableName: "bad name",
   catalog: "main",
   schema: "public",
@@ -71,7 +71,7 @@ const badTableNameDefinition = JSON.stringify({
  * exist, since the base path input only renders while mutation is enabled.
  */
 const validDefinition = JSON.stringify({
-  version: "1.0",
+  version: "2.0",
   tableName: "events",
   catalog: "main",
   schema: "public",

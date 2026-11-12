@@ -63,7 +63,7 @@ function fileInput(): HTMLInputElement {
  * a navigable Validations entry without touching the validations editor UI.
  */
 const badRegexDefinition = JSON.stringify({
-  version: "1.0",
+  version: "2.0",
   tableName: "events",
   catalog: "main",
   schema: "public",
@@ -215,7 +215,7 @@ describe("studio shell — Validations summary and jump-to-field", () => {
       fileInput(),
       jsonFile(
         JSON.stringify({
-          version: "1.0",
+          version: "2.0",
           tableName: "events",
           catalog: "main",
           schema: "public",
@@ -347,7 +347,7 @@ describe("studio shell — logo, header affordances, content-fixed toolbar, glob
       fileInput(),
       jsonFile(
         JSON.stringify({
-          version: "1.0",
+          version: "2.0",
           tableName: "events",
           catalog: "main",
           schema: "public",

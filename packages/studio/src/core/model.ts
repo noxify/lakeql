@@ -72,10 +72,12 @@ export type EditorMutation =
       loadStrategy: LoadStrategy
       basePath: string
       /**
-       * Partitioning mode: `true` (by write timestamp), `false` (off), or a
-       * field/custom string.
+       * Partitioning mode: `false` (off, flat layout) or a field/custom
+       * partition string. The write-timestamp `true` mode was removed — a
+       * write-timestamp column is now an explicit auto-fill field, not an
+       * implicit partitioning mode.
        */
-      partitioning: boolean | string
+      partitioning: false | string
       /**
        * Partition granularity, relevant only in non-custom modes. Always held
        * so the control has a value to show; omitted on export when it equals
@@ -89,7 +91,7 @@ export type EditorMutation =
  * `EndpointDefinitionFormat` that can also represent transient invalid states.
  */
 export interface EditorState {
-  version: "1.0"
+  version: "2.0"
   tableName: string
   catalog: string
   schema: string
@@ -112,32 +114,10 @@ export interface HistoryState {
 }
 
 /**
- * The effective runtime default for `partitioning` when the key is absent from
- * a mutation config: partition by write timestamp.
- */
-export const DEFAULT_PARTITIONING = true
-
-/**
  * The effective runtime default for `partitioningFormat` when the key is absent
  * from a mutation config.
  */
 export const DEFAULT_PARTITIONING_FORMAT = "year/month/day"
-
-/**
- * The single owner of the derived "load timestamp" field name.
- *
- * In timestamp partitioning mode the mapping layer injects a bare
- * `{ name: "load_timestamp", type: "DateTime" }` field on export only (see
- * `toDefinition`); it is never persisted in {@link EditorState.fields}. Every
- * consumer — the mapping layer, the partition-format helpers, and the
- * Fields-list derived-row predicate — references this constant rather than the
- * literal string so there is exactly one spelling of the name.
- *
- * An export→import round-trip turns the derived field into an ordinary,
- * editable field (the importer has no special case for this name); that is
- * intended by design, not a round-trip bug.
- */
-export const LOAD_TIMESTAMP_FIELD_NAME = "load_timestamp"
 
 /**
  * The maximum number of snapshots the in-memory history retains. Pushing past
@@ -166,14 +146,14 @@ export function createFieldId(): string {
 let idCounter = 0
 
 /**
- * Creates a fresh, empty editor state for a first-run session: `version "1.0"`,
+ * Creates a fresh, empty editor state for a first-run session: `version "2.0"`,
  * empty metadata, no fields, and mutation disabled.
  *
  * @returns A new {@link EditorState} seeded with the documented defaults.
  */
 export function createFreshState(): EditorState {
   return {
-    version: "1.0",
+    version: "2.0",
     tableName: "",
     catalog: "",
     schema: "",

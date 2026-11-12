@@ -11,12 +11,7 @@ import type {
   EditorMutation,
   EditorState,
 } from "./model"
-import {
-  createFieldId,
-  DEFAULT_PARTITIONING,
-  DEFAULT_PARTITIONING_FORMAT,
-  LOAD_TIMESTAMP_FIELD_NAME,
-} from "./model"
+import { createFieldId, DEFAULT_PARTITIONING_FORMAT } from "./model"
 
 /**
  * Returns `true` when a field's options carry no authored value and should be
@@ -30,13 +25,14 @@ function optionsAreEmpty(options: FieldOptions | undefined): boolean {
   const hasReadOnly = options.readOnly === true
   const hasValidations =
     options.validations !== undefined && options.validations.length > 0
-  return !hasRequired && !hasReadOnly && !hasValidations
+  const hasAutoFill = options.autoFill !== undefined
+  return !hasRequired && !hasReadOnly && !hasValidations && !hasAutoFill
 }
 
 /**
  * Normalizes a field's options for export: drops `required`/`readOnly` when
- * `false` and an empty `validations` array, and returns `undefined` when
- * nothing meaningful remains.
+ * `false` and an empty `validations` array, preserves an `autoFill` marker, and
+ * returns `undefined` when nothing meaningful remains.
  */
 function toDefinitionOptions(
   options: FieldOptions | undefined
@@ -57,6 +53,9 @@ function toDefinitionOptions(
     result.validations = source.validations.map((validation) => ({
       ...validation,
     }))
+  }
+  if (source.autoFill !== undefined) {
+    result.autoFill = source.autoFill
   }
   return result
 }
@@ -104,9 +103,10 @@ function toDefinitionField(field: EditorField): FieldDefinition {
  * Maps the editor mutation to its export value: the literal `false` when
  * disabled, or a config object when enabled.
  *
- * When enabled, `partitioning` is omitted when it equals the effective default
- * (`true`), and `partitioningFormat` is omitted when partitioning is disabled,
- * a custom string, or equal to the effective default (`"year/month/day"`).
+ * When enabled, `partitioning` is always emitted explicitly (an enabled
+ * mutation never relies on the absent-key default, which is now `false`, C8),
+ * and `partitioningFormat` is omitted when partitioning is disabled, a custom
+ * string, or equal to the effective default (`"year/month/day"`).
  */
 function toDefinitionMutation(
   mutation: EditorMutation
@@ -124,15 +124,14 @@ function toDefinitionMutation(
 
   const { partitioning, partitioningFormat } = mutation
 
-  // Omit `partitioning` when it equals the effective runtime default.
-  if (partitioning !== DEFAULT_PARTITIONING) {
-    config.partitioning = partitioning
-  }
+  // Always emit an explicit `partitioning` for an enabled mutation: an absent
+  // key now resolves to `false`, so omitting it would silently change meaning
+  // (C8/FR2.2). The exporter never relies on the absent-key default.
+  config.partitioning = partitioning
 
-  // `partitioningFormat` is only meaningful in the non-custom modes:
-  // `partitioning === true` (absent, treated as true) or a legacy single-field
-  // string (no `/` or `:`). It is omitted when partitioning is off, a custom
-  // format string, or equal to the effective default.
+  // `partitioningFormat` is only meaningful in the non-custom modes: a legacy
+  // single-field string (no `/` or `:`). It is omitted when partitioning is
+  // off, a custom format string, or equal to the effective default.
   const partitioningIsOff = partitioning === false
   const partitioningIsCustom =
     typeof partitioning === "string" &&
@@ -159,33 +158,15 @@ function toDefinitionMutation(
  * (the editor may hold transient invalid states). Validation is the concern of
  * the validity gate, which is built on top of this function.
  *
- * In timestamp partitioning mode (the mutation is enabled and `partitioning`
- * is `true`) a bare derived `{ name: "load_timestamp", type: "DateTime" }`
- * field is appended to the exported `fields` — it is never stored in
- * {@link EditorState.fields}. A guard prevents emitting a second
- * `load_timestamp` when one is already present, so export never yields a
- * duplicate-name error. Exporting this JSON and re-importing it turns the
- * derived field into an ordinary, editable field ({@link fromDefinition} has
- * no special case for the name); that round-trip is intended by design.
+ * No field is injected on export: a write-timestamp column is now an explicit
+ * auto-fill field the author declares (`options.autoFill`), so the exported
+ * `fields` are exactly the authored fields.
  *
  * @param state - The live editor state.
  * @returns A candidate {@link EndpointDefinitionFormat} with minimal keys.
  */
 export function toDefinition(state: EditorState): EndpointDefinitionFormat {
   const fields = state.fields.map(toDefinitionField)
-
-  // Inject the derived load-timestamp field only in timestamp mode. The
-  // canonical mode derivation is `partitioningModeOf` in
-  // `ui/validation-meta.ts` (`partitioning === true` is exactly "timestamp");
-  // it is inlined here to avoid a forbidden `core → ui` import. The
-  // `!fields.some(...)` guard is the duplicate-name backstop (never emit two).
-  if (
-    state.mutation.enabled &&
-    state.mutation.partitioning === true &&
-    !fields.some((field) => field.name === LOAD_TIMESTAMP_FIELD_NAME)
-  ) {
-    fields.push({ name: LOAD_TIMESTAMP_FIELD_NAME, type: "DateTime" })
-  }
 
   const definition: EndpointDefinitionFormat = {
     version: state.version,
@@ -252,8 +233,9 @@ function fromDefinitionField(field: FieldDefinition): EditorField {
 
 /**
  * Materializes the export mutation value back into an {@link EditorMutation},
- * filling in the effective-default `partitioning`/`partitioningFormat` so the
- * UI controls always have a concrete value to display.
+ * resolving an absent `partitioning` to `false` (off, C8) and filling in the
+ * effective-default `partitioningFormat` so the UI controls always have a
+ * concrete value to display.
  */
 function fromDefinitionMutation(
   mutation: EndpointDefinitionFormat["mutation"]
@@ -262,7 +244,12 @@ function fromDefinitionMutation(
     return { enabled: false }
   }
 
-  const partitioning = mutation.partitioning ?? DEFAULT_PARTITIONING
+  // An absent `partitioning` key now resolves to `false` (off), not timestamp
+  // (C8). The editor's narrowed `partitioning` type excludes `true`, so a
+  // legacy `true` is coerced to `false` here as well.
+  const rawPartitioning = mutation.partitioning ?? false
+  const partitioning: false | string =
+    typeof rawPartitioning === "string" ? rawPartitioning : false
   return {
     enabled: true,
     loadStrategy: mutation.loadStrategy,

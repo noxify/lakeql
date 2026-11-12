@@ -53,7 +53,7 @@ import { defined } from "./helpers"
 const EXPORT_NAME = /export/iu
 
 const validDefinition: EndpointDefinitionFormat = {
-  version: "1.0",
+  version: "2.0",
   tableName: "events",
   catalog: "main",
   schema: "public",

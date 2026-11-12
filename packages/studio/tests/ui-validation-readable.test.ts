@@ -18,7 +18,7 @@ import { defined } from "./helpers"
 /** A state with a nested `address.postalCode` field, for ancestry labels. */
 function nestedState(): EditorState {
   return fromDefinition({
-    version: "1.0",
+    version: "2.0",
     tableName: "t",
     catalog: "c",
     schema: "s",
@@ -56,6 +56,10 @@ describe("readable-mapping layer", () => {
       duplicates: [],
       badRegex: [],
       badNumber: [],
+      reservedNames: [],
+      autoFillPlacement: [],
+      autoFillMutation: [],
+      companionPartition: [],
     }
 
     const issues = toReadableIssues(state, result)
@@ -75,6 +79,10 @@ describe("readable-mapping layer", () => {
       duplicates: [{ name: "postalCode", path: ["address"], fieldId: "dup-1" }],
       badRegex: [],
       badNumber: [],
+      reservedNames: [],
+      autoFillPlacement: [],
+      autoFillMutation: [],
+      companionPartition: [],
     }
 
     const issues = toReadableIssues(state, result)
@@ -91,7 +99,7 @@ describe("readable-mapping layer", () => {
     // invalid name AND the pair as a duplicate (both share name ""). The display
     // layer must drop the duplicate noise and keep one invalid-name issue each.
     const state = fromDefinition({
-      version: "1.0",
+      version: "2.0",
       tableName: "t",
       catalog: "c",
       schema: "s",
@@ -121,6 +129,10 @@ describe("readable-mapping layer", () => {
       duplicates: [{ name: "sku", path: [], fieldId: "dup-1" }],
       badRegex: [],
       badNumber: [],
+      reservedNames: [],
+      autoFillPlacement: [],
+      autoFillMutation: [],
+      companionPartition: [],
     }
 
     const issues = toReadableIssues(nestedState(), result)
@@ -132,7 +144,7 @@ describe("readable-mapping layer", () => {
 
   it("does not emit a duplicate issue for a single empty-named field", () => {
     const state = fromDefinition({
-      version: "1.0",
+      version: "2.0",
       tableName: "t",
       catalog: "c",
       schema: "s",
@@ -153,7 +165,7 @@ describe("readable-mapping layer", () => {
   it("resolves a bad-regex issue (fieldId-only) via the name walk", () => {
     // A real gate result: an unconstructible regex on the nested field.
     const state = fromDefinition({
-      version: "1.0",
+      version: "2.0",
       tableName: "t",
       catalog: "c",
       schema: "s",
@@ -189,7 +201,7 @@ describe("readable-mapping layer", () => {
 
   it("resolves a bad-number issue (fieldId-only) via the name walk", () => {
     const state = fromDefinition({
-      version: "1.0",
+      version: "2.0",
       tableName: "t",
       catalog: "c",
       schema: "s",
@@ -234,6 +246,10 @@ describe("readable-mapping layer", () => {
         duplicates: [],
         badRegex: [],
         badNumber: [],
+        reservedNames: [],
+        autoFillPlacement: [],
+        autoFillMutation: [],
+        companionPartition: [],
       }
 
       const issues = toReadableIssues(state, result)
@@ -254,6 +270,10 @@ describe("readable-mapping layer", () => {
       duplicates: [],
       badRegex: [],
       badNumber: [],
+      reservedNames: [],
+      autoFillPlacement: [],
+      autoFillMutation: [],
+      companionPartition: [],
     }
 
     const issues = toReadableIssues(state, result)
@@ -273,6 +293,10 @@ describe("readable-mapping layer", () => {
       duplicates: [],
       badRegex: [],
       badNumber: [],
+      reservedNames: [],
+      autoFillPlacement: [],
+      autoFillMutation: [],
+      companionPartition: [],
     }
 
     const issues = toReadableIssues(state, result)
@@ -290,6 +314,10 @@ describe("readable-mapping layer", () => {
       duplicates: [],
       badRegex: [],
       badNumber: [],
+      reservedNames: [],
+      autoFillPlacement: [],
+      autoFillMutation: [],
+      companionPartition: [],
     }
 
     const issues = toReadableIssues(state, result)
@@ -308,6 +336,10 @@ describe("readable-mapping layer", () => {
       duplicates: [],
       badRegex: [],
       badNumber: [],
+      reservedNames: [],
+      autoFillPlacement: [],
+      autoFillMutation: [],
+      companionPartition: [],
     }
     expect(toReadableIssues(nestedState(), valid)).toStrictEqual([])
   })

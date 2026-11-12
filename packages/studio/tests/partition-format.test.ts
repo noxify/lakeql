@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest"
 
 import {
-  hasLoadTimestampCollision,
   parsePartitionSegments,
   partitioningValueForMode,
   partitionOptionsFor,
@@ -104,8 +103,7 @@ describe("serializePartitionSegments / parsePartitionSegments", () => {
 })
 
 describe("partitioningValueForMode mapping", () => {
-  it("maps timestamp to true and off to false", () => {
-    expect(partitioningValueForMode("timestamp", "created_at")).toBeTruthy()
+  it("maps off to false", () => {
     expect(partitioningValueForMode("off", "created_at")).toBeFalsy()
   })
 
@@ -113,22 +111,6 @@ describe("partitioningValueForMode mapping", () => {
     expect(partitioningValueForMode("field", "created_at:year")).toBe(
       "created_at:year"
     )
-    expect(partitioningValueForMode("field", true)).toBe("")
     expect(partitioningValueForMode("field", false)).toBe("")
-  })
-})
-
-describe("hasLoadTimestampCollision helper", () => {
-  it("is true when a top-level load_timestamp field exists", () => {
-    expect(
-      hasLoadTimestampCollision([
-        field("id", "String"),
-        field("load_timestamp", "DateTime"),
-      ])
-    ).toBeTruthy()
-  })
-
-  it("is false otherwise", () => {
-    expect(hasLoadTimestampCollision([field("id", "String")])).toBeFalsy()
   })
 })

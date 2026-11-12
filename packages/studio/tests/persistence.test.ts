@@ -108,7 +108,7 @@ describe("persistence round-trip", () => {
     const storage = fakeStorage()
     const scheduler = manualScheduler()
     const rich = fromDefinition({
-      version: "1.0",
+      version: "2.0",
       tableName: "t",
       catalog: "c",
       schema: "s",

@@ -6,8 +6,8 @@ import type { ValidationResult } from "@/core"
  * rendering, and so the summary wording lives in one place.
  *
  * @param validation - The current validity-gate result from the core.
- * @returns One message per diagnostic, across the schema, duplicate, regex, and
- *   numeric-bound diagnostic kinds, in that order.
+ * @returns One message per diagnostic, across the schema, duplicate, regex,
+ *   numeric-bound, and the four auto-fill diagnostic kinds, in that order.
  */
 export function summarizeDiagnostics(validation: ValidationResult): string[] {
   return [
@@ -25,6 +25,23 @@ export function summarizeDiagnostics(validation: ValidationResult): string[] {
     ),
     ...validation.badNumber.map(
       (bad) => `${bad.kind === "min" ? "Min" : "Max"} must be a finite number`
+    ),
+    ...validation.reservedNames.map(
+      (collision) =>
+        `Name "${collision.name}" collides with an auto-fill reserved column`
+    ),
+    ...validation.autoFillPlacement.map((bad) =>
+      bad.reason === "non-datetime"
+        ? `Auto-fill field "${bad.name}" must be a DateTime field`
+        : `Auto-fill field "${bad.name}" must be top-level, not nested`
+    ),
+    ...validation.autoFillMutation.map(
+      (bad) =>
+        `Auto-fill field "${bad.name}" requires an append/full-load-append mutation`
+    ),
+    ...validation.companionPartition.map(
+      (bad) =>
+        `Partition segment "${bad.segment}" references derived column "${bad.companionName}"; use "${bad.primaryName}:year"`
     ),
   ]
 }

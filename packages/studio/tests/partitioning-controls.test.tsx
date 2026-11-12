@@ -16,8 +16,8 @@ import { createFreshState } from "@/core"
 
 import { defined } from "./helpers"
 
-/** An enabled, timestamp-mode mutation for seeding. */
-function timestampState(fields: EditorState["fields"] = []): EditorState {
+/** An enabled mutation seeded in off (flat) partitioning mode. */
+function enabledState(fields: EditorState["fields"] = []): EditorState {
   return {
     ...createFreshState(),
     tableName: "t",
@@ -28,7 +28,7 @@ function timestampState(fields: EditorState["fields"] = []): EditorState {
       enabled: true,
       loadStrategy: "append",
       basePath: "/d",
-      partitioning: true,
+      partitioning: false,
       partitioningFormat: "year/month/day",
     },
   }
@@ -61,7 +61,7 @@ function seed(editor: EditorApi, state: EditorState): void {
 }
 
 /** Reads the current `partitioning` value, asserting the mutation is enabled. */
-function partitioningOf(editor: EditorApi): boolean | string {
+function partitioningOf(editor: EditorApi): false | string {
   const { mutation } = editor.state
   expect(mutation.enabled).toBeTruthy()
   if (!mutation.enabled) {
@@ -82,20 +82,19 @@ function renderCanvas(): { get: () => EditorApi } {
 describe("PartitioningControls mode picker", () => {
   afterEach(cleanup)
 
-  it("renders three rich radio choices with titles and descriptions", () => {
+  it("renders two rich radio choices with titles and descriptions", () => {
     const harness = renderWithEditor(() => <MutationConfigForm />)
     // Seed an enabled mutation so the partitioning picker renders.
-    seed(harness.get(), timestampState())
+    seed(harness.get(), enabledState())
 
     const group = screen.getByRole("radiogroup", {
       name: "Partitioning mode",
     })
     const scope = within(group)
     expect(scope.getByText("Off (flat layout)")).toBeDefined()
-    expect(scope.getByText("By write timestamp")).toBeDefined()
     expect(scope.getByText("By field / custom format")).toBeDefined()
-    // The timestamp description mentions the automatic load_timestamp DateTime.
-    expect(scope.getByText(/load_timestamp DateTime field/u)).toBeDefined()
+    // The removed write-timestamp mode is gone from the picker.
+    expect(scope.queryByText("By write timestamp")).toBeNull()
   })
 
   it("starts a freshly-enabled mutation in off mode (partitioning === false)", async () => {
@@ -103,32 +102,6 @@ describe("PartitioningControls mode picker", () => {
     const harness = renderWithEditor(() => <MutationConfigForm />)
     await user.click(screen.getByRole("switch", { name: "Enable mutation" }))
     expect(partitioningOf(harness.get())).toBeFalsy()
-  })
-
-  it("disables the timestamp card when a real load_timestamp field exists", () => {
-    const harness = renderWithEditor(() => <MutationConfigForm />)
-    seed(
-      harness.get(),
-      timestampState([{ id: "f1", name: "load_timestamp", type: "DateTime" }])
-    )
-    const timestampCard = screen
-      .getByText("By write timestamp")
-      .closest("[data-slot='radio-card-item']")
-    expect(
-      defined(timestampCard as HTMLElement | null).dataset.disabled
-    ).toBeDefined()
-    expect(
-      screen.getByText(/A field named load_timestamp already exists/u)
-    ).toBeDefined()
-  })
-
-  it("keeps the granularity select distinct and available in timestamp mode", () => {
-    const harness = renderWithEditor(() => <MutationConfigForm />)
-    seed(harness.get(), timestampState())
-    const granularity = screen.getByLabelText("Partition granularity")
-    expect(granularity).toBeDefined()
-    // It offers the three granularity formats.
-    expect(granularity.textContent).toContain("year/month/day")
   })
 })
 
@@ -139,7 +112,7 @@ describe("PartitioningFieldPicker combobox", () => {
     const user = userEvent.setup()
     const harness = renderWithEditor(() => <MutationConfigForm />)
     seed(harness.get(), {
-      ...timestampState([
+      ...enabledState([
         { id: "f1", name: "region", type: "String" },
         { id: "f2", name: "created_at", type: "DateTime" },
       ]),
@@ -174,7 +147,7 @@ describe("PartitioningFieldPicker combobox", () => {
     const user = userEvent.setup()
     const harness = renderWithEditor(() => <MutationConfigForm />)
     seed(harness.get(), {
-      ...timestampState([{ id: "f1", name: "created_at", type: "DateTime" }]),
+      ...enabledState([{ id: "f1", name: "created_at", type: "DateTime" }]),
       mutation: {
         enabled: true,
         loadStrategy: "append",
@@ -210,7 +183,7 @@ describe("PartitioningFieldPicker combobox", () => {
     const user = userEvent.setup()
     const harness = renderWithEditor(() => <MutationConfigForm />)
     seed(harness.get(), {
-      ...timestampState([{ id: "f1", name: "region", type: "String" }]),
+      ...enabledState([{ id: "f1", name: "region", type: "String" }]),
       mutation: {
         enabled: true,
         loadStrategy: "append",
@@ -225,64 +198,47 @@ describe("PartitioningFieldPicker combobox", () => {
   })
 })
 
-describe("CanvasSurface derived load_timestamp row", () => {
+describe("write-timestamp auto-fill helper", () => {
   afterEach(cleanup)
 
-  it("shows the read-only managed row in timestamp mode, even with zero fields", () => {
-    const harness = renderCanvas()
-    seed(harness.get(), timestampState())
-    const row = screen.getByRole("group", {
-      name: "load_timestamp (managed, read-only)",
-    })
-    // Its managed, read-only nature is conveyed through the accessible name.
-    expect(row.getAttribute("aria-label")).toContain("read-only")
-    // No editing affordances in the row.
-    const scope = within(row)
-    expect(scope.queryByLabelText("Field name")).toBeNull()
-    expect(scope.queryByLabelText("Field type")).toBeNull()
-    expect(scope.queryByLabelText("Remove field")).toBeNull()
-    expect(scope.queryByLabelText("Move field")).toBeNull()
+  it("adds a real top-level DateTime auto-fill field named load_timestamp", async () => {
+    const user = userEvent.setup()
+    const harness = renderWithEditor(() => <MutationConfigForm />)
+    seed(harness.get(), enabledState())
+
+    await user.click(
+      screen.getByRole("button", { name: "Add write-timestamp field" })
+    )
+
+    const { fields } = harness.get().state
+    expect(fields).toHaveLength(1)
+    const added = defined(fields[0])
+    expect(added.name).toBe("load_timestamp")
+    expect(added.type).toBe("DateTime")
+    expect(added.options?.autoFill).toBe("write_timestamp")
+    // It is a persisted, id-carrying field (not a phantom view-model row).
+    expect(added.id.length).toBeGreaterThan(0)
   })
 
-  it("removes the row when leaving timestamp mode with no new history entry", () => {
-    const harness = renderCanvas()
-    seed(harness.get(), timestampState())
-    expect(
-      screen.queryByRole("group", {
-        name: "load_timestamp (managed, read-only)",
-      })
-    ).not.toBeNull()
-
-    const before = harness.get().canUndo
-    act(() => {
-      const current = harness.get().state
-      harness.get().replaceState(
-        {
-          ...current,
-          mutation: {
-            ...current.mutation,
-            partitioning: false,
-          } as EditorState["mutation"],
-        },
-        { commit: false }
-      )
-    })
-    expect(
-      screen.queryByRole("group", {
-        name: "load_timestamp (managed, read-only)",
-      })
-    ).toBeNull()
-    // The row is view-only: toggling it via a non-committing edit did not add a
-    // committed history entry (canUndo unchanged by the row itself).
-    expect(harness.get().canUndo).toBe(before)
-  })
-
-  it("suppresses the derived row when a real load_timestamp field exists", () => {
-    const harness = renderCanvas()
+  it("disables the helper when a field already owns the default name", () => {
+    const harness = renderWithEditor(() => <MutationConfigForm />)
     seed(
       harness.get(),
-      timestampState([{ id: "f1", name: "load_timestamp", type: "DateTime" }])
+      enabledState([{ id: "f1", name: "load_timestamp", type: "DateTime" }])
     )
+    const button = screen.getByRole("button", {
+      name: "Add write-timestamp field",
+    })
+    expect(button).toHaveProperty("disabled", true)
+  })
+})
+
+describe("CanvasSurface has no phantom derived row", () => {
+  afterEach(cleanup)
+
+  it("never renders a managed load_timestamp row for any partitioning value", () => {
+    const harness = renderCanvas()
+    seed(harness.get(), enabledState())
     expect(
       screen.queryByRole("group", {
         name: "load_timestamp (managed, read-only)",

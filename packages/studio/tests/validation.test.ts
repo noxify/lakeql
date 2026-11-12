@@ -9,7 +9,7 @@ import { defined } from "./helpers"
 
 function goodState(): EditorState {
   return fromDefinition({
-    version: "1.0",
+    version: "2.0",
     tableName: "events",
     catalog: "main",
     schema: "public",
@@ -71,7 +71,7 @@ describe("valid-for-export gate", () => {
 
   it("rejects duplicate field names with the duplicate's field id", () => {
     const state = fromDefinition({
-      version: "1.0",
+      version: "2.0",
       tableName: "t",
       catalog: "c",
       schema: "s",
@@ -93,7 +93,7 @@ describe("valid-for-export gate", () => {
 
   it("rejects duplicate field names nested inside an Object", () => {
     const state = fromDefinition({
-      version: "1.0",
+      version: "2.0",
       tableName: "t",
       catalog: "c",
       schema: "s",
@@ -120,7 +120,7 @@ describe("valid-for-export gate", () => {
 
   it("rejects an unconstructible regex pattern with the field id", () => {
     const state = fromDefinition({
-      version: "1.0",
+      version: "2.0",
       tableName: "t",
       catalog: "c",
       schema: "s",
@@ -143,7 +143,7 @@ describe("valid-for-export gate", () => {
 
   it("accepts a constructible regex pattern", () => {
     const state = fromDefinition({
-      version: "1.0",
+      version: "2.0",
       tableName: "t",
       catalog: "c",
       schema: "s",
@@ -161,7 +161,7 @@ describe("valid-for-export gate", () => {
 
   it("rejects a non-finite min/max bound with the field id", () => {
     const state = fromDefinition({
-      version: "1.0",
+      version: "2.0",
       tableName: "t",
       catalog: "c",
       schema: "s",
@@ -184,7 +184,7 @@ describe("valid-for-export gate", () => {
 
   it("rejects an infinite max bound", () => {
     const state = fromDefinition({
-      version: "1.0",
+      version: "2.0",
       tableName: "t",
       catalog: "c",
       schema: "s",
@@ -206,7 +206,7 @@ describe("valid-for-export gate", () => {
 
   it("accepts a finite min/max bound", () => {
     const state = fromDefinition({
-      version: "1.0",
+      version: "2.0",
       tableName: "t",
       catalog: "c",
       schema: "s",
@@ -226,7 +226,7 @@ describe("valid-for-export gate", () => {
 
   it("detects a non-finite bound nested inside an Array-of-Object item", () => {
     const state = fromDefinition({
-      version: "1.0",
+      version: "2.0",
       tableName: "t",
       catalog: "c",
       schema: "s",
@@ -258,7 +258,7 @@ describe("valid-for-export gate", () => {
 
   it("detects a bad regex nested inside an Array-of-Object item", () => {
     const state = fromDefinition({
-      version: "1.0",
+      version: "2.0",
       tableName: "t",
       catalog: "c",
       schema: "s",
@@ -286,5 +286,287 @@ describe("valid-for-export gate", () => {
     expect(defined(result.badRegex[0]).fieldId).toBe(
       defined(defined(itemFields)[0]).id
     )
+  })
+})
+
+/** An enabled append mutation with the given partitioning value. */
+function appendMutation(partitioning: false | string = false): {
+  loadStrategy: "append"
+  basePath: string
+  partitioning: false | string
+} {
+  return { loadStrategy: "append", basePath: "/d", partitioning }
+}
+
+describe("auto-fill validations (FR4.6)", () => {
+  it("accepts a valid top-level DateTime auto-fill field under an append mutation", () => {
+    const state = fromDefinition({
+      version: "2.0",
+      tableName: "t",
+      catalog: "c",
+      schema: "s",
+      fields: [
+        { name: "id", type: "String" },
+        {
+          name: "load_timestamp",
+          type: "DateTime",
+          options: { autoFill: "write_timestamp" },
+        },
+      ],
+      mutation: appendMutation(),
+    })
+    const result = evaluate(state)
+    expect(result.validForExport).toBeTruthy()
+    expect(result.autoFillPlacement).toStrictEqual([])
+    expect(result.autoFillMutation).toStrictEqual([])
+    expect(result.reservedNames).toStrictEqual([])
+    expect(result.companionPartition).toStrictEqual([])
+  })
+
+  it("rejects auto-fill on a non-DateTime field, keyed to the field id", () => {
+    const state = fromDefinition({
+      version: "2.0",
+      tableName: "t",
+      catalog: "c",
+      schema: "s",
+      fields: [
+        {
+          name: "label",
+          type: "String",
+          options: { autoFill: "write_timestamp" },
+        },
+      ],
+      mutation: appendMutation(),
+    })
+    const result = evaluate(state)
+    expect(result.validForExport).toBeFalsy()
+    const placement = defined(result.autoFillPlacement[0])
+    expect(placement.reason).toBe("non-datetime")
+    expect(placement.name).toBe("label")
+    expect(placement.fieldId).toBe(defined(state.fields[0]).id)
+  })
+
+  it("rejects auto-fill nested at depth 1 inside an Object", () => {
+    const state = fromDefinition({
+      version: "2.0",
+      tableName: "t",
+      catalog: "c",
+      schema: "s",
+      fields: [
+        {
+          name: "meta",
+          type: "Object",
+          fields: [
+            {
+              name: "stamp",
+              type: "DateTime",
+              options: { autoFill: "write_timestamp" },
+            },
+          ],
+        },
+      ],
+      mutation: appendMutation(),
+    })
+    const result = evaluate(state)
+    expect(result.validForExport).toBeFalsy()
+    const placement = defined(
+      result.autoFillPlacement.find((bad) => bad.reason === "nested")
+    )
+    expect(placement.name).toBe("stamp")
+    const inner = defined(defined(defined(state.fields[0]).fields)[0])
+    expect(placement.fieldId).toBe(inner.id)
+  })
+
+  it("rejects auto-fill nested at depth 2 inside an Array-of-Object", () => {
+    const state = fromDefinition({
+      version: "2.0",
+      tableName: "t",
+      catalog: "c",
+      schema: "s",
+      fields: [
+        {
+          name: "rows",
+          type: "Array",
+          items: {
+            type: "Object",
+            fields: [
+              {
+                name: "stamp",
+                type: "DateTime",
+                options: { autoFill: "write_timestamp" },
+              },
+            ],
+          },
+        },
+      ],
+      mutation: appendMutation(),
+    })
+    const result = evaluate(state)
+    expect(result.validForExport).toBeFalsy()
+    const placement = defined(
+      result.autoFillPlacement.find((bad) => bad.reason === "nested")
+    )
+    expect(placement.name).toBe("stamp")
+    const itemFields = defined(defined(state.fields[0]).items).fields
+    expect(placement.fieldId).toBe(defined(defined(itemFields)[0]).id)
+  })
+
+  it("rejects auto-fill with full_load (needs append/full_load_append)", () => {
+    const state = fromDefinition({
+      version: "2.0",
+      tableName: "t",
+      catalog: "c",
+      schema: "s",
+      fields: [
+        {
+          name: "load_timestamp",
+          type: "DateTime",
+          options: { autoFill: "write_timestamp" },
+        },
+      ],
+      mutation: {
+        loadStrategy: "full_load",
+        basePath: "/d",
+        partitioning: false,
+      },
+    })
+    const result = evaluate(state)
+    expect(result.validForExport).toBeFalsy()
+    const finding = defined(result.autoFillMutation[0])
+    expect(finding.name).toBe("load_timestamp")
+    expect(finding.mutationEnabled).toBeTruthy()
+    expect(finding.fieldId).toBe(defined(state.fields[0]).id)
+  })
+
+  it("rejects auto-fill with no enabled mutation", () => {
+    const state = fromDefinition({
+      version: "2.0",
+      tableName: "t",
+      catalog: "c",
+      schema: "s",
+      fields: [
+        {
+          name: "load_timestamp",
+          type: "DateTime",
+          options: { autoFill: "write_timestamp" },
+        },
+      ],
+      mutation: false,
+    })
+    const result = evaluate(state)
+    expect(result.validForExport).toBeFalsy()
+    const finding = defined(result.autoFillMutation[0])
+    expect(finding.mutationEnabled).toBeFalsy()
+  })
+
+  it("accepts auto-fill with full_load_append", () => {
+    const state = fromDefinition({
+      version: "2.0",
+      tableName: "t",
+      catalog: "c",
+      schema: "s",
+      fields: [
+        {
+          name: "load_timestamp",
+          type: "DateTime",
+          options: { autoFill: "write_timestamp" },
+        },
+      ],
+      mutation: {
+        loadStrategy: "full_load_append",
+        basePath: "/d",
+        partitioning: false,
+      },
+    })
+    const result = evaluate(state)
+    expect(result.autoFillMutation).toStrictEqual([])
+    expect(result.validForExport).toBeTruthy()
+  })
+
+  it("rejects a reserved-name collision (event_year vs event), keyed to the colliding field", () => {
+    const state = fromDefinition({
+      version: "2.0",
+      tableName: "t",
+      catalog: "c",
+      schema: "s",
+      fields: [
+        {
+          name: "event",
+          type: "DateTime",
+          options: { autoFill: "write_timestamp" },
+        },
+        { name: "event_year", type: "Integer" },
+      ],
+      mutation: appendMutation(),
+    })
+    const result = evaluate(state)
+    expect(result.validForExport).toBeFalsy()
+    const collision = defined(result.reservedNames[0])
+    expect(collision.name).toBe("event_year")
+    expect(collision.fieldId).toBe(defined(state.fields[1]).id)
+  })
+
+  it("rejects a bare companion-column partition segment (event_year)", () => {
+    const state = fromDefinition({
+      version: "2.0",
+      tableName: "t",
+      catalog: "c",
+      schema: "s",
+      fields: [
+        {
+          name: "event",
+          type: "DateTime",
+          options: { autoFill: "write_timestamp" },
+        },
+      ],
+      mutation: appendMutation("event_year"),
+    })
+    const result = evaluate(state)
+    expect(result.validForExport).toBeFalsy()
+    const finding = defined(result.companionPartition[0])
+    expect(finding.companionName).toBe("event_year")
+    expect(finding.primaryName).toBe("event")
+  })
+
+  it("rejects a companion-column partition segment with a component (event_year:year)", () => {
+    const state = fromDefinition({
+      version: "2.0",
+      tableName: "t",
+      catalog: "c",
+      schema: "s",
+      fields: [
+        {
+          name: "event",
+          type: "DateTime",
+          options: { autoFill: "write_timestamp" },
+        },
+      ],
+      mutation: appendMutation("event_year:year"),
+    })
+    const result = evaluate(state)
+    expect(result.validForExport).toBeFalsy()
+    expect(defined(result.companionPartition[0]).companionName).toBe(
+      "event_year"
+    )
+  })
+
+  it("accepts the primary component form event:year as a partition segment", () => {
+    const state = fromDefinition({
+      version: "2.0",
+      tableName: "t",
+      catalog: "c",
+      schema: "s",
+      fields: [
+        {
+          name: "event",
+          type: "DateTime",
+          options: { autoFill: "write_timestamp" },
+        },
+      ],
+      mutation: appendMutation("event:year/event:month"),
+    })
+    const result = evaluate(state)
+    expect(result.companionPartition).toStrictEqual([])
+    expect(result.validForExport).toBeTruthy()
   })
 })

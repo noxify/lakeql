@@ -13,7 +13,7 @@ import { defined } from "./helpers"
  * validation kind, and non-default options.
  */
 const nestedDefinition: EndpointDefinitionFormat = {
-  version: "1.0",
+  version: "2.0",
   tableName: "events",
   catalog: "main",
   schema: "public",
@@ -85,7 +85,7 @@ function withMutation(
   mutation: EndpointDefinitionFormat["mutation"]
 ): EndpointDefinitionFormat {
   return {
-    version: "1.0",
+    version: "2.0",
     tableName: "t",
     catalog: "c",
     schema: "s",
@@ -102,20 +102,20 @@ describe("round-trip stability", () => {
     expect(endpointDefinitionSchema.safeParse(round).success).toBeTruthy()
   })
 
-  // `timestampMode` marks a case whose mutation resolves to timestamp mode
-  // (partitioning `true`, explicit or defaulted). Such a case is NOT a pure
-  // round-trip: `toDefinition` materializes the derived `load_timestamp` field
-  // on export, so the re-export carries one extra field the input lacked.
+  // An enabled mutation always exports an explicit `partitioning` value (C8):
+  // an absent key resolves to `false` (off), so a minimal enabled mutation is
+  // NOT a pure round-trip — the re-export gains `partitioning: false`. Cases
+  // that already carry an explicit `partitioning` round-trip exactly.
   it.each<{
     name: string
     mutation: EndpointDefinitionFormat["mutation"]
-    timestampMode?: boolean
+    gainsExplicitOff?: boolean
   }>([
     { name: "disabled", mutation: false },
     {
-      name: "timestamp default (minimal)",
+      name: "minimal enabled (absent partitioning ⇒ off)",
       mutation: { loadStrategy: "append", basePath: "/data" },
-      timestampMode: true,
+      gainsExplicitOff: true,
     },
     {
       name: "partitioning off",
@@ -124,24 +124,6 @@ describe("round-trip stability", () => {
         basePath: "/d",
         partitioning: false,
       },
-    },
-    {
-      name: "partitioning year",
-      mutation: {
-        loadStrategy: "full_load_append",
-        basePath: "/d",
-        partitioningFormat: "year",
-      },
-      timestampMode: true,
-    },
-    {
-      name: "partitioning year/month",
-      mutation: {
-        loadStrategy: "append",
-        basePath: "/d",
-        partitioningFormat: "year/month",
-      },
-      timestampMode: true,
     },
     {
       name: "custom field partitioning",
@@ -160,18 +142,15 @@ describe("round-trip stability", () => {
         partitioningFormat: "year/month",
       },
     },
-  ])("round-trips mutation mode: $name", ({ mutation, timestampMode }) => {
+  ])("round-trips mutation mode: $name", ({ mutation, gainsExplicitOff }) => {
     const def = withMutation(mutation)
     const round = toDefinition(fromDefinition(def))
-    // In timestamp mode the derived `load_timestamp` field is materialized on
-    // export (the intended derived-field behavior), so the re-export equals the
-    // input plus that one appended field. Every other mode round-trips exactly.
-    const expected = timestampMode
-      ? {
-          ...def,
-          fields: [...def.fields, { name: "load_timestamp", type: "DateTime" }],
-        }
-      : def
+    // A minimal enabled mutation gains an explicit `partitioning: false` on
+    // export (C8); every other case round-trips exactly.
+    const expected =
+      gainsExplicitOff && mutation !== false
+        ? { ...def, mutation: { ...mutation, partitioning: false } }
+        : def
     expect(round).toStrictEqual(expected)
     expect(endpointDefinitionSchema.safeParse(round).success).toBeTruthy()
   })
@@ -199,13 +178,14 @@ describe("minimal JSON", () => {
     expect(def).toHaveProperty("mutation", false)
   })
 
-  it("omits partitioning when it equals the effective default (true)", () => {
+  it("always emits an explicit partitioning for an enabled mutation (absent ⇒ false)", () => {
     const def = toDefinition(
       fromDefinition(withMutation({ loadStrategy: "append", basePath: "/d" }))
     )
     expect(def.mutation).toStrictEqual({
       loadStrategy: "append",
       basePath: "/d",
+      partitioning: false,
     })
   })
 
@@ -219,9 +199,11 @@ describe("minimal JSON", () => {
         })
       )
     )
+    // partitioning resolves to the explicit `false` (absent ⇒ off, C8).
     expect(def.mutation).toStrictEqual({
       loadStrategy: "append",
       basePath: "/d",
+      partitioning: false,
     })
   })
 
@@ -275,35 +257,19 @@ describe("minimal JSON", () => {
   })
 })
 
-/** An enabled mutation with the given partitioning value. */
-function enabledMutation(
-  partitioning: boolean | string
-): EndpointDefinitionFormat["mutation"] {
-  return { loadStrategy: "append", basePath: "/d", partitioning }
-}
-
-describe("derived load_timestamp injection (timestamp mode)", () => {
-  it("appends a bare load_timestamp DateTime field in timestamp mode", () => {
-    const def = toDefinition(
-      fromDefinition(withMutation(enabledMutation(true)))
-    )
-    const timestampField = defined(
-      def.fields.find((field) => field.name === "load_timestamp")
-    )
-    expect(timestampField).toStrictEqual({
-      name: "load_timestamp",
-      type: "DateTime",
-    })
-    expect(timestampField).not.toHaveProperty("options")
-    expect(timestampField).not.toHaveProperty("readOnly")
-  })
-
-  it("does not inject in off, field, or disabled modes", () => {
+describe("no field is injected on export (auto-fill is explicit)", () => {
+  it("never injects a load_timestamp field for any partitioning value", () => {
     const off = toDefinition(
-      fromDefinition(withMutation(enabledMutation(false)))
+      fromDefinition(withMutation({ loadStrategy: "append", basePath: "/d" }))
     )
     const fieldMode = toDefinition(
-      fromDefinition(withMutation(enabledMutation("created_at")))
+      fromDefinition(
+        withMutation({
+          loadStrategy: "append",
+          basePath: "/d",
+          partitioning: "created_at",
+        })
+      )
     )
     const disabled = toDefinition(fromDefinition(withMutation(false)))
     for (const def of [off, fieldMode, disabled]) {
@@ -313,73 +279,50 @@ describe("derived load_timestamp injection (timestamp mode)", () => {
     }
   })
 
-  it("does not duplicate load_timestamp across export → import → export", () => {
-    const exported = toDefinition(
-      fromDefinition(withMutation(enabledMutation(true)))
+  it("preserves an explicit auto-fill field verbatim on export (no companions injected)", () => {
+    // A declared auto-fill field is an ordinary persisted field; its derived
+    // companions live in codegen, never in the exported fields (Option Y).
+    const def = toDefinition(
+      fromDefinition({
+        version: "2.0",
+        tableName: "t",
+        catalog: "c",
+        schema: "s",
+        fields: [
+          { name: "id", type: "String" },
+          {
+            name: "load_timestamp",
+            type: "DateTime",
+            options: { autoFill: "write_timestamp" },
+          },
+        ],
+        mutation: {
+          loadStrategy: "append",
+          basePath: "/d",
+          partitioning: false,
+        },
+      })
     )
-    const reExported = toDefinition(fromDefinition(exported))
-    const count = reExported.fields.filter(
-      (field) => field.name === "load_timestamp"
-    ).length
-    expect(count).toBe(1)
-  })
-
-  it("materializes load_timestamp on a minimal timestamp-default definition and never duplicates it", () => {
-    // Documents the Option-A decision: a hand-written definition that OMITS
-    // partitioning resolves to timestamp mode, so the next export gains a
-    // derived load_timestamp field. Re-importing that export and re-exporting
-    // keeps exactly one (the dedup guard holds).
-    const minimal = withMutation({ loadStrategy: "append", basePath: "/d" })
-    const exported = toDefinition(fromDefinition(minimal))
-    expect(
-      exported.fields.filter((field) => field.name === "load_timestamp")
-    ).toHaveLength(1)
-    const reExported = toDefinition(fromDefinition(exported))
-    expect(
-      reExported.fields.filter((field) => field.name === "load_timestamp")
-    ).toHaveLength(1)
-  })
-
-  it("materializes an imported load_timestamp as an ordinary editable field", () => {
-    const state = fromDefinition({
-      ...withMutation(enabledMutation(true)),
-      fields: [
-        { name: "id", type: "String" },
-        { name: "load_timestamp", type: "DateTime" },
-      ],
-    })
-    const materialized = defined(
-      state.fields.find((field) => field.name === "load_timestamp")
-    )
-    // An ordinary field: it has a client-side id like every imported field.
-    expect(materialized.id.length).toBeGreaterThan(0)
-    expect(materialized.type).toBe("DateTime")
-  })
-
-  it("exports exactly one load_timestamp when a user field already owns the name", () => {
-    const state = fromDefinition({
-      ...withMutation(enabledMutation(true)),
-      fields: [
-        { name: "id", type: "String" },
-        { name: "load_timestamp", type: "DateTime" },
-      ],
-    })
-    const def = toDefinition(state)
-    const count = def.fields.filter(
-      (field) => field.name === "load_timestamp"
-    ).length
-    expect(count).toBe(1)
+    expect(def.fields).toStrictEqual([
+      { name: "id", type: "String" },
+      {
+        name: "load_timestamp",
+        type: "DateTime",
+        options: { autoFill: "write_timestamp" },
+      },
+    ])
+    expect(endpointDefinitionSchema.safeParse(def).success).toBeTruthy()
   })
 })
 
 describe("fromDefinition materializes effective defaults", () => {
-  it("fills partitioning/partitioningFormat on an enabled minimal mutation", () => {
+  it("resolves an absent partitioning to off (false) and fills partitioningFormat", () => {
     const state = fromDefinition(
       withMutation({ loadStrategy: "append", basePath: "/d" })
     )
     expect(state.mutation).toMatchObject({
       enabled: true,
-      partitioning: true,
+      partitioning: false,
       partitioningFormat: "year/month/day",
     })
   })

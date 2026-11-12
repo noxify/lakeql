@@ -29,10 +29,8 @@ export {
   createFreshHistory,
   createFreshState,
   currentState,
-  DEFAULT_PARTITIONING,
   DEFAULT_PARTITIONING_FORMAT,
   HISTORY_CAP,
-  LOAD_TIMESTAMP_FIELD_NAME,
   redo,
   replaceCurrent,
   undo,
@@ -42,9 +40,13 @@ export { fromDefinition, toDefinition } from "./mapping"
 
 export type { EndpointDefinitionFormat } from "@lakeql/schema-generator/endpoint-schema"
 export type {
+  AutoFillMutationDiagnostic,
+  AutoFillPlacementDiagnostic,
   BadNumberDiagnostic,
   BadRegexDiagnostic,
+  CompanionPartitionDiagnostic,
   DuplicateDiagnostic,
+  ReservedNameDiagnostic,
   SchemaDiagnostic,
   ValidationResult,
 } from "./validation"

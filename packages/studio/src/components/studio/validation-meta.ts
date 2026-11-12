@@ -100,27 +100,26 @@ export function createValidation(kind: ValidationKind): FieldValidation {
 }
 
 /**
- * The three partitioning modes the mutation form offers.
+ * The two partitioning modes the mutation form offers.
  *
- * - `timestamp`: partition by write timestamp (the value `true`).
  * - `off`: no partitioning (the value `false`).
  * - `field`: a field/custom partition string (any non-empty string).
+ *
+ * The former `timestamp` (`true`) mode is gone: a write-timestamp column is now
+ * an explicit auto-fill field, not an implicit partitioning mode.
  */
-export type PartitioningMode = "timestamp" | "off" | "field"
+export type PartitioningMode = "off" | "field"
 
 /**
  * Derives the {@link PartitioningMode} from a partitioning value
- * (`boolean | string`).
+ * (`false | string`).
  *
  * @param partitioning - The current partitioning value.
  * @returns The mode the UI should show selected.
  */
 export function partitioningModeOf(
-  partitioning: boolean | string
+  partitioning: false | string
 ): PartitioningMode {
-  if (partitioning === true) {
-    return "timestamp"
-  }
   if (partitioning === false) {
     return "off"
   }
@@ -136,7 +135,7 @@ export function partitioningModeOf(
  * @param partitioning - The current partitioning value.
  * @returns `true` when the value is a custom format string.
  */
-export function isCustomPartitioning(partitioning: boolean | string): boolean {
+export function isCustomPartitioning(partitioning: false | string): boolean {
   return (
     typeof partitioning === "string" &&
     (partitioning.includes("/") || partitioning.includes(":"))
@@ -145,8 +144,8 @@ export function isCustomPartitioning(partitioning: boolean | string): boolean {
 
 /**
  * Whether the `partitioningFormat` granularity control should be offered for a
- * given partitioning value: only in the non-custom, enabled modes
- * (`timestamp`, or a legacy single-field string), never when off or custom.
+ * given partitioning value: only for a non-custom, non-empty legacy
+ * single-field string, never when off or custom.
  *
  * An empty string — the transient seed when the user first enters "field" mode
  * — is treated as incomplete, not a legacy single-field string, so the
@@ -156,7 +155,7 @@ export function isCustomPartitioning(partitioning: boolean | string): boolean {
  * @returns `true` when the format control is active.
  */
 export function offersPartitioningFormat(
-  partitioning: boolean | string
+  partitioning: false | string
 ): boolean {
   if (partitioning === false) {
     return false

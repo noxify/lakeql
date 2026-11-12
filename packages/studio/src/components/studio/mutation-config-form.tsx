@@ -1,10 +1,13 @@
 import type { LoadStrategy } from "@lakeql/schema-generator/endpoint-schema"
 import {
+  AUTO_FILL_NAME_MAX_LENGTH,
   loadStrategies,
   partitioningFormats,
 } from "@lakeql/schema-generator/endpoint-schema"
+import { ClockIcon } from "lucide-react"
 import { useId } from "react"
 
+import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { RadioCardGroup, RadioCardItem } from "@/components/ui/radio-card-group"
@@ -16,27 +19,35 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
-import type { EditorMutation } from "@/core"
-import { DEFAULT_PARTITIONING_FORMAT } from "@/core"
+import type { EditorField, EditorMutation } from "@/core"
+import { createField, DEFAULT_PARTITIONING_FORMAT } from "@/core"
 
 import { metadataInputId } from "./metadata-nav"
-import {
-  hasLoadTimestampCollision,
-  partitioningValueForMode,
-} from "./partition-format"
+import { partitioningValueForMode } from "./partition-format"
 import { PartitioningFieldPicker } from "./partitioning-field-picker"
 import { useEditorContext } from "./use-editor"
 import type { PartitioningMode } from "./validation-meta"
 import { offersPartitioningFormat, partitioningModeOf } from "./validation-meta"
 
 /**
+ * The default name of the write-timestamp auto-fill field added by the helper
+ * button. A short literal well within the {@link AUTO_FILL_NAME_MAX_LENGTH}
+ * cap; sliced defensively so the default can never exceed the cap even if the
+ * literal is lengthened later.
+ */
+const AUTO_FILL_DEFAULT_FIELD_NAME = "load_timestamp".slice(
+  0,
+  AUTO_FILL_NAME_MAX_LENGTH
+)
+
+/**
  * The effective-default enabled mutation config, prefilled so the controls have
- * concrete values to show. A freshly-enabled mutation now starts in `off`
+ * concrete values to show. A freshly-enabled mutation starts in `off`
  * partitioning mode (`partitioning: false`): nothing is imposed on the author,
- * and because `false !== DEFAULT_PARTITIONING` the export serializes
- * `partitioning: false` explicitly. `partitioningFormat` is still prefilled
- * with the runtime default so the granularity control has a value if the author
- * switches to timestamp mode.
+ * and the export always serializes an explicit `partitioning` value (C8).
+ * `partitioningFormat` is still prefilled with the runtime default so the
+ * granularity control has a value if the author switches to a legacy
+ * single-field string.
  */
 function defaultEnabledMutation(): Extract<EditorMutation, { enabled: true }> {
   return {
@@ -54,18 +65,14 @@ const LOAD_STRATEGY_LABELS: Record<LoadStrategy, string> = {
   append: "Append",
 }
 
-const TIMESTAMP_COLLISION_REASON =
-  "A field named load_timestamp already exists; remove or rename it to use timestamp partitioning."
-
 /**
- * The partitioning sub-form: a rich radio-card choice of mode (off / by write
- * timestamp / by field), the multi-field {@link PartitioningFieldPicker} in
- * field mode, and the granularity select when a non-custom, enabled mode is
- * active.
+ * The partitioning sub-form: a two-mode radio-card choice (off / by field), the
+ * multi-field {@link PartitioningFieldPicker} in field mode, and the
+ * granularity select when a non-custom legacy single-field value is active.
  *
- * The `timestamp` card is disabled when a real top-level `load_timestamp` field
- * already exists, so export never produces a duplicate-name error. Mode→value
- * mapping routes through {@link partitioningValueForMode}; {@link
+ * The write-timestamp mode is gone — a write-timestamp column is an explicit
+ * auto-fill field (added via the helper button below), not a partitioning mode.
+ * Mode→value mapping routes through {@link partitioningValueForMode}; {@link
  * partitioningModeOf} is the reverse.
  */
 const PartitioningControls = ({
@@ -75,7 +82,6 @@ const PartitioningControls = ({
 }) => {
   const editor = useEditorContext()
   const mode = partitioningModeOf(mutation.partitioning)
-  const collision = hasLoadTimestampCollision(editor.state.fields)
 
   const setMode = (next: PartitioningMode): void => {
     editor.setMutation({
@@ -97,16 +103,6 @@ const PartitioningControls = ({
             value="off"
             title="Off (flat layout)"
             description="No partitioning (flat layout)."
-          />
-          <RadioCardItem
-            value="timestamp"
-            disabled={collision}
-            title="By write timestamp"
-            description={
-              collision
-                ? TIMESTAMP_COLLISION_REASON
-                : "Adds a managed load_timestamp DateTime field automatically; the CLI/runtime fills its value."
-            }
           />
           <RadioCardItem
             value="field"
@@ -151,13 +147,62 @@ const PartitioningControls = ({
 }
 
 /**
+ * The write-timestamp auto-fill helper: a button that appends a real top-level
+ * `DateTime` field carrying `options.autoFill: "write_timestamp"` with the
+ * default name {@link AUTO_FILL_DEFAULT_FIELD_NAME}. Unlike the removed implicit
+ * timestamp mode, this adds an ordinary, editable, persisted field to
+ * `state.fields` (FR7.3) — the author can rename it, and the schema derives its
+ * `_year`/`_month` companions.
+ *
+ * The button is disabled when a top-level field already uses the default name,
+ * so a single click never introduces a duplicate-name collision.
+ */
+const AutoFillHelper = () => {
+  const editor = useEditorContext()
+  const nameTaken = editor.state.fields.some(
+    (field) => field.name === AUTO_FILL_DEFAULT_FIELD_NAME
+  )
+
+  const addAutoFillField = (): void => {
+    const base = createField("DateTime")
+    const field: EditorField = {
+      ...base,
+      name: AUTO_FILL_DEFAULT_FIELD_NAME,
+      options: { autoFill: "write_timestamp" },
+    }
+    editor.addField([], field)
+  }
+
+  return (
+    <div className="grid gap-1.5">
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        disabled={nameTaken}
+        onClick={addAutoFillField}
+      >
+        <ClockIcon className="size-4" />
+        Add write-timestamp field
+      </Button>
+      <span className="text-muted-foreground text-xs">
+        {nameTaken
+          ? `A field named ${AUTO_FILL_DEFAULT_FIELD_NAME} already exists.`
+          : "Adds a DateTime field stamped by the server on every write (append / full-load-append), with derived _year and _month columns."}
+      </span>
+    </div>
+  )
+}
+
+/**
  * The mutation configuration form (task 14).
  *
  * A switch enables or disables mutation — disabled exports `mutation: false`,
  * enabled exports a config object (Req 5.1). When enabled it exposes
- * `loadStrategy`, `basePath`, and the partitioning controls, with the effective
- * defaults prefilled so the JSON stays minimal and round-trip stable (the
- * mapping layer omits default partitioning values on export).
+ * `loadStrategy`, `basePath`, the partitioning controls, and the
+ * write-timestamp auto-fill helper, with the effective defaults prefilled so
+ * the JSON stays minimal (the mapping layer omits default `partitioningFormat`
+ * on export and always emits an explicit `partitioning`).
  *
  * All edits route through the editor's `setMutation` so the single source of
  * state stays in `@/core`; `basePath` and the partition string are continuous
@@ -246,6 +291,8 @@ export const MutationConfigForm = () => {
           </div>
 
           <PartitioningControls mutation={mutation} />
+
+          <AutoFillHelper />
         </>
       )}
     </div>

@@ -1,8 +1,12 @@
 import type {
+  AutoFillMutationDiagnostic,
+  AutoFillPlacementDiagnostic,
   BadNumberDiagnostic,
   BadRegexDiagnostic,
+  CompanionPartitionDiagnostic,
   DuplicateDiagnostic,
   EditorState,
+  ReservedNameDiagnostic,
   SchemaDiagnostic,
   ValidationResult,
 } from "@/core"
@@ -256,6 +260,108 @@ function fromBadNumber(
 }
 
 /**
+ * Maps a reserved-name collision (C3/C14) to a {@link ReadableIssue}, navigable
+ * when the colliding field id resolved.
+ */
+function fromReservedName(
+  state: EditorState,
+  collision: ReservedNameDiagnostic,
+  index: number
+): ReadableIssue {
+  const message = `Name "${collision.name}" collides with an auto-fill field's reserved column name`
+  if (collision.fieldId === undefined) {
+    return {
+      id: `reserved-${index}`,
+      label: labelFromNames([collision.name]),
+      message,
+      navigable: false,
+    }
+  }
+  return {
+    id: `reserved-${index}`,
+    fieldId: collision.fieldId,
+    label: fieldLabel(state, collision.fieldId),
+    message,
+    navigable: true,
+  }
+}
+
+/**
+ * Maps an invalid auto-fill placement (C12/C13/C17) to a {@link ReadableIssue}.
+ */
+function fromAutoFillPlacement(
+  state: EditorState,
+  bad: AutoFillPlacementDiagnostic,
+  index: number
+): ReadableIssue {
+  const message =
+    bad.reason === "non-datetime"
+      ? "Auto-fill is only valid on a DateTime field"
+      : "Auto-fill is only valid on a top-level field, not a nested one"
+  if (bad.fieldId === undefined) {
+    return {
+      id: `autofill-placement-${index}`,
+      label: labelFromNames([bad.name]),
+      message,
+      navigable: false,
+    }
+  }
+  return {
+    id: `autofill-placement-${index}`,
+    fieldId: bad.fieldId,
+    label: fieldLabel(state, bad.fieldId),
+    message,
+    navigable: true,
+  }
+}
+
+/**
+ * Maps an auto-fill-without-compatible-mutation finding (C11/C16) to a
+ * {@link ReadableIssue}.
+ */
+function fromAutoFillMutation(
+  state: EditorState,
+  bad: AutoFillMutationDiagnostic,
+  index: number
+): ReadableIssue {
+  const message = bad.mutationEnabled
+    ? "Auto-fill requires an append or full-load-append mutation"
+    : "Auto-fill requires an enabled append or full-load-append mutation"
+  if (bad.fieldId === undefined) {
+    return {
+      id: `autofill-mutation-${index}`,
+      label: labelFromNames([bad.name]),
+      message,
+      navigable: false,
+    }
+  }
+  return {
+    id: `autofill-mutation-${index}`,
+    fieldId: bad.fieldId,
+    label: fieldLabel(state, bad.fieldId),
+    message,
+    navigable: true,
+  }
+}
+
+/**
+ * Maps a companion-column partition-segment finding (C15/FR6.3) to a
+ * non-navigable {@link ReadableIssue} (the target is the partition string, not
+ * a field).
+ */
+function fromCompanionPartition(
+  bad: CompanionPartitionDiagnostic,
+  index: number
+): ReadableIssue {
+  return {
+    id: `companion-partition-${index}`,
+    label: "Partitioning",
+    message: `Partition segment "${bad.segment}" references the derived column "${bad.companionName}"; use "${bad.primaryName}:year" instead`,
+    navigable: false,
+  }
+}
+
+/**
  * Drops duplicate-name findings whose field name is still the empty string.
  *
  * Two not-yet-named fields share the empty-string name `""`, so the core gate's
@@ -313,6 +419,18 @@ export function toReadableIssues(
     ),
     ...result.badRegex.map((bad, index) => fromBadRegex(state, bad, index)),
     ...result.badNumber.map((bad, index) => fromBadNumber(state, bad, index)),
+    ...result.reservedNames.map((collision, index) =>
+      fromReservedName(state, collision, index)
+    ),
+    ...result.autoFillPlacement.map((bad, index) =>
+      fromAutoFillPlacement(state, bad, index)
+    ),
+    ...result.autoFillMutation.map((bad, index) =>
+      fromAutoFillMutation(state, bad, index)
+    ),
+    ...result.companionPartition.map((bad, index) =>
+      fromCompanionPartition(bad, index)
+    ),
   ]
 }
 
@@ -342,6 +460,21 @@ export function fieldIdsWithIssues(result: ValidationResult): Set<string> {
   }
   for (const bad of result.badNumber) {
     ids.add(bad.fieldId)
+  }
+  for (const collision of result.reservedNames) {
+    if (collision.fieldId !== undefined) {
+      ids.add(collision.fieldId)
+    }
+  }
+  for (const bad of result.autoFillPlacement) {
+    if (bad.fieldId !== undefined) {
+      ids.add(bad.fieldId)
+    }
+  }
+  for (const bad of result.autoFillMutation) {
+    if (bad.fieldId !== undefined) {
+      ids.add(bad.fieldId)
+    }
   }
   return ids
 }

@@ -82,23 +82,20 @@ describe("validation error surfacing", () => {
 })
 
 describe("partitioning mode derivation (task 14)", () => {
-  it("maps the boolean/string value to a mode", () => {
-    expect(partitioningModeOf(true)).toBe("timestamp")
+  it("maps the false/string value to a mode (no timestamp mode)", () => {
     expect(partitioningModeOf(false)).toBe("off")
     expect(partitioningModeOf("created_at")).toBe("field")
     expect(partitioningModeOf("year/month")).toBe("field")
   })
 
   it("detects custom partition strings", () => {
-    expect(isCustomPartitioning(true)).toBeFalsy()
     expect(isCustomPartitioning(false)).toBeFalsy()
     expect(isCustomPartitioning("created_at")).toBeFalsy()
     expect(isCustomPartitioning("year/month")).toBeTruthy()
     expect(isCustomPartitioning("created_at:day")).toBeTruthy()
   })
 
-  it("offers partitioningFormat only in non-custom, enabled modes", () => {
-    expect(offersPartitioningFormat(true)).toBeTruthy()
+  it("offers partitioningFormat only for a non-custom legacy single-field value", () => {
     expect(offersPartitioningFormat("created_at")).toBeTruthy()
     expect(offersPartitioningFormat(false)).toBeFalsy()
     expect(offersPartitioningFormat("year/month/day")).toBeFalsy()

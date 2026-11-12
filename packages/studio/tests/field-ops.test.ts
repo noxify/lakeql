@@ -24,7 +24,7 @@ function baseState(): EditorState {
 
 function namedObjectWithChildren(): EditorState {
   return fromDefinition({
-    version: "1.0",
+    version: "2.0",
     tableName: "t",
     catalog: "c",
     schema: "s",
@@ -42,7 +42,7 @@ function namedObjectWithChildren(): EditorState {
 
 function arrayOfObject(): EditorState {
   return fromDefinition({
-    version: "1.0",
+    version: "2.0",
     tableName: "t",
     catalog: "c",
     schema: "s",
@@ -97,7 +97,7 @@ describe("add / remove at any nesting level", () => {
 describe("rename at any nesting level", () => {
   it("renames a top-level field, preserving type and options", () => {
     const state = fromDefinition({
-      version: "1.0",
+      version: "2.0",
       tableName: "t",
       catalog: "c",
       schema: "s",
@@ -133,7 +133,7 @@ describe("rename at any nesting level", () => {
 
   it("does not mutate the input state", () => {
     const state = fromDefinition({
-      version: "1.0",
+      version: "2.0",
       tableName: "t",
       catalog: "c",
       schema: "s",
@@ -164,7 +164,7 @@ describe("setting field options", () => {
 
   it("clears options with undefined", () => {
     const state = fromDefinition({
-      version: "1.0",
+      version: "2.0",
       tableName: "t",
       catalog: "c",
       schema: "s",
@@ -246,7 +246,7 @@ describe("empty-Object validity", () => {
 describe("type-change transition matrix", () => {
   it("primitive → primitive is no-loss and preserves name + options", () => {
     const state = fromDefinition({
-      version: "1.0",
+      version: "2.0",
       tableName: "t",
       catalog: "c",
       schema: "s",
@@ -311,7 +311,7 @@ describe("type-change transition matrix", () => {
 
   it("Array → primitive is lossy and drops items on confirm", () => {
     const state = fromDefinition({
-      version: "1.0",
+      version: "2.0",
       tableName: "t",
       catalog: "c",
       schema: "s",
@@ -350,7 +350,7 @@ describe("array item type-change", () => {
 
   it("Array<String> → Array<Integer> is no-loss", () => {
     const state = fromDefinition({
-      version: "1.0",
+      version: "2.0",
       tableName: "t",
       catalog: "c",
       schema: "s",
@@ -366,7 +366,7 @@ describe("array item type-change", () => {
 
   it("Array<String> → Array<Object> starts with empty object item (no prompt)", () => {
     const state = fromDefinition({
-      version: "1.0",
+      version: "2.0",
       tableName: "t",
       catalog: "c",
       schema: "s",
@@ -385,7 +385,7 @@ describe("array item type-change", () => {
 describe("fieldNamePath — id → ancestry of names", () => {
   it("resolves a top-level field to a single-name path", () => {
     const state = fromDefinition({
-      version: "1.0",
+      version: "2.0",
       tableName: "t",
       catalog: "c",
       schema: "s",

@@ -14,6 +14,10 @@ describe("diagnostic summary", () => {
       duplicates: [],
       badRegex: [],
       badNumber: [],
+      reservedNames: [],
+      autoFillPlacement: [],
+      autoFillMutation: [],
+      companionPartition: [],
     }
     expect(summarizeDiagnostics(valid)).toStrictEqual([])
   })
@@ -25,6 +29,10 @@ describe("diagnostic summary", () => {
       duplicates: [],
       badRegex: [],
       badNumber: [],
+      reservedNames: [],
+      autoFillPlacement: [],
+      autoFillMutation: [],
+      companionPartition: [],
     }
     expect(summarizeDiagnostics(result)).toStrictEqual([
       "fields.0.name: Invalid input",
@@ -40,6 +48,10 @@ describe("diagnostic summary", () => {
         { pattern: "(", message: "Unterminated group", fieldId: "f1" },
       ],
       badNumber: [],
+      reservedNames: [],
+      autoFillPlacement: [],
+      autoFillMutation: [],
+      companionPartition: [],
     }
     expect(summarizeDiagnostics(result)).toStrictEqual([
       'Duplicate field "id"',
@@ -54,6 +66,10 @@ describe("diagnostic summary", () => {
       duplicates: [],
       badRegex: [],
       badNumber: [{ kind: "min", value: Number.NaN, fieldId: "f1" }],
+      reservedNames: [],
+      autoFillPlacement: [],
+      autoFillMutation: [],
+      companionPartition: [],
     }
     expect(summarizeDiagnostics(result)).toStrictEqual([
       "Min must be a finite number",
@@ -70,7 +86,7 @@ describe("diagnostic summary", () => {
 
   it("surfaces a duplicate-name gate result", () => {
     const state = fromDefinition({
-      version: "1.0",
+      version: "2.0",
       tableName: "t",
       catalog: "c",
       schema: "s",

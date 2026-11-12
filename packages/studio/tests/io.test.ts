@@ -10,7 +10,7 @@ import { createFreshState } from "@/core/model"
 import { defined, expectErr, expectOk } from "./helpers"
 
 const validDefinition: EndpointDefinitionFormat = {
-  version: "1.0",
+  version: "2.0",
   tableName: "events",
   catalog: "main",
   schema: "public",
@@ -38,9 +38,26 @@ describe("import", () => {
 
   it("rejects a schema-invalid file and reports errors (no state)", () => {
     const result = expectErr(
-      importFromText(JSON.stringify({ version: "1.0", tableName: "1bad" }))
+      importFromText(JSON.stringify({ version: "2.0", tableName: "1bad" }))
     )
     expect(result.errors.length).toBeGreaterThan(0)
+  })
+
+  it("rejects a v1 file with a clear 'version no longer supported' message (C9/R3)", () => {
+    const v1Draft = JSON.stringify({
+      version: "1.0",
+      tableName: "events",
+      catalog: "main",
+      schema: "public",
+      fields: [{ name: "id", type: "String" }],
+      mutation: { loadStrategy: "append", basePath: "/d", partitioning: true },
+    })
+    const result = expectErr(importFromText(v1Draft))
+    // The actionable message, not a generic Zod literal error.
+    expect(defined(result.errors[0])).toContain("version")
+    expect(
+      result.errors.some((error) => error.includes("no longer supported"))
+    ).toBeTruthy()
   })
 
   it("populates state from a valid file", () => {
@@ -75,16 +92,12 @@ describe("export gate", () => {
 
   it("produces minimal JSON for a valid state", () => {
     const result = expectOk(exportToJson(goodState()))
-    // `validDefinition` is in timestamp mode (partitioning omitted ⇒ `true`),
-    // so the export materializes the derived `load_timestamp` DateTime field —
-    // the intended derived-field behavior. Otherwise the JSON is minimal and
-    // round-trips back to the original definition.
+    // `validDefinition` omits `partitioning`, which now resolves to off; the
+    // enabled mutation always exports an explicit `partitioning: false` (C8).
+    // No field is injected on export.
     expect(JSON.parse(result.json)).toStrictEqual({
       ...validDefinition,
-      fields: [
-        ...validDefinition.fields,
-        { name: "load_timestamp", type: "DateTime" },
-      ],
+      mutation: { ...validDefinition.mutation, partitioning: false },
     })
   })
 })

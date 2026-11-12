@@ -15,7 +15,7 @@ import { defined } from "./helpers"
 
 function baseState(): EditorState {
   return fromDefinition({
-    version: "1.0",
+    version: "2.0",
     tableName: "t",
     catalog: "c",
     schema: "s",
@@ -69,7 +69,7 @@ describe("findContainerPath — container id to path", () => {
 
   it("resolves an Array-of-Object field to its item-fields path", () => {
     const state = fromDefinition({
-      version: "1.0",
+      version: "2.0",
       tableName: "t",
       catalog: "c",
       schema: "s",
@@ -117,7 +117,7 @@ describe("planMove — structurally-impossible rejections", () => {
     // Container is an Array-of-Object; moving an Array field into it makes an
     // array item an array.
     const state = fromDefinition({
-      version: "1.0",
+      version: "2.0",
       tableName: "t",
       catalog: "c",
       schema: "s",

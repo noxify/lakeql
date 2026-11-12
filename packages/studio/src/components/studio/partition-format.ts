@@ -2,7 +2,6 @@ import type { PartitioningComponent } from "@lakeql/schema-generator/endpoint-sc
 import { partitioningComponents } from "@lakeql/schema-generator/endpoint-schema"
 
 import type { EditorField, EditorFieldType } from "@/core"
-import { LOAD_TIMESTAMP_FIELD_NAME } from "@/core"
 
 import type { PartitioningMode } from "./validation-meta"
 
@@ -168,26 +167,12 @@ export function parsePartitionSegments(value: string): PartitionSegment[] {
 }
 
 /**
- * Whether a real top-level field already owns the `load_timestamp` name.
- *
- * Only top-level fields are inspected (the derived field is top-level); when
- * `true` the UI blocks the timestamp partitioning mode so export never emits a
- * duplicate `load_timestamp`.
- *
- * @param fields - The top-level editor fields.
- * @returns `true` when a top-level field is named `load_timestamp`.
- */
-export function hasLoadTimestampCollision(fields: EditorField[]): boolean {
-  return fields.some((field) => field.name === LOAD_TIMESTAMP_FIELD_NAME)
-}
-
-/**
  * Maps a rich radio mode to the editor `partitioning` value.
  *
- * `timestamp` → `true`, `off` → `false`, `field` → the current string (so a
- * custom format is preserved when re-entering field mode) or `""` to seed an
- * empty picker. This is the pure, unit-testable replacement for the form's
- * former inline `setMode` mapping; {@link partitioningModeOf} is the reverse.
+ * `off` → `false`, `field` → the current string (so a custom format is
+ * preserved when re-entering field mode) or `""` to seed an empty picker. This
+ * is the pure, unit-testable replacement for the form's former inline `setMode`
+ * mapping; {@link partitioningModeOf} is the reverse.
  *
  * @param mode - The selected rich radio mode.
  * @param current - The current `partitioning` value.
@@ -195,11 +180,8 @@ export function hasLoadTimestampCollision(fields: EditorField[]): boolean {
  */
 export function partitioningValueForMode(
   mode: PartitioningMode,
-  current: boolean | string
-): boolean | string {
-  if (mode === "timestamp") {
-    return true
-  }
+  current: false | string
+): false | string {
   if (mode === "off") {
     return false
   }
