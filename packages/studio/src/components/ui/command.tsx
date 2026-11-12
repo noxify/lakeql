@@ -218,10 +218,29 @@ function CommandShortcut({
   )
 }
 
+/**
+ * A thin footer strip below the command list, for contextual hints such as the
+ * available keyboard shortcuts. Rendered inside the {@link Command} root, below
+ * {@link CommandList}; purely presentational.
+ */
+function CommandFooter({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="command-footer"
+      className={cn(
+        "flex items-center gap-3 border-t px-3 py-2 text-xs text-muted-foreground",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
 export {
   Command,
   CommandDialog,
   CommandEmpty,
+  CommandFooter,
   CommandGroup,
   CommandInput,
   CommandItem,

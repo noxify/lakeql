@@ -28,9 +28,22 @@ function pressCmdK(): void {
   })
 }
 
-/** The open command dialog's search input. */
+/**
+ * The open command dialog's search input, found by its `data-slot` rather than
+ * its placeholder (the placeholder differs between the root and Add-field
+ * pages). Returns `null` when the palette is closed.
+ */
+function queryPaletteInput(): HTMLElement | null {
+  return document.querySelector<HTMLElement>("[data-slot='command-input']")
+}
+
+/** The open command dialog's search input; throws when the palette is closed. */
 function paletteInput(): HTMLElement {
-  return screen.getByPlaceholderText(/type a command/iu)
+  const input = queryPaletteInput()
+  if (input === null) {
+    throw new Error("command palette input not found (palette closed?)")
+  }
+  return input
 }
 
 describe("command palette — open and run", () => {
@@ -167,6 +180,55 @@ describe("command palette — open and run", () => {
     expect(screen.queryByText("Add String field")).toBeNull()
   })
 
+  it("Backspace with an empty search in the Add-field sub-view returns to the main view", async () => {
+    const user = userEvent.setup()
+    render(<EndpointBuilder />)
+
+    pressCmdK()
+    await waitFor(() => expect(paletteInput()).toBeDefined())
+    await user.click(screen.getByText("Add field…"))
+    await waitFor(() =>
+      expect(screen.getByText("Add String field")).toBeDefined()
+    )
+
+    // Search is empty, so Backspace backs out to the root command list rather
+    // than editing the query.
+    await user.keyboard("{Backspace}")
+
+    await waitFor(() => {
+      expect(screen.getByText("Add field…")).toBeDefined()
+    })
+    expect(paletteInput()).toBeDefined()
+    expect(screen.queryByText("Add String field")).toBeNull()
+  })
+
+  it("Backspace while filtering in the Add-field sub-view edits the query, not the page", async () => {
+    const user = userEvent.setup()
+    render(<EndpointBuilder />)
+
+    pressCmdK()
+    await waitFor(() => expect(paletteInput()).toBeDefined())
+    await user.click(screen.getByText("Add field…"))
+    await waitFor(() =>
+      expect(screen.getByText("Add String field")).toBeDefined()
+    )
+
+    // Type a query that matches "Add Integer field", then Backspace once. The
+    // search is non-empty, so Backspace edits the query ("Integer" → "Intege")
+    // and the sub-view stays put rather than backing out to the root list.
+    await user.type(paletteInput() as HTMLElement, "Integer")
+    await waitFor(() =>
+      expect(screen.getByText("Add Integer field")).toBeDefined()
+    )
+    await user.keyboard("{Backspace}")
+
+    // Still on the Add-field sub-view: the Integer item remains matched by the
+    // shortened query, and we have NOT returned to the root command list.
+    expect(screen.getByText("Add Integer field")).toBeDefined()
+    expect(screen.queryByText("Add field…")).toBeNull()
+    expect((paletteInput() as HTMLInputElement).value).toBe("Intege")
+  })
+
   it("Escape in the main view closes the palette", async () => {
     const user = userEvent.setup()
     render(<EndpointBuilder />)
@@ -181,7 +243,7 @@ describe("command palette — open and run", () => {
     })
   })
 
-  it("the Back item in the sub-view returns to the main view", async () => {
+  it("the back arrow in the sub-view returns to the main view (mouse path)", async () => {
     const user = userEvent.setup()
     render(<EndpointBuilder />)
 
@@ -192,12 +254,43 @@ describe("command palette — open and run", () => {
       expect(screen.getByText("Add String field")).toBeDefined()
     )
 
-    await user.click(screen.getByText("Back"))
+    // The clickable back arrow beside the input is the no-keyboard way out of
+    // the sub-view (there is no longer a "Back" list entry).
+    await user.click(screen.getByRole("button", { name: "Back to commands" }))
 
     await waitFor(() => {
       expect(screen.getByText("Add field…")).toBeDefined()
     })
     expect(screen.queryByText("Add String field")).toBeNull()
+  })
+
+  it("shows a keyboard-hint footer in the sub-view but no Back list entry", async () => {
+    const user = userEvent.setup()
+    render(<EndpointBuilder />)
+
+    pressCmdK()
+    await waitFor(() => expect(paletteInput()).toBeDefined())
+    await user.click(screen.getByText("Add field…"))
+    await waitFor(() =>
+      expect(screen.getByText("Add String field")).toBeDefined()
+    )
+
+    // The footer documents the back/select shortcuts.
+    const footer = document.querySelector<HTMLElement>(
+      "[data-slot='command-footer']"
+    )
+    expect(footer).not.toBeNull()
+    expect(within(footer as HTMLElement).getByText("Back")).toBeDefined()
+
+    // The old clickable "Back" command row is gone (no list item whose text is
+    // exactly "Back"); the clickable back arrow beside the input remains.
+    const backRow = screen
+      .queryAllByRole("option")
+      .find((element) => element.textContent?.trim() === "Back")
+    expect(backRow).toBeUndefined()
+    expect(
+      screen.getByRole("button", { name: "Back to commands" })
+    ).toBeDefined()
   })
 
   it("Reset editor confirms before clearing, then clears the definition", async () => {

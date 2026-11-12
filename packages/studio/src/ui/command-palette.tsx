@@ -27,6 +27,7 @@ import { Button } from "@/components/ui/button"
 import {
   CommandDialog,
   CommandEmpty,
+  CommandFooter,
   CommandGroup,
   CommandInput,
   CommandItem,
@@ -196,18 +197,28 @@ export const CommandPalette = () => {
     [goToPage]
   )
 
-  // Escape in the Add-field sub-view returns to the root page instead of
-  // closing the palette; Escape on the root page still closes it (handled by
-  // the dialog). Captured before the dialog's own Escape handler runs.
+  // Keyboard back-out of the Add-field sub-view to the root page:
+  // - Escape always returns (on the root page Escape still closes the palette,
+  //   handled by the dialog).
+  // - Backspace/Delete return ONLY when the search box is empty, so deleting
+  //   characters while filtering never leaves the page — it just edits the
+  //   query as usual. On the root page these keys are left untouched.
+  // Captured before the dialog's own Escape handler and cmdk's input handling.
   const onKeyDownCapture = useCallback(
     (event: ReactKeyboardEvent) => {
-      if (event.key === "Escape" && page === "add-field") {
+      if (page !== "add-field") {
+        return
+      }
+      const isEscape = event.key === "Escape"
+      const isEmptyDelete =
+        (event.key === "Backspace" || event.key === "Delete") && search === ""
+      if (isEscape || isEmptyDelete) {
         event.preventDefault()
         event.stopPropagation()
         goToPage("root")
       }
     },
-    [page, goToPage]
+    [page, search, goToPage]
   )
 
   const onPickFile = useCallback(
@@ -272,11 +283,28 @@ export const CommandPalette = () => {
           onKeyDownCapture,
         }}
       >
-        <CommandInput
-          placeholder="Type a command or search…"
-          value={search}
-          onValueChange={setSearch}
-        />
+        <div className="flex items-center">
+          {page === "add-field" && (
+            <button
+              type="button"
+              aria-label="Back to commands"
+              onClick={() => goToPage("root")}
+              className="hover:text-foreground focus-visible:ring-ring/50 text-muted-foreground ml-2 flex size-7 shrink-0 items-center justify-center rounded-md outline-none focus-visible:ring-2"
+            >
+              <ArrowLeftIcon className="size-4" />
+            </button>
+          )}
+          <CommandInput
+            className="flex-1"
+            placeholder={
+              page === "add-field"
+                ? "Search field types…"
+                : "Type a command or search…"
+            }
+            value={search}
+            onValueChange={setSearch}
+          />
+        </div>
         <CommandList ref={listRef}>
           <CommandEmpty>No matching command.</CommandEmpty>
 
@@ -365,20 +393,26 @@ export const CommandPalette = () => {
                   Add {fieldType} field
                 </CommandItem>
               ))}
-              <CommandSeparator />
-              <CommandItem
-                value="add-field:back"
-                onSelect={() => {
-                  goToPage("root")
-                  setActiveValue(FIRST_VALUE.root)
-                }}
-              >
-                <ArrowLeftIcon />
-                Back
-              </CommandItem>
             </CommandGroup>
           )}
         </CommandList>
+
+        {page === "add-field" && (
+          <CommandFooter>
+            <span className="flex items-center gap-1">
+              <kbd className="bg-muted rounded border px-1 font-medium">
+                Esc
+              </kbd>
+              <span>or</span>
+              <kbd className="bg-muted rounded border px-1 font-medium">⌫</kbd>
+              <span>Back</span>
+            </span>
+            <span className="flex items-center gap-1">
+              <kbd className="bg-muted rounded border px-1 font-medium">↵</kbd>
+              <span>Add field</span>
+            </span>
+          </CommandFooter>
+        )}
       </CommandDialog>
 
       <AlertDialog
