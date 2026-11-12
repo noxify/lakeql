@@ -93,6 +93,7 @@ export function createTrinoWriteStrategy(
           partitioning: input.config.partitioning as PartitioningValue,
           partitioningFormat: input.config
             .partitioningFormat as PartitioningFormat,
+          autoFillFields: input.config.autoFillFields,
           keepShadowTables:
             input.config.keepShadowTables ?? config.keepShadowTables,
         },

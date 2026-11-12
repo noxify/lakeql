@@ -3,6 +3,7 @@ import crypto from "node:crypto"
 
 import type { LoadStrategy } from "@lakeql/datasource"
 import type { JsonSchema } from "@lakeql/parquet"
+import { AUTO_FILL_WRITE_TIMESTAMP } from "@lakeql/schema-generator/endpoint-schema"
 import type {
   PartitioningComponent,
   PartitioningFormat,
@@ -54,8 +55,8 @@ export interface WritePipelineConfig {
    */
   serializer: Serializer
   /**
-   * Partitioning mode. `true` partitions by write timestamp, `false` disables, or a string for field-based/custom.
-   * @default true
+   * Partitioning mode. `false` disables partitioning, or a string selects
+   * field-based or custom partitioning. Governs only the on-disk path layout.
    */
   partitioning?: PartitioningValue
   /**
@@ -63,6 +64,16 @@ export interface WritePipelineConfig {
    * @default "year/month/day"
    */
   partitioningFormat?: PartitioningFormat
+  /**
+   * Server-populated auto-fill fields for this write. Each entry names a
+   * top-level field the pipeline stamps from the shared write clock on every
+   * schema-writing load (`append`, `full_load_append`), together with its
+   * derived `_year`/`_month` companion columns. Independent of
+   * {@link WritePipelineConfig.partitioning}: the columns are always populated
+   * when auto-fill fields are present, even when partitioning is disabled
+   * (C4/C10).
+   */
+  autoFillFields?: { name: string; kind: "write_timestamp" }[]
   /** When true, shadow tables are retained after successful DDL. Default: false. */
   keepShadowTables?: boolean
 }
@@ -123,7 +134,7 @@ export function generateFlatPath(extension = "parquet"): string {
 /**
  * Resolved partitioning mode after normalizing the raw config.
  */
-export type PartitionMode = "disabled" | "timestamp" | "field" | "custom"
+export type PartitionMode = "disabled" | "field" | "custom"
 
 /**
  * The normalized partitioning configuration used internally by the pipeline.
@@ -139,14 +150,11 @@ export interface ResolvedPartitioning {
  * Normalizes the raw partitioning config into a resolved structure.
  */
 export function resolvePartitioningConfig(
-  partitioning: PartitioningValue = true,
+  partitioning: PartitioningValue = false,
   partitioningFormat: PartitioningFormat = "year/month/day"
 ): ResolvedPartitioning {
   if (partitioning === false) {
     return { mode: "disabled", format: partitioningFormat }
-  }
-  if (partitioning === true) {
-    return { mode: "timestamp", format: partitioningFormat }
   }
   // String value: check if it's a custom format (contains / or :)
   if (partitioning.includes("/") || partitioning.includes(":")) {
@@ -160,48 +168,72 @@ export function resolvePartitioningConfig(
 }
 
 /**
- * Adds load_timestamp, load_timestamp_year, and load_timestamp_month to JSON Schema
- * for consistent Parquet + Hive DDL derivation.
- * Returns a new schema object (does not mutate the input).
+ * A write-timestamp auto-fill field to populate on a schema-writing load.
  */
-export function enrichJsonSchemaWithTimestamp(
-  jsonSchema: JsonSchema
-): JsonSchema {
-  return {
-    ...jsonSchema,
-    properties: {
-      ...jsonSchema.properties,
-      load_timestamp: {
-        type: "string",
-        format: "date-time",
-      },
-      load_timestamp_year: {
-        type: "integer",
-      },
-      load_timestamp_month: {
-        type: "integer",
-      },
-    },
-  }
+export interface AutoFillField {
+  /** The top-level field name to stamp from the shared write clock. */
+  name: string
+  /** The auto-fill kind; only `"write_timestamp"` is supported today. */
+  kind: "write_timestamp"
 }
 
 /**
- * Injects load_timestamp, load_timestamp_year, and load_timestamp_month into each record.
- * Returns new record array (does not mutate input).
+ * Enriches a JSON Schema with the columns derived from the given auto-fill
+ * fields: for each field `<name>` it adds a `date-time` string column `<name>`
+ * and the integer companions `<name>_year` / `<name>_month` (NFR1 — companion
+ * names come from the shared {@link AUTO_FILL_WRITE_TIMESTAMP} contract).
+ * Returns a new schema object (does not mutate the input).
+ *
+ * @param jsonSchema - The base schema to enrich.
+ * @param autoFillFields - The auto-fill fields whose columns to add.
+ * @returns A new schema including every auto-fill column.
  */
-export function injectLoadTimestamp(
+export function enrichJsonSchemaWithAutoFill(
+  jsonSchema: JsonSchema,
+  autoFillFields: AutoFillField[]
+): JsonSchema {
+  const properties = { ...jsonSchema.properties }
+  for (const field of autoFillFields) {
+    properties[field.name] = { type: "string", format: "date-time" }
+    properties[`${field.name}${AUTO_FILL_WRITE_TIMESTAMP.yearSuffix}`] = {
+      type: "integer",
+    }
+    properties[`${field.name}${AUTO_FILL_WRITE_TIMESTAMP.monthSuffix}`] = {
+      type: "integer",
+    }
+  }
+  return { ...jsonSchema, properties }
+}
+
+/**
+ * Populates the auto-fill columns on every record from a single shared write
+ * clock: for each field `<name>` sets `<name>` to the ISO timestamp,
+ * `<name>_year` to the UTC year, and `<name>_month` to the UTC month (1–12).
+ * All fields share the one `timestamp` value (C14). Returns a new record array
+ * (does not mutate the input).
+ *
+ * @param records - The records to populate.
+ * @param autoFillFields - The auto-fill fields to populate.
+ * @param timestamp - The shared write clock applied to every field and record.
+ * @returns A new array of populated records.
+ */
+export function injectAutoFillValues(
   records: Record<string, unknown>[],
+  autoFillFields: AutoFillField[],
   timestamp: Date
 ): Record<string, unknown>[] {
   const isoValue = timestamp.toISOString()
   const year = timestamp.getUTCFullYear()
   const month = timestamp.getUTCMonth() + 1
-  return records.map((record) => ({
-    ...record,
-    load_timestamp: isoValue,
-    load_timestamp_year: year,
-    load_timestamp_month: month,
-  }))
+  return records.map((record) => {
+    const next = { ...record }
+    for (const field of autoFillFields) {
+      next[field.name] = isoValue
+      next[`${field.name}${AUTO_FILL_WRITE_TIMESTAMP.yearSuffix}`] = year
+      next[`${field.name}${AUTO_FILL_WRITE_TIMESTAMP.monthSuffix}`] = month
+    }
+    return next
+  })
 }
 
 /**
@@ -598,14 +630,16 @@ export async function executeWritePipeline(
     return
   }
 
-  // Enrich schema and records based on partitioning mode
+  // Populate auto-fill columns from a single shared write clock, gated on the
+  // presence of autoFillFields and NOT on the partitioning mode (C10/C14).
   let effectiveSchema = jsonSchema
   let effectiveRecords = records
   const now = new Date()
 
-  if (partitioning.mode === "timestamp") {
-    effectiveSchema = enrichJsonSchemaWithTimestamp(jsonSchema)
-    effectiveRecords = injectLoadTimestamp(records, now)
+  const autoFillFields = config.autoFillFields ?? []
+  if (autoFillFields.length > 0) {
+    effectiveSchema = enrichJsonSchemaWithAutoFill(jsonSchema, autoFillFields)
+    effectiveRecords = injectAutoFillValues(records, autoFillFields, now)
   }
 
   const columns = jsonSchemaToColumns(effectiveSchema)
@@ -681,84 +715,13 @@ export async function executeWritePipeline(
       break
     }
 
-    case "timestamp": {
+    case "field": {
       const output = await serializer.serialize(
         effectiveRecords,
         effectiveSchema
       )
-      const partitionPath = generatePartitionPath(
-        now,
-        partitioning.format,
-        output.extension
-      )
-      const allPath = `${basePath}/all.${output.extension}/${partitionPath}`
-
-      if (loadStrategy === "full_load_append") {
-        const latestDir = `${basePath}/latest.${output.extension}`
-        const latestFile = `${latestDir}/${crypto.randomUUID()}.${output.extension}`
-
-        // Step 1: List existing latest files BEFORE upload
-        const oldLatestKeys = await storage.listPrefix(latestDir)
-
-        // Step 2: Upload both files (latest + all)
-        await storage.upload(output.buffer, latestFile, {
-          contentType: output.contentType,
-        })
-        await storage.upload(output.buffer, allPath, {
-          contentType: output.contentType,
-        })
-
-        // Step 3: Recreate table pair (safe DDL via shadow pattern)
-        const latestDef: ManagedTableDefinition = {
-          catalog: table.catalog,
-          schema: table.schema,
-          tableName: `${table.tableName}_latest`,
-          externalLocation: hiveManager.buildExternalLocation(`${latestDir}/`),
-          columns,
-        }
-        const allDef: ManagedTableDefinition = {
-          catalog: table.catalog,
-          schema: table.schema,
-          tableName: `${table.tableName}_all`,
-          externalLocation: hiveManager.buildExternalLocation(
-            `${basePath}/all.${output.extension}/`
-          ),
-          columns,
-        }
-        await hiveManager.recreateTablePair(
-          latestDef,
-          allDef,
-          tableManagerOptions
-        )
-
-        // Step 4: Delete old latest files ONLY after DDL succeeded
-        if (oldLatestKeys.length > 0) {
-          await storage.deleteKeys(oldLatestKeys)
-        }
-      } else {
-        // append
-        await storage.upload(output.buffer, allPath, {
-          contentType: output.contentType,
-        })
-
-        const tableDef: ManagedTableDefinition = {
-          catalog: table.catalog,
-          schema: table.schema,
-          tableName: table.tableName,
-          externalLocation: hiveManager.buildExternalLocation(
-            `${basePath}/all.${output.extension}/`
-          ),
-          columns,
-        }
-        await hiveManager.recreateTable(tableDef, tableManagerOptions)
-      }
-      break
-    }
-
-    case "field": {
-      const output = await serializer.serialize(records, effectiveSchema)
       const groups = groupRecordsByPartition(
-        records,
+        effectiveRecords,
         partitioning.fieldName ?? "",
         partitioning.format,
         output.extension
@@ -776,7 +739,7 @@ export async function executeWritePipeline(
 
       if (loadStrategy === "full_load_append") {
         const latestOutput = await serializer.serialize(
-          records,
+          effectiveRecords,
           effectiveSchema
         )
         const latestDir = `${basePath}/latest.${output.extension}`
@@ -835,9 +798,12 @@ export async function executeWritePipeline(
 
     case "custom": {
       const segments = parsePartitioningFormat(partitioning.formatString ?? "")
-      const output = await serializer.serialize(records, effectiveSchema)
+      const output = await serializer.serialize(
+        effectiveRecords,
+        effectiveSchema
+      )
       const groups = groupRecordsByCustomPartition(
-        records,
+        effectiveRecords,
         segments,
         output.extension
       )
@@ -855,7 +821,7 @@ export async function executeWritePipeline(
 
       if (loadStrategy === "full_load_append") {
         const latestOutput = await serializer.serialize(
-          records,
+          effectiveRecords,
           effectiveSchema
         )
         const latestDir = `${basePath}/latest.${output.extension}`

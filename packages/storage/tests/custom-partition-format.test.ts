@@ -315,11 +315,6 @@ describe("resolvePartitioningConfig — custom mode", () => {
     expect(result.formatString).toBeUndefined()
   })
 
-  it("resolves boolean true as timestamp mode", () => {
-    const result = resolvePartitioningConfig(true)
-    expect(result.mode).toBe("timestamp")
-  })
-
   it("resolves boolean false as disabled mode", () => {
     const result = resolvePartitioningConfig(false)
     expect(result.mode).toBe("disabled")

@@ -218,6 +218,7 @@ describe(createTrinoWriteStrategy, () => {
           serializer: mockSerializer,
           partitioning: undefined,
           partitioningFormat: undefined,
+          autoFillFields: undefined,
           keepShadowTables: undefined,
         },
       })
@@ -287,7 +288,7 @@ describe(createTrinoWriteStrategy, () => {
         config: {
           basePath: "warehouse/events",
           table: { catalog: "hive", schema: "db", tableName: "events" },
-          partitioning: true,
+          partitioning: "event_date",
           partitioningFormat: "year/month",
         },
       })
@@ -295,8 +296,39 @@ describe(createTrinoWriteStrategy, () => {
       expect(mockExecuteWritePipeline).toHaveBeenCalledWith(
         expect.objectContaining({
           config: expect.objectContaining({
-            partitioning: true,
+            partitioning: "event_date",
             partitioningFormat: "year/month",
+          }),
+        })
+      )
+    })
+
+    it("forwards autoFillFields verbatim into executeWritePipeline (C4)", async () => {
+      const strategy = createTrinoWriteStrategy({
+        files: mockFiles,
+        dataSource: mockDataSource,
+        serializer: mockSerializer,
+      })
+
+      const autoFillFields = [
+        { name: "ingested_at", kind: "write_timestamp" as const },
+      ]
+
+      await strategy.write({
+        records: [{ id: 1 }],
+        schema: {},
+        config: {
+          basePath: "warehouse/events",
+          table: { catalog: "hive", schema: "db", tableName: "events" },
+          loadStrategy: "append",
+          autoFillFields,
+        },
+      })
+
+      expect(mockExecuteWritePipeline).toHaveBeenCalledWith(
+        expect.objectContaining({
+          config: expect.objectContaining({
+            autoFillFields,
           }),
         })
       )

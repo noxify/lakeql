@@ -262,12 +262,10 @@ describe(executeWritePipeline, () => {
         "warehouse/analytics/users/latest.parquet/test-uuid-1234.parquet",
         expect.objectContaining({})
       )
-      // The all path includes partition path with our mocked UUID
+      // With no partitioning key the mode is disabled → flat all.<ext> path.
       expect(mockUpload).toHaveBeenCalledWith(
         expect.any(Uint8Array),
-        expect.stringMatching(
-          /warehouse\/analytics\/users\/all\.parquet\/year=\d{4}\/month=\d{2}\/day=\d{2}\/test-uuid-1234\.parquet/u
-        ),
+        "warehouse/analytics/users/all.parquet/test-uuid-1234.parquet",
         expect.objectContaining({})
       )
     })
@@ -323,14 +321,12 @@ describe(executeWritePipeline, () => {
       expect(mockListPrefix).not.toHaveBeenCalled()
     })
 
-    it("uploads to all.<ext>/<partition_path> only", async () => {
+    it("uploads to flat all.<ext> path (disabled mode) only", async () => {
       await executeWritePipeline(createInput({ loadStrategy: "append" }))
 
       expect(mockUpload).toHaveBeenCalledExactlyOnceWith(
         expect.any(Uint8Array),
-        expect.stringMatching(
-          /warehouse\/analytics\/users\/all\.parquet\/year=\d{4}\/month=\d{2}\/day=\d{2}\/test-uuid-1234\.parquet/u
-        ),
+        "warehouse/analytics/users/all.parquet/test-uuid-1234.parquet",
         expect.objectContaining({})
       )
     })
@@ -593,12 +589,10 @@ describe(executeWritePipeline, () => {
         expect.stringContaining("latest.avro/test-uuid-1234.avro"),
         expect.objectContaining({})
       )
-      // All path uses the extension
+      // All path uses the extension (flat path in disabled mode)
       expect(mockUpload).toHaveBeenCalledWith(
         expect.any(Uint8Array),
-        expect.stringMatching(
-          /all\.avro\/year=\d{4}\/month=\d{2}\/day=\d{2}\/test-uuid-1234\.avro/u
-        ),
+        "warehouse/analytics/users/all.avro/test-uuid-1234.avro",
         expect.objectContaining({})
       )
     })
@@ -613,9 +607,7 @@ describe(executeWritePipeline, () => {
 
       expect(mockUpload).toHaveBeenCalledWith(
         expect.any(Uint8Array),
-        expect.stringMatching(
-          /all\.orc\/year=\d{4}\/month=\d{2}\/day=\d{2}\/test-uuid-1234\.orc/u
-        ),
+        "warehouse/analytics/users/all.orc/test-uuid-1234.orc",
         expect.objectContaining({})
       )
       expect(mockRecreateTable).toHaveBeenCalledWith(
