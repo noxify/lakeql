@@ -56,7 +56,7 @@
     "@lakeql/query-builder": "workspace:*",
     "@lakeql/response-transformer": "workspace:*",
     "@lakeql/sql-read-strategy": "workspace:*",
-    "kysely": "0.29.8"
+    "kysely": "0.29.9"
   },
   "devDependencies": {
     "@lakeql/tsconfig": "workspace:*",

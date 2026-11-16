@@ -74,7 +74,7 @@
     "@lakeql/datasource": "workspace:*",
     "@lakeql/helpers": "workspace:*",
     "@lakeql/schema-generator": "workspace:*",
-    "prettier": "3.9.10",
+    "prettier": "3.10.1",
     "typescript": "6.0.3"
   },
   "devDependencies": {
