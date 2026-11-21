@@ -217,7 +217,7 @@ export const PartitioningFieldPicker = ({
           aria-describedby={invalid ? errorId : undefined}
         >
           <PlusIcon />
-          Add a field or date component…
+          Add partition field
         </PopoverTrigger>
         <PopoverContent align="start" className="w-80 p-0">
           <Command

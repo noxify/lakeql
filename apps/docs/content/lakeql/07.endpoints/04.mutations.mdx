@@ -16,7 +16,7 @@ Add a `mutation` block to `endpoint.json` to make the endpoint writable. It's ei
 
 ### Where the data goes
 
-`basePath`, `partitioning`, and `partitioningFormat` describe _where inside the configured object store_ this endpoint's data lands and how it is laid out. They do **not** configure the store itself. The bucket, region, and credentials come from the `files-sdk` instance on the data source's `writeConfig`, not from the endpoint. `partitioning` is either `false` (write flat, no partition path) or a partition string that names the fields to lay out by. For example, with `basePath: "sales/orders"` and `partitioning: "load_timestamp:year/load_timestamp:month/load_timestamp:day"`, an `append` write lands at `sales/orders/all.parquet/year=2026/month=08/day=29/<uuid>.parquet` in whatever bucket the data source is wired to.
+`basePath` and `partitioning` describe _where inside the configured object store_ this endpoint's data lands and how it is laid out. They do **not** configure the store itself. The bucket, region, and credentials come from the `files-sdk` instance on the data source's `writeConfig`, not from the endpoint. `partitioning` is either `false` (write flat, no partition path) or a partition string that names the fields to lay out by. A bare field name partitions by the raw value (`region=EU`); `Date` and `DateTime` fields are only valid with a component such as `event:year`. The removed `partitioningFormat` key is rejected. For example, with `basePath: "sales/orders"` and `partitioning: "load_timestamp:year/load_timestamp:month/load_timestamp:day"`, an `append` write lands at `sales/orders/all.parquet/year=2026/month=08/day=29/<uuid>.parquet` in whatever bucket the data source is wired to.
 
 See [Writing data](/docs/data-sources/writing) for how the storage write strategy is configured and [Partitioning](/docs/data-sources/writing/partitioning) for the full path layout.
 
@@ -50,11 +50,11 @@ These are the config-facing meanings. For the full runtime behavior of each valu
 
 <Note>
   `basePath` is required by the `mutation` schema regardless of which write
-  strategy ends up handling the write. The `basePath`, `partitioning`, and
-  `partitioningFormat` fields are only meaningful for the **storage** write
-  strategy. `full_load` ignores partitioning, and the Trino adapter's `INSERT
-  INTO` strategy ignores all three — it writes directly through SQL — but
-  `basePath` must still be present for the definition to validate.
+  strategy ends up handling the write. The `basePath` and `partitioning` fields
+  are only meaningful for the **storage** write strategy. `full_load` ignores
+  partitioning, and the Trino adapter's `INSERT INTO` strategy ignores both — it
+  writes directly through SQL — but `basePath` must still be present for the
+  definition to validate.
 </Note>
 
 ## Example

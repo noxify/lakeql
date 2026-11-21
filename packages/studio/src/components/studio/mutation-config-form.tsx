@@ -67,9 +67,8 @@ const LOAD_STRATEGY_LABELS: Record<LoadStrategy, string> = {
 }
 
 /**
- * The partitioning sub-form: a two-mode radio-card choice (off / by field), the
- * multi-field {@link PartitioningFieldPicker} in field mode, and the
- * granularity select when a non-custom legacy single-field value is active.
+ * The partitioning sub-form: a two-mode radio-card choice (off / by field) and
+ * the multi-field {@link PartitioningFieldPicker} when partitioning by field.
  *
  * The write-timestamp mode is gone — a write-timestamp column is an explicit
  * auto-fill field (added via the helper button below), not a partitioning mode.

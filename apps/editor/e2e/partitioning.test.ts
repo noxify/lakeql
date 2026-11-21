@@ -13,8 +13,8 @@ import { expect, test } from "@playwright/test"
 /**
  * End-to-end coverage of the partitioning UX: enabling the mutation, the
  * two-option mode picker (starting on `off`), the write-timestamp auto-fill
- * helper adding a real `load_timestamp` field, and the by-field combobox
- * producing a badge. Drives the served static build in Chromium.
+ * helper adding a real `load_timestamp` field, and the by-field popover
+ * picker (plain field, date drill-down, search, Escape back-navigation). Drives the served static build in Chromium.
  *
  * Each test closes with an axe audit, with `color-contrast` disabled to match
  * the sibling E2E suites (a manual-only conformance item, not a regression this
@@ -79,36 +79,122 @@ test("enables the mutation and walks the partitioning modes", async ({
   await expectNoAxeViolations(page)
 })
 
-test("builds a custom partition path from the by-field combobox", async ({
-  page,
-}) => {
-  // Enable the mutation and switch to by-field mode.
-  await page.getByRole("switch", { name: "Enable mutation" }).click()
-  await page.getByRole("radio", { name: "By field / custom format" }).click()
-
-  // With no partitionable fields yet, the combobox shows the empty hint.
-  const input = page.getByLabel("Add partition field")
-  await expect(input).toBeVisible()
-
-  // Add a top-level field so the combobox has a candidate. The palette adds by
-  // keyboard (focus the palette item, press Enter), matching the canvas flow.
+/**
+ * Adds a top-level field through the palette (keyboard, matching the canvas
+ * flow) and names it, then returns to General Settings with partitioning on
+ * "By field / custom format".
+ */
+async function addNamedField(
+  page: Page,
+  type: "String" | "DateTime",
+  name: string
+): Promise<void> {
   await page.getByRole("button", { name: "Fields" }).click()
   await expect(page.getByRole("heading", { name: "Fields" })).toBeVisible()
-  await page.getByLabel("Add String field").focus()
+  await page.getByLabel(`Add ${type} field`).focus()
   await page.keyboard.press("Enter")
   const nameInput = page.getByLabel("Field name").last()
-  await nameInput.fill("region")
+  await nameInput.fill(name)
   await nameInput.blur()
+}
 
-  // Back to settings and the by-field picker; pick the field option.
+/** Enables the mutation and switches to by-field partitioning. */
+async function enableByField(page: Page): Promise<void> {
+  await page.getByRole("switch", { name: "Enable mutation" }).click()
+  await page.getByRole("radio", { name: "By field / custom format" }).click()
+}
+
+test("picks a plain field from the partition popover", async ({ page }) => {
+  await enableByField(page)
+
+  // With no partitionable fields yet, the trigger is still present.
+  const trigger = page.getByRole("button", { name: "Add partition field" })
+  await expect(trigger).toBeVisible()
+
+  await addNamedField(page, "String", "region")
   await page.getByRole("button", { name: "General Settings" }).click()
-  await input.click()
+
+  await trigger.click()
+  await expect(page.getByRole("dialog")).toBeVisible()
+  await expectNoAxeViolations(page)
   await page.getByRole("option", { name: "region" }).click()
 
-  // A removable badge appears for the chosen segment.
+  // The popover closes and a removable badge appears for the chosen segment.
+  await expect(page.getByRole("dialog")).toHaveCount(0)
   await expect(
     page.getByRole("button", { name: "Remove region" })
   ).toBeVisible()
 
   await expectNoAxeViolations(page)
+})
+
+test("drills into a date field and adds year / month / day", async ({
+  page,
+}) => {
+  await enableByField(page)
+  await addNamedField(page, "DateTime", "event")
+  await page.getByRole("button", { name: "General Settings" }).click()
+
+  await page.getByRole("button", { name: "Add partition field" }).click()
+  await page.getByRole("option", { name: "event" }).click()
+
+  // The sub-page offers the combined option and the single components.
+  await expect(
+    page.getByRole("option", { name: "year / month / day" })
+  ).toBeVisible()
+  await expectNoAxeViolations(page)
+  await page.getByRole("option", { name: "year / month / day" }).click()
+
+  await expect(page.getByRole("dialog")).toHaveCount(0)
+  await expect(
+    page.getByRole("button", { name: "Remove event → year" })
+  ).toBeVisible()
+  await expect(
+    page.getByRole("button", { name: "Remove event → month" })
+  ).toBeVisible()
+  await expect(
+    page.getByRole("button", { name: "Remove event → day" })
+  ).toBeVisible()
+
+  await expectNoAxeViolations(page)
+})
+
+test("finds a date component by searching and Escape returns to the root", async ({
+  page,
+}) => {
+  await enableByField(page)
+  await addNamedField(page, "DateTime", "event")
+  await page.getByRole("button", { name: "General Settings" }).click()
+
+  const trigger = page.getByRole("button", { name: "Add partition field" })
+  await trigger.click()
+
+  // Searching across fields and components finds `event → year`.
+  await page
+    .getByPlaceholder("Search fields and date components…")
+    .fill("event year")
+  const match = page.getByRole("option", {
+    name: "event → year",
+    exact: true,
+  })
+  await expect(match).toBeVisible()
+  await expectNoAxeViolations(page)
+
+  // Drill into the sub-page, then Escape returns to the root list.
+  await page.getByPlaceholder("Search fields and date components…").fill("")
+  await page.getByRole("option", { name: "event" }).click()
+  await expect(
+    page.getByRole("option", { name: "year / month / day" })
+  ).toBeVisible()
+  await page.keyboard.press("Escape")
+  await expect(page.getByRole("dialog")).toBeVisible()
+  await expect(page.getByRole("option", { name: "event" })).toBeVisible()
+  await expect(
+    page.getByRole("option", { name: "year / month / day" })
+  ).toHaveCount(0)
+  await expectNoAxeViolations(page)
+
+  // A second Escape closes the popover.
+  await page.keyboard.press("Escape")
+  await expect(page.getByRole("dialog")).toHaveCount(0)
 })
