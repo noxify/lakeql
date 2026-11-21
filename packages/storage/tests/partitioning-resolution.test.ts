@@ -9,60 +9,29 @@ import {
 
 describe(resolvePartitioningConfig, () => {
   it("false resolves to disabled mode", () => {
-    const result = resolvePartitioningConfig(false)
-
-    expect(result).toStrictEqual({
+    expect(resolvePartitioningConfig(false)).toStrictEqual({
       mode: "disabled",
-      format: "year/month/day",
     })
   })
 
-  it("false with custom format preserves format in disabled mode", () => {
-    const result = resolvePartitioningConfig(false, "year")
-
-    expect(result).toStrictEqual({
-      mode: "disabled",
-      format: "year",
-    })
-  })
-
-  it("string field name resolves to field mode", () => {
-    const result = resolvePartitioningConfig("event_date")
-
-    expect(result).toStrictEqual({
-      mode: "field",
-      format: "year/month/day",
-      fieldName: "event_date",
-    })
-  })
-
-  it("string field name with custom format", () => {
-    const result = resolvePartitioningConfig("created_at", "year/month")
-
-    expect(result).toStrictEqual({
-      mode: "field",
-      format: "year/month",
-      fieldName: "created_at",
+  it("a bare field name resolves to custom mode", () => {
+    expect(resolvePartitioningConfig("event_date")).toStrictEqual({
+      mode: "custom",
+      formatString: "event_date",
     })
   })
 
   it("string with / or : resolves to custom mode", () => {
-    const result = resolvePartitioningConfig("event_date:year/event_date:month")
-
-    expect(result).toStrictEqual({
+    expect(
+      resolvePartitioningConfig("event_date:year/event_date:month")
+    ).toStrictEqual({
       mode: "custom",
-      format: "year/month/day",
       formatString: "event_date:year/event_date:month",
     })
   })
 
   it("defaults to disabled mode when called with no arguments (C8)", () => {
-    const result = resolvePartitioningConfig()
-
-    expect(result).toStrictEqual({
-      mode: "disabled",
-      format: "year/month/day",
-    })
+    expect(resolvePartitioningConfig()).toStrictEqual({ mode: "disabled" })
   })
 
   it("never returns a timestamp mode for any input", () => {

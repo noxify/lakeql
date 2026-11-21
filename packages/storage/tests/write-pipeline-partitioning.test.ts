@@ -405,88 +405,56 @@ describe("executeWritePipeline — partitioning modes", () => {
     it("treats true and false alike as disabled; strings select field/custom", () => {
       expect(resolvePartitioningConfig(false).mode).toBe("disabled")
       expect(resolvePartitioningConfig(undefined).mode).toBe("disabled")
-      expect(resolvePartitioningConfig("event_date").mode).toBe("field")
+      expect(resolvePartitioningConfig("event_date").mode).toBe("custom")
       expect(resolvePartitioningConfig("event_date:year").mode).toBe("custom")
     })
   })
 
-  describe("field mode × append", () => {
-    const recordsWithDates = [
-      { name: "Alice", age: 30, event_date: "2024-01-15" },
-      { name: "Bob", age: 25, event_date: "2024-01-15" },
-      { name: "Charlie", age: 35, event_date: "2024-02-20" },
+  describe("bare field name × append (raw value)", () => {
+    const records = [
+      { name: "Alice", age: 30, region: "EU" },
+      { name: "Bob", age: 25, region: "EU" },
+      { name: "Charlie", age: 35, region: "US" },
     ]
 
-    const schemaWithDate: JsonSchema = {
+    const schema: JsonSchema = {
       type: "object",
       properties: {
         name: { type: "string" },
         age: { type: "integer" },
-        event_date: { type: "string" },
+        region: { type: "string" },
       },
-      required: ["name", "event_date"],
+      required: ["name", "region"],
     }
 
-    function createFieldInput(
-      overrides: Partial<WritePipelineInput["config"]> = {},
-      records?: WritePipelineInput["records"]
+    function createRegionInput(
+      overrides: Partial<WritePipelineInput["config"]> = {}
     ): WritePipelineInput {
       return {
-        records: records ?? recordsWithDates,
-        jsonSchema: schemaWithDate,
-        config: { ...baseConfig, ...overrides },
+        records,
+        jsonSchema: schema,
+        config: { ...baseConfig, loadStrategy: "append", ...overrides },
       }
     }
 
-    it("groups records by partition field and writes separate files per group", async () => {
-      await executeWritePipeline(
-        createFieldInput({
-          loadStrategy: "append",
-          partitioning: "event_date",
-        })
-      )
+    it("writes region=EU for a bare non-date field and does not throw", async () => {
+      await executeWritePipeline(createRegionInput({ partitioning: "region" }))
 
-      // Two different dates should produce 2 uploads (both use same mocked UUID)
-      // Since UUID is mocked to be the same, the partition paths differ by date components
       expect(mockUpload).toHaveBeenCalledTimes(2)
       expect(mockUpload).toHaveBeenCalledWith(
         expect.any(Uint8Array),
-        expect.stringContaining(
-          "year=2024/month=01/day=15/test-uuid-1234.parquet"
-        ),
+        "warehouse/analytics/users/all.parquet/region=EU/test-uuid-1234.parquet",
         expect.objectContaining({})
       )
       expect(mockUpload).toHaveBeenCalledWith(
         expect.any(Uint8Array),
-        expect.stringContaining(
-          "year=2024/month=02/day=20/test-uuid-1234.parquet"
-        ),
+        "warehouse/analytics/users/all.parquet/region=US/test-uuid-1234.parquet",
         expect.objectContaining({})
       )
     })
 
-    it("does not enrich schema with load_timestamp when serializing", async () => {
-      await executeWritePipeline(
-        createFieldInput({
-          loadStrategy: "append",
-          partitioning: "event_date",
-        })
-      )
-
-      // Every serialize call should use original schema (without load_timestamp)
-      for (const call of mockSerialize.mock.calls) {
-        const schema = call[1] as JsonSchema
-        expect(schema.properties).not.toHaveProperty("load_timestamp")
-      }
-    })
-
-    it("recreates single table after all uploads", async () => {
-      await executeWritePipeline(
-        createFieldInput({
-          loadStrategy: "append",
-          partitioning: "event_date",
-        })
-      )
+    it("recreates the single table once after all uploads", async () => {
+      await executeWritePipeline(createRegionInput({ partitioning: "region" }))
 
       expect(mockRecreateTable).toHaveBeenCalledExactlyOnceWith(
         expect.objectContaining({
@@ -498,15 +466,13 @@ describe("executeWritePipeline — partitioning modes", () => {
       )
     })
 
-    it("DDL is only performed once regardless of number of groups", async () => {
-      await executeWritePipeline(
-        createFieldInput({
-          loadStrategy: "append",
-          partitioning: "event_date",
-        })
-      )
+    it("does not enrich schema with load_timestamp when serializing", async () => {
+      await executeWritePipeline(createRegionInput({ partitioning: "region" }))
 
-      expect(mockRecreateTable).toHaveBeenCalledOnce()
+      for (const call of mockSerialize.mock.calls) {
+        const serialized = call[1] as JsonSchema
+        expect(serialized.properties).not.toHaveProperty("load_timestamp")
+      }
     })
   })
 
@@ -542,61 +508,6 @@ describe("executeWritePipeline — partitioning modes", () => {
         expect.objectContaining({})
       )
       expect(mockRecreateTable).toHaveBeenCalledOnce()
-    })
-  })
-
-  describe("partitioningFormat support (field mode)", () => {
-    const records = [{ name: "Alice", age: 30, event_date: "2024-03-09" }]
-    const schema: JsonSchema = {
-      type: "object",
-      properties: {
-        name: { type: "string" },
-        age: { type: "integer" },
-        event_date: { type: "string" },
-      },
-      required: ["name", "event_date"],
-    }
-
-    it("field mode with year format generates year-only partition path", async () => {
-      await executeWritePipeline({
-        records,
-        jsonSchema: schema,
-        config: {
-          ...baseConfig,
-          loadStrategy: "append",
-          partitioning: "event_date",
-          partitioningFormat: "year",
-        },
-      })
-
-      expect(mockUpload).toHaveBeenCalledExactlyOnceWith(
-        expect.any(Uint8Array),
-        expect.stringContaining(
-          "warehouse/analytics/users/all.parquet/year=2024/test-uuid-1234.parquet"
-        ),
-        expect.objectContaining({})
-      )
-    })
-
-    it("field mode with year/month format generates year+month partition path", async () => {
-      await executeWritePipeline({
-        records,
-        jsonSchema: schema,
-        config: {
-          ...baseConfig,
-          loadStrategy: "append",
-          partitioning: "event_date",
-          partitioningFormat: "year/month",
-        },
-      })
-
-      expect(mockUpload).toHaveBeenCalledExactlyOnceWith(
-        expect.any(Uint8Array),
-        expect.stringContaining(
-          "warehouse/analytics/users/all.parquet/year=2024/month=03/test-uuid-1234.parquet"
-        ),
-        expect.objectContaining({})
-      )
     })
   })
 

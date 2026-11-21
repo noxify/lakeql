@@ -55,16 +55,6 @@ const _loadStrategyParity: AssertSame<
 void _loadStrategyParity
 
 /**
- * Supported partitioning format granularities.
- */
-export const partitioningFormats = [
-  "year",
-  "year/month",
-  "year/month/day",
-] as const
-export type PartitioningFormat = (typeof partitioningFormats)[number]
-
-/**
  * Supported date components for custom partition format segments.
  */
 export const partitioningComponents = [
@@ -78,27 +68,26 @@ export const partitioningComponents = [
 export type PartitioningComponent = (typeof partitioningComponents)[number]
 
 /**
- * Validates a custom partitioning format string.
- * - If the value contains no `/` and no `:`, it must match fieldNamePattern (legacy single-field mode).
- * - If it contains `/` or `:`, each segment is validated:
- *   - Plain segments must match fieldNamePattern.
- *   - Colon segments must be `fieldname:component` where fieldname matches pattern
- *     and component is one of the supported partitioning components.
+ * Validates a partitioning string. The string is a `/`-separated list of
+ * segments, each of which is one of:
+ * - a bare field name (`region`), partitioning by the raw field value;
+ * - a `fieldname:component` pair (`event:year`), partitioning by a date
+ *   component, where the component is one of the supported partitioning
+ *   components.
  *
- * Returns null if valid, or an error message string if invalid.
+ * Field names must match {@link fieldNamePattern}.
+ *
+ * @param value - The partitioning string to validate.
+ * @returns `null` if valid, or an error message string if invalid.
  */
-export function validatePartitioningFormat(value: string): string | null {
-  const isCustomFormat = value.includes("/") || value.includes(":")
-
-  if (!isCustomFormat) {
-    // Legacy single-field mode: must be a valid field name
+export function validatePartitioningString(value: string): string | null {
+  if (!value.includes("/") && !value.includes(":")) {
     if (!fieldNamePattern.test(value)) {
       return `Invalid partition field name "${value}". Must match pattern: letters/underscores, no leading digit, max 64 chars.`
     }
     return null
   }
 
-  // Custom format: parse and validate each segment
   const segments = value.split("/")
   for (const segment of segments) {
     if (segment === "") {
@@ -130,7 +119,8 @@ export function validatePartitioningFormat(value: string): string | null {
 /**
  * Partitioning configuration value:
  * - false: no partitioning (flat layout)
- * - string: partition by a named field or a custom partition-path format
+ * - string: `/`-separated segments, each a bare field name (raw value) or a
+ *   `field:component` date component (e.g. `"region/event:year/event:month"`)
  */
 export type PartitioningValue = false | string
 
@@ -144,16 +134,14 @@ export interface MutationConfig {
   basePath: string
   /**
    * Partitioning mode. `false` disables partitioning (flat layout), or a string
-   * for field-based/custom partition-path partitioning. An absent key resolves
-   * to `false`.
+   * of `/`-separated segments (bare field name or `field:component`). An absent
+   * key resolves to `false`.
    */
   partitioning?: PartitioningValue
-  /**
-   * Partition path granularity. One of `"year"`, `"year/month"`, or `"year/month/day"`.
-   * @default "year/month/day"
-   */
-  partitioningFormat?: string
 }
+
+const partitioningFormatRemovedMessage =
+  '"mutation.partitioningFormat" is no longer supported. Remove it; the bare field name now always partitions by raw value. For date granularity use components, e.g. "event:year/event:month/event:day".'
 
 /**
  * Zod schema for the mutation configuration object.
@@ -163,7 +151,18 @@ export const mutationConfigSchema = z
     loadStrategy: z.enum(loadStrategies),
     basePath: z.string().min(1),
     partitioning: z.union([z.literal(false), z.string().min(1)]).optional(),
-    partitioningFormat: z.string().optional(),
+    // Declared only so the removed key is rejected instead of silently stripped.
+    partitioningFormat: z
+      .unknown()
+      .optional()
+      .superRefine((value, ctx) => {
+        if (value !== undefined) {
+          ctx.addIssue({
+            code: "custom",
+            message: partitioningFormatRemovedMessage,
+          })
+        }
+      }),
   })
   .superRefine((data, ctx) => {
     // Only a string partitioning value is validated here; `false` and an
@@ -172,36 +171,12 @@ export const mutationConfigSchema = z
       return
     }
 
-    const error = validatePartitioningFormat(data.partitioning)
+    const error = validatePartitioningString(data.partitioning)
     if (error) {
       ctx.addIssue({
         code: "custom",
         path: ["partitioning"],
         message: error,
-      })
-      return
-    }
-
-    // A custom format (contains / or :) carries its own granularity, so
-    // partitioningFormat does not apply.
-    const isCustomFormat =
-      data.partitioning.includes("/") || data.partitioning.includes(":")
-    if (isCustomFormat) {
-      return
-    }
-
-    // Validate partitioningFormat for a non-custom single-field string.
-    if (
-      data.partitioningFormat !== undefined &&
-      !partitioningFormats.includes(
-        data.partitioningFormat as PartitioningFormat
-      )
-    ) {
-      ctx.addIssue({
-        code: "invalid_value",
-        values: [...partitioningFormats],
-        path: ["partitioningFormat"],
-        message: `Invalid partitioning format. Expected one of: ${partitioningFormats.join(", ")}`,
       })
     }
   })
@@ -519,6 +494,54 @@ function reportAutoFillMutationIssues(
 }
 
 /**
+ * Reports partition segments whose form does not fit the referenced top-level
+ * field: Date/DateTime fields need a component (`event:year`), every other
+ * primitive field must be used bare. Segments that match no field, match more
+ * than one field, or reference Object/Array fields are not reported here.
+ */
+function reportPartitionFieldTypeIssues(
+  definition: { fields: FieldDefinition[]; mutation?: MutationConfig | false },
+  ctx: z.RefinementCtx
+): void {
+  const { fields, mutation } = definition
+  if (
+    mutation === undefined ||
+    mutation === false ||
+    typeof mutation.partitioning !== "string"
+  ) {
+    return
+  }
+
+  for (const segment of mutation.partitioning.split("/")) {
+    const [segmentField = "", component] = segment.split(":")
+    const matches = fields.filter((field) => field.name === segmentField)
+    const field = matches.length === 1 ? matches[0] : undefined
+    if (
+      field === undefined ||
+      field.type === "Object" ||
+      field.type === "Array"
+    ) {
+      continue
+    }
+
+    const isDate = field.type === "Date" || field.type === "DateTime"
+    if (isDate && component === undefined) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["mutation", "partitioning"],
+        message: `Partition segment "${segment}" references ${field.type} field "${segmentField}" without a date component. Use a component form, e.g. "${segmentField}:year".`,
+      })
+    } else if (!isDate && component !== undefined) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["mutation", "partitioning"],
+        message: `Partition segment "${segment}" uses a date component, which is only valid on Date/DateTime fields; "${segmentField}" is a ${field.type} field. Use "${segmentField}" to partition by its raw value.`,
+      })
+    }
+  }
+}
+
+/**
  * Zod schema for the complete endpoint definition format.
  */
 export const endpointDefinitionSchema = z
@@ -555,6 +578,9 @@ export const endpointDefinitionSchema = z
     // (b) autoFill requires an enabled append/full_load_append mutation, and no
     // partition segment may reference a derived companion column (C11/C15/C16).
     reportAutoFillMutationIssues(definition, ctx)
+
+    // (c) Partition segments must match their field's type.
+    reportPartitionFieldTypeIssues(definition, ctx)
   })
 
 export type EndpointDefinitionFormat = z.infer<typeof endpointDefinitionSchema>

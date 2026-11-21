@@ -482,13 +482,12 @@ describe(generateMutationSchema, () => {
         mutationConfig: {
           loadStrategy: "full_load_append",
           basePath: "warehouse/test/data",
-          partitioning: "event_date",
-          partitioningFormat: "year/month/day",
+          partitioning: "event_date:year/event_date:month/event_date:day",
         },
       })
     )
     expect(withPartitioning).toContain("storageConfig.partitioning")
-    expect(withPartitioning).toContain("storageConfig.partitioningFormat")
+    expect(withPartitioning).not.toContain("partitioningFormat")
   })
 
   it("imports validationSchema when hasValidations is true", () => {

@@ -1,9 +1,6 @@
 import type { DataSource, DataSourceWriteStrategy } from "@lakeql/datasource"
 import type { JsonSchema } from "@lakeql/parquet"
-import type {
-  PartitioningFormat,
-  PartitioningValue,
-} from "@lakeql/schema-generator/endpoint-schema"
+import type { PartitioningValue } from "@lakeql/schema-generator/endpoint-schema"
 import { createStorageOperations, executeWritePipeline } from "@lakeql/storage"
 import type { Serializer } from "@lakeql/storage"
 import type { Files } from "files-sdk"
@@ -91,8 +88,6 @@ export function createTrinoWriteStrategy(
           tableManager,
           serializer: config.serializer,
           partitioning: input.config.partitioning as PartitioningValue,
-          partitioningFormat: input.config
-            .partitioningFormat as PartitioningFormat,
           autoFillFields: input.config.autoFillFields,
           keepShadowTables:
             input.config.keepShadowTables ?? config.keepShadowTables,

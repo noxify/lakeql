@@ -6,7 +6,6 @@ import type { JsonSchema } from "@lakeql/parquet"
 import { AUTO_FILL_WRITE_TIMESTAMP } from "@lakeql/schema-generator/endpoint-schema"
 import type {
   PartitioningComponent,
-  PartitioningFormat,
   PartitioningValue,
 } from "@lakeql/schema-generator/endpoint-schema"
 
@@ -55,15 +54,11 @@ export interface WritePipelineConfig {
    */
   serializer: Serializer
   /**
-   * Partitioning mode. `false` disables partitioning, or a string selects
-   * field-based or custom partitioning. Governs only the on-disk path layout.
+   * Partitioning mode. `false` disables partitioning, or a string of
+   * `/`-separated segments (bare field name or `field:component`). Governs only
+   * the on-disk path layout.
    */
   partitioning?: PartitioningValue
-  /**
-   * Partition format granularity.
-   * @default "year/month/day"
-   */
-  partitioningFormat?: PartitioningFormat
   /**
    * Server-populated auto-fill fields for this write. Each entry names a
    * top-level field the pipeline stamps from the shared write clock on every
@@ -93,38 +88,6 @@ export interface WritePipelineInput {
 }
 
 /**
- * Generates a Hive-style partition path based on date and format.
- * The file extension is appended by the caller based on serializer output.
- * Format options:
- * - "year":           year=YYYY/<uuid>.<ext>
- * - "year/month":     year=YYYY/month=MM/<uuid>.<ext>
- * - "year/month/day": year=YYYY/month=MM/day=DD/<uuid>.<ext>
- */
-export function generatePartitionPath(
-  date: Date,
-  format: PartitioningFormat = "year/month/day",
-  extension = "parquet"
-): string {
-  const year = date.getUTCFullYear().toString().padStart(4, "0")
-  const month = (date.getUTCMonth() + 1).toString().padStart(2, "0")
-  const day = date.getUTCDate().toString().padStart(2, "0")
-  const uuid = crypto.randomUUID()
-
-  switch (format) {
-    case "year": {
-      return `year=${year}/${uuid}.${extension}`
-    }
-    case "year/month": {
-      return `year=${year}/month=${month}/${uuid}.${extension}`
-    }
-    default: {
-      // "year/month/day" (the only remaining PartitioningFormat value)
-      return `year=${year}/month=${month}/day=${day}/${uuid}.${extension}`
-    }
-  }
-}
-
-/**
  * Generates a flat file path (no partitioning).
  */
 export function generateFlatPath(extension = "parquet"): string {
@@ -134,37 +97,31 @@ export function generateFlatPath(extension = "parquet"): string {
 /**
  * Resolved partitioning mode after normalizing the raw config.
  */
-export type PartitionMode = "disabled" | "field" | "custom"
+export type PartitionMode = "disabled" | "custom"
 
 /**
  * The normalized partitioning configuration used internally by the pipeline.
  */
 export interface ResolvedPartitioning {
   mode: PartitionMode
-  format: PartitioningFormat
-  fieldName?: string
   formatString?: string
 }
 
 /**
- * Normalizes the raw partitioning config into a resolved structure.
+ * Normalizes the raw partitioning config into a resolved structure. Every
+ * string value (bare field name or `field:component` segments) resolves to
+ * `custom`.
+ *
+ * @param partitioning - The raw partitioning value; absent resolves to `false`.
+ * @returns The resolved partitioning mode and segment string.
  */
 export function resolvePartitioningConfig(
-  partitioning: PartitioningValue = false,
-  partitioningFormat: PartitioningFormat = "year/month/day"
+  partitioning: PartitioningValue = false
 ): ResolvedPartitioning {
   if (partitioning === false) {
-    return { mode: "disabled", format: partitioningFormat }
+    return { mode: "disabled" }
   }
-  // String value: check if it's a custom format (contains / or :)
-  if (partitioning.includes("/") || partitioning.includes(":")) {
-    return {
-      mode: "custom",
-      format: partitioningFormat,
-      formatString: partitioning,
-    }
-  }
-  return { mode: "field", format: partitioningFormat, fieldName: partitioning }
+  return { mode: "custom", formatString: partitioning }
 }
 
 /**
@@ -282,46 +239,6 @@ export function parseISODate(value: string): Date | null {
     return null
   }
   return date
-}
-
-/**
- * Validates and groups records by their partition field value.
- * Returns a Map from partition path to the records belonging to that partition.
- *
- * @throws {PartitionFieldError} if any record has a missing, null, or unparseable field value
- */
-export function groupRecordsByPartition(
-  records: Record<string, unknown>[],
-  fieldName: string,
-  format: PartitioningFormat,
-  extension = "parquet"
-): Map<string, Record<string, unknown>[]> {
-  const groups = new Map<string, Record<string, unknown>[]>()
-
-  for (let i = 0; i < records.length; i += 1) {
-    const record = records[i] as Record<string, unknown>
-
-    if (!(fieldName in record)) {
-      throw new PartitionFieldError(fieldName, "missing", i)
-    }
-
-    const value = record[fieldName]
-    if (value === null || value === undefined || value === "") {
-      throw new PartitionFieldError(fieldName, "null", i)
-    }
-
-    const date = parseISODate(String(value))
-    if (!date) {
-      throw new PartitionFieldError(fieldName, "invalid_date", i, value)
-    }
-
-    const partitionPath = generatePartitionPath(date, format, extension)
-    const group = groups.get(partitionPath) ?? []
-    group.push(record)
-    groups.set(partitionPath, group)
-  }
-
-  return groups
 }
 
 /**
@@ -607,10 +524,7 @@ export async function executeWritePipeline(
   }
 
   // Resolve partitioning
-  const partitioning = resolvePartitioningConfig(
-    config.partitioning,
-    config.partitioningFormat
-  )
+  const partitioning = resolvePartitioningConfig(config.partitioning)
 
   // For full_load, partitioning is irrelevant — existing behavior unchanged
   if (loadStrategy === "full_load") {
@@ -701,87 +615,6 @@ export async function executeWritePipeline(
           contentType: output.contentType,
         })
 
-        const tableDef: ManagedTableDefinition = {
-          catalog: table.catalog,
-          schema: table.schema,
-          tableName: table.tableName,
-          externalLocation: hiveManager.buildExternalLocation(
-            `${basePath}/all.${output.extension}/`
-          ),
-          columns,
-        }
-        await hiveManager.recreateTable(tableDef, tableManagerOptions)
-      }
-      break
-    }
-
-    case "field": {
-      const output = await serializer.serialize(
-        effectiveRecords,
-        effectiveSchema
-      )
-      const groups = groupRecordsByPartition(
-        effectiveRecords,
-        partitioning.fieldName ?? "",
-        partitioning.format,
-        output.extension
-      )
-      for (const [partPath, groupRecords] of groups) {
-        const groupOutput = await serializer.serialize(
-          groupRecords,
-          effectiveSchema
-        )
-        const allPath = `${basePath}/all.${output.extension}/${partPath}`
-        await storage.upload(groupOutput.buffer, allPath, {
-          contentType: groupOutput.contentType,
-        })
-      }
-
-      if (loadStrategy === "full_load_append") {
-        const latestOutput = await serializer.serialize(
-          effectiveRecords,
-          effectiveSchema
-        )
-        const latestDir = `${basePath}/latest.${output.extension}`
-        const latestFile = `${latestDir}/${crypto.randomUUID()}.${output.extension}`
-
-        // Step 1: List existing latest files BEFORE upload
-        const oldLatestKeys = await storage.listPrefix(latestDir)
-
-        // Step 2: Upload latest file
-        await storage.upload(latestOutput.buffer, latestFile, {
-          contentType: latestOutput.contentType,
-        })
-
-        // Step 3: Recreate table pair (safe DDL via shadow pattern)
-        const latestDef: ManagedTableDefinition = {
-          catalog: table.catalog,
-          schema: table.schema,
-          tableName: `${table.tableName}_latest`,
-          externalLocation: hiveManager.buildExternalLocation(`${latestDir}/`),
-          columns,
-        }
-        const allDef: ManagedTableDefinition = {
-          catalog: table.catalog,
-          schema: table.schema,
-          tableName: `${table.tableName}_all`,
-          externalLocation: hiveManager.buildExternalLocation(
-            `${basePath}/all.${output.extension}/`
-          ),
-          columns,
-        }
-        await hiveManager.recreateTablePair(
-          latestDef,
-          allDef,
-          tableManagerOptions
-        )
-
-        // Step 4: Delete old latest files ONLY after DDL succeeded
-        if (oldLatestKeys.length > 0) {
-          await storage.deleteKeys(oldLatestKeys)
-        }
-      } else {
-        // append
         const tableDef: ManagedTableDefinition = {
           catalog: table.catalog,
           schema: table.schema,

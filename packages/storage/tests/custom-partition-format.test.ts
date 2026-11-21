@@ -308,11 +308,10 @@ describe("resolvePartitioningConfig — custom mode", () => {
     expect(result.formatString).toBe("event_date:year")
   })
 
-  it("resolves plain field name as field mode (no / or :)", () => {
+  it("resolves plain field name as custom mode (no / or :)", () => {
     const result = resolvePartitioningConfig("event_date")
-    expect(result.mode).toBe("field")
-    expect(result.fieldName).toBe("event_date")
-    expect(result.formatString).toBeUndefined()
+    expect(result.mode).toBe("custom")
+    expect(result.formatString).toBe("event_date")
   })
 
   it("resolves boolean false as disabled mode", () => {

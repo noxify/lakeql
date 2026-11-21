@@ -164,10 +164,6 @@ export async function generateEndpoint(
             definition.mutation.loadStrategy === "full_load"
               ? undefined
               : definition.mutation.partitioning,
-          partitioningFormat:
-            definition.mutation.loadStrategy === "full_load"
-              ? undefined
-              : definition.mutation.partitioningFormat,
           // Thread an explicit directive for each declared autoFill field so
           // the runtime populates its column + companions from the write clock
           // (DD5). Validation (C11/C16) guarantees autoFill fields only reach

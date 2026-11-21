@@ -19,7 +19,6 @@ export type {
 } from "./table-manager/types"
 export {
   executeWritePipeline,
-  generatePartitionPath,
   generateFlatPath,
   resolvePartitioningConfig,
   enrichJsonSchemaWithAutoFill,

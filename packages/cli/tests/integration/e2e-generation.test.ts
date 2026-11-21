@@ -30,8 +30,7 @@ const complexDefinition: EndpointDefinitionFormat = {
   mutation: {
     loadStrategy: "full_load",
     basePath: "warehouse/analytics/tracking/user_events",
-    partitioning: "event_date",
-    partitioningFormat: "year/month/day",
+    partitioning: "event_date:year/event_date:month/event_date:day",
   },
   fields: [
     { name: "event_id", type: "String" },
@@ -86,8 +85,7 @@ const partitionedDefinition: EndpointDefinitionFormat = {
   mutation: {
     loadStrategy: "append",
     basePath: "warehouse/analytics/tracking/partitioned_events",
-    partitioning: "event_date",
-    partitioningFormat: "year/month",
+    partitioning: "event_date:year/event_date:month",
   },
   fields: [
     { name: "event_id", type: "String" },
@@ -106,8 +104,7 @@ const fullLoadDefinition: EndpointDefinitionFormat = {
   mutation: {
     loadStrategy: "full_load",
     basePath: "warehouse/analytics/tracking/full_load_events",
-    partitioning: "event_date",
-    partitioningFormat: "year/month",
+    partitioning: "event_date:year/event_date:month",
   },
   fields: [
     { name: "event_id", type: "String" },
@@ -583,7 +580,7 @@ describe("end-to-end generation (integration)", () => {
   })
 
   describe("config.ts includes partitioning fields for non-full_load strategies", () => {
-    it("should include partitioning and partitioningFormat in config.ts when loadStrategy is append", async () => {
+    it("should include partitioning in config.ts when loadStrategy is append", async () => {
       await generateEndpoint({
         definition: partitionedDefinition,
         outputDir,
@@ -596,9 +593,8 @@ describe("end-to-end generation (integration)", () => {
       )
 
       expect(configContent).toContain("partitioning")
-      expect(configContent).toContain('"event_date"')
-      expect(configContent).toContain("partitioningFormat")
-      expect(configContent).toContain('"year/month"')
+      expect(configContent).toContain('"event_date:year/event_date:month"')
+      expect(configContent).not.toContain("partitioningFormat")
     })
 
     it("should include the auto-fill partition string in config.ts", async () => {
@@ -619,7 +615,7 @@ describe("end-to-end generation (integration)", () => {
       )
     })
 
-    it("should NOT include partitioning or partitioningFormat in config.ts when loadStrategy is full_load", async () => {
+    it("should NOT include partitioning in config.ts when loadStrategy is full_load", async () => {
       await generateEndpoint({
         definition: fullLoadDefinition,
         outputDir,
@@ -632,7 +628,6 @@ describe("end-to-end generation (integration)", () => {
       )
 
       expect(configContent).not.toContain("partitioning")
-      expect(configContent).not.toContain("partitioningFormat")
     })
   })
 

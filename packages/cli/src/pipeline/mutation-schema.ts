@@ -355,7 +355,7 @@ function generateRealMutationFields(
     )
   )
 
-  // config: { table: {...}, loadStrategy, basePath, partitioning?, partitioningFormat? }
+  // config: { table: {...}, loadStrategy, basePath, partitioning? }
   const configProperties: ts.PropertyAssignment[] = [
     property(
       "table",
@@ -377,14 +377,6 @@ function generateRealMutationFields(
   if (mutationConfig.partitioning !== undefined) {
     configProperties.push(
       property("partitioning", access("storageConfig", "partitioning"))
-    )
-  }
-  if (mutationConfig.partitioningFormat) {
-    configProperties.push(
-      property(
-        "partitioningFormat",
-        access("storageConfig", "partitioningFormat")
-      )
     )
   }
   // Forward autoFillFields only when the storageConfig actually carries them.

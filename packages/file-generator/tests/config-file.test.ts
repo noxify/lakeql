@@ -224,7 +224,6 @@ describe("config file generator", () => {
         loadStrategy: "append",
         basePath: "data/events",
         partitioning: "event_date",
-        partitioningFormat: "year/month",
       },
     })
 
@@ -253,14 +252,13 @@ describe("config file generator", () => {
         loadStrategy: "append",
         basePath: "data/events",
         partitioning: "event_date",
-        partitioningFormat: "year/month",
       } as const
     `)
 
     expect(generatedCodeFromFactory.text).toBe(expectedCode)
   })
 
-  it("config file w/ storageConfig partitioningFormat: year", async () => {
+  it("config file w/ storageConfig full_load_append partitioning", async () => {
     const generatedFactoryCode = generateConfig({
       adapter: "trino",
       dataSourceName: "test",
@@ -273,7 +271,6 @@ describe("config file generator", () => {
         loadStrategy: "full_load_append",
         basePath: "data/events",
         partitioning: "event_date",
-        partitioningFormat: "year",
       },
     })
 
@@ -302,7 +299,6 @@ describe("config file generator", () => {
         loadStrategy: "full_load_append",
         basePath: "data/events",
         partitioning: "event_date",
-        partitioningFormat: "year",
       } as const
     `)
 

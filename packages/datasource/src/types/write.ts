@@ -33,8 +33,6 @@ export interface DataSourceWriteConfig {
   writeId?: string
   /** Adapter-owned partitioning configuration. */
   partitioning?: unknown
-  /** Adapter-owned format for partition values. */
-  partitioningFormat?: string
   /**
    * Server-populated auto-fill fields for this write. Each entry names a
    * top-level field the write pipeline fills at write time (and whose derived

@@ -116,39 +116,23 @@ describe("Append never deletes", () => {
     // disabled
     fc.record({
       partitioning: fc.constant(false as const),
-      partitioningFormat: fc.constantFrom(
-        "year" as const,
-        "year/month" as const,
-        "year/month/day" as const
-      ),
       autoFillFields: fc.constant(undefined),
     }),
     // disabled + auto-fill populate (field-driven, independent of partitioning)
     fc.record({
       partitioning: fc.constant(false as const),
-      partitioningFormat: fc.constantFrom(
-        "year" as const,
-        "year/month" as const,
-        "year/month/day" as const
-      ),
       autoFillFields: fc.constant<{ name: string; kind: "write_timestamp" }[]>([
         { name: "ingested_at", kind: "write_timestamp" },
       ]),
     }),
-    // field-based (using "event_date" as field name)
+    // bare field name (raw value, using "region")
     fc.record({
-      partitioning: fc.constant("event_date"),
-      partitioningFormat: fc.constantFrom(
-        "year" as const,
-        "year/month" as const,
-        "year/month/day" as const
-      ),
+      partitioning: fc.constant("region"),
       autoFillFields: fc.constant(undefined),
     }),
     // custom format (field:component style)
     fc.record({
       partitioning: fc.constant("event_date:year/event_date:month"),
-      partitioningFormat: fc.constant("year/month/day" as const),
       autoFillFields: fc.constant(undefined),
     })
   )
@@ -170,10 +154,17 @@ describe("Append never deletes", () => {
         mockRecreateTable.mockResolvedValue()
 
         const records =
-          partConfig.partitioning === "event_date" ||
+          partConfig.partitioning === "region" ||
           (typeof partConfig.partitioning === "string" &&
             partConfig.partitioning.includes(":"))
-            ? [{ name: "Alice", age: 30, event_date: "2024-06-15T10:00:00Z" }]
+            ? [
+                {
+                  name: "Alice",
+                  age: 30,
+                  event_date: "2024-06-15T10:00:00Z",
+                  region: "EU",
+                },
+              ]
             : [{ name: "Alice", age: 30 }]
 
         const input: WritePipelineInput = {
@@ -183,7 +174,6 @@ describe("Append never deletes", () => {
             ...baseConfig,
             loadStrategy: "append",
             partitioning: partConfig.partitioning,
-            partitioningFormat: partConfig.partitioningFormat,
             autoFillFields: partConfig.autoFillFields,
           },
         }
@@ -215,10 +205,17 @@ describe("Append never deletes", () => {
         mockRecreateTable.mockRejectedValue(new Error("DDL failed"))
 
         const records =
-          partConfig.partitioning === "event_date" ||
+          partConfig.partitioning === "region" ||
           (typeof partConfig.partitioning === "string" &&
             partConfig.partitioning.includes(":"))
-            ? [{ name: "Alice", age: 30, event_date: "2024-06-15T10:00:00Z" }]
+            ? [
+                {
+                  name: "Alice",
+                  age: 30,
+                  event_date: "2024-06-15T10:00:00Z",
+                  region: "EU",
+                },
+              ]
             : [{ name: "Alice", age: 30 }]
 
         const input: WritePipelineInput = {
@@ -228,7 +225,6 @@ describe("Append never deletes", () => {
             ...baseConfig,
             loadStrategy: "append",
             partitioning: partConfig.partitioning,
-            partitioningFormat: partConfig.partitioningFormat,
             autoFillFields: partConfig.autoFillFields,
           },
         }
@@ -264,10 +260,17 @@ describe("Append never deletes", () => {
         mockRecreateTable.mockResolvedValue()
 
         const records =
-          partConfig.partitioning === "event_date" ||
+          partConfig.partitioning === "region" ||
           (typeof partConfig.partitioning === "string" &&
             partConfig.partitioning.includes(":"))
-            ? [{ name: "Alice", age: 30, event_date: "2024-06-15T10:00:00Z" }]
+            ? [
+                {
+                  name: "Alice",
+                  age: 30,
+                  event_date: "2024-06-15T10:00:00Z",
+                  region: "EU",
+                },
+              ]
             : [{ name: "Alice", age: 30 }]
 
         const input: WritePipelineInput = {
@@ -277,7 +280,6 @@ describe("Append never deletes", () => {
             ...baseConfig,
             loadStrategy: "append",
             partitioning: partConfig.partitioning,
-            partitioningFormat: partConfig.partitioningFormat,
             autoFillFields: partConfig.autoFillFields,
           },
         }

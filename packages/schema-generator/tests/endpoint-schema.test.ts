@@ -5,8 +5,7 @@ import {
   endpointDefinitionSchema,
   isSupportedVersion,
   mutationConfigSchema,
-  partitioningFormats,
-  validatePartitioningFormat,
+  validatePartitioningString,
   partitioningComponents,
 } from "../src/endpoint-schema"
 
@@ -92,77 +91,34 @@ describe("mutationConfigSchema - partitioning field", () => {
   })
 })
 
-describe("mutationConfigSchema - partitioningFormat field", () => {
-  describe("valid format values for a non-custom field string", () => {
-    it.each(partitioningFormats)(
-      'accepts partitioningFormat: "%s"',
-      (format) => {
-        const result = mutationConfigSchema.safeParse(
-          validConfig({
-            partitioning: "event_date",
-            partitioningFormat: format,
-          })
-        )
-        expect(result.success).toBeTruthy()
-        expect(result.data?.partitioningFormat).toBe(format)
-      }
+describe("mutationConfigSchema - removed partitioningFormat key", () => {
+  it.each([["year"], ["year/month/day"], [""], ["totally_invalid_format"]])(
+    "rejects partitioningFormat %j with an actionable message",
+    (format) => {
+      const result = mutationConfigSchema.safeParse(
+        validConfig({ partitioning: "event_date", partitioningFormat: format })
+      )
+      expect(result.success).toBeFalsy()
+      const issue = result.error?.issues.find(
+        (item) => item.path[0] === "partitioningFormat"
+      )
+      expect(issue?.message).toContain("no longer supported")
+      expect(issue?.message).toContain("event:year/event:month/event:day")
+    }
+  )
+
+  it("rejects partitioningFormat even when partitioning is false", () => {
+    const result = mutationConfigSchema.safeParse(
+      validConfig({ partitioning: false, partitioningFormat: "year" })
     )
-
-    it("leaves partitioningFormat as undefined when omitted", () => {
-      const result = mutationConfigSchema.safeParse(
-        validConfig({ partitioning: "event_date" })
-      )
-      expect(result.success).toBeTruthy()
-      expect(result.data?.partitioningFormat).toBeUndefined()
-    })
+    expect(result.success).toBeFalsy()
   })
 
-  describe("invalid format values for a non-custom field string", () => {
-    it("rejects an invalid format string for a field-name partitioning", () => {
-      const result = mutationConfigSchema.safeParse(
-        validConfig({
-          partitioning: "event_date",
-          partitioningFormat: "day/month/year",
-        })
-      )
-      expect(result.success).toBeFalsy()
-    })
-
-    it("rejects an invalid format string when partitioning is a field name", () => {
-      const result = mutationConfigSchema.safeParse(
-        validConfig({
-          partitioning: "event_date",
-          partitioningFormat: "invalid",
-        })
-      )
-      expect(result.success).toBeFalsy()
-    })
-  })
-
-  describe("format validation skipped when partitioning is false", () => {
-    it("accepts any format value when partitioning is false", () => {
-      const result = mutationConfigSchema.safeParse(
-        validConfig({
-          partitioning: false,
-          partitioningFormat: "totally_invalid_format",
-        })
-      )
-      expect(result.success).toBeTruthy()
-    })
-
-    it("accepts omitted format when partitioning is false", () => {
-      const result = mutationConfigSchema.safeParse(
-        validConfig({ partitioning: false })
-      )
-      expect(result.success).toBeTruthy()
-    })
-
-    it("accepts a valid format when partitioning is false", () => {
-      const result = mutationConfigSchema.safeParse(
-        validConfig({ partitioning: false, partitioningFormat: "year" })
-      )
-      expect(result.success).toBeTruthy()
-    })
+  it("accepts a config without partitioningFormat", () => {
+    const result = mutationConfigSchema.safeParse(
+      validConfig({ partitioning: "event_date" })
+    )
+    expect(result.success).toBeTruthy()
   })
 })
 
@@ -200,16 +156,6 @@ describe("mutationConfigSchema - custom partition format strings", () => {
       const result = mutationConfigSchema.safeParse(
         validConfig({
           partitioning: "ts:year/ts:month/ts:day/ts:hour/ts:minute/ts:second",
-        })
-      )
-      expect(result.success).toBeTruthy()
-    })
-
-    it("ignores partitioningFormat when partitioning is a custom format", () => {
-      const result = mutationConfigSchema.safeParse(
-        validConfig({
-          partitioning: "customer_id/event_date:year",
-          partitioningFormat: "totally_invalid_format",
         })
       )
       expect(result.success).toBeTruthy()
@@ -261,31 +207,31 @@ describe("mutationConfigSchema - custom partition format strings", () => {
   })
 })
 
-describe(validatePartitioningFormat, () => {
+describe(validatePartitioningString, () => {
   it("returns null for valid single field name", () => {
-    expect(validatePartitioningFormat("event_date")).toBeNull()
+    expect(validatePartitioningString("event_date")).toBeNull()
   })
 
   it("returns null for valid custom format", () => {
     expect(
-      validatePartitioningFormat("customer_id/event_date:year/event_date:month")
+      validatePartitioningString("customer_id/event_date:year/event_date:month")
     ).toBeNull()
   })
 
   it("returns error for invalid field name (no / or :)", () => {
-    const result = validatePartitioningFormat("123invalid")
+    const result = validatePartitioningString("123invalid")
     expect(result).not.toBeNull()
     expect(result).toContain("Invalid partition field name")
   })
 
   it("returns error for invalid component", () => {
-    const result = validatePartitioningFormat("field:badcomponent")
+    const result = validatePartitioningString("field:badcomponent")
     expect(result).not.toBeNull()
     expect(result).toContain("Invalid date component")
   })
 
   it("returns error for empty segment", () => {
-    const result = validatePartitioningFormat("field//other")
+    const result = validatePartitioningString("field//other")
     expect(result).not.toBeNull()
     expect(result).toContain("empty segment")
   })
@@ -379,6 +325,79 @@ describe("endpointDefinitionSchema - partitioning union", () => {
   })
 })
 
+describe("endpointDefinitionSchema - partition segment vs field type", () => {
+  const fields = [
+    { name: "region", type: "String" },
+    { name: "tenant_id", type: "Integer" },
+    { name: "event", type: "DateTime" },
+    { name: "day_of", type: "Date" },
+    { name: "dup", type: "String" },
+    { name: "dup", type: "DateTime" },
+  ]
+
+  function parse(partitioning: string, extra: Record<string, unknown> = {}) {
+    return endpointDefinitionSchema.safeParse(
+      validDefinition({
+        fields,
+        mutation: {
+          loadStrategy: "append",
+          basePath: "/",
+          partitioning,
+          ...extra,
+        },
+      })
+    )
+  }
+
+  function messages(partitioning: string) {
+    return (parse(partitioning).error?.issues ?? []).map((issue) => ({
+      path: issue.path.join("."),
+      message: issue.message,
+    }))
+  }
+
+  it("rejects mutation.partitioningFormat with path and message", () => {
+    const result = parse("region", { partitioningFormat: "year" })
+    expect(result.success).toBeFalsy()
+    const issue = result.error?.issues.find(
+      (item) => item.path.join(".") === "mutation.partitioningFormat"
+    )
+    expect(issue?.message).toContain("no longer supported")
+  })
+
+  it.each(["region", "tenant_id", "region/tenant_id"])(
+    "accepts bare non-date segment %s",
+    (value) => {
+      expect(parse(value).success).toBeTruthy()
+    }
+  )
+
+  it.each(["event", "day_of"])(
+    "rejects bare date segment %s and points at the component form",
+    (value) => {
+      const issues = messages(value)
+      expect(issues).toHaveLength(1)
+      expect(issues[0]?.path).toBe("mutation.partitioning")
+      expect(issues[0]?.message).toContain(`"${value}:year"`)
+    }
+  )
+
+  it("rejects a component on a non-date field", () => {
+    const issues = messages("region:year")
+    expect(issues).toHaveLength(1)
+    expect(issues[0]?.message).toContain("only valid on Date/DateTime")
+  })
+
+  it("accepts components on DateTime and Date fields", () => {
+    expect(parse("event:year/event:month/day_of:day").success).toBeTruthy()
+  })
+
+  it("adds no extra issue for unknown, ambiguous or duplicate segments", () => {
+    expect(parse("missing").success).toBeTruthy()
+    expect(parse("dup").success).toBeTruthy()
+    expect(parse("region/region").success).toBeTruthy()
+  })
+})
 /** DateTime auto-fill field with the write_timestamp option. */
 function autoFillField(name = "load_timestamp") {
   return {

@@ -217,7 +217,6 @@ describe(createTrinoWriteStrategy, () => {
           tableManager: mockTableManager,
           serializer: mockSerializer,
           partitioning: undefined,
-          partitioningFormat: undefined,
           autoFillFields: undefined,
           keepShadowTables: undefined,
         },
@@ -275,7 +274,7 @@ describe(createTrinoWriteStrategy, () => {
       )
     })
 
-    it("passes partitioning and partitioningFormat through", async () => {
+    it("passes partitioning through", async () => {
       const strategy = createTrinoWriteStrategy({
         files: mockFiles,
         dataSource: mockDataSource,
@@ -288,16 +287,14 @@ describe(createTrinoWriteStrategy, () => {
         config: {
           basePath: "warehouse/events",
           table: { catalog: "hive", schema: "db", tableName: "events" },
-          partitioning: "event_date",
-          partitioningFormat: "year/month",
+          partitioning: "event_date:year/event_date:month",
         },
       })
 
       expect(mockExecuteWritePipeline).toHaveBeenCalledWith(
         expect.objectContaining({
           config: expect.objectContaining({
-            partitioning: "event_date",
-            partitioningFormat: "year/month",
+            partitioning: "event_date:year/event_date:month",
           }),
         })
       )

@@ -25,8 +25,6 @@ export interface StorageConfigProps {
    * write-timestamp column is now an explicit `autoFill` field (C7).
    */
   partitioning?: false | string
-  /** Partition format granularity. */
-  partitioningFormat?: string
   /**
    * Declared auto-fill directives threaded into the generated `storageConfig`
    * so the runtime populates these columns on every schema-writing load.
@@ -137,15 +135,6 @@ export function generateConfig(props: GenerateConfigProps) {
           property("partitioning", stringLiteral(storageConfig.partitioning))
         )
       }
-    }
-
-    if (storageConfig.partitioningFormat) {
-      storageProperties.push(
-        property(
-          "partitioningFormat",
-          stringLiteral(storageConfig.partitioningFormat)
-        )
-      )
     }
 
     if (

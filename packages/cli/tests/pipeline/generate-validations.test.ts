@@ -30,8 +30,7 @@ const validatedDefinition: EndpointDefinitionFormat = {
   mutation: {
     loadStrategy: "full_load",
     basePath: "warehouse/analytics/tracking/user_events",
-    partitioning: "event_date",
-    partitioningFormat: "year/month/day",
+    partitioning: "event_date:year/event_date:month/event_date:day",
   },
   fields: [
     {
