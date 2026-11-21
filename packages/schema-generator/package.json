@@ -58,7 +58,7 @@
     "clean": "git clean -xdf .cache .turbo dist node_modules dist",
     "clean:cache": "git clean -xdf .cache .turbo",
     "clean:dist": "git clean -xdf dist",
-    "dev": "tsdown --watch",
+    "dev": "tsdown --watch --no-clean",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
