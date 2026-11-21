@@ -4,7 +4,7 @@ import {
   endpointDefinitionSchema,
   findDuplicateFieldNames,
   findReservedNameCollisions,
-  validatePartitioningFormat,
+  validatePartitioningString,
 } from "@lakeql/schema-generator/endpoint-schema"
 
 import { toDefinition } from "./mapping"
@@ -599,7 +599,7 @@ function collectCompanionPartition(
  *
  * Two kinds of unresolved segment are deliberately left to other findings so
  * one mistake is never reported twice: a segment whose syntax the schema
- * already rejects (`validatePartitioningFormat`), and a segment naming a
+ * already rejects (`validatePartitioningString`), and a segment naming a
  * derived companion column, which {@link collectCompanionPartition} reports
  * with a more precise hint.
  *
@@ -634,7 +634,7 @@ function collectUnresolvedPartition(
     }
     const { unresolvedName: name, component } = segment
     const raw = component === undefined ? name : `${name}:${component}`
-    if (companionNames.has(name) || validatePartitioningFormat(raw) !== null) {
+    if (companionNames.has(name) || validatePartitioningString(raw) !== null) {
       continue
     }
     const matches = state.fields.filter((field) => field.name === name).length

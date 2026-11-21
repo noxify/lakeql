@@ -2,8 +2,6 @@ import { describe, expect, it } from "vitest"
 
 import {
   createValidation,
-  isCustomPartitioning,
-  offersPartitioningFormat,
   partitioningModeOf,
   validationError,
   validationKindsForType,
@@ -83,7 +81,6 @@ describe("validation error surfacing", () => {
 
 describe("partitioning mode derivation (task 14)", () => {
   const bare = [{ fieldId: "f1" }]
-  const component = [{ fieldId: "f1", component: "day" }]
   const multi = [{ fieldId: "f1" }, { fieldId: "f2" }]
 
   it("maps the false/segments value to a mode (no timestamp mode)", () => {
@@ -91,26 +88,5 @@ describe("partitioning mode derivation (task 14)", () => {
     expect(partitioningModeOf(bare)).toBe("field")
     expect(partitioningModeOf(multi)).toBe("field")
     expect(partitioningModeOf([])).toBe("field")
-  })
-
-  it("detects custom partition paths", () => {
-    expect(isCustomPartitioning(false)).toBeFalsy()
-    expect(isCustomPartitioning(bare)).toBeFalsy()
-    expect(isCustomPartitioning(multi)).toBeTruthy()
-    expect(isCustomPartitioning(component)).toBeTruthy()
-  })
-
-  it("offers partitioningFormat only for a non-custom legacy single-field value", () => {
-    expect(offersPartitioningFormat(bare)).toBeTruthy()
-    expect(offersPartitioningFormat(false)).toBeFalsy()
-    expect(offersPartitioningFormat(multi)).toBeFalsy()
-    expect(offersPartitioningFormat(component)).toBeFalsy()
-  })
-
-  it("hides the format control for the transient empty 'field' seed", () => {
-    // Entering field mode seeds [], which is incomplete, not a legacy
-    // single-field value — the granularity select must stay hidden until a
-    // field is chosen.
-    expect(offersPartitioningFormat([])).toBeFalsy()
   })
 })

@@ -11,7 +11,7 @@ import type {
   EditorMutation,
   EditorState,
 } from "./model"
-import { createFieldId, DEFAULT_PARTITIONING_FORMAT } from "./model"
+import { createFieldId } from "./model"
 import {
   resolvePartitionString,
   serializePartitionSegments,
@@ -108,9 +108,7 @@ function toDefinitionField(field: EditorField): FieldDefinition {
  * disabled, or a config object when enabled.
  *
  * When enabled, `partitioning` is always emitted explicitly (an enabled
- * mutation never relies on the absent-key default, which is now `false`, C8),
- * and `partitioningFormat` is omitted when partitioning is disabled, a custom
- * string, or equal to the effective default (`"year/month/day"`).
+ * mutation never relies on the absent-key default, which is now `false`, C8).
  */
 function toDefinitionMutation(
   mutation: EditorMutation,
@@ -127,7 +125,6 @@ function toDefinitionMutation(
     basePath: mutation.basePath,
   }
 
-  const { partitioningFormat } = mutation
   // Segments are held by field id; the export is the unchanged name-based
   // string, resolved against the live field names.
   const partitioning =
@@ -139,19 +136,6 @@ function toDefinitionMutation(
   // key now resolves to `false`, so omitting it would silently change meaning
   // (C8/FR2.2). The exporter never relies on the absent-key default.
   config.partitioning = partitioning
-
-  // `partitioningFormat` is only meaningful in the non-custom modes: a legacy
-  // single-field string (no `/` or `:`). It is omitted when partitioning is
-  // off, a custom format string, or equal to the effective default.
-  const partitioningIsOff = partitioning === false
-  const partitioningIsCustom =
-    typeof partitioning === "string" &&
-    (partitioning.includes("/") || partitioning.includes(":"))
-  const formatIsDefault = partitioningFormat === DEFAULT_PARTITIONING_FORMAT
-
-  if (!partitioningIsOff && !partitioningIsCustom && !formatIsDefault) {
-    config.partitioningFormat = partitioningFormat
-  }
 
   return config
 }
@@ -244,9 +228,7 @@ function fromDefinitionField(field: FieldDefinition): EditorField {
 
 /**
  * Materializes the export mutation value back into an {@link EditorMutation},
- * resolving an absent `partitioning` to `false` (off, C8) and filling in the
- * effective-default `partitioningFormat` so the UI controls always have a
- * concrete value to display.
+ * resolving an absent `partitioning` to `false` (off, C8).
  */
 function fromDefinitionMutation(
   mutation: EndpointDefinitionFormat["mutation"],
@@ -271,8 +253,6 @@ function fromDefinitionMutation(
     loadStrategy: mutation.loadStrategy,
     basePath: mutation.basePath,
     partitioning,
-    partitioningFormat:
-      mutation.partitioningFormat ?? DEFAULT_PARTITIONING_FORMAT,
   }
 }
 

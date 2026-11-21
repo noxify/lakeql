@@ -30,7 +30,6 @@ function enabledState(fields: EditorState["fields"] = []): EditorState {
       loadStrategy: "append",
       basePath: "/d",
       partitioning: false,
-      partitioningFormat: "year/month/day",
     },
   }
 }
@@ -130,7 +129,6 @@ describe("PartitioningFieldPicker combobox", () => {
         loadStrategy: "append",
         basePath: "/d",
         partitioning: [],
-        partitioningFormat: "year/month/day",
       },
     })
 
@@ -162,7 +160,6 @@ describe("PartitioningFieldPicker combobox", () => {
         loadStrategy: "append",
         basePath: "/d",
         partitioning: [],
-        partitioningFormat: "year/month/day",
       },
     })
 
@@ -201,7 +198,6 @@ describe("PartitioningFieldPicker combobox", () => {
         loadStrategy: "append",
         basePath: "/d",
         partitioning: [{ fieldId: "f1" }],
-        partitioningFormat: "year/month/day",
       },
     })
 

@@ -127,49 +127,6 @@ export function partitioningModeOf(
 }
 
 /**
- * Whether a partitioning value is a "custom" path — more than one segment, or a
- * segment with a date component (the serialized string would contain `/` or
- * `:`). In custom mode (and when partitioning is off) `partitioningFormat` is
- * not an active setting, matching `validatePartitioningFormat` ignoring it
- * there (Req 5.7).
- *
- * @param partitioning - The current partitioning value.
- * @returns `true` when the value is a custom path.
- */
-export function isCustomPartitioning(
-  partitioning: false | EditorPartitionSegment[]
-): boolean {
-  if (partitioning === false) {
-    return false
-  }
-  return (
-    partitioning.length > 1 ||
-    partitioning.some((segment) => segment.component !== undefined)
-  )
-}
-
-/**
- * Whether the `partitioningFormat` granularity control should be offered for a
- * given partitioning value: only for a non-custom legacy single-field path
- * (exactly one bare segment), never when off, empty, or custom.
- *
- * An empty segment list — the transient seed when the user first enters
- * "field" mode — is treated as incomplete, so the granularity control stays
- * hidden until a field is chosen.
- *
- * @param partitioning - The current partitioning value.
- * @returns `true` when the format control is active.
- */
-export function offersPartitioningFormat(
-  partitioning: false | EditorPartitionSegment[]
-): boolean {
-  if (partitioning === false || partitioning.length === 0) {
-    return false
-  }
-  return !isCustomPartitioning(partitioning)
-}
-
-/**
  * Validates a single validation entry against the canonical
  * `fieldValidationSchema` and, for `regex`, additionally checks the pattern is
  * constructible (matching the export gate, which the CLI emits as

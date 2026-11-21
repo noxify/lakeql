@@ -43,6 +43,44 @@ describe("import", () => {
     expect(result.errors.length).toBeGreaterThan(0)
   })
 
+  it("rejects a v2 file that still sets mutation.partitioningFormat", () => {
+    const result = expectErr(
+      importFromText(
+        JSON.stringify({
+          ...validDefinition,
+          mutation: {
+            loadStrategy: "append",
+            basePath: "/data",
+            partitioning: "id",
+            partitioningFormat: "year/month",
+          },
+        })
+      )
+    )
+    const joined = result.errors.join("\n")
+    expect(joined).toContain("mutation.partitioningFormat")
+    expect(joined).toContain("no longer supported")
+  })
+
+  it("rejects a bare date segment and hints at the component form", () => {
+    const result = expectErr(
+      importFromText(
+        JSON.stringify({
+          ...validDefinition,
+          fields: [{ name: "event", type: "DateTime" }],
+          mutation: {
+            loadStrategy: "append",
+            basePath: "/data",
+            partitioning: "event",
+          },
+        })
+      )
+    )
+    const joined = result.errors.join("\n")
+    expect(joined).toContain("mutation.partitioning")
+    expect(joined).toContain("event:year")
+  })
+
   it("rejects a v1 file with a clear 'version no longer supported' message (C9/R3)", () => {
     const v1Draft = JSON.stringify({
       version: "1.0",

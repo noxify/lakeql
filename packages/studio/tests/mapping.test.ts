@@ -133,15 +133,6 @@ describe("round-trip stability", () => {
         partitioning: "created_at:year/region",
       },
     },
-    {
-      name: "legacy single-field partitioning with format",
-      mutation: {
-        loadStrategy: "append",
-        basePath: "/d",
-        partitioning: "created_at",
-        partitioningFormat: "year/month",
-      },
-    },
   ])("round-trips mutation mode: $name", ({ mutation, gainsExplicitOff }) => {
     const def = withMutation(mutation)
     const round = toDefinition(fromDefinition(def))
@@ -189,25 +180,7 @@ describe("minimal JSON", () => {
     })
   })
 
-  it("omits partitioningFormat when it equals the effective default", () => {
-    const def = toDefinition(
-      fromDefinition(
-        withMutation({
-          loadStrategy: "append",
-          basePath: "/d",
-          partitioningFormat: "year/month/day",
-        })
-      )
-    )
-    // partitioning resolves to the explicit `false` (absent ⇒ off, C8).
-    expect(def.mutation).toStrictEqual({
-      loadStrategy: "append",
-      basePath: "/d",
-      partitioning: false,
-    })
-  })
-
-  it("omits partitioningFormat when partitioning is off", () => {
+  it("keeps an explicit false when partitioning is off", () => {
     const def = toDefinition(
       fromDefinition(
         withMutation({
@@ -224,7 +197,7 @@ describe("minimal JSON", () => {
     })
   })
 
-  it("omits partitioningFormat when partitioning is a custom string", () => {
+  it("keeps a custom partitioning string", () => {
     const def = toDefinition(
       fromDefinition(
         withMutation({
@@ -316,14 +289,13 @@ describe("no field is injected on export (auto-fill is explicit)", () => {
 })
 
 describe("fromDefinition materializes effective defaults", () => {
-  it("resolves an absent partitioning to off (false) and fills partitioningFormat", () => {
+  it("resolves an absent partitioning to off (false)", () => {
     const state = fromDefinition(
       withMutation({ loadStrategy: "append", basePath: "/d" })
     )
     expect(state.mutation).toMatchObject({
       enabled: true,
       partitioning: false,
-      partitioningFormat: "year/month/day",
     })
   })
 

@@ -337,6 +337,39 @@ describe("type changes that invalidate a segment", () => {
     expect(planTypeChange(date, "String").needsConfirmation).toBeFalsy()
   })
 
+  it("needs confirmation when a bare segment's field becomes Date or DateTime", () => {
+    const state = fromDefinition(definitionWith("region/load_timestamp:year"))
+    const region = defined(state.fields[1])
+    for (const type of ["DateTime", "Date"] as const) {
+      const plan = planTypeChange(region, type, state)
+      expect(plan.needsConfirmation).toBeTruthy()
+      expect(plan.affectedPartitionSegments).toStrictEqual(["region"])
+      expect(plan.lostDescription).toContain("region")
+    }
+  })
+
+  it("leaves state untouched unconfirmed; confirm retypes and removes exactly the bare segment", () => {
+    const state = fromDefinition(definitionWith("region/load_timestamp:year"))
+    const loadTs = defined(state.fields[0])
+    const dry = changeFieldType(state, [1], "DateTime")
+    expect(dry.applied).toBeFalsy()
+    expect(dry.state).toBe(state)
+    const applied = changeFieldType(state, [1], "DateTime", { confirm: true })
+    expect(applied.applied).toBeTruthy()
+    expect(defined(applied.state.fields[1]).type).toBe("DateTime")
+    expect(segmentsOf(applied.state)).toStrictEqual([
+      { fieldId: loadTs.id, component: "year" },
+    ])
+    // No auto conversion to a component form.
+  })
+
+  it("keeps Date + component valid for date-like changes and invalid for non-date", () => {
+    const state = fromDefinition(definitionWith("load_timestamp:year"))
+    const date = defined(state.fields[0])
+    expect(planTypeChange(date, "Date", state).needsConfirmation).toBeFalsy()
+    expect(planTypeChange(date, "String", state).needsConfirmation).toBeTruthy()
+  })
+
   it("only removes the changed field's segments, leaving unresolved ones", () => {
     const state = fromDefinition(definitionWith("ghost/load_timestamp:year"))
     const applied = changeFieldType(state, [0], "String", { confirm: true })

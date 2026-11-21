@@ -32,7 +32,6 @@ export {
   createFreshHistory,
   createFreshState,
   currentState,
-  DEFAULT_PARTITIONING_FORMAT,
   HISTORY_CAP,
   redo,
   replaceCurrent,

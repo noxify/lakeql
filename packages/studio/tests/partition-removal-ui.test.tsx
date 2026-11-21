@@ -43,7 +43,6 @@ function partitionedState(): EditorState {
         { fieldId: "rg" },
         { fieldId: "ts", component: "month" },
       ],
-      partitioningFormat: "year/month/day",
     },
   }
 }
@@ -166,7 +165,6 @@ describe("removing a partition-referenced field from the canvas", () => {
             loadStrategy: "append",
             basePath: "/d",
             partitioning: [{ fieldId: "rg" }],
-            partitioningFormat: "year/month/day",
           },
         },
         { commit: true }
@@ -256,6 +254,51 @@ describe("changing the type of a partition-referenced field", () => {
       expect(screen.queryByRole("alertdialog")).toBeNull()
     })
     expect(defined(harness.get().state.fields[0]).type).toBe("DateTime")
+    expect(harness.get().state.mutation).toStrictEqual(before.mutation)
+  })
+
+  it("confirms retyping a bare-segment field to DateTime and applies it as one undo step", async () => {
+    const user = userEvent.setup()
+    const harness = renderCanvas()
+    act(() => {
+      harness.get().replaceState(partitionedState(), { commit: true })
+    })
+    // `region` is partitioned bare: a bare DateTime segment is invalid.
+    await selectType(user, 1, "DateTime")
+    const dialog = await screen.findByRole("alertdialog")
+    expect(within(dialog).getByText(/region/u)).toBeDefined()
+    expect(defined(harness.get().state.fields[1]).type).toBe("String")
+    await user.click(
+      within(dialog).getByRole("button", { name: "Discard and change" })
+    )
+    await waitFor(() => {
+      expect(defined(harness.get().state.fields[1]).type).toBe("DateTime")
+    })
+    expect(partitionString(harness.get())).toBe(
+      "created_at:year/created_at:month"
+    )
+    // One snapshot: a single undo restores both type and segment.
+    act(() => harness.get().undo())
+    expect(defined(harness.get().state.fields[1]).type).toBe("String")
+    expect(partitionString(harness.get())).toBe(
+      "created_at:year/region/created_at:month"
+    )
+  })
+
+  it("keeps type and bare segment when the DateTime retype is cancelled", async () => {
+    const user = userEvent.setup()
+    const harness = renderCanvas()
+    const before = partitionedState()
+    act(() => {
+      harness.get().replaceState(before, { commit: true })
+    })
+    await selectType(user, 1, "DateTime")
+    const dialog = await screen.findByRole("alertdialog")
+    await user.click(within(dialog).getByRole("button", { name: "Keep field" }))
+    await waitFor(() => {
+      expect(screen.queryByRole("alertdialog")).toBeNull()
+    })
+    expect(defined(harness.get().state.fields[1]).type).toBe("String")
     expect(harness.get().state.mutation).toStrictEqual(before.mutation)
   })
 

@@ -2,7 +2,6 @@ import type { LoadStrategy } from "@lakeql/schema-generator/endpoint-schema"
 import {
   AUTO_FILL_NAME_MAX_LENGTH,
   loadStrategies,
-  partitioningFormats,
 } from "@lakeql/schema-generator/endpoint-schema"
 import { ClockIcon } from "lucide-react"
 import { useId } from "react"
@@ -25,11 +24,7 @@ import type {
   EditorMutation,
   EditorPartitionSegment,
 } from "@/core"
-import {
-  addField as addFieldOp,
-  createField,
-  DEFAULT_PARTITIONING_FORMAT,
-} from "@/core"
+import { addField as addFieldOp, createField } from "@/core"
 
 import { metadataInputId } from "./metadata-nav"
 import { partitioningValueForMode } from "./partition-format"
@@ -37,7 +32,7 @@ import { PartitioningFieldPicker } from "./partitioning-field-picker"
 import { useOptionalShellView } from "./shell-view"
 import { useEditorContext } from "./use-editor"
 import type { PartitioningMode } from "./validation-meta"
-import { offersPartitioningFormat, partitioningModeOf } from "./validation-meta"
+import { partitioningModeOf } from "./validation-meta"
 
 /**
  * The default name of the write-timestamp auto-fill field added by the helper
@@ -55,9 +50,6 @@ const AUTO_FILL_DEFAULT_FIELD_NAME = "load_timestamp".slice(
  * concrete values to show. A freshly-enabled mutation starts in `off`
  * partitioning mode (`partitioning: false`): nothing is imposed on the author,
  * and the export always serializes an explicit `partitioning` value (C8).
- * `partitioningFormat` is still prefilled with the runtime default so the
- * granularity control has a value if the author switches to a legacy
- * single-field string.
  */
 function defaultEnabledMutation(): Extract<EditorMutation, { enabled: true }> {
   return {
@@ -65,7 +57,6 @@ function defaultEnabledMutation(): Extract<EditorMutation, { enabled: true }> {
     loadStrategy: "append",
     basePath: "",
     partitioning: false,
-    partitioningFormat: DEFAULT_PARTITIONING_FORMAT,
   }
 }
 
@@ -123,35 +114,6 @@ const PartitioningControls = ({
       </div>
 
       {mode === "field" && <PartitioningFieldPicker mutation={mutation} />}
-
-      {offersPartitioningFormat(mutation.partitioning) && (
-        <div className="grid gap-1.5">
-          <span className="text-sm font-medium">Partition granularity</span>
-          <Select
-            value={mutation.partitioningFormat}
-            onValueChange={(next) => {
-              editor.setMutation({
-                ...mutation,
-                partitioningFormat: String(next),
-              })
-            }}
-          >
-            <SelectTrigger
-              className="w-full"
-              aria-label="Partition granularity"
-            >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {partitioningFormats.map((format) => (
-                <SelectItem key={format} value={format}>
-                  {format}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      )}
     </div>
   )
 }
@@ -281,8 +243,8 @@ const AutoFillHelper = ({
  * enabled exports a config object (Req 5.1). When enabled it exposes
  * `loadStrategy`, `basePath`, the partitioning controls, and the
  * write-timestamp auto-fill helper, with the effective defaults prefilled so
- * the JSON stays minimal (the mapping layer omits default `partitioningFormat`
- * on export and always emits an explicit `partitioning`).
+ * the JSON stays minimal (the mapping layer always emits an explicit
+ * `partitioning`).
  *
  * All edits route through the editor's `setMutation` so the single source of
  * state stays in `@/core`; `basePath` and the partition string are continuous

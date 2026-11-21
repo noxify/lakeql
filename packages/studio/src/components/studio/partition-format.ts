@@ -78,10 +78,9 @@ export function topLevelPartitionCandidates(
  * value `fieldId:component`, label `fieldname → component`). Options are keyed
  * by id, so two same-named fields stay distinct choices.
  *
- * All six components are offered (decision A1): `validatePartitioningFormat`
+ * All six components are offered (decision A1): `validatePartitioningString`
  * accepts every `partitioningComponents` entry in a `fieldname:component`
- * segment, so the picker is not narrowed to the three `partitioningFormats`
- * granularities.
+ * segment.
  *
  * @param candidates - The candidates from {@link topLevelPartitionCandidates}.
  * @returns The flattened option list, in candidate then component order.

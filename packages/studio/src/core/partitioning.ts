@@ -180,8 +180,9 @@ export function partitionSegmentLabel(
 
 /**
  * Whether a field of `type` is a valid source for a partition segment with the
- * given `component`: never `Object`/`Array`, and a component only on a
- * `Date`/`DateTime` field.
+ * given `component`: never `Object`/`Array`; `Date`/`DateTime` only with a
+ * component (a bare date has no raw-value meaning); every other type only
+ * without one.
  *
  * @param type - The referenced field's type.
  * @param component - The segment's component, if any.
@@ -194,10 +195,8 @@ export function isValidPartitionSource(
   if (type === "Object" || type === "Array") {
     return false
   }
-  if (component !== undefined) {
-    return type === "Date" || type === "DateTime"
-  }
-  return true
+  const isDate = type === "Date" || type === "DateTime"
+  return isDate ? component !== undefined : component === undefined
 }
 
 /**

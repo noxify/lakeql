@@ -303,6 +303,35 @@ function appendMutation(partitioning: false | string = false): {
   return { loadStrategy: "append", basePath: "/d", partitioning }
 }
 
+/** A state with one DateTime field partitioned by `partitioning`. */
+function dateStateWith(partitioning: string): EditorState {
+  return fromDefinition({
+    version: "2.0",
+    tableName: "t",
+    catalog: "c",
+    schema: "s",
+    fields: [{ name: "event", type: "DateTime" }],
+    mutation: appendMutation(partitioning),
+  })
+}
+
+describe("date partition segments need a component", () => {
+  it("blocks export for a bare DateTime segment with the component hint", () => {
+    const result = evaluate(dateStateWith("event"))
+    expect(result.validForExport).toBeFalsy()
+    expect(
+      result.schemaIssues.some(
+        (issue) =>
+          issue.path.join(".") === "mutation.partitioning" &&
+          issue.message.includes("event:year")
+      )
+    ).toBeTruthy()
+  })
+
+  it("accepts a DateTime segment with a component", () => {
+    expect(evaluate(dateStateWith("event:year")).validForExport).toBeTruthy()
+  })
+})
 describe("auto-fill validations (FR4.6)", () => {
   it("accepts a valid top-level DateTime auto-fill field under an append mutation", () => {
     const state = fromDefinition({

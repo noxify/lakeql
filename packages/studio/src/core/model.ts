@@ -99,9 +99,8 @@ export type EditorPartitionSegment =
  * toggle it without losing values.
  *
  * When disabled it exports as the literal `false`; when enabled it exports as a
- * config object. `partitioning`/`partitioningFormat` always carry their
- * effective-default values here so the UI can show them; the mapping layer
- * omits them from the export when they equal the runtime defaults.
+ * config object. `partitioning` always carries its effective-default
+ * value here so the UI can show it.
  */
 export type EditorMutation =
   | { enabled: false }
@@ -118,12 +117,6 @@ export type EditorMutation =
        * field, not an implicit partitioning mode.
        */
       partitioning: false | EditorPartitionSegment[]
-      /**
-       * Partition granularity, relevant only in non-custom modes. Always held
-       * so the control has a value to show; omitted on export when it equals
-       * the effective default.
-       */
-      partitioningFormat: string
     }
 
 /**
@@ -152,12 +145,6 @@ export interface HistoryState {
   /** Index of the active snapshot within {@link snapshots}. */
   cursor: number
 }
-
-/**
- * The effective runtime default for `partitioningFormat` when the key is absent
- * from a mutation config.
- */
-export const DEFAULT_PARTITIONING_FORMAT = "year/month/day"
 
 /**
  * The maximum number of snapshots the in-memory history retains. Pushing past
