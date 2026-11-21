@@ -25,16 +25,25 @@ export interface PartitionCandidate {
 }
 
 /**
- * One selectable combobox option backing exactly one partition segment.
+ * One selectable picker option. Choosing it appends its segments in order.
  */
 export interface PartitionOption {
-  /** Stable option key: `"<fieldId>"` or `"<fieldId>:<component>"`. */
+  /** Stable option key: `"<fieldId>"`, `"<fieldId>:<component>"` or `"<fieldId>:date"`. */
   value: string
-  /** Display label, e.g. `"created_at → year"`. */
+  /** Full display label, e.g. `"created_at → year"`. */
   label: string
-  /** The resolved segment this option appends when chosen. */
-  segment: EditorResolvedPartitionSegment
+  /** Label inside a field's sub-page, e.g. `"year"` or `"year / month / day"`. */
+  shortLabel: string
+  /** Extra search text so `"created year"` finds `created → year`. */
+  keywords: string[]
+  /** The resolved segments this option appends when chosen (three for the combined option). */
+  segments: EditorResolvedPartitionSegment[]
 }
+
+/**
+ * The date components the combined `year / month / day` option expands to.
+ */
+export const combinedDateComponents = ["year", "month", "day"] as const
 
 /**
  * Lists the top-level primitive partition candidates.
@@ -42,7 +51,7 @@ export interface PartitionOption {
  * A field is a candidate iff it is a primitive (not `Object`/`Array`) and has a
  * non-empty name, so in-progress empty-named fields never appear. Input order
  * is preserved. `Date`/`DateTime` fields are flagged via {@link
- * PartitionCandidate.isDateLike} so the caller can expand them into component
+ * PartitionCandidate.isDateLike} so the caller can drill into component
  * options.
  *
  * @param fields - The top-level editor fields.
@@ -70,40 +79,106 @@ export function topLevelPartitionCandidates(
 }
 
 /**
- * Expands candidates into the selectable combobox options.
+ * The option choosing one non-date field (a bare, raw-value segment).
  *
- * A non-date primitive yields one option (segment `{ fieldId }`, value the
- * field id). A date-like candidate yields six options — one per
- * `partitioningComponents` entry (`year`/`month`/`day`/`hour`/`minute`/`second`,
- * value `fieldId:component`, label `fieldname → component`). Options are keyed
- * by id, so two same-named fields stay distinct choices.
+ * @param candidate - A non-date candidate.
+ * @returns The single-segment option.
+ */
+function bareOption(candidate: PartitionCandidate): PartitionOption {
+  return {
+    value: candidate.id,
+    label: candidate.name,
+    shortLabel: candidate.name,
+    keywords: [candidate.name],
+    segments: [{ fieldId: candidate.id }],
+  }
+}
+
+/**
+ * The sub-page options of a date-like candidate: first the combined
+ * `year / month / day` option (appends all three segments), then one option
+ * per `partitioningComponents` entry. Options whose segment is already chosen
+ * are omitted; the combined option is omitted as soon as any of its three
+ * segments is chosen, so it can never create a duplicate.
  *
- * All six components are offered (decision A1): `validatePartitioningString`
- * accepts every `partitioningComponents` entry in a `fieldname:component`
- * segment.
+ * @param candidate - A date-like candidate.
+ * @param chosen - Keys of the segments already chosen ({@link partitionSegmentKey}).
+ * @returns The available sub-page options, in display order.
+ */
+export function partitionDateOptions(
+  candidate: PartitionCandidate,
+  chosen: ReadonlySet<string>
+): PartitionOption[] {
+  const options: PartitionOption[] = []
+  const combinedKeys = combinedDateComponents.map(
+    (component) => `${candidate.id}:${component}`
+  )
+  if (!combinedKeys.some((key) => chosen.has(key))) {
+    options.push({
+      value: `${candidate.id}:date`,
+      label: `${candidate.name} → year / month / day`,
+      shortLabel: "year / month / day",
+      keywords: [`${candidate.name} year month day`],
+      segments: combinedDateComponents.map((component) => ({
+        fieldId: candidate.id,
+        component,
+      })),
+    })
+  }
+  for (const component of partitioningComponents) {
+    const value = `${candidate.id}:${component}`
+    if (chosen.has(value)) {
+      continue
+    }
+    options.push({
+      value,
+      label: `${candidate.name} → ${component}`,
+      shortLabel: component,
+      keywords: [`${candidate.name} ${component}`],
+      segments: [{ fieldId: candidate.id, component }],
+    })
+  }
+  return options
+}
+
+/**
+ * The root-page options: one bare option per non-date candidate whose segment
+ * is not chosen yet. Date-like candidates are not listed here; they open a
+ * sub-page ({@link partitionDateOptions}).
  *
  * @param candidates - The candidates from {@link topLevelPartitionCandidates}.
- * @returns The flattened option list, in candidate then component order.
+ * @param chosen - Keys of the segments already chosen.
+ * @returns The available root options, in candidate order.
  */
-export function partitionOptionsFor(
-  candidates: PartitionCandidate[]
+export function partitionRootOptions(
+  candidates: PartitionCandidate[],
+  chosen: ReadonlySet<string>
+): PartitionOption[] {
+  return candidates
+    .filter((candidate) => !candidate.isDateLike)
+    .map(bareOption)
+    .filter((option) => !chosen.has(option.value))
+}
+
+/**
+ * The flat, searchable option list: every available root option plus every
+ * available sub-page option of each date-like candidate, so a query such as
+ * `"event year"` matches `event → year` from the root page.
+ *
+ * @param candidates - The candidates from {@link topLevelPartitionCandidates}.
+ * @param chosen - Keys of the segments already chosen.
+ * @returns The available options, in candidate order.
+ */
+export function partitionSearchOptions(
+  candidates: PartitionCandidate[],
+  chosen: ReadonlySet<string>
 ): PartitionOption[] {
   const options: PartitionOption[] = []
   for (const candidate of candidates) {
-    if (!candidate.isDateLike) {
-      options.push({
-        value: candidate.id,
-        label: candidate.name,
-        segment: { fieldId: candidate.id },
-      })
-      continue
-    }
-    for (const component of partitioningComponents) {
-      options.push({
-        value: `${candidate.id}:${component}`,
-        label: `${candidate.name} → ${component}`,
-        segment: { fieldId: candidate.id, component },
-      })
+    if (candidate.isDateLike) {
+      options.push(...partitionDateOptions(candidate, chosen))
+    } else if (!chosen.has(candidate.id)) {
+      options.push(bareOption(candidate))
     }
   }
   return options

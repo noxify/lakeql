@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest"
 
 import {
   partitioningValueForMode,
-  partitionOptionsFor,
+  partitionDateOptions,
+  partitionRootOptions,
+  partitionSearchOptions,
   partitionSegmentKey,
   topLevelPartitionCandidates,
 } from "@/components/studio/partition-format"
@@ -50,21 +52,53 @@ describe("topLevelPartitionCandidates helper", () => {
   })
 })
 
-describe("partitionOptionsFor helper", () => {
-  it("resolves a non-date primitive to a single bare option", () => {
-    const options = partitionOptionsFor([
-      { id: "f1", name: "region", type: "String", isDateLike: false },
-    ])
+const regionCandidate = {
+  id: "f1",
+  name: "region",
+  type: "String",
+  isDateLike: false,
+} as const
+const eventCandidate = {
+  id: "f2",
+  name: "event",
+  type: "DateTime",
+  isDateLike: true,
+} as const
+
+describe("partitionRootOptions helper", () => {
+  it("lists a non-date field as one bare option and skips date fields", () => {
+    const options = partitionRootOptions(
+      [regionCandidate, eventCandidate],
+      new Set()
+    )
     expect(options).toStrictEqual([
-      { value: "f1", label: "region", segment: { fieldId: "f1" } },
+      {
+        value: "f1",
+        label: "region",
+        shortLabel: "region",
+        keywords: ["region"],
+        segments: [{ fieldId: "f1" }],
+      },
     ])
   })
 
-  it("expands a Date/DateTime field into six component options", () => {
-    const options = partitionOptionsFor([
-      { id: "f2", name: "created_at", type: "DateTime", isDateLike: true },
-    ])
+  it("hides a chosen field and keeps same-named fields distinct", () => {
+    const a = { ...regionCandidate, id: "a" }
+    const b = { ...regionCandidate, id: "b" }
+    expect(
+      partitionRootOptions([a, b], new Set()).map((option) => option.value)
+    ).toStrictEqual(["a", "b"])
+    expect(
+      partitionRootOptions([a, b], new Set(["a"])).map((option) => option.value)
+    ).toStrictEqual(["b"])
+  })
+})
+
+describe("partitionDateOptions helper", () => {
+  it("offers the combined option first, then six components", () => {
+    const options = partitionDateOptions(eventCandidate, new Set())
     expect(options.map((option) => option.value)).toStrictEqual([
+      "f2:date",
       "f2:year",
       "f2:month",
       "f2:day",
@@ -73,22 +107,56 @@ describe("partitionOptionsFor helper", () => {
       "f2:second",
     ])
     expect(options[0]).toStrictEqual({
-      value: "f2:year",
-      label: "created_at → year",
-      segment: { fieldId: "f2", component: "year" },
+      value: "f2:date",
+      label: "event → year / month / day",
+      shortLabel: "year / month / day",
+      keywords: ["event year month day"],
+      segments: [
+        { fieldId: "f2", component: "year" },
+        { fieldId: "f2", component: "month" },
+        { fieldId: "f2", component: "day" },
+      ],
     })
+    expect(options[1]).toMatchObject({
+      label: "event → year",
+      segments: [{ fieldId: "f2", component: "year" }],
+    })
+  })
+
+  it("hides chosen components and the combined option once any of its parts is chosen", () => {
+    const options = partitionDateOptions(eventCandidate, new Set(["f2:month"]))
+    expect(options.map((option) => option.value)).toStrictEqual([
+      "f2:year",
+      "f2:day",
+      "f2:hour",
+      "f2:minute",
+      "f2:second",
+    ])
+    // Choosing an hour keeps the combined option available.
+    expect(
+      partitionDateOptions(eventCandidate, new Set(["f2:hour"]))[0]?.value
+    ).toBe("f2:date")
   })
 })
 
-describe("partitionOptionsFor with same-named fields", () => {
-  it("keeps two fields with the same name as distinct options", () => {
-    const options = partitionOptionsFor(
-      topLevelPartitionCandidates([
-        field("region", "String", "a"),
-        field("region", "String", "b"),
-      ])
+describe("partitionSearchOptions helper", () => {
+  it("flattens fields and date components for cross search", () => {
+    const options = partitionSearchOptions(
+      [regionCandidate, eventCandidate],
+      new Set(["f2:second"])
     )
-    expect(options.map((option) => option.value)).toStrictEqual(["a", "b"])
+    expect(options.map((option) => option.label)).toStrictEqual([
+      "region",
+      "event → year / month / day",
+      "event → year",
+      "event → month",
+      "event → day",
+      "event → hour",
+      "event → minute",
+    ])
+    expect(
+      options.find((option) => option.label === "event → year")?.keywords
+    ).toStrictEqual(["event year"])
   })
 })
 

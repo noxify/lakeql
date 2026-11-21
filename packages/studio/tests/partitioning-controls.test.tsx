@@ -113,93 +113,156 @@ describe("PartitioningControls mode picker", () => {
   })
 })
 
-describe("PartitioningFieldPicker combobox", () => {
+/** Seeds an empty by-field selection over the given fields and renders the form. */
+function renderPicker(fields: EditorState["fields"]): { get: () => EditorApi } {
+  const harness = renderWithEditor(() => <MutationConfigForm />)
+  seed(harness.get(), withPartitioning([], fields))
+  return harness
+}
+
+/** The picker's trigger button. */
+const trigger = (): HTMLElement => screen.getByLabelText("Add partition field")
+
+/** The labels of the currently rendered picker options. */
+const optionLabels = (): (string | null)[] =>
+  screen.getAllByRole("option").map((option) => option.textContent)
+
+describe("PartitioningFieldPicker popover", () => {
   afterEach(cleanup)
 
-  it("resolves a String field to one option and a DateTime field to six", async () => {
+  it("lists fields on the root page and drills into a date field", async () => {
     const user = userEvent.setup()
-    const harness = renderWithEditor(() => <MutationConfigForm />)
-    seed(harness.get(), {
-      ...enabledState([
-        { id: "f1", name: "region", type: "String" },
-        { id: "f2", name: "created_at", type: "DateTime" },
-      ]),
-      mutation: {
-        enabled: true,
-        loadStrategy: "append",
-        basePath: "/d",
-        partitioning: [],
-      },
-    })
+    renderPicker([
+      { id: "f1", name: "region", type: "String" },
+      { id: "f2", name: "created_at", type: "DateTime" },
+    ])
 
-    const input = screen.getByLabelText("Add partition field")
-    await user.click(input)
+    await user.click(trigger())
+    expect(optionLabels()).toStrictEqual(["region", "created_at"])
 
-    // One option for the String field.
-    expect(screen.getAllByText("region")).toHaveLength(1)
-    // Six component options for the DateTime field.
-    for (const component of [
+    await user.click(screen.getByRole("option", { name: "created_at" }))
+    expect(optionLabels()).toStrictEqual([
+      "year / month / day",
       "year",
       "month",
       "day",
       "hour",
       "minute",
       "second",
-    ]) {
-      expect(screen.getByText(`created_at → ${component}`)).toBeDefined()
-    }
+    ])
   })
 
-  it("appends a chosen segment as a badge and hides that exact option", async () => {
+  it("appends a bare segment for a non-date field and closes", async () => {
     const user = userEvent.setup()
-    const harness = renderWithEditor(() => <MutationConfigForm />)
-    seed(harness.get(), {
-      ...enabledState([{ id: "f1", name: "created_at", type: "DateTime" }]),
-      mutation: {
-        enabled: true,
-        loadStrategy: "append",
-        basePath: "/d",
-        partitioning: [],
-      },
-    })
+    const harness = renderPicker([{ id: "f1", name: "region", type: "String" }])
 
-    const input = screen.getByLabelText("Add partition field")
-    await user.click(input)
-    await user.click(screen.getByText("created_at → year"))
+    await user.click(trigger())
+    await user.click(screen.getByRole("option", { name: "region" }))
 
-    // The partitioning now holds the chosen segment, bound by field id.
-    expect(partitioningOf(harness.get())).toStrictEqual([
-      { fieldId: "f1", component: "year" },
+    expect(partitioningOf(harness.get())).toStrictEqual([{ fieldId: "f1" }])
+    expect(partitionStringOf(harness.get())).toBe("region")
+    expect(screen.queryByRole("option")).toBeNull()
+    // The chosen field is hidden on reopen.
+    await user.click(trigger())
+    expect(screen.queryByRole("option", { name: "region" })).toBeNull()
+  })
+
+  it("appends one component and hides it afterwards", async () => {
+    const user = userEvent.setup()
+    const harness = renderPicker([
+      { id: "f1", name: "created_at", type: "DateTime" },
     ])
+
+    await user.click(trigger())
+    await user.click(screen.getByRole("option", { name: "created_at" }))
+    await user.click(screen.getByRole("option", { name: "year" }))
+
     expect(partitionStringOf(harness.get())).toBe("created_at:year")
-    // A removable badge appears for it.
     expect(
       screen.getByRole("button", { name: "Remove created_at → year" })
     ).toBeDefined()
 
-    // Re-open: the chosen year option is gone from the list, but month stays
-    // available. Query options by role so the badge (a sortable button with the
-    // same text) does not match.
-    await user.click(input)
-    const optionLabels = screen
-      .getAllByRole("option")
-      .map((option) => option.textContent)
-    expect(optionLabels).not.toContain("created_at → year")
-    expect(optionLabels).toContain("created_at → month")
+    await user.click(trigger())
+    await user.click(screen.getByRole("option", { name: "created_at" }))
+    const labels = optionLabels()
+    expect(labels).not.toContain("year")
+    expect(labels).toContain("month")
+    // Any chosen part removes the combined option.
+    expect(labels).not.toContain("year / month / day")
+  })
+
+  it("appends year, month and day in one history snapshot", async () => {
+    const user = userEvent.setup()
+    const harness = renderPicker([
+      { id: "f1", name: "created_at", type: "DateTime" },
+    ])
+
+    await user.click(trigger())
+    await user.click(screen.getByRole("option", { name: "created_at" }))
+    await user.click(screen.getByRole("option", { name: "year / month / day" }))
+
+    expect(partitionStringOf(harness.get())).toBe(
+      "created_at:year/created_at:month/created_at:day"
+    )
+    act(() => harness.get().undo())
+    expect(partitioningOf(harness.get())).toStrictEqual([])
+  })
+
+  it("searches across fields and components", async () => {
+    const user = userEvent.setup()
+    const harness = renderPicker([
+      { id: "f1", name: "region", type: "String" },
+      { id: "f2", name: "event", type: "DateTime" },
+    ])
+
+    await user.click(trigger())
+    await user.type(screen.getByPlaceholderText(/Search fields/u), "event year")
+    expect(optionLabels()).toContain("event → year")
+    expect(optionLabels()).not.toContain("region")
+
+    await user.click(screen.getByRole("option", { name: "event → year" }))
+    expect(partitionStringOf(harness.get())).toBe("event:year")
+  })
+
+  it("returns from a sub-page with Escape and with Backspace on an empty search", async () => {
+    const user = userEvent.setup()
+    renderPicker([
+      { id: "f1", name: "region", type: "String" },
+      { id: "f2", name: "event", type: "DateTime" },
+    ])
+
+    await user.click(trigger())
+    await user.click(screen.getByRole("option", { name: "event" }))
+    expect(optionLabels()).toContain("year / month / day")
+    await user.keyboard("{Escape}")
+    expect(optionLabels()).toStrictEqual(["region", "event"])
+
+    await user.click(screen.getByRole("option", { name: "event" }))
+    await user.keyboard("{Backspace}")
+    expect(optionLabels()).toStrictEqual(["region", "event"])
+
+    // On the root page Escape closes the popover.
+    await user.keyboard("{Escape}")
+    expect(screen.queryByRole("option")).toBeNull()
+  })
+
+  it("explains an empty candidate list", async () => {
+    const user = userEvent.setup()
+    renderPicker([])
+    await user.click(trigger())
+    expect(screen.getByText(/No partitionable fields/u)).toBeDefined()
   })
 
   it("removing a badge drops the segment", async () => {
     const user = userEvent.setup()
     const harness = renderWithEditor(() => <MutationConfigForm />)
-    seed(harness.get(), {
-      ...enabledState([{ id: "f1", name: "region", type: "String" }]),
-      mutation: {
-        enabled: true,
-        loadStrategy: "append",
-        basePath: "/d",
-        partitioning: [{ fieldId: "f1" }],
-      },
-    })
+    seed(
+      harness.get(),
+      withPartitioning(
+        [{ fieldId: "f1" }],
+        [{ id: "f1", name: "region", type: "String" }]
+      )
+    )
 
     await user.click(screen.getByRole("button", { name: "Remove region" }))
     expect(partitioningOf(harness.get())).toStrictEqual([])
