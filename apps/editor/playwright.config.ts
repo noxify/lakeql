@@ -4,10 +4,9 @@ import { defineConfig, devices } from "@playwright/test"
  * Playwright config for the Endpoint Builder keyboard-accessibility E2E
  * (Requirement 8). The suite drives real key events in a real browser against
  * a served static build of `apps/editor` (the same artifact deployed to
- * production), so it exercises the keyboard "grab / move / drop" mode,
- * palette-by-keyboard, selection, undo/redo, live-region announcements, and an
- * axe audit of the resulting states — none of which jsdom can assert
- * faithfully.
+ * production), so it exercises palette-by-keyboard, selection, undo/redo,
+ * live-region announcements, and an axe audit of the resulting states — none
+ * of which jsdom can assert faithfully.
  *
  * The suite is deliberately separate from the Vitest unit run: it needs a
  * browser and a served build, so it is wired to its own `test:e2e` script and
@@ -30,20 +29,17 @@ export default defineConfig({
       name: "chromium",
       use: { ...devices["Desktop Chrome"] },
       // The keyboard-a11y suite assumes the desktop layout (always-visible icon
-      // rail + inline secondary column); the responsive suite runs only in the
-      // phone-viewport project below.
-      testIgnore: /responsive-nav\.test\.ts/u,
+      // rail + inline secondary column); the desktop-only notice suite runs
+      // only in the phone-viewport project below.
+      testIgnore: /desktop-only\.test\.ts/u,
     },
     {
-      // A phone-viewport context (width ≤560px) for the responsive-navigation
-      // suite: at this width the primary rail is an off-canvas sheet and the
-      // contextual secondary nav collapses into a header-triggered sheet, so
-      // the suite asserts both are reachable and the main content is not
-      // clipped. Pixel 5 is 393px wide — below both the `768px` primary-rail
-      // breakpoint and the `560px` secondary-nav breakpoint.
+      // A phone-viewport context for the desktop-only gate: Pixel 5 is 393px
+      // wide, below the `768px` desktop breakpoint, so the editor is replaced
+      // by a "Desktop only" notice.
       name: "mobile-chromium",
       use: { ...devices["Pixel 5"] },
-      testMatch: /responsive-nav\.test\.ts/u,
+      testMatch: /desktop-only\.test\.ts/u,
     },
   ],
   // Build then serve the static editor app; Playwright waits for the port.

@@ -12,6 +12,10 @@ import type {
   EditorState,
 } from "./model"
 import { createFieldId, DEFAULT_PARTITIONING_FORMAT } from "./model"
+import {
+  resolvePartitionString,
+  serializePartitionSegments,
+} from "./partitioning"
 
 /**
  * Returns `true` when a field's options carry no authored value and should be
@@ -109,7 +113,8 @@ function toDefinitionField(field: EditorField): FieldDefinition {
  * string, or equal to the effective default (`"year/month/day"`).
  */
 function toDefinitionMutation(
-  mutation: EditorMutation
+  mutation: EditorMutation,
+  fields: EditorField[]
 ): EndpointDefinitionFormat["mutation"] {
   if (!mutation.enabled) {
     return false
@@ -122,7 +127,13 @@ function toDefinitionMutation(
     basePath: mutation.basePath,
   }
 
-  const { partitioning, partitioningFormat } = mutation
+  const { partitioningFormat } = mutation
+  // Segments are held by field id; the export is the unchanged name-based
+  // string, resolved against the live field names.
+  const partitioning =
+    mutation.partitioning === false
+      ? false
+      : serializePartitionSegments(mutation.partitioning, fields)
 
   // Always emit an explicit `partitioning` for an enabled mutation: an absent
   // key now resolves to `false`, so omitting it would silently change meaning
@@ -174,7 +185,7 @@ export function toDefinition(state: EditorState): EndpointDefinitionFormat {
     catalog: state.catalog,
     schema: state.schema,
     fields,
-    mutation: toDefinitionMutation(state.mutation),
+    mutation: toDefinitionMutation(state.mutation, state.fields),
   }
 
   if (state.dataSource !== "") {
@@ -238,7 +249,8 @@ function fromDefinitionField(field: FieldDefinition): EditorField {
  * concrete value to display.
  */
 function fromDefinitionMutation(
-  mutation: EndpointDefinitionFormat["mutation"]
+  mutation: EndpointDefinitionFormat["mutation"],
+  fields: EditorField[]
 ): EditorMutation {
   if (mutation === undefined || mutation === false) {
     return { enabled: false }
@@ -248,8 +260,12 @@ function fromDefinitionMutation(
   // (C8). The editor's narrowed `partitioning` type excludes `true`, so a
   // legacy `true` is coerced to `false` here as well.
   const rawPartitioning = mutation.partitioning ?? false
-  const partitioning: false | string =
-    typeof rawPartitioning === "string" ? rawPartitioning : false
+  // A string is resolved to id-based segments against the imported fields; a
+  // name that cannot be resolved uniquely stays an unresolved segment.
+  const partitioning =
+    typeof rawPartitioning === "string"
+      ? resolvePartitionString(rawPartitioning, fields)
+      : false
   return {
     enabled: true,
     loadStrategy: mutation.loadStrategy,
@@ -267,19 +283,22 @@ function fromDefinitionMutation(
  * Assigns fresh client-side `id`s throughout and materializes the effective
  * defaults into the controls (empty `dataSource` when absent, concrete
  * partitioning values) so the UI shows what each value is. The identity
- * `toDefinition(fromDefinition(def))` is semantically equal to `def`.
+ * `toDefinition(fromDefinition(def))` is semantically equal to `def`. Partition
+ * segments are resolved from names to field ids; a name that is missing or
+ * duplicated stays an unresolved segment so it round-trips unchanged.
  *
  * @param def - A definition already parsed against the canonical schema.
  * @returns A live {@link EditorState} seeded from the definition.
  */
 export function fromDefinition(def: EndpointDefinitionFormat): EditorState {
+  const fields = def.fields.map(fromDefinitionField)
   return {
     version: def.version,
     tableName: def.tableName,
     catalog: def.catalog,
     schema: def.schema,
     dataSource: def.dataSource ?? "",
-    fields: def.fields.map(fromDefinitionField),
-    mutation: fromDefinitionMutation(def.mutation),
+    fields,
+    mutation: fromDefinitionMutation(def.mutation, fields),
   }
 }

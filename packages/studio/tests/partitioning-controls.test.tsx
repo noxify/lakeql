@@ -8,11 +8,12 @@ import { afterEach, describe, expect, it } from "vitest"
 
 import { CanvasSurface } from "@/components/studio/canvas/canvas"
 import { CanvasShellRoot } from "@/components/studio/canvas/shell-root"
+import { EndpointBuilder } from "@/components/studio/endpoint-builder"
 import { MutationConfigForm } from "@/components/studio/mutation-config-form"
 import type { EditorApi } from "@/components/studio/use-editor"
 import { EditorProvider, useEditor } from "@/components/studio/use-editor"
-import type { EditorState } from "@/core"
-import { createFreshState } from "@/core"
+import type { EditorPartitionSegment, EditorState } from "@/core"
+import { createFreshState, serializePartitionSegments } from "@/core"
 
 import { defined } from "./helpers"
 
@@ -61,13 +62,21 @@ function seed(editor: EditorApi, state: EditorState): void {
 }
 
 /** Reads the current `partitioning` value, asserting the mutation is enabled. */
-function partitioningOf(editor: EditorApi): false | string {
+function partitioningOf(editor: EditorApi): false | EditorPartitionSegment[] {
   const { mutation } = editor.state
   expect(mutation.enabled).toBeTruthy()
   if (!mutation.enabled) {
     throw new Error("mutation is not enabled")
   }
   return mutation.partitioning
+}
+
+/** Reads the partitioning serialized to its exported name-based string. */
+function partitionStringOf(editor: EditorApi): false | string {
+  const partitioning = partitioningOf(editor)
+  return partitioning === false
+    ? false
+    : serializePartitionSegments(partitioning, editor.state.fields)
 }
 
 /** Renders the canvas surface under a shell root with a seedable editor. */
@@ -120,7 +129,7 @@ describe("PartitioningFieldPicker combobox", () => {
         enabled: true,
         loadStrategy: "append",
         basePath: "/d",
-        partitioning: "",
+        partitioning: [],
         partitioningFormat: "year/month/day",
       },
     })
@@ -152,7 +161,7 @@ describe("PartitioningFieldPicker combobox", () => {
         enabled: true,
         loadStrategy: "append",
         basePath: "/d",
-        partitioning: "",
+        partitioning: [],
         partitioningFormat: "year/month/day",
       },
     })
@@ -161,8 +170,11 @@ describe("PartitioningFieldPicker combobox", () => {
     await user.click(input)
     await user.click(screen.getByText("created_at → year"))
 
-    // The partitioning string now holds the chosen segment.
-    expect(partitioningOf(harness.get())).toBe("created_at:year")
+    // The partitioning now holds the chosen segment, bound by field id.
+    expect(partitioningOf(harness.get())).toStrictEqual([
+      { fieldId: "f1", component: "year" },
+    ])
+    expect(partitionStringOf(harness.get())).toBe("created_at:year")
     // A removable badge appears for it.
     expect(
       screen.getByRole("button", { name: "Remove created_at → year" })
@@ -188,13 +200,13 @@ describe("PartitioningFieldPicker combobox", () => {
         enabled: true,
         loadStrategy: "append",
         basePath: "/d",
-        partitioning: "region",
+        partitioning: [{ fieldId: "f1" }],
         partitioningFormat: "year/month/day",
       },
     })
 
     await user.click(screen.getByRole("button", { name: "Remove region" }))
-    expect(partitioningOf(harness.get())).toBe("")
+    expect(partitioningOf(harness.get())).toStrictEqual([])
   })
 })
 
@@ -230,6 +242,134 @@ describe("write-timestamp auto-fill helper", () => {
       name: "Add write-timestamp field",
     })
     expect(button).toHaveProperty("disabled", true)
+    // A plain user field owns the name: the hint explains the collision.
+    expect(
+      screen.getByText(/A field named load_timestamp already exists/u)
+    ).toBeDefined()
+  })
+
+  it("after adding, shows a neutral hint instead of a collision message", async () => {
+    const user = userEvent.setup()
+    const harness = renderWithEditor(() => <MutationConfigForm />)
+    seed(harness.get(), enabledState())
+
+    await user.click(
+      screen.getByRole("button", { name: "Add write-timestamp field" })
+    )
+
+    expect(
+      screen.getByRole("button", { name: "Add write-timestamp field" })
+    ).toHaveProperty("disabled", true)
+    expect(
+      screen.getByText(/load_timestamp is part of this endpoint/u)
+    ).toBeDefined()
+    expect(screen.queryByText(/already exists/u)).toBeNull()
+  })
+})
+
+/** An enabled mutation with the given partitioning value. */
+function withPartitioning(
+  partitioning: false | EditorPartitionSegment[],
+  fields: EditorState["fields"] = []
+): EditorState {
+  const state = enabledState(fields)
+  return state.mutation.enabled
+    ? { ...state, mutation: { ...state.mutation, partitioning } }
+    : state
+}
+
+/** Clicks the write-timestamp helper button. */
+async function clickHelper(
+  user: ReturnType<typeof userEvent.setup>
+): Promise<void> {
+  await user.click(
+    screen.getByRole("button", { name: "Add write-timestamp field" })
+  )
+}
+
+describe("write-timestamp auto-fill helper partition prefill", () => {
+  afterEach(cleanup)
+
+  it("prefills an empty by-field selection, undone together with the field", async () => {
+    const user = userEvent.setup()
+    const harness = renderWithEditor(() => <MutationConfigForm />)
+    seed(harness.get(), withPartitioning([]))
+
+    await clickHelper(user)
+
+    expect(partitionStringOf(harness.get())).toBe(
+      "load_timestamp:year/load_timestamp:month/load_timestamp:day"
+    )
+    expect(harness.get().state.fields).toHaveLength(1)
+
+    // One snapshot: a single undo reverts both the field and the prefill.
+    act(() => harness.get().undo())
+    expect(harness.get().state.fields).toHaveLength(0)
+    expect(partitioningOf(harness.get())).toStrictEqual([])
+  })
+
+  it("leaves an already chosen partition path untouched", async () => {
+    const user = userEvent.setup()
+    const harness = renderWithEditor(() => <MutationConfigForm />)
+    seed(
+      harness.get(),
+      withPartitioning(
+        [{ fieldId: "f1" }],
+        [{ id: "f1", name: "region", type: "String" }]
+      )
+    )
+
+    await clickHelper(user)
+
+    expect(partitionStringOf(harness.get())).toBe("region")
+    expect(harness.get().state.fields).toHaveLength(2)
+  })
+
+  it("does not switch an off partitioning to by-field", async () => {
+    const user = userEvent.setup()
+    const harness = renderWithEditor(() => <MutationConfigForm />)
+    seed(harness.get(), withPartitioning(false))
+
+    await clickHelper(user)
+
+    // Still the boolean `false` (off), not switched to an empty by-field "".
+    const partitioning = partitioningOf(harness.get())
+    expect(partitioning).toBeTypeOf("boolean")
+    expect(partitioning).toBeFalsy()
+    expect(harness.get().state.fields).toHaveLength(1)
+  })
+})
+
+describe("write-timestamp auto-fill helper in the shell", () => {
+  afterEach(() => {
+    cleanup()
+    window.localStorage.clear()
+  })
+
+  it("confirms with a success toast whose action opens the new field", async () => {
+    const user = userEvent.setup()
+    render(<EndpointBuilder />)
+
+    // The shell lands on General Settings, which hosts the mutation form.
+    await user.click(screen.getByRole("switch", { name: "Enable mutation" }))
+    await user.click(
+      screen.getByRole("button", { name: "Add write-timestamp field" })
+    )
+
+    await expect(
+      screen.findByText("Write-timestamp field added")
+    ).resolves.toBeDefined()
+
+    await user.click(screen.getByRole("button", { name: "Show field" }))
+
+    // The Fields view opens with the new field selected in the panel.
+    expect(screen.getByRole("heading", { name: "Fields" })).toBeDefined()
+    const panel = screen.getByRole("complementary", {
+      name: "Field properties",
+    })
+    expect(
+      within(panel).getByRole("heading", { name: "load_timestamp" })
+    ).toBeDefined()
   })
 })
 

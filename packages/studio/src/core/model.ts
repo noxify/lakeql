@@ -56,6 +56,44 @@ export interface EditorArrayItem {
 }
 
 /**
+ * One segment of the by-field partition path, held in the editor state by the
+ * stable client-side field `id` rather than by name, so renaming a field keeps
+ * its segments attached and two fields with the same name stay unambiguous.
+ *
+ * `component` is a raw string (not narrowed to the schema's date components) so
+ * an imported, possibly invalid, component survives a round trip unchanged and
+ * is still flagged by validation.
+ */
+export interface EditorResolvedPartitionSegment {
+  /** The `id` of the referenced field. */
+  fieldId: string
+  /** Date component, present only for a `field:component` segment. */
+  component?: string
+}
+
+/**
+ * A partition segment imported from an `endpoint.json` whose field name could
+ * not be resolved to exactly one top-level field (no such field, or the name is
+ * duplicated). It keeps its raw name so validation still flags it and the
+ * export writes it back unchanged.
+ */
+export interface EditorUnresolvedPartitionSegment {
+  /** The raw field name exactly as imported. */
+  unresolvedName: string
+  /** The raw component text, present only for a `name:component` segment. */
+  component?: string
+}
+
+/**
+ * A partition segment in the editor state: either bound to a field by id or an
+ * unresolved imported name. Serialized to the name-based `field` /
+ * `field:component` string on export.
+ */
+export type EditorPartitionSegment =
+  | EditorResolvedPartitionSegment
+  | EditorUnresolvedPartitionSegment
+
+/**
  * Mutation configuration in the editor, modeled with an explicit `enabled`
  * discriminant so the UI can hold a fully-configured-but-disabled state and
  * toggle it without losing values.
@@ -72,12 +110,14 @@ export type EditorMutation =
       loadStrategy: LoadStrategy
       basePath: string
       /**
-       * Partitioning mode: `false` (off, flat layout) or a field/custom
-       * partition string. The write-timestamp `true` mode was removed — a
-       * write-timestamp column is now an explicit auto-fill field, not an
-       * implicit partitioning mode.
+       * Partitioning mode: `false` (off, flat layout) or the ordered list of
+       * by-field partition segments (empty while none is chosen yet). Segments
+       * reference fields by id; the mapping layer serializes them to the
+       * name-based partition string on export. The write-timestamp `true` mode
+       * was removed — a write-timestamp column is now an explicit auto-fill
+       * field, not an implicit partitioning mode.
        */
-      partitioning: false | string
+      partitioning: false | EditorPartitionSegment[]
       /**
        * Partition granularity, relevant only in non-custom modes. Always held
        * so the control has a value to show; omitted on export when it equals

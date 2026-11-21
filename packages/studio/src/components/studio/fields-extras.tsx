@@ -1,4 +1,4 @@
-import { KeyboardIcon, UploadIcon } from "lucide-react"
+import { UploadIcon } from "lucide-react"
 import { useRef } from "react"
 
 import { Button } from "@/components/ui/button"
@@ -77,36 +77,5 @@ export const FieldsEmptyState = () => (
     <div>
       <EmptyStateImport />
     </div>
-  </div>
-)
-
-/**
- * The keyboard-discoverability hint (Req 7.2): a visible, labelled `role="note"`
- * region naming the pick-up / move / drop / cancel keys of the keyboard
- * grab-move-drop mode, so keyboard operability is discoverable beyond the
- * per-node `aria-keyshortcuts`. Gives the Req 7.2 oracle a fixed target.
- */
-export const KeyboardHint = () => (
-  <div
-    role="note"
-    aria-label="Keyboard move help"
-    className="border-border/60 text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border p-2 text-xs"
-  >
-    <span className="text-foreground inline-flex items-center gap-1.5 font-medium">
-      <KeyboardIcon className="size-4" />
-      Keyboard moves
-    </span>
-    <span>
-      <kbd>Enter</kbd> or <kbd>Space</kbd> to pick up
-    </span>
-    <span>
-      <kbd>↑</kbd> <kbd>↓</kbd> to move
-    </span>
-    <span>
-      <kbd>Enter</kbd> to drop
-    </span>
-    <span>
-      <kbd>Escape</kbd> to cancel
-    </span>
   </div>
 )

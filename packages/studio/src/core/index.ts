@@ -16,7 +16,10 @@ export type {
   EditorField,
   EditorFieldType,
   EditorMutation,
+  EditorPartitionSegment,
+  EditorResolvedPartitionSegment,
   EditorState,
+  EditorUnresolvedPartitionSegment,
   HistoryState,
 } from "./model"
 export {
@@ -37,6 +40,17 @@ export {
 } from "./model"
 
 export { fromDefinition, toDefinition } from "./mapping"
+export {
+  collectFieldIds,
+  isResolvedPartitionSegment,
+  isValidPartitionSource,
+  migrateEditorState,
+  partitionSegmentLabel,
+  partitionSegmentsReferencing,
+  removePartitionSegments,
+  resolvePartitionString,
+  serializePartitionSegments,
+} from "./partitioning"
 
 export type { EndpointDefinitionFormat } from "@lakeql/schema-generator/endpoint-schema"
 export type {
@@ -47,6 +61,7 @@ export type {
   CompanionPartitionDiagnostic,
   DuplicateDiagnostic,
   ReservedNameDiagnostic,
+  UnresolvedPartitionDiagnostic,
   SchemaDiagnostic,
   ValidationResult,
 } from "./validation"
@@ -54,6 +69,7 @@ export { evaluate, isValidForExport } from "./validation"
 
 export type {
   FieldPath,
+  FieldRemovalPlan,
   MovePlan,
   MoveSlot,
   MoveTarget,
@@ -71,6 +87,7 @@ export {
   findFieldPath,
   moveField,
   planArrayItemTypeChange,
+  planFieldRemoval,
   planMove,
   planTypeChange,
   removeField,

@@ -1,10 +1,9 @@
 import { describe, expect, it } from "vitest"
 
 import {
-  parsePartitionSegments,
   partitioningValueForMode,
   partitionOptionsFor,
-  serializePartitionSegments,
+  partitionSegmentKey,
   topLevelPartitionCandidates,
 } from "@/components/studio/partition-format"
 import type { EditorField } from "@/core"
@@ -54,63 +53,66 @@ describe("topLevelPartitionCandidates helper", () => {
 describe("partitionOptionsFor helper", () => {
   it("resolves a non-date primitive to a single bare option", () => {
     const options = partitionOptionsFor([
-      { name: "region", type: "String", isDateLike: false },
+      { id: "f1", name: "region", type: "String", isDateLike: false },
     ])
     expect(options).toStrictEqual([
-      { value: "region", label: "region", segment: { field: "region" } },
+      { value: "f1", label: "region", segment: { fieldId: "f1" } },
     ])
   })
 
   it("expands a Date/DateTime field into six component options", () => {
     const options = partitionOptionsFor([
-      { name: "created_at", type: "DateTime", isDateLike: true },
+      { id: "f2", name: "created_at", type: "DateTime", isDateLike: true },
     ])
     expect(options.map((option) => option.value)).toStrictEqual([
-      "created_at:year",
-      "created_at:month",
-      "created_at:day",
-      "created_at:hour",
-      "created_at:minute",
-      "created_at:second",
+      "f2:year",
+      "f2:month",
+      "f2:day",
+      "f2:hour",
+      "f2:minute",
+      "f2:second",
     ])
     expect(options[0]).toStrictEqual({
-      value: "created_at:year",
+      value: "f2:year",
       label: "created_at → year",
-      segment: { field: "created_at", component: "year" },
+      segment: { fieldId: "f2", component: "year" },
     })
   })
 })
 
-describe("serializePartitionSegments / parsePartitionSegments", () => {
-  it.each(["a", "a/b", "created_at:year/region", "d:year/d:month"])(
-    "round-trips serialize(parse(s)) === s for %s",
-    (value) => {
-      expect(serializePartitionSegments(parsePartitionSegments(value))).toBe(
-        value
-      )
-    }
-  )
-
-  it("tolerates partial input without throwing", () => {
-    expect(parsePartitionSegments(":day")).toStrictEqual([
-      { field: "", component: "day" },
-    ])
+describe("partitionOptionsFor with same-named fields", () => {
+  it("keeps two fields with the same name as distinct options", () => {
+    const options = partitionOptionsFor(
+      topLevelPartitionCandidates([
+        field("region", "String", "a"),
+        field("region", "String", "b"),
+      ])
+    )
+    expect(options.map((option) => option.value)).toStrictEqual(["a", "b"])
   })
+})
 
-  it("parses an empty string to no segments", () => {
-    expect(parsePartitionSegments("")).toStrictEqual([])
+describe("segment keys", () => {
+  it("keys resolved segments by id and unresolved ones by prefixed name", () => {
+    expect(partitionSegmentKey({ fieldId: "f1" })).toBe("f1")
+    expect(partitionSegmentKey({ fieldId: "f1", component: "day" })).toBe(
+      "f1:day"
+    )
+    expect(partitionSegmentKey({ unresolvedName: "ghost" })).toBe("?ghost")
+    expect(
+      partitionSegmentKey({ unresolvedName: "ghost", component: "day" })
+    ).toBe("?ghost:day")
   })
 })
 
 describe("partitioningValueForMode mapping", () => {
   it("maps off to false", () => {
-    expect(partitioningValueForMode("off", "created_at")).toBeFalsy()
+    expect(partitioningValueForMode("off", [{ fieldId: "f1" }])).toBeFalsy()
   })
 
-  it("keeps the current string for field mode, else seeds an empty string", () => {
-    expect(partitioningValueForMode("field", "created_at:year")).toBe(
-      "created_at:year"
-    )
-    expect(partitioningValueForMode("field", false)).toBe("")
+  it("keeps the current segments for field mode, else seeds an empty list", () => {
+    const current = [{ fieldId: "f1", component: "year" }]
+    expect(partitioningValueForMode("field", current)).toStrictEqual(current)
+    expect(partitioningValueForMode("field", false)).toStrictEqual([])
   })
 })

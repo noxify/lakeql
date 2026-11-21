@@ -18,6 +18,7 @@ describe("diagnostic summary", () => {
       autoFillPlacement: [],
       autoFillMutation: [],
       companionPartition: [],
+      unresolvedPartition: [],
     }
     expect(summarizeDiagnostics(valid)).toStrictEqual([])
   })
@@ -33,6 +34,7 @@ describe("diagnostic summary", () => {
       autoFillPlacement: [],
       autoFillMutation: [],
       companionPartition: [],
+      unresolvedPartition: [],
     }
     expect(summarizeDiagnostics(result)).toStrictEqual([
       "fields.0.name: Invalid input",
@@ -52,6 +54,7 @@ describe("diagnostic summary", () => {
       autoFillPlacement: [],
       autoFillMutation: [],
       companionPartition: [],
+      unresolvedPartition: [],
     }
     expect(summarizeDiagnostics(result)).toStrictEqual([
       'Duplicate field "id"',
@@ -70,6 +73,7 @@ describe("diagnostic summary", () => {
       autoFillPlacement: [],
       autoFillMutation: [],
       companionPartition: [],
+      unresolvedPartition: [],
     }
     expect(summarizeDiagnostics(result)).toStrictEqual([
       "Min must be a finite number",
@@ -100,5 +104,29 @@ describe("diagnostic summary", () => {
     expect(
       lines.some((line) => line.includes('Duplicate field "id"'))
     ).toBeTruthy()
+  })
+})
+
+describe("diagnostic summary — unresolved partition segments", () => {
+  it("names a missing and an ambiguous partition field", () => {
+    const result: ValidationResult = {
+      validForExport: false,
+      schemaIssues: [],
+      duplicates: [],
+      badRegex: [],
+      badNumber: [],
+      reservedNames: [],
+      autoFillPlacement: [],
+      autoFillMutation: [],
+      companionPartition: [],
+      unresolvedPartition: [
+        { name: "ghost", reason: "missing" },
+        { name: "dup", component: "year", reason: "ambiguous" },
+      ],
+    }
+    expect(summarizeDiagnostics(result)).toStrictEqual([
+      'Partition field "ghost" does not exist',
+      'Partition field "dup" matches more than one field',
+    ])
   })
 })

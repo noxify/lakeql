@@ -106,8 +106,20 @@ export const Rail = () => {
                       <span>{section.label}</span>
                     </SidebarMenuButton>
                     {showBadge && (
-                      <SidebarMenuBadge className="text-destructive">
-                        {issueCount}
+                      <SidebarMenuBadge
+                        data-testid="rail-issue-badge"
+                        className={
+                          isMobile
+                            ? "text-destructive"
+                            : // Desktop: the icon-only rail is narrower than the
+                              // badge's default row placement, so it would sit on
+                              // the icon. Pin it as a filled counter on the
+                              // icon's top-right corner, separated from the icon
+                              // by a ring in the sidebar color.
+                              "bg-destructive ring-sidebar top-0! right-0 h-4 min-w-4 rounded-full px-1 text-[10px] leading-none text-white ring-2 peer-hover/menu-button:text-white peer-data-active/menu-button:text-white"
+                        }
+                      >
+                        {issueCount > 99 ? "99+" : issueCount}
                       </SidebarMenuBadge>
                     )}
                   </SidebarMenuItem>

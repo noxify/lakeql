@@ -22,6 +22,10 @@ import { EndpointBuilder } from "@/components/studio/endpoint-builder"
  * trigger) so both navigations stay reachable while the main content keeps full
  * width.
  *
+ * The editor is desktop-only by default (see `desktop-only.test.tsx`), so these
+ * tests opt out with `desktopOnly={false}` to keep the responsive layout
+ * covered for when mobile support is re-enabled.
+ *
  * `useIsMobile` / `useIsNarrow` derive from `window.innerWidth`, so each test
  * sets the width before rendering; the jsdom default (`1024`) is the desktop
  * path exercised by the other shell suites.
@@ -48,7 +52,7 @@ describe("studio shell — mobile primary navigation (≤767px)", () => {
 
   it("exposes an always-visible header trigger that opens the rail and reaches a view", async () => {
     const user = userEvent.setup()
-    render(<EndpointBuilder />)
+    render(<EndpointBuilder desktopOnly={false} />)
 
     // The rail's own trigger is off-canvas on mobile; the header carries the
     // always-visible affordance to open navigation.
@@ -85,7 +89,7 @@ describe("studio shell — phone secondary navigation (≤560px)", () => {
 
   it("collapses the secondary nav out of the layout and reaches it via a header trigger", async () => {
     const user = userEvent.setup()
-    render(<EndpointBuilder />)
+    render(<EndpointBuilder desktopOnly={false} />)
 
     // Navigate to Fields (via the mobile primary-nav sheet). The Fields view
     // has a contextual secondary panel (the field-type palette).
@@ -112,7 +116,7 @@ describe("studio shell — phone secondary navigation (≤560px)", () => {
 
   it("shows no contextual-nav trigger on a view without a secondary panel", async () => {
     const user = userEvent.setup()
-    render(<EndpointBuilder />)
+    render(<EndpointBuilder desktopOnly={false} />)
 
     // The default Settings view has no secondary panel, so no contextual-nav
     // trigger is mounted (only the primary-nav trigger).

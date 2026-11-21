@@ -7,33 +7,36 @@ import {
   useCanvasSensors,
 } from "./use-canvas-dnd"
 import {
-  KeyboardMoveProvider,
-  useKeyboardMove,
-  useKeyboardMoveContext,
-} from "./use-keyboard-move"
+  FieldFocusProvider,
+  useFieldFocus,
+  useFieldFocusContext,
+} from "./use-field-focus"
+import {
+  FieldRemovalProvider,
+  useCanvasFieldRemoval,
+} from "./use-field-removal"
 import { TypeChangeProvider, useCanvasTypeChange } from "./use-type-change"
 
 /**
- * A visually hidden `aria-live` region announcing keyboard structural actions
- * (pick up, target change, drop, cancel, palette add) reusing the Iteration-1
- * announcer pattern (Requirement 5.4). Polite so it does not interrupt the user
- * mid-navigation; atomic so each new message is read in full.
+ * A visually hidden `aria-live` region announcing keyboard palette adds,
+ * reusing the Iteration-1 announcer pattern. Polite so it does not interrupt
+ * the user mid-navigation; atomic so each new message is read in full.
  *
  * Rendered once by {@link CanvasShellRoot} so the announcer lives under the
- * hoisted `KeyboardMoveProvider` regardless of where the palette and canvas
+ * hoisted `FieldFocusProvider` regardless of where the palette and canvas
  * surface mount.
  */
-export const KeyboardMoveAnnouncer = () => {
-  const keyboard = useKeyboardMoveContext()
+export const CanvasAnnouncer = () => {
+  const fieldFocus = useFieldFocusContext()
   return (
     <div
       role="status"
       aria-live="polite"
       aria-atomic="true"
       className="sr-only"
-      data-testid="keyboard-move-announcer"
+      data-testid="canvas-announcer"
     >
-      {keyboard.announcement}
+      {fieldFocus.announcement}
     </div>
   )
 }
@@ -41,8 +44,9 @@ export const KeyboardMoveAnnouncer = () => {
 /**
  * The hoisted drag-and-drop shell root: owns the single `@dnd-kit`
  * `DndContext` and the canvas provider chain
- * (`CanvasDndProvider → KeyboardMoveProvider → TypeChangeProvider`) plus the
- * keyboard-move live-region announcer, and renders its `children` inside them.
+ * (`CanvasDndProvider → FieldFocusProvider → TypeChangeProvider →
+ * FieldRemovalProvider`) plus the
+ * live-region announcer, and renders its `children` inside them.
  *
  * It is the reusable wrapper the iteration-3 shell mounts: it must sit **below**
  * `EditorProvider` — all three provider hooks call `useEditorContext`, so
@@ -52,16 +56,14 @@ export const KeyboardMoveAnnouncer = () => {
  * main content) while still sharing one `DndContext`. `@dnd-kit` resolves
  * droppables by payload, not DOM proximity, so the two need not be siblings.
  *
- * The drag/keyboard/type-change **logic is unchanged** from the previous
- * self-providing `Canvas`; only where the providers sit moves up to here.
- *
  * @param children - The subtree rendered under the hoisted contexts (the shell
  *   views, or a palette + canvas composition).
  */
 export const CanvasShellRoot = ({ children }: { children: ReactNode }) => {
   const dnd = useCanvasDnd()
-  const keyboard = useKeyboardMove()
+  const fieldFocus = useFieldFocus()
   const typeChange = useCanvasTypeChange()
+  const fieldRemoval = useCanvasFieldRemoval()
   const sensors = useCanvasSensors()
   const { onDragStart: handleDragStart } = dnd
   const { onDragOver: handleDragOver } = dnd
@@ -69,19 +71,21 @@ export const CanvasShellRoot = ({ children }: { children: ReactNode }) => {
 
   return (
     <CanvasDndProvider value={dnd}>
-      <KeyboardMoveProvider value={keyboard}>
+      <FieldFocusProvider value={fieldFocus}>
         <TypeChangeProvider value={typeChange}>
-          <DndContext
-            sensors={sensors}
-            onDragStart={handleDragStart}
-            onDragOver={handleDragOver}
-            onDragEnd={handleDragEnd}
-          >
-            <KeyboardMoveAnnouncer />
-            {children}
-          </DndContext>
+          <FieldRemovalProvider value={fieldRemoval}>
+            <DndContext
+              sensors={sensors}
+              onDragStart={handleDragStart}
+              onDragOver={handleDragOver}
+              onDragEnd={handleDragEnd}
+            >
+              <CanvasAnnouncer />
+              {children}
+            </DndContext>
+          </FieldRemovalProvider>
         </TypeChangeProvider>
-      </KeyboardMoveProvider>
+      </FieldFocusProvider>
     </CanvasDndProvider>
   )
 }

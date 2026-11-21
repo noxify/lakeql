@@ -137,3 +137,18 @@ describe("download path", () => {
     expect(env.triggerDownload).not.toHaveBeenCalled()
   })
 })
+
+describe("export gate — unresolved partition segment", () => {
+  it("blocks export and explains why in the error list", () => {
+    const state = fromDefinition({
+      ...validDefinition,
+      mutation: {
+        loadStrategy: "append",
+        basePath: "/data",
+        partitioning: "ghost",
+      },
+    })
+    const result = expectErr(exportToJson(state))
+    expect(result.errors).toContain('Partition field "ghost" does not exist')
+  })
+})

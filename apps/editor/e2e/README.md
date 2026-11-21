@@ -13,9 +13,10 @@ The suite builds the app and serves it via `vite preview` (see `playwright.confi
 
 ## Automated coverage (what these tests prove)
 
-- **SC 2.1.1 Keyboard** for every structural action: add from the palette, reorder within a level, move across levels / into-and-out-of a container, a rejected self-containing move (no change + `role="alert"` reason), and cancel (no change + focus returned to the source).
-- **SC 2.4.3 Focus Order / 2.4.7 Focus Visible**: focus lands on the moved/added field after a commit and returns to the source on cancel.
-- Selection semantics, keyboard undo/redo, and the live-region announcements.
+- **SC 2.1.1 Keyboard** for adding a field from the palette. Reordering fields is pointer-only by design, so there is no keyboard move mode to cover.
+- **SC 2.4.3 Focus Order / 2.4.7 Focus Visible**: focus lands in the name input of an added field, or of a field jumped to from the Validations view.
+- Selection semantics, keyboard undo/redo, the live-region announcement for keyboard adds, rail and command-palette operation.
+- The **desktop-only gate**: at a phone viewport (Pixel 5) a "Desktop only" notice replaces the editor (`desktop-only.test.ts`, `mobile-chromium` project).
 - An **axe** audit (WCAG 2.0/2.1 A + AA rules) on the resulting states.
 
 The `color-contrast` rule is excluded from the axe audit — contrast judgement is a manual-only item (below), and the Iteration-1 destructive-red validation text sits a hair under the 4.5:1 threshold, a pre-existing styling concern rather than a keyboard-operability regression.

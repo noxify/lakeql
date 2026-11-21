@@ -149,6 +149,25 @@ const ValidationRow = ({
 }
 
 /**
+ * Narrows a value emitted by the add-validation picker to a kind that is valid
+ * for the current field type. Rejects `null`, the empty string, and any kind
+ * not offered for this type.
+ *
+ * @param value - The raw value from the picker's `onValueChange`.
+ * @param available - The kinds offered for the field's type.
+ * @returns `true` when `value` is one of `available`.
+ */
+function isAvailableKind(
+  value: unknown,
+  available: readonly ValidationKind[]
+): value is ValidationKind {
+  return (
+    typeof value === "string" &&
+    (available as readonly string[]).includes(value)
+  )
+}
+
+/**
  * The per-field validations editor (task 13): lists the field's refinements,
  * each editable and removable, with an "add" picker restricted to the kinds
  * valid for the field's type.
@@ -221,7 +240,14 @@ const ValidationsEditor = ({
       {available.length > 0 && (
         <Select
           value=""
-          onValueChange={(kind) => addValidation(kind as ValidationKind)}
+          onValueChange={(kind) => {
+            // The picker is an action menu, not a stored value: only a real,
+            // type-valid kind adds a refinement. Base UI can emit `null` (for
+            // example when the item set changes), which must never be added.
+            if (isAvailableKind(kind, available)) {
+              addValidation(kind)
+            }
+          }}
         >
           <SelectTrigger id={addId} size="sm" className="w-full">
             <span className="text-muted-foreground inline-flex items-center gap-1.5">
@@ -325,7 +351,9 @@ export const FieldPropertiesPanel = () => {
   )
 
   return (
-    <div className="grid gap-4">
+    // Keyed by field id so per-field UI state (the open add-validation picker,
+    // index-keyed validation rows) never carries over to the next selection.
+    <div key={field.id} className="grid gap-4">
       <div className="grid gap-0.5">
         <div className="flex items-center gap-2">
           <h3 className="text-sm font-medium">

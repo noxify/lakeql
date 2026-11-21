@@ -149,6 +149,28 @@ export function exportToJson(state: EditorState): ExportResult {
       ...result.badNumber.map(
         (bad) => `${bad.kind} bound must be a finite number`
       ),
+      ...result.reservedNames.map(
+        (collision) =>
+          `Name "${collision.name}" collides with an auto-fill reserved column`
+      ),
+      ...result.autoFillPlacement.map((bad) =>
+        bad.reason === "non-datetime"
+          ? `Auto-fill field "${bad.name}" must be a DateTime field`
+          : `Auto-fill field "${bad.name}" must be top-level, not nested`
+      ),
+      ...result.autoFillMutation.map(
+        (bad) =>
+          `Auto-fill field "${bad.name}" requires an append/full-load-append mutation`
+      ),
+      ...result.companionPartition.map(
+        (bad) =>
+          `Partition segment "${bad.segment}" references derived column "${bad.companionName}"; use "${bad.primaryName}:year"`
+      ),
+      ...result.unresolvedPartition.map((bad) =>
+        bad.reason === "missing"
+          ? `Partition field "${bad.name}" does not exist`
+          : `Partition field "${bad.name}" matches more than one field`
+      ),
     ]
     return { ok: false, errors }
   }

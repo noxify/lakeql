@@ -5,8 +5,11 @@
  * `tableName`/`catalog`/`schema`/`dataSource` are inputs in the metadata form;
  * `basePath` is the input in the mutation-config form (only rendered when
  * mutation is enabled, which is also the only state in which a `basePath` issue
- * can exist). `version` is intentionally excluded — it is a read-only literal
- * with no editable input, so its issue stays shown-but-not-clickable.
+ * can exist). `partitioning` is the partition picker's input in the same form,
+ * rendered while "By field / custom format" is active — the only state in which
+ * a partitioning issue can exist. `version` is intentionally excluded — it is a
+ * read-only literal with no editable input, so its issue stays
+ * shown-but-not-clickable.
  */
 export type MetadataNavKey =
   | "tableName"
@@ -14,6 +17,7 @@ export type MetadataNavKey =
   | "schema"
   | "dataSource"
   | "basePath"
+  | "partitioning"
 
 /** The set of navigable metadata keys, for the {@link isMetadataNavKey} guard. */
 const METADATA_NAV_KEYS: ReadonlySet<string> = new Set<MetadataNavKey>([
@@ -22,6 +26,7 @@ const METADATA_NAV_KEYS: ReadonlySet<string> = new Set<MetadataNavKey>([
   "schema",
   "dataSource",
   "basePath",
+  "partitioning",
 ])
 
 /**

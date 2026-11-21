@@ -430,8 +430,7 @@ describe("canvas grip — keyboard starts no @dnd-kit drag (ghost regression)", 
     // and is not dimmed (`opacity-50` is only added while `isDragging`).
     expect(node.style.transform).toBe("")
     expect(node.className).not.toContain("opacity-50")
-    // The grip is kept out of the Tab order, routing keyboard users to the
-    // dedicated "Move field" affordance instead.
+    // The grip is pointer-only and kept out of the Tab order.
     expect(grip.tabIndex).toBe(-1)
   })
 })

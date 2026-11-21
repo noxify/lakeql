@@ -7,7 +7,8 @@ import type { ValidationResult } from "@/core"
  *
  * @param validation - The current validity-gate result from the core.
  * @returns One message per diagnostic, across the schema, duplicate, regex,
- *   numeric-bound, and the four auto-fill diagnostic kinds, in that order.
+ *   numeric-bound, the four auto-fill diagnostic kinds, and unresolved
+ *   partition segments, in that order.
  */
 export function summarizeDiagnostics(validation: ValidationResult): string[] {
   return [
@@ -42,6 +43,11 @@ export function summarizeDiagnostics(validation: ValidationResult): string[] {
     ...validation.companionPartition.map(
       (bad) =>
         `Partition segment "${bad.segment}" references derived column "${bad.companionName}"; use "${bad.primaryName}:year"`
+    ),
+    ...validation.unresolvedPartition.map((bad) =>
+      bad.reason === "missing"
+        ? `Partition field "${bad.name}" does not exist`
+        : `Partition field "${bad.name}" matches more than one field`
     ),
   ]
 }

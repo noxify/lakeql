@@ -4,10 +4,12 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar"
 import { TooltipProvider } from "@/components/ui/tooltip"
+import { useIsBelowDesktop } from "@/hooks/use-below-desktop"
 
 import { Toaster } from "../ui/toast"
 import { CanvasShellRoot } from "./canvas/shell-root"
 import { CommandPalette } from "./command-palette"
+import { DesktopOnlyNotice } from "./desktop-only-notice"
 import { ImportExportBar } from "./import-export-bar"
 import { MainContent } from "./main-content"
 import { Rail } from "./rail"
@@ -84,24 +86,17 @@ const EndpointBuilderShell = () => {
 }
 
 /**
- * Root component of the LakeQL Endpoint Builder.
- *
- * Composes the shadcn `sidebar-09`-style shell — an icon rail (General Settings
- * / Fields / Validations / JSON), a contextual secondary sidebar, a header bar,
- * and the switched main content — over the framework-agnostic `@/core`. The
- * live `EditorState` drives rendering and validation; structural actions route
- * through the core field operations; the draft autosaves via the core
- * persistence layer.
+ * The editor itself: the full shell wired to its providers.
  *
  * The provider chain is layered precisely: `EditorProvider` (all canvas hooks
  * read it) wraps the hoisted {@link CanvasShellRoot} (the single `@dnd-kit`
- * `DndContext` plus the keyboard-move / type-change providers), which wraps the
+ * `DndContext` plus the field-focus / type-change providers), which wraps the
  * shell's view state and the `SidebarProvider`. Hoisting the `DndContext` above
  * the sidebar is what lets the Fields palette (secondary sidebar) and the
  * canvas (main content) live in different subtrees while still resolving one
  * another's drag payloads.
  */
-export const EndpointBuilder = () => {
+const EndpointBuilderApp = () => {
   const editor = useEditor()
   // The active view is synced with the URL hash (`#settings` / `#fields` /
   // `#validations` / `#json`) so a reload or a shared deep link restores it.
@@ -121,6 +116,53 @@ export const EndpointBuilder = () => {
         </CanvasShellRoot>
       </EditorProvider>
       <Toaster />
+    </>
+  )
+}
+
+/** Props of the {@link EndpointBuilder} root component. */
+export interface EndpointBuilderProps {
+  /**
+   * Whether the editor is restricted to desktop-width viewports. While `true`
+   * and the viewport is narrower than the desktop breakpoint (768px), a
+   * "Desktop only" notice replaces the editor. The editor stays mounted
+   * underneath (hidden), so its state and undo history survive a temporary
+   * resize. Set to `false` to render the responsive mobile layout instead.
+   *
+   * @default true
+   */
+  desktopOnly?: boolean
+}
+
+/**
+ * Root component of the LakeQL Endpoint Builder.
+ *
+ * Composes the shadcn `sidebar-09`-style shell — an icon rail (General Settings
+ * / Fields / Validations / JSON), a contextual secondary sidebar, a header bar,
+ * and the switched main content — over the framework-agnostic `@/core`. The
+ * live `EditorState` drives rendering and validation; structural actions route
+ * through the core field operations; the draft autosaves via the core
+ * persistence layer.
+ *
+ * The builder currently supports desktop-width viewports only: below 768px a
+ * {@link DesktopOnlyNotice} is shown (see {@link EndpointBuilderProps.desktopOnly}).
+ *
+ * @param props - The {@link EndpointBuilderProps}.
+ */
+export const EndpointBuilder = ({
+  desktopOnly = true,
+}: EndpointBuilderProps) => {
+  const belowDesktop = useIsBelowDesktop()
+  const gated = desktopOnly && belowDesktop
+
+  return (
+    <>
+      {gated && <DesktopOnlyNotice />}
+      {/* Kept mounted while gated: unmounting would drop the undo history and
+          any edit still inside the autosave debounce window. */}
+      <div hidden={gated}>
+        <EndpointBuilderApp />
+      </div>
     </>
   )
 }

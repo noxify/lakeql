@@ -1,9 +1,14 @@
 import { describe, expect, it } from "vitest"
 
+import { addField, createField } from "@/core"
 import { fromDefinition } from "@/core/mapping"
 import type { EditorState } from "@/core/model"
 import { createFreshState } from "@/core/model"
-import { evaluate, isValidForExport } from "@/core/validation"
+import {
+  EMPTY_PARTITIONING_MESSAGE,
+  evaluate,
+  isValidForExport,
+} from "@/core/validation"
 
 import { defined } from "./helpers"
 
@@ -568,5 +573,144 @@ describe("auto-fill validations (FR4.6)", () => {
     const result = evaluate(state)
     expect(result.companionPartition).toStrictEqual([])
     expect(result.validForExport).toBeTruthy()
+  })
+})
+
+/** An endpoint with a `region` field and the given imported partitioning. */
+function withPartitioning(partitioning: string): EditorState {
+  return fromDefinition({
+    version: "2.0",
+    tableName: "t",
+    catalog: "c",
+    schema: "s",
+    fields: [{ name: "region", type: "String" }],
+    mutation: appendMutation(partitioning),
+  })
+}
+
+describe("unresolved partition segments", () => {
+  it("accepts a segment that resolves to exactly one field", () => {
+    const result = evaluate(withPartitioning("region"))
+    expect(result.unresolvedPartition).toStrictEqual([])
+    expect(result.validForExport).toBeTruthy()
+  })
+
+  it("flags a well-formed segment naming a field that does not exist", () => {
+    const result = evaluate(withPartitioning("ghost"))
+    expect(result.validForExport).toBeFalsy()
+    expect(result.unresolvedPartition).toStrictEqual([
+      { name: "ghost", reason: "missing" },
+    ])
+  })
+
+  it("keeps the component of an unresolved date-component segment", () => {
+    const result = evaluate(withPartitioning("region/ghost:year"))
+    expect(result.validForExport).toBeFalsy()
+    expect(result.unresolvedPartition).toStrictEqual([
+      { name: "ghost", component: "year", reason: "missing" },
+    ])
+  })
+
+  it("flags a segment whose name matches more than one field as ambiguous", () => {
+    const state = fromDefinition({
+      version: "2.0",
+      tableName: "t",
+      catalog: "c",
+      schema: "s",
+      fields: [
+        { name: "dup", type: "String" },
+        { name: "dup", type: "String" },
+      ],
+      mutation: appendMutation("dup"),
+    })
+    const result = evaluate(state)
+    expect(result.validForExport).toBeFalsy()
+    expect(result.unresolvedPartition).toStrictEqual([
+      { name: "dup", reason: "ambiguous" },
+    ])
+  })
+
+  it("clears the finding once a field with that name exists", () => {
+    const state = withPartitioning("ghost")
+    expect(evaluate(state).unresolvedPartition).toHaveLength(1)
+
+    const withField = addField(state, [], {
+      ...createField("String"),
+      name: "ghost",
+    })
+    const result = evaluate(withField)
+    expect(result.unresolvedPartition).toStrictEqual([])
+    expect(result.validForExport).toBeTruthy()
+  })
+
+  it("does not double-report a segment the schema already rejects", () => {
+    const result = evaluate(withPartitioning("ghost:bogus"))
+    expect(result.validForExport).toBeFalsy()
+    expect(result.schemaIssues.length).toBeGreaterThan(0)
+    expect(result.unresolvedPartition).toStrictEqual([])
+  })
+
+  it("does not double-report a derived companion column segment", () => {
+    const state = fromDefinition({
+      version: "2.0",
+      tableName: "t",
+      catalog: "c",
+      schema: "s",
+      fields: [
+        {
+          name: "event",
+          type: "DateTime",
+          options: { autoFill: "write_timestamp" },
+        },
+      ],
+      mutation: appendMutation("event_year"),
+    })
+    const result = evaluate(state)
+    expect(result.companionPartition).toHaveLength(1)
+    expect(result.unresolvedPartition).toStrictEqual([])
+  })
+
+  it("reports nothing when partitioning is off", () => {
+    const state = fromDefinition({
+      version: "2.0",
+      tableName: "t",
+      catalog: "c",
+      schema: "s",
+      fields: [{ name: "region", type: "String" }],
+      mutation: { loadStrategy: "append", basePath: "/d", partitioning: false },
+    })
+    const result = evaluate(state)
+    expect(result.unresolvedPartition).toStrictEqual([])
+    expect(result.validForExport).toBeTruthy()
+  })
+})
+
+describe("empty by-field partitioning", () => {
+  it("reports one readable issue instead of two raw schema issues", () => {
+    const base = withPartitioning("region")
+    const state: EditorState = base.mutation.enabled
+      ? { ...base, mutation: { ...base.mutation, partitioning: [] } }
+      : base
+    const result = evaluate(state)
+    expect(result.validForExport).toBeFalsy()
+    expect(
+      result.schemaIssues.filter(
+        (issue) => issue.path.join(".") === "mutation.partitioning"
+      )
+    ).toStrictEqual([
+      {
+        path: ["mutation", "partitioning"],
+        message: EMPTY_PARTITIONING_MESSAGE,
+      },
+    ])
+  })
+
+  it("keeps the schema's own messages for a non-empty but invalid selection", () => {
+    const result = evaluate(withPartitioning("ghost:bogus"))
+    const messages = result.schemaIssues
+      .filter((issue) => issue.path.join(".") === "mutation.partitioning")
+      .map((issue) => issue.message)
+    expect(messages.length).toBeGreaterThan(0)
+    expect(messages).not.toContain(EMPTY_PARTITIONING_MESSAGE)
   })
 })

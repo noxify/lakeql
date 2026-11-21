@@ -4,10 +4,15 @@ import {
   endpointDefinitionSchema,
   findDuplicateFieldNames,
   findReservedNameCollisions,
+  validatePartitioningFormat,
 } from "@lakeql/schema-generator/endpoint-schema"
 
 import { toDefinition } from "./mapping"
 import type { EditorField, EditorState } from "./model"
+import {
+  isResolvedPartitionSegment,
+  serializePartitionSegments,
+} from "./partitioning"
 
 /**
  * A single schema-level issue, mapped to the responsible editor field when the
@@ -121,15 +126,38 @@ export interface CompanionPartitionDiagnostic {
 }
 
 /**
+ * A partition segment that does not point at exactly one top-level field.
+ *
+ * Partition segments are stored by field id. A segment imported from a
+ * `endpoint.json` whose name matches no top-level field, or more than one,
+ * stays "unresolved" (it keeps its raw name so the file round-trips unchanged).
+ * The schema only checks the segment's grammar, not that the field exists, so
+ * without this finding a well-formed segment such as `ghost:year` would pass
+ * the gate and produce a definition the runtime cannot partition by.
+ */
+export interface UnresolvedPartitionDiagnostic {
+  /** The segment's raw field name, exactly as imported. */
+  name: string
+  /** The segment's raw component text, present only for `name:component`. */
+  component?: string
+  /**
+   * Why the name resolves to no single field: `missing` when no top-level field
+   * has the name, `ambiguous` when more than one does.
+   */
+  reason: "missing" | "ambiguous"
+}
+
+/**
  * The result of the "valid for export" gate.
  *
  * `validForExport` is the single boolean the export path consumes. It is the
  * conjunction of a schema parse, the absence of duplicate field names, every
  * `regex` pattern being constructible, every `min`/`max` bound being a finite
- * number, and the four auto-fill rules (reserved-name collision, valid
- * placement, a compatible enabled mutation, and no companion-column partition
- * segment). Each failure kind is reported separately and, where possible,
- * keyed to the editor field `id` so the UI can render inline diagnostics.
+ * number, the four auto-fill rules (reserved-name collision, valid placement, a
+ * compatible enabled mutation, and no companion-column partition segment), and
+ * every partition segment pointing at exactly one top-level field. Each failure
+ * kind is reported separately and, where possible, keyed to the editor field
+ * `id` so the UI can render inline diagnostics.
  */
 export interface ValidationResult {
   /** Whether the current state may be exported. */
@@ -150,6 +178,8 @@ export interface ValidationResult {
   autoFillMutation: AutoFillMutationDiagnostic[]
   /** Partition segments referencing a derived companion column (C15/FR6.3). */
   companionPartition: CompanionPartitionDiagnostic[]
+  /** Partition segments naming no single top-level field (missing/ambiguous). */
+  unresolvedPartition: UnresolvedPartitionDiagnostic[]
 }
 
 /**
@@ -523,9 +553,13 @@ function collectCompanionPartition(
   defFields: FieldDefinition[]
 ): CompanionPartitionDiagnostic[] {
   const { mutation } = state
-  if (!mutation.enabled || typeof mutation.partitioning !== "string") {
+  if (!mutation.enabled || mutation.partitioning === false) {
     return []
   }
+  const partitionString = serializePartitionSegments(
+    mutation.partitioning,
+    state.fields
+  )
 
   // Map each companion name to its primary auto-fill field name for the hint.
   const companionToPrimary = new Map<string, string>()
@@ -544,7 +578,7 @@ function collectCompanionPartition(
   }
 
   const findings: CompanionPartitionDiagnostic[] = []
-  for (const segment of mutation.partitioning.split("/")) {
+  for (const segment of partitionString.split("/")) {
     const [segmentField = ""] = segment.split(":")
     const primaryName = companionToPrimary.get(segmentField)
     if (primaryName !== undefined) {
@@ -552,6 +586,126 @@ function collectCompanionPartition(
     }
   }
   return findings
+}
+
+/**
+ * Collects partition segments that do not point at exactly one top-level field.
+ *
+ * Only unresolved segments are considered: a resolved segment carries a field
+ * id and therefore always names a field. For each unresolved segment the
+ * current top-level fields decide the outcome — no match is `missing`, several
+ * are `ambiguous`, and exactly one match is fine (the exported name resolves
+ * on its own, even though the stored segment never got its id).
+ *
+ * Two kinds of unresolved segment are deliberately left to other findings so
+ * one mistake is never reported twice: a segment whose syntax the schema
+ * already rejects (`validatePartitioningFormat`), and a segment naming a
+ * derived companion column, which {@link collectCompanionPartition} reports
+ * with a more precise hint.
+ *
+ * @param state - The live editor state.
+ * @param defFields - The candidate definition's top-level fields, used to
+ *   derive the companion column names.
+ * @returns One finding per offending segment, in segment order.
+ */
+function collectUnresolvedPartition(
+  state: EditorState,
+  defFields: FieldDefinition[]
+): UnresolvedPartitionDiagnostic[] {
+  const { mutation } = state
+  if (!mutation.enabled || mutation.partitioning === false) {
+    return []
+  }
+
+  const companionNames = new Set<string>()
+  for (const def of defFields) {
+    if (def.options?.autoFill === undefined) {
+      continue
+    }
+    for (const companion of autoFillCompanionNames(def)) {
+      companionNames.add(companion)
+    }
+  }
+
+  const findings: UnresolvedPartitionDiagnostic[] = []
+  for (const segment of mutation.partitioning) {
+    if (isResolvedPartitionSegment(segment)) {
+      continue
+    }
+    const { unresolvedName: name, component } = segment
+    const raw = component === undefined ? name : `${name}:${component}`
+    if (companionNames.has(name) || validatePartitioningFormat(raw) !== null) {
+      continue
+    }
+    const matches = state.fields.filter((field) => field.name === name).length
+    if (matches === 1) {
+      continue
+    }
+    findings.push({
+      name,
+      ...(component === undefined ? {} : { component }),
+      reason: matches === 0 ? "missing" : "ambiguous",
+    })
+  }
+  return findings
+}
+
+/**
+ * The message for an enabled by-field partitioning with no segments chosen.
+ */
+export const EMPTY_PARTITIONING_MESSAGE =
+  'Choose at least one partition field, or set partitioning to "Off".'
+
+/** Whether a schema issue addresses the mutation's `partitioning` value. */
+function isPartitioningPath(path: (string | number)[]): boolean {
+  return (
+    path.length === 2 && path[0] === "mutation" && path[1] === "partitioning"
+  )
+}
+
+/**
+ * Collapses the schema issues an empty by-field selection produces into one.
+ *
+ * With "By field / custom format" active and no segments chosen, the exported
+ * partitioning is the empty string, which the schema rejects twice at the same
+ * path (minimum length, and the partition-format check) with raw validator
+ * wording. Both describe one problem, so they are replaced, at the position of
+ * the first, by a single issue with {@link EMPTY_PARTITIONING_MESSAGE}. The gate
+ * still blocks export; only the count and the wording change.
+ *
+ * Only the no-segments case is collapsed: a non-empty selection whose string is
+ * still invalid (for example a segment naming an unnamed field) keeps the
+ * schema's own messages.
+ *
+ * @param state - The live editor state.
+ * @param issues - The raw schema issues.
+ * @returns The issues with an empty selection reported once.
+ */
+function collapseEmptyPartitionSelection(
+  state: EditorState,
+  issues: SchemaDiagnostic[]
+): SchemaDiagnostic[] {
+  const { mutation } = state
+  const emptySelection =
+    mutation.enabled &&
+    mutation.partitioning !== false &&
+    mutation.partitioning.length === 0
+  if (!emptySelection) {
+    return issues
+  }
+  const collapsed: SchemaDiagnostic[] = []
+  let replaced = false
+  for (const issue of issues) {
+    if (!isPartitioningPath(issue.path)) {
+      collapsed.push(issue)
+      continue
+    }
+    if (!replaced) {
+      collapsed.push({ path: issue.path, message: EMPTY_PARTITIONING_MESSAGE })
+      replaced = true
+    }
+  }
+  return collapsed
 }
 
 /**
@@ -580,7 +734,7 @@ export function evaluate(state: EditorState): ValidationResult {
   const candidate = toDefinition(state)
 
   const parsed = endpointDefinitionSchema.safeParse(candidate)
-  const schemaIssues: SchemaDiagnostic[] = parsed.success
+  const rawSchemaIssues: SchemaDiagnostic[] = parsed.success
     ? []
     : (parsed.error.issues as ParseIssue[]).map((issue) => {
         const path = issue.path.map((segment) =>
@@ -593,6 +747,7 @@ export function evaluate(state: EditorState): ValidationResult {
           ...(field === undefined ? {} : { fieldId: field.id }),
         }
       })
+  const schemaIssues = collapseEmptyPartitionSelection(state, rawSchemaIssues)
 
   const duplicates: DuplicateDiagnostic[] = findDuplicateFieldNames(
     candidate.fields
@@ -623,6 +778,11 @@ export function evaluate(state: EditorState): ValidationResult {
 
   const companionPartition = collectCompanionPartition(state, candidate.fields)
 
+  const unresolvedPartition = collectUnresolvedPartition(
+    state,
+    candidate.fields
+  )
+
   const validForExport =
     parsed.success &&
     duplicates.length === 0 &&
@@ -631,7 +791,8 @@ export function evaluate(state: EditorState): ValidationResult {
     reservedNames.length === 0 &&
     autoFillPlacement.length === 0 &&
     autoFillMutation.length === 0 &&
-    companionPartition.length === 0
+    companionPartition.length === 0 &&
+    unresolvedPartition.length === 0
 
   return {
     validForExport,
@@ -643,6 +804,7 @@ export function evaluate(state: EditorState): ValidationResult {
     autoFillPlacement,
     autoFillMutation,
     companionPartition,
+    unresolvedPartition,
   }
 }
 

@@ -8,6 +8,7 @@ import type {
   EditorState,
   ReservedNameDiagnostic,
   SchemaDiagnostic,
+  UnresolvedPartitionDiagnostic,
   ValidationResult,
 } from "@/core"
 import { fieldNamePath } from "@/core"
@@ -100,6 +101,7 @@ const METADATA_LEAF_LABELS: Record<string, string> = {
   schema: "Schema",
   dataSource: "Data source",
   basePath: "Base path",
+  partitioning: "Partitioning",
   version: "Version",
 }
 
@@ -346,8 +348,8 @@ function fromAutoFillMutation(
 
 /**
  * Maps a companion-column partition-segment finding (C15/FR6.3) to a
- * non-navigable {@link ReadableIssue} (the target is the partition string, not
- * a field).
+ * {@link ReadableIssue} navigable to the partition picker in Settings (the
+ * target is the partition selection, not a field).
  */
 function fromCompanionPartition(
   bad: CompanionPartitionDiagnostic,
@@ -355,10 +357,68 @@ function fromCompanionPartition(
 ): ReadableIssue {
   return {
     id: `companion-partition-${index}`,
+    metadataKey: "partitioning",
     label: "Partitioning",
     message: `Partition segment "${bad.segment}" references the derived column "${bad.companionName}"; use "${bad.primaryName}:year" instead`,
-    navigable: false,
+    navigable: true,
   }
+}
+
+/**
+ * Maps an unresolved partition segment (missing or ambiguous field name) to a
+ * {@link ReadableIssue} navigable to the partition picker in Settings (the
+ * target is the partition selection, not one field).
+ */
+function fromUnresolvedPartition(
+  bad: UnresolvedPartitionDiagnostic,
+  index: number
+): ReadableIssue {
+  return {
+    id: `unresolved-partition-${index}`,
+    metadataKey: "partitioning",
+    label: "Partitioning",
+    message:
+      bad.reason === "missing"
+        ? `Partition field "${bad.name}" does not exist. Remove it or add a field with this name.`
+        : `Partition field "${bad.name}" matches more than one field. Rename the duplicates so only one field has this name.`,
+    navigable: true,
+  }
+}
+
+/**
+ * The readable messages for every partition-selection finding: schema issues on
+ * the `partitioning` value (an empty selection, or a malformed segment), a
+ * segment naming a derived companion column, and a segment naming no single
+ * field. The Settings partition picker shows these inline, so the control that
+ * needs fixing carries the error itself.
+ *
+ * Derived from the same {@link ValidationResult} as {@link toReadableIssues},
+ * through the same mappers, so the inline text and the Validations entries are
+ * always identical.
+ *
+ * @param state - The live editor state, used by the schema-issue mapper.
+ * @param result - The validity-gate result.
+ * @returns The messages: schema issues, companion findings, unresolved segments.
+ */
+export function partitioningIssueMessages(
+  state: EditorState,
+  result: ValidationResult
+): string[] {
+  return [
+    ...result.schemaIssues
+      .map((issue, index) => ({ issue, index }))
+      .filter(
+        ({ issue }) =>
+          issue.fieldId === undefined && pathLeaf(issue.path) === "partitioning"
+      )
+      .map(({ issue, index }) => fromSchema(state, issue, index).message),
+    ...result.companionPartition.map(
+      (bad, index) => fromCompanionPartition(bad, index).message
+    ),
+    ...result.unresolvedPartition.map(
+      (bad, index) => fromUnresolvedPartition(bad, index).message
+    ),
+  ]
 }
 
 /**
@@ -431,7 +491,47 @@ export function toReadableIssues(
     ...result.companionPartition.map((bad, index) =>
       fromCompanionPartition(bad, index)
     ),
+    ...result.unresolvedPartition.map((bad, index) =>
+      fromUnresolvedPartition(bad, index)
+    ),
   ]
+}
+
+/**
+ * Collects the Settings inputs that carry a validity-gate issue, so a form
+ * control can show its own error state from the same {@link ValidationResult}
+ * the header count and the Validations list read. A control and its list entry
+ * therefore cannot disagree, including for an empty required input that the
+ * control's own syntax check treats as merely "incomplete".
+ *
+ * A metadata schema issue (no `fieldId`) contributes the key its path leaf
+ * names, when that leaf is a navigable Settings input. The partition findings
+ * (a companion column, or a segment naming no single field) contribute
+ * `partitioning`.
+ *
+ * @param result - The validity-gate result to scan.
+ * @returns The set of Settings inputs with at least one issue.
+ */
+export function metadataKeysWithIssues(
+  result: ValidationResult
+): Set<MetadataNavKey> {
+  const keys = new Set<MetadataNavKey>()
+  for (const issue of result.schemaIssues) {
+    if (issue.fieldId !== undefined) {
+      continue
+    }
+    const leaf = pathLeaf(issue.path)
+    if (isMetadataNavKey(leaf)) {
+      keys.add(leaf)
+    }
+  }
+  if (
+    result.companionPartition.length > 0 ||
+    result.unresolvedPartition.length > 0
+  ) {
+    keys.add("partitioning")
+  }
+  return keys
 }
 
 /**

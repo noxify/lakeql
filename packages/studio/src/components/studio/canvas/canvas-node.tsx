@@ -6,11 +6,9 @@ import {
   CircleAlertIcon,
   GripVerticalIcon,
   MousePointerClickIcon,
-  MoveIcon,
   Trash2Icon,
 } from "lucide-react"
-import type { KeyboardEvent as ReactKeyboardEvent } from "react"
-import { useCallback, useId } from "react"
+import { useId } from "react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -40,7 +38,8 @@ import { containerChildren, isDropContainer, zoneId } from "./dnd-types"
 import { DropIndicator } from "./drop-indicator"
 import { indicatorAt } from "./indicator-state"
 import { useCanvasDndContext } from "./use-canvas-dnd"
-import { useKeyboardMoveContext } from "./use-keyboard-move"
+import { useFieldFocusContext } from "./use-field-focus"
+import { useFieldRemovalContext } from "./use-field-removal"
 import { useTypeChangeContext } from "./use-type-change"
 
 /**
@@ -115,16 +114,15 @@ const ContainerZone = ({
   fields: EditorField[]
 }) => {
   const { drag } = useCanvasDndContext()
-  const keyboard = useKeyboardMoveContext()
   const { setNodeRef, isOver } = useDroppable({
     id: zoneId(field.id),
     data: { kind: "container-zone", containerId: field.id },
   })
 
-  // The append indicator shows when either a pointer drag or a keyboard move
-  // resolves to appending into this container (its zone is the target, no node
-  // anchor before which to insert).
-  const appendIndicator = indicatorAt(drag, keyboard.move, field.id, null)
+  // The append indicator shows when a pointer drag resolves to appending into
+  // this container (its zone is the target, no node anchor before which to
+  // insert).
+  const appendIndicator = indicatorAt(drag, field.id, null)
 
   return (
     <div
@@ -152,53 +150,6 @@ const ContainerZone = ({
       )}
       {appendIndicator.show && <DropIndicator valid={appendIndicator.valid} />}
     </div>
-  )
-}
-
-/**
- * The dedicated keyboard "Move field" affordance on a node: a focusable button
- * that picks the field up (`Enter`/`Space`), then — while grabbed — routes the
- * arrow keys to step the target cursor and `Enter`/`Escape` to drop/cancel
- * (Requirement 5.2-5.4). Propagation is stopped on a handled key so neither the
- * `@dnd-kit` pointer-drag sensor on the grip nor the global undo/redo shortcuts
- * also fire. It registers its element with the keyboard-move controller so
- * focus is restored here after a commit, and mirrors the grabbed state through
- * `aria-grabbed`.
- */
-const MoveFieldButton = ({ fieldId }: { fieldId: string }) => {
-  const keyboard = useKeyboardMoveContext()
-  const grabbed = keyboard.isGrabbed(fieldId)
-
-  const handleMoveKey = useCallback(
-    (event: ReactKeyboardEvent) => {
-      if (grabbed) {
-        if (keyboard.handleGrabbedKey(event.key)) {
-          event.preventDefault()
-          event.stopPropagation()
-        }
-        return
-      }
-      if (event.key === "Enter" || event.key === " ") {
-        event.preventDefault()
-        event.stopPropagation()
-        keyboard.grab(fieldId)
-      }
-    },
-    [grabbed, keyboard, fieldId]
-  )
-
-  return (
-    <button
-      type="button"
-      aria-label="Move field"
-      aria-grabbed={grabbed}
-      aria-keyshortcuts="Enter Space ArrowUp ArrowDown Escape"
-      ref={(element) => keyboard.registerNodeRef(fieldId, element)}
-      className="text-muted-foreground focus-visible:ring-ring/50 rounded-sm outline-none focus-visible:ring-3"
-      onKeyDown={handleMoveKey}
-    >
-      <MoveIcon className="size-4" />
-    </button>
   )
 }
 
@@ -235,11 +186,11 @@ export const CanvasNode = ({
 }) => {
   const editor = useEditorContext()
   const { drag } = useCanvasDndContext()
-  const keyboard = useKeyboardMoveContext()
+  const fieldFocus = useFieldFocusContext()
   const typeChange = useTypeChangeContext()
+  const fieldRemoval = useFieldRemovalContext()
   const nameId = useId()
   const nameErrorId = `${nameId}-error`
-  const grabbed = keyboard.isGrabbed(field.id)
 
   const anchorData: NodeAnchorData = {
     kind: "node-anchor",
@@ -273,9 +224,9 @@ export const CanvasNode = ({
   // instant the gate no longer reports one (Req 4.1, 4.2).
   const hasIssue = fieldIdsWithIssues(editor.validation).has(field.id)
 
-  // Show the "insert before this node" indicator when either the live pointer
-  // drag or the keyboard move resolves to dropping before this field.
-  const indicator = indicatorAt(drag, keyboard.move, containerId, field.id)
+  // Show the "insert before this node" indicator when the live pointer drag
+  // resolves to dropping before this field.
+  const indicator = indicatorAt(drag, containerId, field.id)
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -295,12 +246,9 @@ export const CanvasNode = ({
         style={style}
         role="group"
         aria-label={field.name === "" ? "Unnamed field" : field.name}
-        aria-grabbed={grabbed}
-        data-grabbed={grabbed ? "true" : undefined}
         className={cn(
           "border-border bg-card text-card-foreground rounded-md border p-2",
           selected && "border-ring bg-accent/40",
-          grabbed && "ring-ring ring-2",
           isDragging && "opacity-50"
         )}
       >
@@ -308,25 +256,19 @@ export const CanvasNode = ({
           <button
             type="button"
             aria-label="Reorder field"
-            // Pointer-only drag handle. `setActivatorNodeRef` registers this as
-            // the sortable's activator so `@dnd-kit`'s KeyboardSensor guard is
-            // well-defined, and `tabIndex={-1}` routes keyboard users to the
-            // dedicated "Move field" affordance instead of this (keyboard-inert)
-            // drag handle — together they keep a keyboard press here from
-            // starting a drag (Requirement 5.3).
+            // Pointer-only drag handle (no keyboard reordering by design; no
+            // `KeyboardSensor` is registered). `setActivatorNodeRef` registers
+            // this as the sortable's activator, and `tabIndex={-1}` keeps the
+            // keyboard-inert handle out of the Tab order.
             ref={setActivatorNodeRef}
             className="text-muted-foreground focus-visible:ring-ring/50 cursor-grab rounded-sm outline-none focus-visible:ring-3"
             {...attributes}
             {...listeners}
-            // Spread last so it wins over `attributes.tabIndex` (0): the grip
-            // stays out of the Tab order, routing keyboard users to "Move
-            // field".
+            // Spread last so it wins over `attributes.tabIndex` (0).
             tabIndex={-1}
           >
             <GripVerticalIcon className="size-4" />
           </button>
-
-          <MoveFieldButton fieldId={field.id} />
 
           <button
             type="button"
@@ -360,6 +302,9 @@ export const CanvasNode = ({
           <div className="grid min-w-40 flex-1 gap-1">
             <Input
               id={nameId}
+              // Registered so a palette add or a Validations jump can move
+              // focus straight into the field's name input.
+              ref={(element) => fieldFocus.registerNodeRef(field.id, element)}
               value={field.name}
               placeholder="field_name"
               aria-label="Field name"
@@ -393,7 +338,7 @@ export const CanvasNode = ({
             variant="ghost"
             size="icon-sm"
             aria-label="Remove field"
-            onClick={() => editor.removeField(path)}
+            onClick={() => fieldRemoval.requestRemove(path)}
           >
             <Trash2Icon />
           </Button>

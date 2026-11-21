@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label"
 import { metadataFieldError } from "./field-meta"
 import { metadataInputId } from "./metadata-nav"
 import { useEditorContext } from "./use-editor"
+import { metadataKeysWithIssues } from "./validation-readable"
 
 /**
  * The three metadata keys validated against `metadataFieldPattern`.
@@ -20,6 +21,11 @@ const METADATA_FIELDS: { key: MetadataKey; label: string }[] = [
 
 /**
  * A single controlled metadata input with an inline, control-associated error.
+ *
+ * The error state follows the validity gate: a value that violates the pattern
+ * shows the rule, and an empty value shows "is required" as soon as the gate
+ * reports it (it blocks export), so the control, the header count and the
+ * Validations list always agree.
  */
 const MetadataField = ({
   fieldKey,
@@ -34,7 +40,10 @@ const MetadataField = ({
   const id = metadataInputId(fieldKey)
   const errorId = `${id}-error`
   const value = editor.state[fieldKey]
-  const error = metadataFieldError(value)
+  const gateFlagged = metadataKeysWithIssues(editor.validation).has(fieldKey)
+  const error =
+    metadataFieldError(value) ??
+    (value === "" && gateFlagged ? `${label} is required.` : undefined)
 
   return (
     <div className="grid gap-1.5">
@@ -65,7 +74,7 @@ const MetadataField = ({
 /**
  * The endpoint metadata form: `tableName`/`catalog`/`schema` (pattern-validated
  * with inline errors), a free-text `dataSource`, and a read-only `version`
- * pinned to the schema literal `"1.0"`.
+ * pinned to the schema literal `"2.0"`.
  *
  * All edits flow through the shared editor as continuous edits (coalesced into
  * a single history snapshot on blur). Invalid metadata shows inline here and

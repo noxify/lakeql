@@ -1,15 +1,14 @@
 import { CanvasSurface } from "../canvas/canvas"
 import { FieldPropertiesPanel } from "../field-properties-panel"
-import { FieldsEmptyState, KeyboardHint } from "../fields-extras"
+import { FieldsEmptyState } from "../fields-extras"
 import { UndoRedoControls } from "../undo-redo-controls"
 import { useEditorContext } from "../use-editor"
 
 /**
- * The Fields view's main content: the keyboard-discoverability hint, the
- * empty state (only while there are no fields), the drag-and-drop canvas, and
- * the field properties panel — co-located so the palette (secondary sidebar)
- * and the canvas are visible together under the one hoisted `DndContext`
- * (Req 3.1, 3.4, 7.1, 7.2).
+ * The Fields view's main content: the empty state (only while there are no
+ * fields), the drag-and-drop canvas, and the field properties panel —
+ * co-located so the palette (secondary sidebar) and the canvas are visible
+ * together under the one hoisted `DndContext` (Req 3.1, 3.4, 7.1).
  */
 export const FieldsContent = () => {
   const editor = useEditorContext()
@@ -26,10 +25,10 @@ export const FieldsContent = () => {
       </div>
       <div className="grid gap-4 lg:grid-cols-[1fr_20rem]">
         <div className="grid content-start gap-3">
-          <KeyboardHint />
           {empty && <FieldsEmptyState />}
           <CanvasSurface />
         </div>
+
         <aside
           aria-label="Field properties"
           className="border-border/60 h-fit rounded-md border p-3"

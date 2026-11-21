@@ -8,7 +8,7 @@ import type { EditorFieldType } from "@/core"
 import { fieldTypeOptions } from "../field-meta"
 import type { NewFieldDragData } from "./dnd-types"
 import { paletteDraggableId } from "./dnd-types"
-import { useKeyboardMoveContext } from "./use-keyboard-move"
+import { useFieldFocusContext } from "./use-field-focus"
 
 /**
  * One draggable palette source: a styled card that, when dragged onto the
@@ -16,7 +16,7 @@ import { useKeyboardMoveContext } from "./use-keyboard-move"
  */
 const PaletteSource = ({ fieldType }: { fieldType: EditorFieldType }) => {
   const data: NewFieldDragData = { kind: "new-field", fieldType }
-  const keyboard = useKeyboardMoveContext()
+  const fieldFocus = useFieldFocusContext()
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: paletteDraggableId(fieldType),
     data,
@@ -32,7 +32,7 @@ const PaletteSource = ({ fieldType }: { fieldType: EditorFieldType }) => {
     }
     event.preventDefault()
     event.stopPropagation()
-    keyboard.addFromPalette(fieldType)
+    fieldFocus.addFromPalette(fieldType)
   }
 
   return (

@@ -19,12 +19,22 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
-import type { EditorField, EditorMutation } from "@/core"
-import { createField, DEFAULT_PARTITIONING_FORMAT } from "@/core"
+import { toast } from "@/components/ui/toast"
+import type {
+  EditorField,
+  EditorMutation,
+  EditorPartitionSegment,
+} from "@/core"
+import {
+  addField as addFieldOp,
+  createField,
+  DEFAULT_PARTITIONING_FORMAT,
+} from "@/core"
 
 import { metadataInputId } from "./metadata-nav"
 import { partitioningValueForMode } from "./partition-format"
 import { PartitioningFieldPicker } from "./partitioning-field-picker"
+import { useOptionalShellView } from "./shell-view"
 import { useEditorContext } from "./use-editor"
 import type { PartitioningMode } from "./validation-meta"
 import { offersPartitioningFormat, partitioningModeOf } from "./validation-meta"
@@ -147,6 +157,22 @@ const PartitioningControls = ({
 }
 
 /**
+ * The partition path a write-timestamp auto-fill field is prefilled with:
+ * year, month, and day components of that field, bound to it by id so a later
+ * rename keeps the path attached.
+ *
+ * @param fieldId - The auto-fill field's id.
+ * @returns The ordered segments.
+ */
+function writeTimestampPartitioning(fieldId: string): EditorPartitionSegment[] {
+  return [
+    { fieldId, component: "year" },
+    { fieldId, component: "month" },
+    { fieldId, component: "day" },
+  ]
+}
+
+/**
  * The write-timestamp auto-fill helper: a button that appends a real top-level
  * `DateTime` field carrying `options.autoFill: "write_timestamp"` with the
  * default name {@link AUTO_FILL_DEFAULT_FIELD_NAME}. Unlike the removed implicit
@@ -155,13 +181,30 @@ const PartitioningControls = ({
  * `_year`/`_month` companions.
  *
  * The button is disabled when a top-level field already uses the default name,
- * so a single click never introduces a duplicate-name collision.
+ * so a single click never introduces a duplicate-name collision. A successful
+ * add confirms with a success toast; inside the studio shell the toast offers a
+ * "Show field" action that opens the Fields view with the new field selected.
+ *
+ * When "By field / custom format" is active and no partition segments are
+ * chosen yet (`partitioning` is an empty list), the click also prefills the partition
+ * path with {@link writeTimestampPartitioning}. A partitioning that is off or
+ * already has segments is never touched. Field and partitioning land in one
+ * history snapshot, so a single undo reverts both.
+ *
+ * @param props.mutation - The enabled mutation whose partitioning may be
+ *   prefilled.
  */
-const AutoFillHelper = () => {
+const AutoFillHelper = ({
+  mutation,
+}: {
+  mutation: Extract<EditorMutation, { enabled: true }>
+}) => {
   const editor = useEditorContext()
-  const nameTaken = editor.state.fields.some(
+  const shell = useOptionalShellView()
+  const existing = editor.state.fields.find(
     (field) => field.name === AUTO_FILL_DEFAULT_FIELD_NAME
   )
+  const alreadyAdded = existing?.options?.autoFill === "write_timestamp"
 
   const addAutoFillField = (): void => {
     const base = createField("DateTime")
@@ -170,7 +213,42 @@ const AutoFillHelper = () => {
       name: AUTO_FILL_DEFAULT_FIELD_NAME,
       options: { autoFill: "write_timestamp" },
     }
-    editor.addField([], field)
+
+    // Prefill only an empty by-field selection; never override a chosen path
+    // or switch the mode on the author's behalf.
+    const prefill =
+      mutation.partitioning !== false && mutation.partitioning.length === 0
+    const withField = addFieldOp(editor.state, [], field)
+    const next = prefill
+      ? {
+          ...withField,
+          mutation: {
+            ...mutation,
+            partitioning: writeTimestampPartitioning(field.id),
+          },
+        }
+      : withField
+    editor.replaceState(next, { commit: true })
+    editor.selectField(field.id)
+
+    const toastId = toast.add({
+      type: "success",
+      title: "Write-timestamp field added",
+      description: prefill
+        ? `${field.name} (DateTime) is filled by the server on every write. Partitioning set to ${field.name} → year / month / day.`
+        : `${field.name} (DateTime) is filled by the server on every write.`,
+      actionProps:
+        shell === null
+          ? undefined
+          : {
+              children: "Show field",
+              onClick: () => {
+                shell.setView("fields")
+                editor.selectField(field.id)
+                toast.close(toastId)
+              },
+            },
+    })
   }
 
   return (
@@ -179,16 +257,18 @@ const AutoFillHelper = () => {
         type="button"
         variant="outline"
         size="sm"
-        disabled={nameTaken}
+        disabled={existing !== undefined}
         onClick={addAutoFillField}
       >
         <ClockIcon className="size-4" />
         Add write-timestamp field
       </Button>
       <span className="text-muted-foreground text-xs">
-        {nameTaken
-          ? `A field named ${AUTO_FILL_DEFAULT_FIELD_NAME} already exists.`
-          : "Adds a DateTime field stamped by the server on every write (append / full-load-append), with derived _year and _month columns."}
+        {existing === undefined
+          ? "Adds a DateTime field stamped by the server on every write (append / full-load-append), with derived _year and _month columns."
+          : alreadyAdded
+            ? `${AUTO_FILL_DEFAULT_FIELD_NAME} is part of this endpoint and filled by the server on every write.`
+            : `A field named ${AUTO_FILL_DEFAULT_FIELD_NAME} already exists. Rename it to add the write-timestamp field.`}
       </span>
     </div>
   )
@@ -292,7 +372,7 @@ export const MutationConfigForm = () => {
 
           <PartitioningControls mutation={mutation} />
 
-          <AutoFillHelper />
+          <AutoFillHelper mutation={mutation} />
         </>
       )}
     </div>

@@ -133,3 +133,97 @@ describe("Validations summary — metadata jump-to-field", () => {
     })
   })
 })
+
+/**
+ * A definition partitioned by a field that does not exist. The segment is
+ * well-formed, so the schema accepts it; only the unresolved-segment finding
+ * flags it, and that finding targets the partition picker in Settings.
+ */
+const unknownPartitionFieldDefinition = JSON.stringify({
+  version: "2.0",
+  tableName: "events",
+  catalog: "main",
+  schema: "public",
+  fields: [{ name: "region", type: "String" }],
+  mutation: {
+    loadStrategy: "append",
+    basePath: "/d",
+    partitioning: "ghost",
+  },
+})
+
+describe("Validations summary — partitioning jump", () => {
+  beforeEach(() => {
+    window.localStorage.clear()
+  })
+  afterEach(cleanup)
+
+  it("jumps from the Partitioning issue to the picker and shows the error there", async () => {
+    const user = userEvent.setup()
+    render(<EndpointBuilder />)
+    await user.upload(fileInput(), jsonFile(unknownPartitionFieldDefinition))
+
+    await gotoView(user, "Validations")
+    const issueList = screen.getByRole("complementary", {
+      name: "Validation issues",
+    })
+    // The entry is a real, clickable button, not a static line.
+    await user.click(
+      within(issueList).getByRole("button", { name: /Partitioning/u })
+    )
+
+    // The jump switches to Settings and focuses the partition picker input.
+    await waitFor(() => {
+      const input = metadataInput("partitioning")
+      expect(input).not.toBeNull()
+      expect(document.activeElement).toBe(input)
+    })
+
+    // The control carries the error state and the same message as the list.
+    const input = screen.getByLabelText("Add partition field")
+    expect(input.getAttribute("aria-invalid")).toBe("true")
+    expect(
+      screen.getByText(/Partition field "ghost" does not exist/u)
+    ).toBeDefined()
+  })
+
+  it("shows no error state on the picker for a valid partitioning", async () => {
+    const user = userEvent.setup()
+    render(<EndpointBuilder />)
+    await user.upload(
+      fileInput(),
+      jsonFile(unknownPartitionFieldDefinition.replace('"ghost"', '"region"'))
+    )
+
+    await gotoView(user, "General Settings")
+    const input = screen.getByLabelText("Add partition field")
+    expect(input.getAttribute("aria-invalid")).toBe("false")
+    expect(screen.queryByText(/does not exist/u)).toBeNull()
+  })
+})
+
+describe("partition picker — empty by-field selection", () => {
+  beforeEach(() => {
+    window.localStorage.clear()
+  })
+  afterEach(cleanup)
+
+  it("shows the error state and a single readable message when no field is chosen", async () => {
+    const user = userEvent.setup()
+    render(<EndpointBuilder />)
+    await user.upload(fileInput(), jsonFile(validDefinition))
+
+    await gotoView(user, "General Settings")
+    await user.click(screen.getByRole("switch", { name: "Enable mutation" }))
+    // The radio card's accessible name also includes its description, so
+    // select it by its visible title.
+    await user.click(screen.getByText("By field / custom format"))
+
+    const input = screen.getByLabelText("Add partition field")
+    expect(input.getAttribute("aria-invalid")).toBe("true")
+    expect(
+      screen.getAllByText(/Choose at least one partition field/u)
+    ).toHaveLength(1)
+    expect(screen.queryByText(/expected string to have/u)).toBeNull()
+  })
+})

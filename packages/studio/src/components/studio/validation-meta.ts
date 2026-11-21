@@ -1,7 +1,7 @@
 import type { FieldValidation } from "@lakeql/schema-generator/endpoint-schema"
 import { fieldValidationSchema } from "@lakeql/schema-generator/endpoint-schema"
 
-import type { EditorFieldType } from "@/core"
+import type { EditorFieldType, EditorPartitionSegment } from "@/core"
 
 /**
  * The validation refinement kinds the editor can add, as the discriminant
@@ -112,13 +112,13 @@ export type PartitioningMode = "off" | "field"
 
 /**
  * Derives the {@link PartitioningMode} from a partitioning value
- * (`false | string`).
+ * (`false | EditorPartitionSegment[]`).
  *
  * @param partitioning - The current partitioning value.
  * @returns The mode the UI should show selected.
  */
 export function partitioningModeOf(
-  partitioning: false | string
+  partitioning: false | EditorPartitionSegment[]
 ): PartitioningMode {
   if (partitioning === false) {
     return "off"
@@ -127,40 +127,43 @@ export function partitioningModeOf(
 }
 
 /**
- * Whether a partitioning value is a "custom" string — one containing `/` or
- * `:`. In custom mode (and when partitioning is off) `partitioningFormat` is
+ * Whether a partitioning value is a "custom" path — more than one segment, or a
+ * segment with a date component (the serialized string would contain `/` or
+ * `:`). In custom mode (and when partitioning is off) `partitioningFormat` is
  * not an active setting, matching `validatePartitioningFormat` ignoring it
  * there (Req 5.7).
  *
  * @param partitioning - The current partitioning value.
- * @returns `true` when the value is a custom format string.
+ * @returns `true` when the value is a custom path.
  */
-export function isCustomPartitioning(partitioning: false | string): boolean {
+export function isCustomPartitioning(
+  partitioning: false | EditorPartitionSegment[]
+): boolean {
+  if (partitioning === false) {
+    return false
+  }
   return (
-    typeof partitioning === "string" &&
-    (partitioning.includes("/") || partitioning.includes(":"))
+    partitioning.length > 1 ||
+    partitioning.some((segment) => segment.component !== undefined)
   )
 }
 
 /**
  * Whether the `partitioningFormat` granularity control should be offered for a
- * given partitioning value: only for a non-custom, non-empty legacy
- * single-field string, never when off or custom.
+ * given partitioning value: only for a non-custom legacy single-field path
+ * (exactly one bare segment), never when off, empty, or custom.
  *
- * An empty string — the transient seed when the user first enters "field" mode
- * — is treated as incomplete, not a legacy single-field string, so the
- * granularity control stays hidden until a non-empty field name is typed.
+ * An empty segment list — the transient seed when the user first enters
+ * "field" mode — is treated as incomplete, so the granularity control stays
+ * hidden until a field is chosen.
  *
  * @param partitioning - The current partitioning value.
  * @returns `true` when the format control is active.
  */
 export function offersPartitioningFormat(
-  partitioning: false | string
+  partitioning: false | EditorPartitionSegment[]
 ): boolean {
-  if (partitioning === false) {
-    return false
-  }
-  if (partitioning === "") {
+  if (partitioning === false || partitioning.length === 0) {
     return false
   }
   return !isCustomPartitioning(partitioning)

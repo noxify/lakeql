@@ -1,6 +1,6 @@
 import { CheckCircle2Icon, CircleAlertIcon } from "lucide-react"
 
-import { useKeyboardMoveContext } from "./canvas/use-keyboard-move"
+import { useFieldFocusContext } from "./canvas/use-field-focus"
 import { metadataInputId } from "./metadata-nav"
 import { useShellView } from "./shell-view"
 import { useEditorContext } from "./use-editor"
@@ -12,14 +12,13 @@ import { toReadableIssues } from "./validation-readable"
  * offending target:
  *
  * - a field issue switches to the Fields view, selects the field, and moves
- *   keyboard focus to its node (the jump is ignored while a keyboard grab is in
- *   progress so two focus drivers never collide — Req 5.6);
+ *   keyboard focus to its name input;
  * - a metadata issue switches to the Settings view and moves keyboard focus to
  *   the matching form input, after the view has rendered.
  */
 const NavigableIssue = ({ issue }: { issue: ReadableIssue }) => {
   const editor = useEditorContext()
-  const keyboard = useKeyboardMoveContext()
+  const fieldFocus = useFieldFocusContext()
   const { setView } = useShellView()
 
   const jump = (): void => {
@@ -36,18 +35,13 @@ const NavigableIssue = ({ issue }: { issue: ReadableIssue }) => {
       })
       return
     }
-    // A keyboard grab owns focus while active; ignore the jump (not cancel) so
-    // the in-flight move keeps driving focus.
-    if (keyboard.move !== null) {
-      return
-    }
     const { fieldId } = issue
     if (fieldId === undefined) {
       return
     }
     setView("fields")
     editor.selectField(fieldId)
-    keyboard.focusField(fieldId)
+    fieldFocus.focusField(fieldId)
   }
 
   return (

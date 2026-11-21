@@ -82,30 +82,35 @@ describe("validation error surfacing", () => {
 })
 
 describe("partitioning mode derivation (task 14)", () => {
-  it("maps the false/string value to a mode (no timestamp mode)", () => {
+  const bare = [{ fieldId: "f1" }]
+  const component = [{ fieldId: "f1", component: "day" }]
+  const multi = [{ fieldId: "f1" }, { fieldId: "f2" }]
+
+  it("maps the false/segments value to a mode (no timestamp mode)", () => {
     expect(partitioningModeOf(false)).toBe("off")
-    expect(partitioningModeOf("created_at")).toBe("field")
-    expect(partitioningModeOf("year/month")).toBe("field")
+    expect(partitioningModeOf(bare)).toBe("field")
+    expect(partitioningModeOf(multi)).toBe("field")
+    expect(partitioningModeOf([])).toBe("field")
   })
 
-  it("detects custom partition strings", () => {
+  it("detects custom partition paths", () => {
     expect(isCustomPartitioning(false)).toBeFalsy()
-    expect(isCustomPartitioning("created_at")).toBeFalsy()
-    expect(isCustomPartitioning("year/month")).toBeTruthy()
-    expect(isCustomPartitioning("created_at:day")).toBeTruthy()
+    expect(isCustomPartitioning(bare)).toBeFalsy()
+    expect(isCustomPartitioning(multi)).toBeTruthy()
+    expect(isCustomPartitioning(component)).toBeTruthy()
   })
 
   it("offers partitioningFormat only for a non-custom legacy single-field value", () => {
-    expect(offersPartitioningFormat("created_at")).toBeTruthy()
+    expect(offersPartitioningFormat(bare)).toBeTruthy()
     expect(offersPartitioningFormat(false)).toBeFalsy()
-    expect(offersPartitioningFormat("year/month/day")).toBeFalsy()
-    expect(offersPartitioningFormat("created_at:day")).toBeFalsy()
+    expect(offersPartitioningFormat(multi)).toBeFalsy()
+    expect(offersPartitioningFormat(component)).toBeFalsy()
   })
 
   it("hides the format control for the transient empty 'field' seed", () => {
-    // Entering field mode seeds "", which is incomplete, not a legacy
-    // single-field string — the granularity select must stay hidden until a
-    // field name is typed.
-    expect(offersPartitioningFormat("")).toBeFalsy()
+    // Entering field mode seeds [], which is incomplete, not a legacy
+    // single-field value — the granularity select must stay hidden until a
+    // field is chosen.
+    expect(offersPartitioningFormat([])).toBeFalsy()
   })
 })

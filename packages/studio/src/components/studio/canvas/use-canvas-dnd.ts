@@ -179,12 +179,9 @@ export function useCanvasDnd(): CanvasDndApi {
  * Builds the `@dnd-kit` sensors for the canvas: a pointer sensor with a small
  * activation distance (so a click to select is not swallowed as a drag).
  *
- * No `KeyboardSensor` is registered: `@dnd-kit` keyboard drag parity is a
- * documented non-goal, and the dedicated "Move field" button plus
- * `use-keyboard-move` is the single supported keyboard path. Registering it
- * previously let Space/Enter on the grip start a genuine sortable keyboard drag
- * (the distorted "ghost"); dropping it removes that path at its source while
- * leaving pointer drag on the grip untouched.
+ * No `KeyboardSensor` is registered: reordering is pointer-only by design.
+ * Registering it would let Space/Enter on the grip start a genuine sortable
+ * keyboard drag (the distorted "ghost").
  *
  * @returns The sensor descriptors passed to the `DndContext`.
  */

@@ -8,6 +8,13 @@ import type {
   EditorState,
 } from "./model"
 import { createFieldId } from "./model"
+import {
+  collectFieldIds,
+  isValidPartitionSource,
+  partitionSegmentLabel,
+  partitionSegmentsReferencing,
+  removePartitionSegments,
+} from "./partitioning"
 
 /**
  * A location in the field tree, expressed as a path of child indices from the
@@ -189,15 +196,14 @@ function insertBefore(
 }
 
 /**
- * Removes the field addressed by `path` from its container at any nesting
- * level.
- *
- * @param state - The current editor state.
- * @param path - Path to the field to remove. Must be non-empty.
- * @returns A new {@link EditorState}; the input is not mutated.
- * @throws {Error} When `path` is empty.
+ * Removes the field at `path` from its container, leaving partition segments
+ * untouched. Shared by {@link removeField} and {@link moveField} (a move
+ * re-inserts the same field, so its segments must survive).
  */
-export function removeField(state: EditorState, path: FieldPath): EditorState {
+function removeFieldKeepingSegments(
+  state: EditorState,
+  path: FieldPath
+): EditorState {
   if (path.length === 0) {
     throw new Error("removeField requires a non-empty path")
   }
@@ -209,6 +215,63 @@ export function removeField(state: EditorState, path: FieldPath): EditorState {
       children.filter((_, i) => i !== index)
     ),
   }
+}
+
+/**
+ * The partition segments a field removal would take with it, for a
+ * confirmation UI.
+ */
+export interface FieldRemovalPlan {
+  /**
+   * Display labels (for example `created_at → year`) of the partition segments
+   * that reference the removed field or any field nested in it, in path order.
+   * Empty when the removal affects no segment.
+   */
+  affectedPartitionSegments: string[]
+}
+
+/**
+ * Dry-runs a field removal: names the partition segments that reference the
+ * field at `path` (or a field nested beneath it) without changing anything.
+ *
+ * @param state - The current editor state.
+ * @param path - Path to the field that would be removed. Must be non-empty.
+ * @returns A {@link FieldRemovalPlan}; an unresolvable path has no segments.
+ */
+export function planFieldRemoval(
+  state: EditorState,
+  path: FieldPath
+): FieldRemovalPlan {
+  const field = fieldAt(state.fields, path)
+  if (field === undefined) {
+    return { affectedPartitionSegments: [] }
+  }
+  const ids = new Set(collectFieldIds(field))
+  return {
+    affectedPartitionSegments: partitionSegmentsReferencing(state, ids).map(
+      (segment) => partitionSegmentLabel(segment, state.fields)
+    ),
+  }
+}
+
+/**
+ * Removes the field addressed by `path` from its container at any nesting
+ * level, together with any partition segments that reference it (or a field
+ * nested beneath it). Other segments stay; a by-field selection left with no
+ * segment is empty. The result is one state, so one history snapshot reverts
+ * both the field and its segments.
+ *
+ * @param state - The current editor state.
+ * @param path - Path to the field to remove. Must be non-empty.
+ * @returns A new {@link EditorState}; the input is not mutated.
+ * @throws {Error} When `path` is empty.
+ */
+export function removeField(state: EditorState, path: FieldPath): EditorState {
+  const field = fieldAt(state.fields, path)
+  const removed = removeFieldKeepingSegments(state, path)
+  return field === undefined
+    ? removed
+    : removePartitionSegments(removed, new Set(collectFieldIds(field)))
 }
 
 /**
@@ -655,7 +718,7 @@ export function moveField(
 
   // Remove the source first, then resolve the destination against the
   // post-removal state so ids map to the correct (shifted) positions.
-  const removed = removeField(state, sourcePath)
+  const removed = removeFieldKeepingSegments(state, sourcePath)
 
   const destPath = findContainerPath(removed, to.containerId)
   if (destPath === undefined) {
@@ -748,10 +811,19 @@ export function enumerateMoveSlots(state: EditorState): MoveSlot[] {
  * discarded, for a confirmation UI (built in a later phase).
  */
 export interface TypeChangePlan {
-  /** Whether applying the change would discard structural children. */
+  /**
+   * Whether applying the change needs confirmation: it would discard
+   * structural children or remove partition segments.
+   */
   needsConfirmation: boolean
   /** Human-readable summary of what a lossy change would drop. */
   lostDescription?: string
+  /**
+   * Display labels of the partition segments the change would remove because
+   * the retyped field stops being a valid partition source. Present only when
+   * non-empty.
+   */
+  affectedPartitionSegments?: string[]
 }
 
 /**
@@ -783,13 +855,21 @@ function describeChildren(field: EditorField): string | undefined {
  * `Array`. `Object` → `Object` and `Array` → `Array` preserve children;
  * primitive → anything is never lossy.
  *
+ * A change also needs confirmation when the field is referenced by a partition
+ * segment that the new type invalidates (`Object`/`Array`, or a date component
+ * on a non-date type); the plan names those segments and applying the change
+ * removes exactly them. This part only applies when `state` is given.
+ *
  * @param field - The field whose type would change.
  * @param nextType - The target field type.
+ * @param state - The editor state, used to find the partition segments that
+ *   reference `field`. Omit to ignore partitioning.
  * @returns A {@link TypeChangePlan} describing confirmation need and loss.
  */
 export function planTypeChange(
   field: EditorField,
-  nextType: EditorFieldType
+  nextType: EditorFieldType,
+  state?: EditorState
 ): TypeChangePlan {
   if (field.type === nextType) {
     return { needsConfirmation: false }
@@ -798,16 +878,50 @@ export function planTypeChange(
   const losesObjectFields =
     field.type === "Object" && (field.fields?.length ?? 0) > 0
   const losesArrayItems = field.type === "Array" && field.items !== undefined
+  const lostStructure = losesObjectFields || losesArrayItems
+  const affected = affectedSegmentsOfRetype(field, nextType, state)
 
-  if (losesObjectFields || losesArrayItems) {
-    const description = describeChildren(field)
-    return {
-      needsConfirmation: true,
-      ...(description === undefined ? {} : { lostDescription: description }),
-    }
+  if (!lostStructure && affected.length === 0) {
+    return { needsConfirmation: false }
   }
 
-  return { needsConfirmation: false }
+  const parts: string[] = []
+  const children = lostStructure ? describeChildren(field) : undefined
+  if (children !== undefined) {
+    parts.push(children)
+  }
+  if (affected.length > 0) {
+    parts.push(
+      `the partition ${affected.length === 1 ? "segment" : "segments"} ${affected.join(", ")}`
+    )
+  }
+  return {
+    needsConfirmation: true,
+    ...(parts.length === 0 ? {} : { lostDescription: parts.join(" and ") }),
+    ...(affected.length === 0 ? {} : { affectedPartitionSegments: affected }),
+  }
+}
+
+/**
+ * Labels the partition segments that reference `field` and are valid for its
+ * current type but would become invalid for `nextType`. Empty without a state
+ * or when the partitioning does not reference the field.
+ */
+function affectedSegmentsOfRetype(
+  field: EditorField,
+  nextType: EditorFieldType,
+  state: EditorState | undefined
+): string[] {
+  if (state === undefined) {
+    return []
+  }
+  return partitionSegmentsReferencing(state, new Set([field.id]))
+    .filter(
+      (segment) =>
+        isValidPartitionSource(field.type, segment.component) &&
+        !isValidPartitionSource(nextType, segment.component)
+    )
+    .map((segment) => partitionSegmentLabel(segment, state.fields))
 }
 
 /**
@@ -841,6 +955,33 @@ function retypeField(
 }
 
 /**
+ * Removes the partition segments of `field` that become invalid for `nextType`
+ * (see {@link affectedSegmentsOfRetype}), leaving every other segment.
+ */
+function removeInvalidatedSegments(
+  state: EditorState,
+  field: EditorField,
+  nextType: EditorFieldType
+): EditorState {
+  const { mutation } = state
+  if (!mutation.enabled || mutation.partitioning === false) {
+    return state
+  }
+  const kept = mutation.partitioning.filter(
+    (segment) =>
+      !(
+        "fieldId" in segment &&
+        segment.fieldId === field.id &&
+        isValidPartitionSource(field.type, segment.component) &&
+        !isValidPartitionSource(nextType, segment.component)
+      )
+  )
+  return kept.length === mutation.partitioning.length
+    ? state
+    : { ...state, mutation: { ...mutation, partitioning: kept } }
+}
+
+/**
  * Changes the type of the field addressed by `path`.
  *
  * By default a lossy transition is refused and reported: the caller inspects
@@ -867,7 +1008,7 @@ export function changeFieldType(
     throw new Error("changeFieldType: path does not resolve to a field")
   }
 
-  const plan = planTypeChange(field, nextType)
+  const plan = planTypeChange(field, nextType, state)
 
   if (plan.needsConfirmation && options.confirm !== true) {
     return { plan, applied: false, state }
@@ -875,7 +1016,7 @@ export function changeFieldType(
 
   const parentPath = path.slice(0, -1)
   const index = path.at(-1) as number
-  const nextState: EditorState = {
+  const retyped: EditorState = {
     ...state,
     fields: updateFieldsAt(state.fields, parentPath, (children) =>
       children.map((child, i) =>
@@ -883,6 +1024,9 @@ export function changeFieldType(
       )
     ),
   }
+  // Drop exactly the segments the new type invalidates, in the same state so
+  // one history snapshot covers both.
+  const nextState = removeInvalidatedSegments(retyped, field, nextType)
   return { plan, applied: true, state: nextState }
 }
 

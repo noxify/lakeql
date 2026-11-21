@@ -1,54 +1,55 @@
-import {
-  DndContext,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-} from "@dnd-kit/core"
+import { DndContext, PointerSensor, useSensor, useSensors } from "@dnd-kit/core"
 import type { DragEndEvent } from "@dnd-kit/core"
 import {
   rectSortingStrategy,
   SortableContext,
-  sortableKeyboardCoordinates,
   useSortable,
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 import { cn } from "cn"
 import { XIcon } from "lucide-react"
 
-import type { PartitionSegment } from "./partition-format"
-import { serializePartitionSegments } from "./partition-format"
+import type { EditorField, EditorPartitionSegment } from "@/core"
+import { isResolvedPartitionSegment, partitionSegmentLabel } from "@/core"
 
-/** A stable, order-independent id for a segment, used as its sortable key. */
-function segmentId(segment: PartitionSegment): string {
-  return segment.component === undefined
-    ? segment.field
-    : `${segment.field}:${segment.component}`
-}
+import { partitionSegmentKey } from "./partition-format"
 
-/** The human-readable label shown on a badge. */
-function segmentLabel(segment: PartitionSegment): string {
-  return segment.component === undefined
-    ? segment.field
-    : `${segment.field} → ${segment.component}`
+/**
+ * Unique sortable ids for an ordered segment list: each segment's key, with a
+ * `#n` suffix on repeats so duplicated (for example unresolved) segments stay
+ * distinct while each id still follows its segment when reordered.
+ */
+function sortableIds(segments: EditorPartitionSegment[]): string[] {
+  const seen = new Map<string, number>()
+  return segments.map((segment) => {
+    const key = partitionSegmentKey(segment)
+    const count = seen.get(key) ?? 0
+    seen.set(key, count + 1)
+    return count === 0 ? key : `${key}#${count}`
+  })
 }
 
 /**
  * A single sortable, removable partition badge.
  *
- * Drag moves the badge via the pointer sensor; the dedicated remove button is
- * operable with Enter/Space. The whole badge is the sortable handle so keyboard
- * reordering (Space/Enter to pick up, arrow keys to move) works on the badge
- * itself.
+ * Drag moves the badge via the pointer sensor (reordering is pointer-only); the
+ * dedicated remove button is operable with Enter/Space. The badge label is the
+ * sortable handle and is kept out of the Tab order, since it has no keyboard
+ * action.
  */
 const PartitionBadge = ({
+  id,
   segment,
+  fields,
   onRemove,
 }: {
-  segment: PartitionSegment
+  id: string
+  segment: EditorPartitionSegment
+  fields: EditorField[]
   onRemove: () => void
 }) => {
-  const id = segmentId(segment)
+  const label = partitionSegmentLabel(segment, fields)
+  const unresolved = !isResolvedPartitionSegment(segment)
   const {
     attributes,
     listeners,
@@ -64,21 +65,26 @@ const PartitionBadge = ({
       style={{ transform: CSS.Transform.toString(transform), transition }}
       className={cn(
         "inline-flex items-center gap-1 rounded-md border border-input bg-accent/40 py-0.5 pr-0.5 pl-2 text-xs",
-        isDragging && "opacity-50"
+        isDragging && "opacity-50",
+        unresolved && "border-destructive/60"
       )}
+      title={unresolved ? "No single field with this name exists." : undefined}
     >
       <button
         type="button"
-        aria-label={`Reorder ${segmentLabel(segment)}`}
+        aria-label={`Reorder ${label}`}
         className="focus-visible:ring-ring/50 cursor-grab rounded-sm font-mono outline-none focus-visible:ring-3"
         {...attributes}
         {...listeners}
+        // Spread last so it wins over `attributes.tabIndex` (0): the handle has
+        // no keyboard action, so it stays out of the Tab order.
+        tabIndex={-1}
       >
-        {segmentLabel(segment)}
+        {label}
       </button>
       <button
         type="button"
-        aria-label={`Remove ${segmentLabel(segment)}`}
+        aria-label={`Remove ${label}`}
         onClick={onRemove}
         className="text-muted-foreground hover:text-foreground focus-visible:ring-ring/50 inline-flex size-4 items-center justify-center rounded-sm outline-none focus-visible:ring-3"
       >
@@ -92,36 +98,34 @@ const PartitionBadge = ({
  * A horizontal, sortable row of removable partition badges, rendered in
  * `/`-segment order.
  *
- * Reordering or removing a badge produces the new ordered segment list and the
- * re-serialized `/`-separated partitioning string, handed to {@link onChange}
- * so the caller can commit it.
+ * Reordering or removing a badge produces the new ordered segment list, handed
+ * to {@link onChange} so the caller can commit it. Labels resolve the segments'
+ * field ids against `fields`, so a renamed field shows its current name.
  *
- * The row owns its own scoped `DndContext` registering both a `PointerSensor`
- * and a `KeyboardSensor` (with `sortableKeyboardCoordinates`) — a new,
- * package-first keyboard-reorder pattern (the canvas registers only a
- * `PointerSensor`). Space/Enter picks a badge up, arrow keys reorder it, and
- * each badge's remove button is operable with Enter/Space, so the control is
- * fully keyboard-accessible.
+ * The row owns its own scoped `DndContext` registering a `PointerSensor` only,
+ * like the canvas. Each badge's remove button stays operable with Enter/Space.
  *
  * @param segments - The ordered chosen segments.
- * @param onChange - Called with the next segments and their serialized string.
+ * @param fields - The editor fields the segments' ids resolve against.
+ * @param onChange - Called with the next ordered segments.
  */
 export const PartitionBadges = ({
   segments,
+  fields,
   onChange,
 }: {
-  segments: PartitionSegment[]
-  onChange: (next: PartitionSegment[], serialized: string) => void
+  segments: EditorPartitionSegment[]
+  fields: EditorField[]
+  onChange: (next: EditorPartitionSegment[]) => void
 }) => {
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } })
   )
 
-  const ids = segments.map(segmentId)
+  const ids = sortableIds(segments)
 
-  const commit = (next: PartitionSegment[]): void => {
-    onChange(next, serializePartitionSegments(next))
+  const commit = (next: EditorPartitionSegment[]): void => {
+    onChange(next)
   }
 
   const handleDragEnd = (event: DragEndEvent): void => {
@@ -160,8 +164,10 @@ export const PartitionBadges = ({
         >
           {segments.map((segment, index) => (
             <PartitionBadge
-              key={segmentId(segment)}
+              key={ids[index]}
+              id={ids[index] as string}
               segment={segment}
+              fields={fields}
               onRemove={() => handleRemove(index)}
             />
           ))}

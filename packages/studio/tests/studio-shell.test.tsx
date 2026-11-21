@@ -124,14 +124,15 @@ describe("studio shell — rail and views", () => {
     expect(screen.queryByRole("note", { name: "No fields yet" })).toBeNull()
   })
 
-  it("exposes the keyboard-move hint in the Fields view", async () => {
+  it("no longer shows a keyboard-move hint (reordering is pointer-only)", async () => {
     const user = userEvent.setup()
     render(<EndpointBuilder />)
     await gotoView(user, "Fields")
 
-    const hint = screen.getByRole("note", { name: "Keyboard move help" })
-    expect(within(hint).getByText(/pick up/u)).toBeDefined()
-    expect(within(hint).getByText(/cancel/u)).toBeDefined()
+    expect(
+      screen.queryByRole("note", { name: "Keyboard move help" })
+    ).toBeNull()
+    expect(screen.queryByLabelText("Move field")).toBeNull()
   })
 })
 
@@ -318,6 +319,44 @@ describe("studio shell — logo, header affordances, content-fixed toolbar, glob
         /Validation pattern is not a valid regular expression/u
       )
     ).toBeDefined()
+  })
+
+  it("counts and lists a partition segment naming a field that does not exist", async () => {
+    const user = userEvent.setup()
+    render(<EndpointBuilder />)
+
+    // Well-formed, so the schema accepts it; only the unresolved-segment
+    // finding keeps this import from being exportable.
+    await user.upload(
+      fileInput(),
+      jsonFile(
+        JSON.stringify({
+          version: "2.0",
+          tableName: "events",
+          catalog: "main",
+          schema: "public",
+          fields: [{ name: "region", type: "String" }],
+          mutation: {
+            loadStrategy: "append",
+            basePath: "/d",
+            partitioning: "ghost",
+          },
+        })
+      )
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText(/1 issue blocking export/u)).toBeDefined()
+    })
+
+    await gotoView(user, "Validations")
+    const issueList = screen.getByRole("complementary", {
+      name: "Validation issues",
+    })
+    expect(
+      within(issueList).getByText(/Partition field "ghost" does not exist/u)
+    ).toBeDefined()
+    expect(within(issueList).getByText("Partitioning")).toBeDefined()
   })
 
   it("shows the Undo/Redo toolbar in the Fields view and nowhere else", async () => {

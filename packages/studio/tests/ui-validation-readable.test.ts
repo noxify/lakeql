@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest"
 
-import { toReadableIssues } from "@/components/studio/validation-readable"
+import {
+  metadataKeysWithIssues,
+  partitioningIssueMessages,
+  toReadableIssues,
+} from "@/components/studio/validation-readable"
 import type { EditorState, ValidationResult } from "@/core"
 import { evaluate } from "@/core"
 import { fromDefinition } from "@/core/mapping"
@@ -60,6 +64,7 @@ describe("readable-mapping layer", () => {
       autoFillPlacement: [],
       autoFillMutation: [],
       companionPartition: [],
+      unresolvedPartition: [],
     }
 
     const issues = toReadableIssues(state, result)
@@ -83,6 +88,7 @@ describe("readable-mapping layer", () => {
       autoFillPlacement: [],
       autoFillMutation: [],
       companionPartition: [],
+      unresolvedPartition: [],
     }
 
     const issues = toReadableIssues(state, result)
@@ -133,6 +139,7 @@ describe("readable-mapping layer", () => {
       autoFillPlacement: [],
       autoFillMutation: [],
       companionPartition: [],
+      unresolvedPartition: [],
     }
 
     const issues = toReadableIssues(nestedState(), result)
@@ -250,6 +257,7 @@ describe("readable-mapping layer", () => {
         autoFillPlacement: [],
         autoFillMutation: [],
         companionPartition: [],
+        unresolvedPartition: [],
       }
 
       const issues = toReadableIssues(state, result)
@@ -274,6 +282,7 @@ describe("readable-mapping layer", () => {
       autoFillPlacement: [],
       autoFillMutation: [],
       companionPartition: [],
+      unresolvedPartition: [],
     }
 
     const issues = toReadableIssues(state, result)
@@ -297,6 +306,7 @@ describe("readable-mapping layer", () => {
       autoFillPlacement: [],
       autoFillMutation: [],
       companionPartition: [],
+      unresolvedPartition: [],
     }
 
     const issues = toReadableIssues(state, result)
@@ -318,6 +328,7 @@ describe("readable-mapping layer", () => {
       autoFillPlacement: [],
       autoFillMutation: [],
       companionPartition: [],
+      unresolvedPartition: [],
     }
 
     const issues = toReadableIssues(state, result)
@@ -340,7 +351,203 @@ describe("readable-mapping layer", () => {
       autoFillPlacement: [],
       autoFillMutation: [],
       companionPartition: [],
+      unresolvedPartition: [],
     }
     expect(toReadableIssues(nestedState(), valid)).toStrictEqual([])
+  })
+})
+
+describe("toReadableIssues — unresolved partition segments", () => {
+  it("lists a missing and an ambiguous partition field as issues navigable to the picker", () => {
+    const result: ValidationResult = {
+      validForExport: false,
+      schemaIssues: [],
+      duplicates: [],
+      badRegex: [],
+      badNumber: [],
+      reservedNames: [],
+      autoFillPlacement: [],
+      autoFillMutation: [],
+      companionPartition: [],
+      unresolvedPartition: [
+        { name: "ghost", reason: "missing" },
+        { name: "dup", reason: "ambiguous" },
+      ],
+    }
+
+    const issues = toReadableIssues(nestedState(), result)
+    expect(issues).toHaveLength(2)
+    expect(
+      issues.map(({ label, navigable, metadataKey }) => ({
+        label,
+        navigable,
+        metadataKey,
+      }))
+    ).toStrictEqual([
+      { label: "Partitioning", navigable: true, metadataKey: "partitioning" },
+      { label: "Partitioning", navigable: true, metadataKey: "partitioning" },
+    ])
+    expect(defined(issues[0]).message).toContain('"ghost" does not exist')
+    expect(defined(issues[1]).message).toContain(
+      '"dup" matches more than one field'
+    )
+    expect(new Set(issues.map((issue) => issue.id)).size).toBe(2)
+  })
+})
+
+describe("toReadableIssues — partitioning navigation", () => {
+  it("makes a companion-column partition issue navigable to the picker", () => {
+    const result: ValidationResult = {
+      validForExport: false,
+      schemaIssues: [],
+      duplicates: [],
+      badRegex: [],
+      badNumber: [],
+      reservedNames: [],
+      autoFillPlacement: [],
+      autoFillMutation: [],
+      companionPartition: [
+        {
+          segment: "event_year",
+          companionName: "event_year",
+          primaryName: "event",
+        },
+      ],
+      unresolvedPartition: [],
+    }
+    const issue = defined(toReadableIssues(nestedState(), result)[0])
+    expect(issue.navigable).toBeTruthy()
+    expect(issue.metadataKey).toBe("partitioning")
+  })
+
+  it("makes a schema issue on the partitioning path navigable to the picker", () => {
+    const result: ValidationResult = {
+      validForExport: false,
+      schemaIssues: [
+        { path: ["mutation", "partitioning"], message: "Too small" },
+      ],
+      duplicates: [],
+      badRegex: [],
+      badNumber: [],
+      reservedNames: [],
+      autoFillPlacement: [],
+      autoFillMutation: [],
+      companionPartition: [],
+      unresolvedPartition: [],
+    }
+    const issue = defined(toReadableIssues(nestedState(), result)[0])
+    expect(issue.navigable).toBeTruthy()
+    expect(issue.metadataKey).toBe("partitioning")
+    expect(issue.label).toBe("Partitioning")
+  })
+})
+
+describe(partitioningIssueMessages, () => {
+  it("returns the same text the Validations list shows, in list order", () => {
+    const result: ValidationResult = {
+      validForExport: false,
+      schemaIssues: [],
+      duplicates: [],
+      badRegex: [],
+      badNumber: [],
+      reservedNames: [],
+      autoFillPlacement: [],
+      autoFillMutation: [],
+      companionPartition: [
+        {
+          segment: "event_year",
+          companionName: "event_year",
+          primaryName: "event",
+        },
+      ],
+      unresolvedPartition: [{ name: "ghost", reason: "missing" }],
+    }
+    const messages = partitioningIssueMessages(nestedState(), result)
+    const listed = toReadableIssues(nestedState(), result).map(
+      (issue) => issue.message
+    )
+    expect(messages).toStrictEqual(listed)
+    expect(messages).toHaveLength(2)
+  })
+})
+
+describe(metadataKeysWithIssues, () => {
+  const none: ValidationResult = {
+    validForExport: false,
+    schemaIssues: [],
+    duplicates: [],
+    badRegex: [],
+    badNumber: [],
+    reservedNames: [],
+    autoFillPlacement: [],
+    autoFillMutation: [],
+    companionPartition: [],
+    unresolvedPartition: [],
+  }
+
+  it("collects the Settings inputs named by metadata schema issues", () => {
+    const keys = metadataKeysWithIssues({
+      ...none,
+      schemaIssues: [
+        { path: ["tableName"], message: "Too small" },
+        { path: ["mutation", "basePath"], message: "Too small" },
+        { path: ["version"], message: "Invalid input" },
+      ],
+    })
+    expect([...keys].toSorted()).toStrictEqual(["basePath", "tableName"])
+  })
+
+  it("ignores field-keyed schema issues", () => {
+    const keys = metadataKeysWithIssues({
+      ...none,
+      schemaIssues: [
+        { path: ["fields", 0, "name"], message: "Invalid", fieldId: "f1" },
+      ],
+    })
+    expect(keys.size).toBe(0)
+  })
+
+  it("reports partitioning for companion and unresolved partition findings", () => {
+    expect(
+      metadataKeysWithIssues({
+        ...none,
+        unresolvedPartition: [{ name: "ghost", reason: "missing" }],
+      }).has("partitioning")
+    ).toBeTruthy()
+    expect(
+      metadataKeysWithIssues({
+        ...none,
+        companionPartition: [
+          { segment: "e_year", companionName: "e_year", primaryName: "e" },
+        ],
+      }).has("partitioning")
+    ).toBeTruthy()
+  })
+})
+
+describe("partitioningIssueMessages — schema issues", () => {
+  it("includes a schema issue on the partitioning value, and no other schema issue", () => {
+    const result: ValidationResult = {
+      validForExport: false,
+      schemaIssues: [
+        { path: ["tableName"], message: "Too small" },
+        {
+          path: ["mutation", "partitioning"],
+          message:
+            'Choose at least one partition field, or set partitioning to "Off".',
+        },
+      ],
+      duplicates: [],
+      badRegex: [],
+      badNumber: [],
+      reservedNames: [],
+      autoFillPlacement: [],
+      autoFillMutation: [],
+      companionPartition: [],
+      unresolvedPartition: [],
+    }
+    expect(partitioningIssueMessages(nestedState(), result)).toStrictEqual([
+      'Choose at least one partition field, or set partitioning to "Off".',
+    ])
   })
 })

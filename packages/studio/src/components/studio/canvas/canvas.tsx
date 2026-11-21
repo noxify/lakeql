@@ -2,6 +2,7 @@ import { useDroppable } from "@dnd-kit/core"
 import { SortableContext } from "@dnd-kit/sortable"
 import { cn } from "cn"
 
+import { RemoveFieldConfirmDialog } from "../remove-field-dialog"
 import { TypeChangeConfirmDialog } from "../type-change-dialog"
 import { useEditorContext } from "../use-editor"
 import { CanvasNode } from "./canvas-node"
@@ -11,7 +12,7 @@ import { indicatorAt } from "./indicator-state"
 import { Palette } from "./palette"
 import { CanvasShellRoot } from "./shell-root"
 import { useCanvasDndContext } from "./use-canvas-dnd"
-import { useKeyboardMoveContext } from "./use-keyboard-move"
+import { useFieldRemovalContext } from "./use-field-removal"
 import { useTypeChangeContext } from "./use-type-change"
 
 /**
@@ -20,8 +21,8 @@ import { useTypeChangeContext } from "./use-type-change"
  * appending at the top level; the rejection reason surfaces a
  * structurally-impossible drop.
  *
- * A separately-mountable piece of the decomposed canvas: it consumes the DnD,
- * keyboard-move, and type-change contexts from the hoisted `CanvasShellRoot`
+ * A separately-mountable piece of the decomposed canvas: it consumes the DnD
+ * and type-change contexts from the hoisted `CanvasShellRoot`
  * rather than owning them, so it can render in the shell's main content while
  * the {@link Palette} renders in a different subtree under the same single
  * `DndContext`.
@@ -29,10 +30,12 @@ import { useTypeChangeContext } from "./use-type-change"
 export const CanvasSurface = () => {
   const editor = useEditorContext()
   const { drag, rejectionReason } = useCanvasDndContext()
-  const keyboard = useKeyboardMoveContext()
   const typeChange = useTypeChangeContext()
   const { confirm: handleTypeChangeConfirm, cancel: handleTypeChangeCancel } =
     typeChange
+  const fieldRemoval = useFieldRemovalContext()
+  const { confirm: handleRemoveConfirm, cancel: handleRemoveCancel } =
+    fieldRemoval
   const { state } = editor
   const { fields } = state
   const { setNodeRef, isOver } = useDroppable({
@@ -40,17 +43,9 @@ export const CanvasSurface = () => {
     data: { kind: "container-zone", containerId: null },
   })
 
-  // The top-level append indicator, driven by whichever of the pointer drag or
-  // the keyboard move resolves to appending at the top level.
-  const appendTop = indicatorAt(drag, keyboard.move, null, null)
-
-  // A structurally-impossible keyboard target surfaces its reason the same way
-  // the pointer path does (shared `role="alert"` surface).
-  const keyboardReason =
-    keyboard.move !== null && !keyboard.move.plan.ok
-      ? (keyboard.move.plan.reason ?? "This move is not possible.")
-      : null
-  const alertReason = keyboardReason ?? rejectionReason
+  // The top-level append indicator, shown while the pointer drag resolves to
+  // appending at the top level.
+  const appendTop = indicatorAt(drag, null, null)
 
   return (
     <div className="grid gap-2">
@@ -58,9 +53,9 @@ export const CanvasSurface = () => {
         <h2 className="text-sm font-medium">Fields</h2>
       </div>
 
-      {alertReason !== null && (
+      {rejectionReason !== null && (
         <p role="alert" className="text-destructive text-xs">
-          {alertReason}
+          {rejectionReason}
         </p>
       )}
 
@@ -100,6 +95,14 @@ export const CanvasSurface = () => {
         pending={typeChange.pending}
         onConfirm={handleTypeChangeConfirm}
         onCancel={handleTypeChangeCancel}
+      />
+
+      {/* Confirms removing a field the partitioning references; confirming
+          also removes its partition segments in one undo step. */}
+      <RemoveFieldConfirmDialog
+        pending={fieldRemoval.pending}
+        onConfirm={handleRemoveConfirm}
+        onCancel={handleRemoveCancel}
       />
     </div>
   )

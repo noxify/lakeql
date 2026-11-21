@@ -11,10 +11,10 @@ import type { Page } from "@playwright/test"
 import { expect, test } from "@playwright/test"
 
 /**
- * End-to-end coverage of the partitioning UX: enabling the mutation, the rich
- * three-option mode picker (starting on `off`), the automatic read-only
- * `load_timestamp` row in timestamp mode, and the by-field combobox producing a
- * badge. Drives the served static build in Chromium.
+ * End-to-end coverage of the partitioning UX: enabling the mutation, the
+ * two-option mode picker (starting on `off`), the write-timestamp auto-fill
+ * helper adding a real `load_timestamp` field, and the by-field combobox
+ * producing a badge. Drives the served static build in Chromium.
  *
  * Each test closes with an axe audit, with `color-contrast` disabled to match
  * the sibling E2E suites (a manual-only conformance item, not a regression this
@@ -50,22 +50,31 @@ test("enables the mutation and walks the partitioning modes", async ({
   await expect(offCard).toBeVisible()
   await expect(offCard).toHaveAttribute("aria-checked", "true")
   await expect(
-    page.getByRole("radio", { name: "By write timestamp" })
-  ).toBeVisible()
-  await expect(
     page.getByRole("radio", { name: "By field / custom format" })
   ).toBeVisible()
+  // The implicit timestamp mode is gone: only the two modes are offered.
+  await expect(
+    page.getByRole("radio", { name: "By write timestamp" })
+  ).toHaveCount(0)
+  await expect(page.getByRole("radio")).toHaveCount(2)
 
-  // Choose timestamp: the granularity select appears.
-  await page.getByRole("radio", { name: "By write timestamp" }).click()
-  await expect(page.getByLabel("Partition granularity")).toBeVisible()
+  // The auto-fill helper adds a real, declared load_timestamp DateTime field.
+  const addTimestamp = page.getByRole("button", {
+    name: "Add write-timestamp field",
+  })
+  await addTimestamp.click()
+  // A second click is blocked: the name is now taken.
+  await expect(addTimestamp).toBeDisabled()
 
-  // The Fields view shows the read-only managed load_timestamp row.
+  // The Fields view shows it as an ordinary field row (no phantom managed row).
   await page.getByRole("button", { name: "Fields" }).click()
   await expect(page.getByRole("heading", { name: "Fields" })).toBeVisible()
   await expect(
-    page.getByRole("group", { name: "load_timestamp (managed, read-only)" })
+    page.getByRole("group", { name: "load_timestamp" })
   ).toBeVisible()
+  await expect(
+    page.getByRole("group", { name: "load_timestamp (managed, read-only)" })
+  ).toHaveCount(0)
 
   await expectNoAxeViolations(page)
 })

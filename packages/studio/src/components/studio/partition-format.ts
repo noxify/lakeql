@@ -1,28 +1,21 @@
-import type { PartitioningComponent } from "@lakeql/schema-generator/endpoint-schema"
 import { partitioningComponents } from "@lakeql/schema-generator/endpoint-schema"
 
-import type { EditorField, EditorFieldType } from "@/core"
+import type {
+  EditorField,
+  EditorFieldType,
+  EditorPartitionSegment,
+  EditorResolvedPartitionSegment,
+} from "@/core"
+import { isResolvedPartitionSegment } from "@/core"
 
 import type { PartitioningMode } from "./validation-meta"
-
-/**
- * One resolved partition segment of the `/`-separated partitioning string.
- *
- * A segment is either a bare `fieldname` ({@link component} absent) or a
- * `fieldname:component` pair ({@link component} present), matching the frozen
- * grammar accepted by `validatePartitioningFormat`.
- */
-export interface PartitionSegment {
-  /** Top-level field name. */
-  field: string
-  /** Date component, present only for a `fieldname:component` segment. */
-  component?: PartitioningComponent
-}
 
 /**
  * A candidate top-level field eligible for the partition picker.
  */
 export interface PartitionCandidate {
+  /** The field's stable client-side id, which segments reference. */
+  id: string
   /** The field's name. */
   name: string
   /** The field's editor type. */
@@ -35,12 +28,12 @@ export interface PartitionCandidate {
  * One selectable combobox option backing exactly one partition segment.
  */
 export interface PartitionOption {
-  /** Serialized segment value, e.g. `"created_at"` or `"created_at:year"`. */
+  /** Stable option key: `"<fieldId>"` or `"<fieldId>:<component>"`. */
   value: string
   /** Display label, e.g. `"created_at → year"`. */
   label: string
   /** The resolved segment this option appends when chosen. */
-  segment: PartitionSegment
+  segment: EditorResolvedPartitionSegment
 }
 
 /**
@@ -67,6 +60,7 @@ export function topLevelPartitionCandidates(
       continue
     }
     candidates.push({
+      id: field.id,
       name: field.name,
       type: field.type,
       isDateLike: field.type === "Date" || field.type === "DateTime",
@@ -78,10 +72,11 @@ export function topLevelPartitionCandidates(
 /**
  * Expands candidates into the selectable combobox options.
  *
- * A non-date primitive yields one option (segment `{ field }`, value
- * `fieldname`). A date-like candidate yields six options — one per
+ * A non-date primitive yields one option (segment `{ fieldId }`, value the
+ * field id). A date-like candidate yields six options — one per
  * `partitioningComponents` entry (`year`/`month`/`day`/`hour`/`minute`/`second`,
- * value `fieldname:component`, label `fieldname → component`).
+ * value `fieldId:component`, label `fieldname → component`). Options are keyed
+ * by id, so two same-named fields stay distinct choices.
  *
  * All six components are offered (decision A1): `validatePartitioningFormat`
  * accepts every `partitioningComponents` entry in a `fieldname:component`
@@ -98,17 +93,17 @@ export function partitionOptionsFor(
   for (const candidate of candidates) {
     if (!candidate.isDateLike) {
       options.push({
-        value: candidate.name,
+        value: candidate.id,
         label: candidate.name,
-        segment: { field: candidate.name },
+        segment: { fieldId: candidate.id },
       })
       continue
     }
     for (const component of partitioningComponents) {
       options.push({
-        value: `${candidate.name}:${component}`,
+        value: `${candidate.id}:${component}`,
         label: `${candidate.name} → ${component}`,
-        segment: { field: candidate.name, component },
+        segment: { fieldId: candidate.id, component },
       })
     }
   }
@@ -116,63 +111,30 @@ export function partitionOptionsFor(
 }
 
 /**
- * Serializes chosen segments to the `/`-separated partitioning string.
+ * A stable key for a segment, used for the "already chosen" filter and as the
+ * base of its sortable id. A resolved segment keys on its field id, an
+ * unresolved one on its raw name (prefixed so it cannot collide with an id).
  *
- * Each segment becomes `field` or `field:component`; segments are joined with
- * `/` in order, so the string order equals the segment order.
- *
- * @param segments - The ordered chosen segments.
- * @returns The `/`-separated partitioning string (empty for no segments).
+ * @param segment - The segment to key.
+ * @returns `"<fieldId>"`/`"<fieldId>:<component>"`, or `"?<name>"`-prefixed for
+ *   an unresolved segment.
  */
-export function serializePartitionSegments(
-  segments: PartitionSegment[]
-): string {
-  return segments
-    .map((segment) =>
-      segment.component === undefined
-        ? segment.field
-        : `${segment.field}:${segment.component}`
-    )
-    .join("/")
-}
-
-/**
- * Parses a partitioning string back into its ordered segment list.
- *
- * Splits on `/`, then each segment on its first `:`. A segment without `:` is
- * `{ field }`; with `:` it is `{ field, component }`. The parse never throws
- * and tolerates partial input (for example `":day"` parses to
- * `{ field: "", component: "day" }`), because the picker seeds from whatever
- * string is currently stored — invalidity is surfaced by
- * `validatePartitioningFormat`, not here. For any well-formed `s`,
- * `serializePartitionSegments(parsePartitionSegments(s)) === s`.
- *
- * @param value - The stored partitioning string.
- * @returns The ordered segment list (empty for an empty string).
- */
-export function parsePartitionSegments(value: string): PartitionSegment[] {
-  if (value === "") {
-    return []
-  }
-  return value.split("/").map((raw) => {
-    const colon = raw.indexOf(":")
-    if (colon === -1) {
-      return { field: raw }
-    }
-    return {
-      field: raw.slice(0, colon),
-      component: raw.slice(colon + 1) as PartitioningComponent,
-    }
-  })
+export function partitionSegmentKey(segment: EditorPartitionSegment): string {
+  const base = isResolvedPartitionSegment(segment)
+    ? segment.fieldId
+    : `?${segment.unresolvedName}`
+  return segment.component === undefined ? base : `${base}:${segment.component}`
 }
 
 /**
  * Maps a rich radio mode to the editor `partitioning` value.
  *
- * `off` → `false`, `field` → the current string (so a custom format is
- * preserved when re-entering field mode) or `""` to seed an empty picker. This
- * is the pure, unit-testable replacement for the form's former inline `setMode`
- * mapping; {@link partitioningModeOf} is the reverse.
+ * `off` → `false`, `field` → the current segments, or `[]` to seed an empty
+ * picker when coming from `off`. Switching to `off` discards the chosen
+ * segments by design (the state holds a single value); each mode switch is its
+ * own history snapshot, so undo restores them. This is the pure, unit-testable
+ * replacement for the form's former inline `setMode` mapping;
+ * {@link partitioningModeOf} is the reverse.
  *
  * @param mode - The selected rich radio mode.
  * @param current - The current `partitioning` value.
@@ -180,10 +142,10 @@ export function parsePartitionSegments(value: string): PartitionSegment[] {
  */
 export function partitioningValueForMode(
   mode: PartitioningMode,
-  current: false | string
-): false | string {
+  current: false | EditorPartitionSegment[]
+): false | EditorPartitionSegment[] {
   if (mode === "off") {
     return false
   }
-  return typeof current === "string" ? current : ""
+  return current === false ? [] : current
 }

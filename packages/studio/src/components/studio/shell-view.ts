@@ -51,6 +51,19 @@ const ShellViewContext = createContext<ShellViewApi | null>(null)
 export const ShellViewProvider = ShellViewContext.Provider
 
 /**
+ * Reads the {@link ShellViewApi} from context without requiring a provider,
+ * for components that also render outside the shell (for example a form
+ * mounted on its own). Callers must handle `null` by omitting any
+ * view-switching affordance.
+ *
+ * @returns The shell-view controller, or `null` outside a
+ *   {@link ShellViewProvider}.
+ */
+export function useOptionalShellView(): ShellViewApi | null {
+  return useContext(ShellViewContext)
+}
+
+/**
  * Reads the {@link ShellViewApi} from context.
  *
  * @returns The shell-view controller.

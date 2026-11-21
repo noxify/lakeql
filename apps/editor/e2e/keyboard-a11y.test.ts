@@ -5,18 +5,17 @@
 // oxlint-disable vitest/prefer-importing-vitest-globals
 
 import AxeBuilder from "@axe-core/playwright"
-import type { Locator, Page } from "@playwright/test"
+import type { Page } from "@playwright/test"
 import { expect, test } from "@playwright/test"
 
 /**
  * End-to-end keyboard-accessibility tests for the Endpoint Builder Canvas
  * (Requirement 8). Each test drives real key events in Chromium against the
  * served static build and asserts the observable state/DOM change, then runs an
- * axe audit of the resulting state. Together they give genuine SC 2.1.1
- * (Keyboard) coverage for the full structural set — add, reorder, cross-level
- * move, rejected self-containing move, cancel — with no drag-only exception,
- * plus focus order/visibility, selection semantics, keyboard undo/redo, and the
- * live-region announcements.
+ * axe audit of the resulting state. They cover keyboard palette-add, focus
+ * order/visibility, selection semantics, keyboard undo/redo, rail and command
+ * palette operation, and the live-region announcement. Reordering fields is
+ * pointer-only by design (there is no keyboard move mode).
  *
  * Playwright gives each test an isolated browser context, so the persisted
  * draft in `localStorage` starts empty and the canvas begins with no fields.
@@ -33,27 +32,6 @@ async function fieldNames(page: Page): Promise<string[]> {
     .evaluateAll((nodes) =>
       nodes.map((node) => (node as HTMLInputElement).value)
     )
-}
-
-/**
- * The index of the field-name input whose live value equals `name`. The name
- * inputs and the "Move field" buttons render in the same DOM order (one of each
- * per node), so this index also addresses the matching Move button. React
- * controlled inputs do not reflect their value into the `value` attribute, so
- * this reads the live `value` property rather than matching an attribute
- * selector.
- */
-async function indexOfField(page: Page, name: string): Promise<number> {
-  const values = await fieldNames(page)
-  const index = values.indexOf(name)
-  expect(index, `expected a field named "${name}"`).toBeGreaterThanOrEqual(0)
-  return index
-}
-
-/** The "Move field" button of the node whose name input currently equals `name`. */
-async function moveButtonFor(page: Page, name: string): Promise<Locator> {
-  const index = await indexOfField(page, name)
-  return page.getByLabel("Move field").nth(index)
 }
 
 /** Adds a field of `type` from the palette by keyboard and names the new node. */
@@ -120,129 +98,6 @@ test("adds a field from the palette by keyboard", async ({ page }) => {
   await expectNoAxeViolations(page)
 })
 
-test("reorders fields within a level by keyboard", async ({ page }) => {
-  await addNamed(page, "String", "a")
-  await addNamed(page, "String", "b")
-  await addNamed(page, "String", "c")
-
-  expect(await fieldNames(page)).toEqual(["a", "b", "c"])
-
-  // Grab "a", move it down past "b", drop.
-  await (await moveButtonFor(page, "a")).focus()
-  await page.keyboard.press("Enter")
-  await page.keyboard.press("ArrowDown")
-  await page.keyboard.press("ArrowDown")
-  await page.keyboard.press("Enter")
-
-  expect(await fieldNames(page)).toEqual(["b", "a", "c"])
-  await expectNoAxeViolations(page)
-})
-
-test("moves a field across levels into and out of a container", async ({
-  page,
-}) => {
-  await addNamed(page, "String", "leaf")
-  await addNamed(page, "Object", "box")
-
-  // Select "box" and add a child into it so it is a non-empty container. The
-  // child appends inside "box", which is the last node overall.
-  const boxIndex = await indexOfField(page, "box")
-  await page.getByLabel("Field name").nth(boxIndex).click()
-  const beforeAdd = await page.getByLabel("Field name").count()
-  await page.getByLabel("Add String field").focus()
-  await page.keyboard.press("Enter")
-  await expect(page.getByLabel("Field name")).toHaveCount(beforeAdd + 1)
-  const seedInput = page.getByLabel("Field name").nth(beforeAdd)
-  await seedInput.fill("seed")
-  await seedInput.blur()
-
-  // Move "leaf" into "box" (append slot inside box).
-  await (await moveButtonFor(page, "leaf")).focus()
-  await page.keyboard.press("Enter")
-  await page.keyboard.press("ArrowDown")
-  await page.keyboard.press("ArrowDown")
-  await page.keyboard.press("ArrowDown")
-  await page.keyboard.press("Enter")
-
-  // "leaf" is now nested under "box" alongside "seed".
-  const names = await fieldNames(page)
-  expect(names).toContain("box")
-  expect(names).toContain("seed")
-  expect(names).toContain("leaf")
-  // "leaf" now sits after "seed" (nested), proving it left the top level.
-  expect(names.indexOf("leaf")).toBeGreaterThan(names.indexOf("seed"))
-
-  await expectNoAxeViolations(page)
-
-  // Move "leaf" back out to the top level (before "box").
-  await (await moveButtonFor(page, "leaf")).focus()
-  await page.keyboard.press("Enter")
-  await page.keyboard.press("ArrowUp")
-  await page.keyboard.press("ArrowUp")
-  await page.keyboard.press("ArrowUp")
-  await page.keyboard.press("Enter")
-  await expect(await moveButtonFor(page, "leaf")).toBeVisible()
-})
-
-test("rejects a self-containing move with no change and a role=alert reason", async ({
-  page,
-}) => {
-  // obj (Object) with an inner Object child.
-  await addNamed(page, "Object", "obj")
-
-  const objIndex = await indexOfField(page, "obj")
-  await page.getByLabel("Field name").nth(objIndex).click()
-  const beforeAdd = await page.getByLabel("Field name").count()
-  await page.getByLabel("Add Object field").focus()
-  await page.keyboard.press("Enter")
-  await expect(page.getByLabel("Field name")).toHaveCount(beforeAdd + 1)
-  const innerInput = page.getByLabel("Field name").nth(beforeAdd)
-  await innerInput.fill("inner")
-  await innerInput.blur()
-
-  const before = await fieldNames(page)
-
-  // Grab "obj" and navigate to a slot inside "inner" (self-containing).
-  // Slots in order: before obj, before inner (inside obj), append inner (inside
-  // inner), append obj, append top. Two downs reach "append inner".
-  await (await moveButtonFor(page, "obj")).focus()
-  await page.keyboard.press("Enter")
-  await page.keyboard.press("ArrowDown")
-  await page.keyboard.press("ArrowDown")
-
-  // The keyboard rejection reason surfaces via the canvas's role="alert"
-  // (distinct from the validation-diagnostics alert, which is also present on
-  // this invalid draft — scope to the move-rejection wording).
-  const alert = page
-    .getByRole("alert")
-    .filter({ hasText: /descendant|itself|not possible/iu })
-  await expect(alert).toBeVisible()
-
-  // Enter on the invalid slot does not mutate.
-  await page.keyboard.press("Enter")
-  expect(await fieldNames(page)).toEqual(before)
-
-  await expectNoAxeViolations(page)
-})
-
-test("cancel returns focus to the source and makes no change", async ({
-  page,
-}) => {
-  await addNamed(page, "String", "x")
-  await addNamed(page, "String", "y")
-
-  const before = await fieldNames(page)
-
-  await (await moveButtonFor(page, "x")).focus()
-  await page.keyboard.press("Enter")
-  await page.keyboard.press("ArrowDown")
-  await page.keyboard.press("Escape")
-
-  expect(await fieldNames(page)).toEqual(before)
-  // Focus returned to the source node's Move button.
-  await expect(await moveButtonFor(page, "x")).toBeFocused()
-})
-
 test("selection semantics, visible focus, and keyboard undo/redo", async ({
   page,
 }) => {
@@ -276,23 +131,19 @@ test("selection semantics, visible focus, and keyboard undo/redo", async ({
   await expectNoAxeViolations(page)
 })
 
-test("announces pick-up, target change, and drop in a live region", async ({
+test("a keyboard palette-add is announced and focuses the new field", async ({
   page,
 }) => {
-  await addNamed(page, "String", "one")
-  await addNamed(page, "String", "two")
+  const announcer = page.getByTestId("canvas-announcer")
 
-  const announcer = page.getByTestId("keyboard-move-announcer")
-
-  await (await moveButtonFor(page, "one")).focus()
+  await page.getByLabel("Add String field").focus()
   await page.keyboard.press("Enter")
-  await expect(announcer).toContainText(/picked up/iu)
 
-  await page.keyboard.press("ArrowDown")
-  await expect(announcer).toContainText(/before|end of/iu)
+  await expect(announcer).toContainText(/added a string field/iu)
+  // Focus lands on the new field's name input, ready to type a name.
+  await expect(page.getByLabel("Field name").first()).toBeFocused()
 
-  await page.keyboard.press("Enter")
-  await expect(announcer).toContainText(/dropped/iu)
+  await expectNoAxeViolations(page)
 })
 
 test("rail navigation is keyboard-operable (Tab/Enter switches views)", async ({
@@ -386,11 +237,10 @@ test("the dark-mode toggle switches the applied theme", async ({ page }) => {
 test("keyboard on the reorder grip starts no drag (ghost-image regression guard)", async ({
   page,
 }) => {
-  // Regression guard for the keyboard-move ghost: the "Reorder field" grip is a
-  // pointer-only drag handle (`setActivatorNodeRef` + `tabIndex=-1`, and the
-  // @dnd-kit KeyboardSensor is removed), so a keyboard press on it must NOT
-  // start a sortable drag. The dedicated "Move field" button remains the
-  // keyboard path (covered by the reorder/move tests above).
+  // Regression guard for the keyboard ghost image: the "Reorder field" grip is
+  // a pointer-only drag handle (`setActivatorNodeRef` + `tabIndex=-1`, and the
+  // @dnd-kit KeyboardSensor is not registered), so a keyboard press on it must
+  // NOT start a sortable drag.
   await addNamed(page, "String", "only")
 
   const grip = page.getByLabel("Reorder field").first()
@@ -436,13 +286,13 @@ test("jump-to-field from the Validations view selects and focuses the field", as
   await expect(entry).toBeVisible()
 
   // Activating the entry jumps to the Fields view, selects the field, and moves
-  // keyboard focus to the offending node's Move button (Req 5.4, 5.6).
+  // keyboard focus to the offending node's name input.
   await entry.focus()
   await page.keyboard.press("Enter")
 
   await expect(page.getByRole("heading", { name: "Fields" })).toBeVisible()
   await expect(page.getByLabel("Field canvas")).toBeVisible()
-  await expect(page.getByLabel("Move field").first()).toBeFocused()
+  await expect(page.getByLabel("Field name").first()).toBeFocused()
 
   await expectNoAxeViolations(page)
 })
