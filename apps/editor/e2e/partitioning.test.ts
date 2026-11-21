@@ -49,9 +49,7 @@ test("enables the mutation and walks the partitioning modes", async ({
   const offCard = page.getByRole("radio", { name: "Off (flat layout)" })
   await expect(offCard).toBeVisible()
   await expect(offCard).toHaveAttribute("aria-checked", "true")
-  await expect(
-    page.getByRole("radio", { name: "By field / custom format" })
-  ).toBeVisible()
+  await expect(page.getByRole("radio", { name: "By fields" })).toBeVisible()
   // The implicit timestamp mode is gone: only the two modes are offered.
   await expect(
     page.getByRole("radio", { name: "By write timestamp" })
@@ -82,7 +80,7 @@ test("enables the mutation and walks the partitioning modes", async ({
 /**
  * Adds a top-level field through the palette (keyboard, matching the canvas
  * flow) and names it, then returns to General Settings with partitioning on
- * "By field / custom format".
+ * "By fields".
  */
 async function addNamedField(
   page: Page,
@@ -101,7 +99,7 @@ async function addNamedField(
 /** Enables the mutation and switches to by-field partitioning. */
 async function enableByField(page: Page): Promise<void> {
   await page.getByRole("switch", { name: "Enable mutation" }).click()
-  await page.getByRole("radio", { name: "By field / custom format" }).click()
+  await page.getByRole("radio", { name: "By fields" }).click()
 }
 
 test("picks a plain field from the partition popover", async ({ page }) => {

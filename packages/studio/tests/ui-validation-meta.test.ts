@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest"
 
 import {
   createValidation,
-  partitioningModeOf,
   validationError,
   validationKindsForType,
 } from "@/components/studio/validation-meta"
@@ -76,17 +75,5 @@ describe("validation error surfacing", () => {
 
   it("flags a non-numeric min/max value", () => {
     expect(validationError({ type: "min", value: Number.NaN })).toBeDefined()
-  })
-})
-
-describe("partitioning mode derivation (task 14)", () => {
-  const bare = [{ fieldId: "f1" }]
-  const multi = [{ fieldId: "f1" }, { fieldId: "f2" }]
-
-  it("maps the false/segments value to a mode (no timestamp mode)", () => {
-    expect(partitioningModeOf(false)).toBe("off")
-    expect(partitioningModeOf(bare)).toBe("field")
-    expect(partitioningModeOf(multi)).toBe("field")
-    expect(partitioningModeOf([])).toBe("field")
   })
 })

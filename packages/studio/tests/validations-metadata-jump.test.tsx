@@ -217,7 +217,7 @@ describe("partition picker — empty by-field selection", () => {
     await user.click(screen.getByRole("switch", { name: "Enable mutation" }))
     // The radio card's accessible name also includes its description, so
     // select it by its visible title.
-    await user.click(screen.getByText("By field / custom format"))
+    await user.click(screen.getByText("By fields"))
 
     const input = screen.getByLabelText("Add partition field")
     expect(input.getAttribute("aria-invalid")).toBe("true")

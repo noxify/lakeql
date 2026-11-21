@@ -1,7 +1,7 @@
 import type { FieldValidation } from "@lakeql/schema-generator/endpoint-schema"
 import { fieldValidationSchema } from "@lakeql/schema-generator/endpoint-schema"
 
-import type { EditorFieldType, EditorPartitionSegment } from "@/core"
+import type { EditorFieldType } from "@/core"
 
 /**
  * The validation refinement kinds the editor can add, as the discriminant
@@ -97,33 +97,6 @@ export function createValidation(kind: ValidationKind): FieldValidation {
       return { type: kind }
     }
   }
-}
-
-/**
- * The two partitioning modes the mutation form offers.
- *
- * - `off`: no partitioning (the value `false`).
- * - `field`: a field/custom partition string (any non-empty string).
- *
- * The former `timestamp` (`true`) mode is gone: a write-timestamp column is now
- * an explicit auto-fill field, not an implicit partitioning mode.
- */
-export type PartitioningMode = "off" | "field"
-
-/**
- * Derives the {@link PartitioningMode} from a partitioning value
- * (`false | EditorPartitionSegment[]`).
- *
- * @param partitioning - The current partitioning value.
- * @returns The mode the UI should show selected.
- */
-export function partitioningModeOf(
-  partitioning: false | EditorPartitionSegment[]
-): PartitioningMode {
-  if (partitioning === false) {
-    return "off"
-  }
-  return "field"
 }
 
 /**

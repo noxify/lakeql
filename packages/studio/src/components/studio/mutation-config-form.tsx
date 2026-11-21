@@ -27,12 +27,9 @@ import type {
 import { addField as addFieldOp, createField } from "@/core"
 
 import { metadataInputId } from "./metadata-nav"
-import { partitioningValueForMode } from "./partition-format"
 import { PartitioningFieldPicker } from "./partitioning-field-picker"
 import { useOptionalShellView } from "./shell-view"
 import { useEditorContext } from "./use-editor"
-import type { PartitioningMode } from "./validation-meta"
-import { partitioningModeOf } from "./validation-meta"
 
 /**
  * The default name of the write-timestamp auto-fill field added by the helper
@@ -67,13 +64,13 @@ const LOAD_STRATEGY_LABELS: Record<LoadStrategy, string> = {
 }
 
 /**
- * The partitioning sub-form: a two-mode radio-card choice (off / by field) and
- * the multi-field {@link PartitioningFieldPicker} when partitioning by field.
+ * The partitioning sub-form: an on/off radio-card choice and the multi-field
+ * {@link PartitioningFieldPicker} when partitioning is on.
  *
- * The write-timestamp mode is gone — a write-timestamp column is an explicit
- * auto-fill field (added via the helper button below), not a partitioning mode.
- * Mode→value mapping routes through {@link partitioningValueForMode}; {@link
- * partitioningModeOf} is the reverse.
+ * A write-timestamp column is an explicit auto-fill field (added via the
+ * helper button below), not an implicit partitioning setting. Turning
+ * partitioning off stores `false` and discards the chosen segments (undo
+ * restores them); turning it on seeds an empty segment list.
  */
 const PartitioningControls = ({
   mutation,
@@ -81,12 +78,12 @@ const PartitioningControls = ({
   mutation: Extract<EditorMutation, { enabled: true }>
 }) => {
   const editor = useEditorContext()
-  const mode = partitioningModeOf(mutation.partitioning)
+  const enabled = mutation.partitioning !== false
 
-  const setMode = (next: PartitioningMode): void => {
+  const setEnabled = (next: boolean): void => {
     editor.setMutation({
       ...mutation,
-      partitioning: partitioningValueForMode(next, mutation.partitioning),
+      partitioning: next ? mutation.partitioning || [] : false,
     })
   }
 
@@ -96,8 +93,8 @@ const PartitioningControls = ({
         <span className="text-sm font-medium">Partitioning</span>
         <RadioCardGroup
           aria-label="Partitioning mode"
-          value={mode}
-          onValueChange={(next) => setMode(next as PartitioningMode)}
+          value={enabled ? "on" : "off"}
+          onValueChange={(next) => setEnabled(next === "on")}
         >
           <RadioCardItem
             value="off"
@@ -105,14 +102,14 @@ const PartitioningControls = ({
             description="No partitioning (flat layout)."
           />
           <RadioCardItem
-            value="field"
-            title="By field / custom format"
-            description="Choose fields (and date components) to build a custom partition path."
+            value="on"
+            title="By fields"
+            description="Choose fields (and date components) to build the partition path."
           />
         </RadioCardGroup>
       </div>
 
-      {mode === "field" && <PartitioningFieldPicker mutation={mutation} />}
+      {enabled && <PartitioningFieldPicker mutation={mutation} />}
     </div>
   )
 }
@@ -146,7 +143,7 @@ function writeTimestampPartitioning(fieldId: string): EditorPartitionSegment[] {
  * add confirms with a success toast; inside the studio shell the toast offers a
  * "Show field" action that opens the Fields view with the new field selected.
  *
- * When "By field / custom format" is active and no partition segments are
+ * When partitioning is on and no partition segments are
  * chosen yet (`partitioning` is an empty list), the click also prefills the partition
  * path with {@link writeTimestampPartitioning}. A partitioning that is off or
  * already has segments is never touched. Field and partitioning land in one

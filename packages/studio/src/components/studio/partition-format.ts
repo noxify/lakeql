@@ -8,8 +8,6 @@ import type {
 } from "@/core"
 import { isResolvedPartitionSegment } from "@/core"
 
-import type { PartitioningMode } from "./validation-meta"
-
 /**
  * A candidate top-level field eligible for the partition picker.
  */
@@ -198,28 +196,4 @@ export function partitionSegmentKey(segment: EditorPartitionSegment): string {
     ? segment.fieldId
     : `?${segment.unresolvedName}`
   return segment.component === undefined ? base : `${base}:${segment.component}`
-}
-
-/**
- * Maps a rich radio mode to the editor `partitioning` value.
- *
- * `off` → `false`, `field` → the current segments, or `[]` to seed an empty
- * picker when coming from `off`. Switching to `off` discards the chosen
- * segments by design (the state holds a single value); each mode switch is its
- * own history snapshot, so undo restores them. This is the pure, unit-testable
- * replacement for the form's former inline `setMode` mapping;
- * {@link partitioningModeOf} is the reverse.
- *
- * @param mode - The selected rich radio mode.
- * @param current - The current `partitioning` value.
- * @returns The `partitioning` value the editor should store for that mode.
- */
-export function partitioningValueForMode(
-  mode: PartitioningMode,
-  current: false | EditorPartitionSegment[]
-): false | EditorPartitionSegment[] {
-  if (mode === "off") {
-    return false
-  }
-  return current === false ? [] : current
 }

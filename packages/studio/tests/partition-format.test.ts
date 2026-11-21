@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest"
 
 import {
-  partitioningValueForMode,
   partitionDateOptions,
   partitionRootOptions,
   partitionSearchOptions,
@@ -170,17 +169,5 @@ describe("segment keys", () => {
     expect(
       partitionSegmentKey({ unresolvedName: "ghost", component: "day" })
     ).toBe("?ghost:day")
-  })
-})
-
-describe("partitioningValueForMode mapping", () => {
-  it("maps off to false", () => {
-    expect(partitioningValueForMode("off", [{ fieldId: "f1" }])).toBeFalsy()
-  })
-
-  it("keeps the current segments for field mode, else seeds an empty list", () => {
-    const current = [{ fieldId: "f1", component: "year" }]
-    expect(partitioningValueForMode("field", current)).toStrictEqual(current)
-    expect(partitioningValueForMode("field", false)).toStrictEqual([])
   })
 })

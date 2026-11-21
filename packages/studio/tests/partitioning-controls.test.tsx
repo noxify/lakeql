@@ -100,7 +100,7 @@ describe("PartitioningControls mode picker", () => {
     })
     const scope = within(group)
     expect(scope.getByText("Off (flat layout)")).toBeDefined()
-    expect(scope.getByText("By field / custom format")).toBeDefined()
+    expect(scope.getByText("By fields")).toBeDefined()
     // The removed write-timestamp mode is gone from the picker.
     expect(scope.queryByText("By write timestamp")).toBeNull()
   })
