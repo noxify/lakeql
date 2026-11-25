@@ -468,7 +468,7 @@ describe("auto-fill validations (FR4.6)", () => {
     expect(result.validForExport).toBeFalsy()
     const finding = defined(result.autoFillMutation[0])
     expect(finding.name).toBe("load_timestamp")
-    expect(finding.mutationEnabled).toBeTruthy()
+    expect(finding.reason).toBe("load-strategy")
     expect(finding.fieldId).toBe(defined(state.fields[0]).id)
   })
 
@@ -490,7 +490,7 @@ describe("auto-fill validations (FR4.6)", () => {
     const result = evaluate(state)
     expect(result.validForExport).toBeFalsy()
     const finding = defined(result.autoFillMutation[0])
-    expect(finding.mutationEnabled).toBeFalsy()
+    expect(finding.reason).toBe("mutation-disabled")
   })
 
   it("accepts auto-fill with full_load_append", () => {

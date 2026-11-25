@@ -28,6 +28,7 @@ function enabledState(fields: EditorState["fields"] = []): EditorState {
     mutation: {
       enabled: true,
       loadStrategy: "append",
+      writeMethod: "storage",
       basePath: "/d",
       partitioning: false,
     },

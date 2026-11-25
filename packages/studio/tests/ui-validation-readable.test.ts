@@ -551,3 +551,41 @@ describe("partitioningIssueMessages — schema issues", () => {
     ])
   })
 })
+
+describe("toReadableIssues — auto-fill mutation reasons", () => {
+  const messages: [string, string][] = [
+    [
+      "mutation-disabled",
+      "Auto-fill requires an enabled append or full-load-append mutation",
+    ],
+    [
+      "load-strategy",
+      "Auto-fill requires an append or full-load-append mutation",
+    ],
+    ["insert", "Auto-fill needs the storage write method"],
+  ]
+
+  it.each(messages)("words the %s reason", (reason, message) => {
+    const result: ValidationResult = {
+      validForExport: false,
+      schemaIssues: [],
+      duplicates: [],
+      badRegex: [],
+      badNumber: [],
+      reservedNames: [],
+      autoFillPlacement: [],
+      autoFillMutation: [
+        {
+          name: "load_timestamp",
+          reason: reason as "insert",
+        },
+      ],
+      companionPartition: [],
+      unresolvedPartition: [],
+    }
+
+    expect(defined(toReadableIssues(nestedState(), result)[0]).message).toBe(
+      message
+    )
+  })
+})

@@ -4,6 +4,8 @@ import {
   endpointDefinitionSchema,
   findDuplicateFieldNames,
   findReservedNameCollisions,
+  flattenEndpointIssues,
+  effectiveWriteMethod,
   validatePartitioningString,
 } from "@lakeql/schema-generator/endpoint-schema"
 
@@ -98,14 +100,21 @@ export interface AutoFillPlacementDiagnostic {
 
 /**
  * An `autoFill` field without a compatible enabled mutation: `autoFill`
- * requires an enabled `append`/`full_load_append` mutation (C11/C16).
- * `full_load` and a disabled/absent mutation are both invalid.
+ * requires an enabled `append`/`full_load_append` mutation (C11/C16) that uses
+ * the `storage` write method. `full_load`, a disabled/absent mutation and the
+ * `insert` write method are all invalid.
  */
 export interface AutoFillMutationDiagnostic {
   /** The auto-fill field's name. */
   name: string
-  /** Whether a mutation is enabled at all (distinguishes the two messages). */
-  mutationEnabled: boolean
+  /**
+   * Why the auto-fill field is invalid. `"mutation-disabled"`: no enabled
+   * mutation. `"load-strategy"`: the load strategy overwrites the dataset.
+   * `"insert"`: the write method is `"insert"`, which does not populate
+   * auto-fill fields. The load-strategy reason wins when both apply, matching
+   * the endpoint schema.
+   */
+  reason: "mutation-disabled" | "load-strategy" | "insert"
   /** The `id` of the auto-fill editor field, when it resolves. */
   fieldId?: string
 }
@@ -180,15 +189,6 @@ export interface ValidationResult {
   companionPartition: CompanionPartitionDiagnostic[]
   /** Partition segments naming no single top-level field (missing/ambiguous). */
   unresolvedPartition: UnresolvedPartitionDiagnostic[]
-}
-
-/**
- * Structural shape of the subset of a Zod issue this module reads. Declared
- * locally so the builder does not take a direct dependency on `zod`.
- */
-interface ParseIssue {
-  path: PropertyKey[]
-  message: string
 }
 
 /**
@@ -511,7 +511,8 @@ function collectAutoFillPlacement(
 /**
  * Collects auto-fill fields lacking a compatible enabled mutation (C11/C16).
  * `autoFill` is valid only with an enabled `append`/`full_load_append`
- * mutation; `full_load` and a disabled/absent mutation both invalidate it.
+ * mutation using the `storage` write method; `full_load`, a disabled/absent
+ * mutation and the `insert` write method all invalidate it.
  */
 function collectAutoFillMutation(
   state: EditorState,
@@ -525,10 +526,18 @@ function collectAutoFillMutation(
   }
 
   const { mutation } = state
-  const mutationEnabled = mutation.enabled
-  const strategy = mutationEnabled ? mutation.loadStrategy : undefined
+  const strategy = mutation.enabled ? mutation.loadStrategy : undefined
   const allowed = strategy === "append" || strategy === "full_load_append"
-  if (allowed) {
+  // The load-strategy reason wins over the write method, matching the schema.
+  let reason: AutoFillMutationDiagnostic["reason"] | undefined
+  if (!mutation.enabled) {
+    reason = "mutation-disabled"
+  } else if (!allowed) {
+    reason = "load-strategy"
+  } else if (effectiveWriteMethod(mutation) === "insert") {
+    reason = "insert"
+  }
+  if (reason === undefined) {
     return []
   }
 
@@ -536,7 +545,7 @@ function collectAutoFillMutation(
     const editor = state.fields[index]
     return {
       name: def.name,
-      mutationEnabled,
+      reason,
       ...(editor === undefined ? {} : { fieldId: editor.id }),
     }
   })
@@ -736,10 +745,8 @@ export function evaluate(state: EditorState): ValidationResult {
   const parsed = endpointDefinitionSchema.safeParse(candidate)
   const rawSchemaIssues: SchemaDiagnostic[] = parsed.success
     ? []
-    : (parsed.error.issues as ParseIssue[]).map((issue) => {
-        const path = issue.path.map((segment) =>
-          typeof segment === "number" ? segment : String(segment)
-        )
+    : flattenEndpointIssues(parsed.error).map((issue) => {
+        const { path } = issue
         const field = resolveFieldByPath(state, path)
         return {
           path,

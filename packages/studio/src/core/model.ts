@@ -2,6 +2,7 @@ import type {
   FieldOptions,
   LoadStrategy,
   PrimitiveType,
+  WriteMethod,
 } from "@lakeql/schema-generator/endpoint-schema"
 
 /**
@@ -107,6 +108,12 @@ export type EditorMutation =
   | {
       enabled: true
       loadStrategy: LoadStrategy
+      /**
+       * How the data source writes records. `"insert"` has no base path or
+       * partitioning, so the mapping layer omits both on export.
+       */
+      writeMethod: WriteMethod
+      /** Base path; empty and unused while `writeMethod` is `"insert"`. */
       basePath: string
       /**
        * Partitioning mode: `false` (off, flat layout) or the ordered list of

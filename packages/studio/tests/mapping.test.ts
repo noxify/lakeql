@@ -136,12 +136,20 @@ describe("round-trip stability", () => {
   ])("round-trips mutation mode: $name", ({ mutation, gainsExplicitOff }) => {
     const def = withMutation(mutation)
     const round = toDefinition(fromDefinition(def))
-    // A minimal enabled mutation gains an explicit `partitioning: false` on
-    // export (C8); every other case round-trips exactly.
+    // An enabled mutation always gains an explicit `writeMethod` (absent ⇒
+    // "storage"), and a minimal one an explicit `partitioning: false` (C8);
+    // every other case round-trips exactly.
     const expected =
-      gainsExplicitOff && mutation !== false
-        ? { ...def, mutation: { ...mutation, partitioning: false } }
-        : def
+      mutation === false
+        ? def
+        : {
+            ...def,
+            mutation: {
+              ...mutation,
+              writeMethod: "storage",
+              ...(gainsExplicitOff ? { partitioning: false } : {}),
+            },
+          }
     expect(round).toStrictEqual(expected)
     expect(endpointDefinitionSchema.safeParse(round).success).toBeTruthy()
   })
@@ -175,6 +183,7 @@ describe("minimal JSON", () => {
     )
     expect(def.mutation).toStrictEqual({
       loadStrategy: "append",
+      writeMethod: "storage",
       basePath: "/d",
       partitioning: false,
     })
@@ -192,6 +201,7 @@ describe("minimal JSON", () => {
     )
     expect(def.mutation).toStrictEqual({
       loadStrategy: "append",
+      writeMethod: "storage",
       basePath: "/d",
       partitioning: false,
     })
@@ -209,6 +219,7 @@ describe("minimal JSON", () => {
     )
     expect(def.mutation).toStrictEqual({
       loadStrategy: "append",
+      writeMethod: "storage",
       basePath: "/d",
       partitioning: "a/b",
     })
@@ -316,5 +327,40 @@ describe("fromDefinition materializes effective defaults", () => {
     collect(state.fields)
     expect(ids.every((id) => id.length > 0)).toBeTruthy()
     expect(new Set(ids).size).toBe(ids.length)
+  })
+})
+
+describe("write method mapping", () => {
+  it("imports an absent writeMethod as storage", () => {
+    const state = fromDefinition(
+      withMutation({ loadStrategy: "append", basePath: "/d" })
+    )
+    expect(state.mutation).toMatchObject({
+      enabled: true,
+      writeMethod: "storage",
+      basePath: "/d",
+    })
+  })
+
+  it("round-trips insert and omits basePath and partitioning", () => {
+    const def = withMutation({
+      loadStrategy: "append",
+      writeMethod: "insert",
+      partitioning: false,
+    })
+    const state = fromDefinition(def)
+    const round = toDefinition(state)
+
+    expect(state.mutation).toMatchObject({
+      enabled: true,
+      writeMethod: "insert",
+      basePath: "",
+      partitioning: false,
+    })
+    expect(round.mutation).toStrictEqual({
+      loadStrategy: "append",
+      writeMethod: "insert",
+    })
+    expect(endpointDefinitionSchema.safeParse(round).success).toBeTruthy()
   })
 })

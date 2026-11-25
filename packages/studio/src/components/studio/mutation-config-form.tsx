@@ -1,10 +1,13 @@
-import type { LoadStrategy } from "@lakeql/schema-generator/endpoint-schema"
+import type {
+  LoadStrategy,
+  WriteMethod,
+} from "@lakeql/schema-generator/endpoint-schema"
 import {
   AUTO_FILL_NAME_MAX_LENGTH,
   loadStrategies,
 } from "@lakeql/schema-generator/endpoint-schema"
 import { ClockIcon } from "lucide-react"
-import { useId } from "react"
+import { useId, useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -23,13 +26,20 @@ import type {
   EditorField,
   EditorMutation,
   EditorPartitionSegment,
+  WriteMethodChangePlan,
 } from "@/core"
-import { addField as addFieldOp, createField } from "@/core"
+import {
+  addField as addFieldOp,
+  changeWriteMethod,
+  createField,
+  planWriteMethodChange,
+} from "@/core"
 
 import { metadataInputId } from "./metadata-nav"
 import { PartitioningFieldPicker } from "./partitioning-field-picker"
 import { useOptionalShellView } from "./shell-view"
 import { useEditorContext } from "./use-editor"
+import { WriteMethodChangeDialog } from "./write-method-change-dialog"
 
 /**
  * The default name of the write-timestamp auto-fill field added by the helper
@@ -52,6 +62,7 @@ function defaultEnabledMutation(): Extract<EditorMutation, { enabled: true }> {
   return {
     enabled: true,
     loadStrategy: "append",
+    writeMethod: "storage",
     basePath: "",
     partitioning: false,
   }
@@ -61,6 +72,76 @@ const LOAD_STRATEGY_LABELS: Record<LoadStrategy, string> = {
   full_load: "Full load",
   full_load_append: "Full load append",
   append: "Append",
+}
+
+/**
+ * The write method control: a radio-card choice between Storage and Insert.
+ *
+ * Switching storage to insert discards the base path, partitioning and
+ * auto-fill options. When any of those is set, the change waits in a confirm
+ * dialog; confirming applies everything in one history snapshot, so one undo
+ * restores it. Cancelling leaves the state, and so the selection, unchanged.
+ * Every other switch applies immediately.
+ */
+const WriteMethodControl = ({
+  mutation,
+}: {
+  mutation: Extract<EditorMutation, { enabled: true }>
+}) => {
+  const editor = useEditorContext()
+  const labelId = useId()
+  const hintId = useId()
+  const [pending, setPending] = useState<WriteMethodChangePlan | null>(null)
+
+  const request = (next: WriteMethod): void => {
+    if (next === mutation.writeMethod) {
+      return
+    }
+    const plan = planWriteMethodChange(editor.state, next)
+    if (plan.needsConfirmation) {
+      setPending(plan)
+      return
+    }
+    editor.replaceState(changeWriteMethod(editor.state, next), { commit: true })
+  }
+
+  return (
+    <div className="grid gap-1.5">
+      <span id={labelId} className="text-sm font-medium">
+        Write method
+      </span>
+      <RadioCardGroup
+        aria-labelledby={labelId}
+        aria-describedby={hintId}
+        value={mutation.writeMethod}
+        onValueChange={(next) => request(next as WriteMethod)}
+      >
+        <RadioCardItem
+          value="storage"
+          title="Storage"
+          description="Writes Parquet files under a base path and manages an external table."
+        />
+        <RadioCardItem
+          value="insert"
+          title="Insert"
+          description="Writes rows with INSERT statements through the data source."
+        />
+      </RadioCardGroup>
+      <span id={hintId} className="text-muted-foreground text-xs">
+        Must match the data source&apos;s <code>writeConfig.strategy</code>.
+      </span>
+      <WriteMethodChangeDialog
+        plan={pending}
+        onConfirm={() => {
+          setPending(null)
+          editor.replaceState(changeWriteMethod(editor.state, "insert"), {
+            commit: true,
+          })
+        }}
+        onCancel={() => setPending(null)}
+      />
+    </div>
+  )
 }
 
 /**
@@ -306,31 +387,37 @@ export const MutationConfigForm = () => {
             </Select>
           </div>
 
-          <div className="grid gap-1.5">
-            <Label htmlFor={basePathId}>Base path</Label>
-            <Input
-              id={basePathId}
-              placeholder="/warehouse/events"
-              aria-invalid={mutation.basePath === ""}
-              value={mutation.basePath}
-              onChange={(event) => {
-                editor.setMutation(
-                  { ...mutation, basePath: event.target.value },
-                  { commit: false }
-                )
-              }}
-              onBlur={() => editor.commitEdits()}
-            />
-            {mutation.basePath === "" && (
-              <p className="text-destructive text-xs">
-                A non-empty base path is required when mutation is enabled.
-              </p>
-            )}
-          </div>
+          <WriteMethodControl mutation={mutation} />
 
-          <PartitioningControls mutation={mutation} />
+          {mutation.writeMethod === "storage" && (
+            <>
+              <div className="grid gap-1.5">
+                <Label htmlFor={basePathId}>Base path</Label>
+                <Input
+                  id={basePathId}
+                  placeholder="/warehouse/events"
+                  aria-invalid={mutation.basePath === ""}
+                  value={mutation.basePath}
+                  onChange={(event) => {
+                    editor.setMutation(
+                      { ...mutation, basePath: event.target.value },
+                      { commit: false }
+                    )
+                  }}
+                  onBlur={() => editor.commitEdits()}
+                />
+                {mutation.basePath === "" && (
+                  <p className="text-destructive text-xs">
+                    A non-empty base path is required when mutation is enabled.
+                  </p>
+                )}
+              </div>
 
-          <AutoFillHelper mutation={mutation} />
+              <PartitioningControls mutation={mutation} />
+
+              <AutoFillHelper mutation={mutation} />
+            </>
+          )}
         </>
       )}
     </div>

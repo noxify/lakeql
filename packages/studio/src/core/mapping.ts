@@ -4,6 +4,7 @@ import type {
   FieldDefinition,
   FieldOptions,
 } from "@lakeql/schema-generator/endpoint-schema"
+import { effectiveWriteMethod } from "@lakeql/schema-generator/endpoint-schema"
 
 import type {
   EditorArrayItem,
@@ -122,8 +123,16 @@ function toDefinitionMutation(
     Exclude<EndpointDefinitionFormat["mutation"], false>
   > = {
     loadStrategy: mutation.loadStrategy,
-    basePath: mutation.basePath,
+    // Always emitted explicitly: an absent key resolves to "storage".
+    writeMethod: mutation.writeMethod,
   }
+
+  // The insert method uses neither a base path nor partitioning.
+  if (mutation.writeMethod === "insert") {
+    return config
+  }
+
+  config.basePath = mutation.basePath
 
   // Segments are held by field id; the export is the unchanged name-based
   // string, resolved against the live field names.
@@ -251,7 +260,9 @@ function fromDefinitionMutation(
   return {
     enabled: true,
     loadStrategy: mutation.loadStrategy,
-    basePath: mutation.basePath,
+    // An absent writeMethod resolves to "storage".
+    writeMethod: effectiveWriteMethod(mutation),
+    basePath: mutation.basePath ?? "",
     partitioning,
   }
 }

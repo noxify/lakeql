@@ -317,6 +317,17 @@ function fromAutoFillPlacement(
   }
 }
 
+/** One readable message per {@link AutoFillMutationDiagnostic} reason. */
+const autoFillMutationMessages: Record<
+  AutoFillMutationDiagnostic["reason"],
+  string
+> = {
+  "mutation-disabled":
+    "Auto-fill requires an enabled append or full-load-append mutation",
+  "load-strategy": "Auto-fill requires an append or full-load-append mutation",
+  insert: "Auto-fill needs the storage write method",
+}
+
 /**
  * Maps an auto-fill-without-compatible-mutation finding (C11/C16) to a
  * {@link ReadableIssue}.
@@ -326,9 +337,7 @@ function fromAutoFillMutation(
   bad: AutoFillMutationDiagnostic,
   index: number
 ): ReadableIssue {
-  const message = bad.mutationEnabled
-    ? "Auto-fill requires an append or full-load-append mutation"
-    : "Auto-fill requires an enabled append or full-load-append mutation"
+  const message = autoFillMutationMessages[bad.reason]
   if (bad.fieldId === undefined) {
     return {
       id: `autofill-mutation-${index}`,

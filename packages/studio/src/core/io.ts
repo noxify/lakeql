@@ -2,6 +2,7 @@ import type { EndpointDefinitionFormat } from "@lakeql/schema-generator/endpoint
 import {
   endpointDefinitionSchema,
   ENDPOINT_SCHEMA_VERSION,
+  flattenEndpointIssues,
   isSupportedVersion,
 } from "@lakeql/schema-generator/endpoint-schema"
 
@@ -70,13 +71,9 @@ export function importFromText(text: string): ImportResult {
 
   const parsed = endpointDefinitionSchema.safeParse(json)
   if (!parsed.success) {
-    const issues = parsed.error.issues as {
-      path: PropertyKey[]
-      message: string
-    }[]
     return {
       ok: false,
-      errors: issues.map((issue) => {
+      errors: flattenEndpointIssues(parsed.error).map((issue) => {
         const path = issue.path.map(String).join(".")
         return path === "" ? issue.message : `${path}: ${issue.message}`
       }),
@@ -158,9 +155,10 @@ export function exportToJson(state: EditorState): ExportResult {
           ? `Auto-fill field "${bad.name}" must be a DateTime field`
           : `Auto-fill field "${bad.name}" must be top-level, not nested`
       ),
-      ...result.autoFillMutation.map(
-        (bad) =>
-          `Auto-fill field "${bad.name}" requires an append/full-load-append mutation`
+      ...result.autoFillMutation.map((bad) =>
+        bad.reason === "insert"
+          ? `Auto-fill field "${bad.name}" requires the storage write method`
+          : `Auto-fill field "${bad.name}" requires an append/full-load-append mutation`
       ),
       ...result.companionPartition.map(
         (bad) =>

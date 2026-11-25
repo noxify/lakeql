@@ -1,4 +1,5 @@
 import {
+  DEFAULT_WRITE_METHOD,
   datePartitioningComponents,
   partitioningComponents,
 } from "@lakeql/schema-generator/endpoint-schema"
@@ -271,16 +272,25 @@ export function removePartitionSegments(
  * (an older autosaved draft) to the id-based shape.
  *
  * A string value is resolved against the state's top-level fields via
- * {@link resolvePartitionString}; any other state is returned unchanged.
+ * {@link resolvePartitionString}. An enabled mutation without a `writeMethod`
+ * (an older draft) gets `"storage"` on every path. Any other state is returned
+ * unchanged.
  *
  * @param state - A state read from storage, possibly in the legacy shape.
  * @returns The state with id-based partitioning.
  */
 export function migrateEditorState(state: EditorState): EditorState {
-  const { mutation } = state
-  if (!mutation.enabled) {
+  const { mutation: stored } = state
+  if (!stored.enabled) {
     return state
   }
+  // An older draft has no write method. Default it before every branch below,
+  // so no return path skips it; every branch builds on `mutation`.
+  const missingWriteMethod =
+    (stored as { writeMethod?: unknown }).writeMethod === undefined
+  const mutation = missingWriteMethod
+    ? { ...stored, writeMethod: DEFAULT_WRITE_METHOD }
+    : stored
   const legacy = mutation.partitioning as unknown
   if (typeof legacy === "string") {
     return {
@@ -294,5 +304,5 @@ export function migrateEditorState(state: EditorState): EditorState {
   if (legacy !== false && !Array.isArray(legacy)) {
     return { ...state, mutation: { ...mutation, partitioning: false } }
   }
-  return state
+  return missingWriteMethod ? { ...state, mutation } : state
 }

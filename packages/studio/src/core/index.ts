@@ -51,6 +51,9 @@ export {
   serializePartitionSegments,
 } from "./partitioning"
 
+export type { WriteMethodChangePlan } from "./write-method"
+export { changeWriteMethod, planWriteMethodChange } from "./write-method"
+
 export type { EndpointDefinitionFormat } from "@lakeql/schema-generator/endpoint-schema"
 export type {
   AutoFillMutationDiagnostic,

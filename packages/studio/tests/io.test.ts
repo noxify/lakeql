@@ -43,6 +43,23 @@ describe("import", () => {
     expect(result.errors.length).toBeGreaterThan(0)
   })
 
+  it("rejects an invalid writeMethod at its exact path, with no state", () => {
+    const result = expectErr(
+      importFromText(
+        JSON.stringify({
+          ...validDefinition,
+          mutation: {
+            loadStrategy: "append",
+            basePath: "/data",
+            writeMethod: "bulk",
+          },
+        })
+      )
+    )
+
+    expect(result.errors.join("\n")).toContain("mutation.writeMethod")
+  })
+
   it("rejects a v2 file that still sets mutation.partitioningFormat", () => {
     const result = expectErr(
       importFromText(
@@ -135,8 +152,45 @@ describe("export gate", () => {
     // No field is injected on export.
     expect(JSON.parse(result.json)).toStrictEqual({
       ...validDefinition,
-      mutation: { ...validDefinition.mutation, partitioning: false },
+      mutation: {
+        ...validDefinition.mutation,
+        writeMethod: "storage",
+        partitioning: false,
+      },
     })
+  })
+
+  it("exports insert with writeMethod and no basePath", () => {
+    const state = fromDefinition({
+      ...validDefinition,
+      mutation: { loadStrategy: "append", writeMethod: "insert" },
+    })
+    const result = expectOk(exportToJson(state))
+
+    expect(JSON.parse(result.json).mutation).toStrictEqual({
+      loadStrategy: "append",
+      writeMethod: "insert",
+    })
+  })
+
+  it("blocks export of auto-fill under insert with the storage hint", () => {
+    const state = fromDefinition({
+      ...validDefinition,
+      fields: [
+        { name: "id", type: "String" },
+        {
+          name: "load_timestamp",
+          type: "DateTime",
+          options: { autoFill: "write_timestamp" },
+        },
+      ],
+      mutation: { loadStrategy: "append", writeMethod: "insert" },
+    })
+    const result = expectErr(exportToJson(state))
+
+    expect(result.errors).toContain(
+      'Auto-fill field "load_timestamp" requires the storage write method'
+    )
   })
 })
 

@@ -36,9 +36,10 @@ export function summarizeDiagnostics(validation: ValidationResult): string[] {
         ? `Auto-fill field "${bad.name}" must be a DateTime field`
         : `Auto-fill field "${bad.name}" must be top-level, not nested`
     ),
-    ...validation.autoFillMutation.map(
-      (bad) =>
-        `Auto-fill field "${bad.name}" requires an append/full-load-append mutation`
+    ...validation.autoFillMutation.map((bad) =>
+      bad.reason === "insert"
+        ? `Auto-fill field "${bad.name}" requires the storage write method`
+        : `Auto-fill field "${bad.name}" requires an append/full-load-append mutation`
     ),
     ...validation.companionPartition.map(
       (bad) =>

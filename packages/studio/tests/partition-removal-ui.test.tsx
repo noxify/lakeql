@@ -37,6 +37,7 @@ function partitionedState(): EditorState {
     mutation: {
       enabled: true,
       loadStrategy: "append",
+      writeMethod: "storage",
       basePath: "/d",
       partitioning: [
         { fieldId: "ts", component: "year" },
@@ -163,6 +164,7 @@ describe("removing a partition-referenced field from the canvas", () => {
           mutation: {
             enabled: true,
             loadStrategy: "append",
+            writeMethod: "storage",
             basePath: "/d",
             partitioning: [{ fieldId: "rg" }],
           },
