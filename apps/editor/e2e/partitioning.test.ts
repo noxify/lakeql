@@ -54,7 +54,11 @@ test("enables the mutation and walks the partitioning modes", async ({
   await expect(
     page.getByRole("radio", { name: "By write timestamp" })
   ).toHaveCount(0)
-  await expect(page.getByRole("radio")).toHaveCount(2)
+  await expect(
+    page
+      .getByRole("radiogroup", { name: "Partitioning mode" })
+      .getByRole("radio")
+  ).toHaveCount(2)
 
   // The auto-fill helper adds a real, declared load_timestamp DateTime field.
   const addTimestamp = page.getByRole("button", {
