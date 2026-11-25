@@ -2,9 +2,13 @@ import { describe, expect, it } from "vitest"
 
 import {
   ENDPOINT_SCHEMA_VERSION,
+  DEFAULT_WRITE_METHOD,
+  effectiveWriteMethod,
   endpointDefinitionSchema,
+  flattenEndpointIssues,
   isSupportedVersion,
   mutationConfigSchema,
+  mutationSchema,
   validatePartitioningString,
   partitioningComponents,
 } from "../src/endpoint-schema"
@@ -630,5 +634,183 @@ describe("endpointDefinitionSchema - companion partition segment rejection", () 
       })
     )
     expect(result.success).toBeTruthy()
+  })
+})
+
+/** Parses a definition and returns flattened issues as "path: message" pairs. */
+function flatIssues(definition: unknown) {
+  const result = endpointDefinitionSchema.safeParse(definition)
+  return result.error ? flattenEndpointIssues(result.error) : []
+}
+
+describe("endpointDefinitionSchema - writeMethod", () => {
+  it("defaults to storage", () => {
+    expect(DEFAULT_WRITE_METHOD).toBe("storage")
+    expect(effectiveWriteMethod({})).toBe("storage")
+    expect(effectiveWriteMethod({ writeMethod: "insert" })).toBe("insert")
+  })
+
+  it("reports an invalid value at exactly mutation.writeMethod", () => {
+    const issues = flatIssues(
+      validDefinition({
+        mutation: {
+          loadStrategy: "append",
+          writeMethod: "bulk",
+          basePath: "/",
+        },
+      })
+    )
+    expect(issues.map((issue) => issue.path)).toContainEqual([
+      "mutation",
+      "writeMethod",
+    ])
+    expect(
+      issues.some((issue) => issue.message === "Invalid input")
+    ).toBeFalsy()
+  })
+
+  it("reports an invalid loadStrategy at mutation.loadStrategy", () => {
+    const issues = flatIssues(
+      validDefinition({ mutation: { loadStrategy: "nope", basePath: "/" } })
+    )
+    expect(issues.map((issue) => issue.path)).toContainEqual([
+      "mutation",
+      "loadStrategy",
+    ])
+  })
+
+  it.each([undefined, "storage"])(
+    "requires a non-empty basePath for storage (%s)",
+    (writeMethod) => {
+      const missing = flatIssues(
+        validDefinition({ mutation: { loadStrategy: "append", writeMethod } })
+      )
+      const empty = flatIssues(
+        validDefinition({
+          mutation: { loadStrategy: "append", writeMethod, basePath: "" },
+        })
+      )
+      expect(missing.map((issue) => issue.path)).toContainEqual([
+        "mutation",
+        "basePath",
+      ])
+      expect(empty.map((issue) => issue.path)).toContainEqual([
+        "mutation",
+        "basePath",
+      ])
+    }
+  )
+
+  it("reports the basePath issue together with an unrelated top-level issue", () => {
+    const issues = flatIssues(
+      validDefinition({
+        tableName: "bad name",
+        mutation: { loadStrategy: "append", writeMethod: "storage" },
+      })
+    )
+    const paths = issues.map((issue) => issue.path.join("."))
+    expect(paths).toContain("tableName")
+    expect(paths).toContain("mutation.basePath")
+  })
+
+  it("accepts insert without basePath, with partitioning false or absent", () => {
+    for (const partitioning of [false, undefined]) {
+      const result = endpointDefinitionSchema.safeParse(
+        validDefinition({
+          mutation: {
+            loadStrategy: "append",
+            writeMethod: "insert",
+            partitioning,
+          },
+        })
+      )
+      expect(result.success).toBeTruthy()
+    }
+  })
+
+  it("rejects basePath and a partition string for insert", () => {
+    const issues = flatIssues(
+      validDefinition({
+        mutation: {
+          loadStrategy: "append",
+          writeMethod: "insert",
+          basePath: "/x",
+          partitioning: "id",
+        },
+      })
+    )
+    const paths = issues.map((issue) => issue.path.join("."))
+    expect(paths).toContain("mutation.basePath")
+    expect(paths).toContain("mutation.partitioning")
+    expect(
+      issues.every((issue) => !issue.message.includes("Invalid input"))
+    ).toBeTruthy()
+  })
+
+  it("enforces the basePath and partitioning rules on the standalone schemas", () => {
+    const insert = { loadStrategy: "append", writeMethod: "insert" }
+    expect(
+      mutationConfigSchema.safeParse({ ...insert, basePath: "/x" }).success
+    ).toBeFalsy()
+    expect(
+      mutationSchema.safeParse({ ...insert, partitioning: "id" }).success
+    ).toBeFalsy()
+    expect(
+      mutationConfigSchema.safeParse({ loadStrategy: "append" }).success
+    ).toBeFalsy()
+    expect(mutationSchema.safeParse(insert).success).toBeTruthy()
+  })
+
+  it("rejects autoFill for insert, once per field", () => {
+    const issues = flatIssues(
+      validDefinition({
+        fields: [autoFillField("a"), autoFillField("b")],
+        mutation: { loadStrategy: "append", writeMethod: "insert" },
+      })
+    )
+    expect(issues.map((issue) => issue.path.join("."))).toStrictEqual([
+      "fields.0.options.autoFill",
+      "fields.1.options.autoFill",
+    ])
+  })
+
+  it("reports full_load + insert + autoFill once per field", () => {
+    const issues = flatIssues(
+      validDefinition({
+        fields: [autoFillField("a")],
+        mutation: { loadStrategy: "full_load", writeMethod: "insert" },
+      })
+    )
+    expect(issues).toHaveLength(1)
+  })
+
+  it("keeps a disabled mutation unaffected", () => {
+    expect(
+      endpointDefinitionSchema.safeParse(validDefinition({ mutation: false }))
+        .success
+    ).toBeTruthy()
+  })
+})
+
+describe(flattenEndpointIssues, () => {
+  it("keeps non-union issues unchanged", () => {
+    const result = endpointDefinitionSchema.safeParse(
+      validDefinition({ tableName: "bad name" })
+    )
+    const issues = result.error ? flattenEndpointIssues(result.error) : []
+    expect(issues).toStrictEqual([
+      { path: ["tableName"], message: result.error?.issues[0]?.message },
+    ])
+  })
+
+  it("matches the union order of mutationSchema (literal false first)", () => {
+    const result = mutationSchema.safeParse({ loadStrategy: "bogus" })
+    const issue = result.error?.issues[0]
+    expect(issue?.code).toBe("invalid_union")
+    const errors = issue && issue.code === "invalid_union" ? issue.errors : []
+    expect(errors[0]?.[0]?.code).toBe("invalid_value")
+    expect(
+      errors[1]?.some((nested) => nested.path[0] === "loadStrategy")
+    ).toBeTruthy()
   })
 })

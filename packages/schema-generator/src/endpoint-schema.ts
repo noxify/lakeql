@@ -141,14 +141,54 @@ export type PartitioningValue = false | string
 export interface MutationConfig {
   /** Load strategy for the write pipeline. */
   loadStrategy: LoadStrategy
-  /** Base path for endpoint data. */
-  basePath: string
+  /**
+   * How the data source writes records. An absent value resolves to
+   * `"storage"` (see {@link DEFAULT_WRITE_METHOD}). With `"storage"`,
+   * `basePath` is required and partitioning and auto-fill apply. With
+   * `"insert"`, `basePath`, a partition string and auto-fill are rejected.
+   */
+  writeMethod?: WriteMethod
+  /**
+   * Base path for endpoint data. Required (non-empty) for the `"storage"`
+   * write method and rejected for `"insert"`.
+   */
+  basePath?: string
   /**
    * Partitioning mode. `false` disables partitioning (flat layout), or a string
    * of `/`-separated segments (bare field name or `field:component`). An absent
-   * key resolves to `false`.
+   * key resolves to `false`. A string is rejected for the `"insert"` write
+   * method.
    */
   partitioning?: PartitioningValue
+}
+
+/**
+ * Supported write methods for a mutation: `"storage"` writes Parquet files
+ * under a base path, `"insert"` writes rows with INSERT statements.
+ */
+export const writeMethods = ["storage", "insert"] as const
+
+/**
+ * Write method of a mutation.
+ */
+export type WriteMethod = (typeof writeMethods)[number]
+
+/**
+ * Write method assumed when a mutation does not declare one.
+ */
+export const DEFAULT_WRITE_METHOD: WriteMethod = "storage"
+
+/**
+ * Resolves the effective write method of a mutation, applying
+ * {@link DEFAULT_WRITE_METHOD} when `writeMethod` is absent.
+ *
+ * @param mutation - The enabled mutation configuration.
+ * @returns The declared write method, or `"storage"` when absent.
+ */
+export function effectiveWriteMethod(
+  mutation: Pick<MutationConfig, "writeMethod">
+): WriteMethod {
+  return mutation.writeMethod ?? DEFAULT_WRITE_METHOD
 }
 
 const partitioningFormatRemovedMessage =
@@ -160,7 +200,8 @@ const partitioningFormatRemovedMessage =
 export const mutationConfigSchema = z
   .object({
     loadStrategy: z.enum(loadStrategies),
-    basePath: z.string().min(1),
+    writeMethod: z.enum(writeMethods).optional(),
+    basePath: z.string().optional(),
     partitioning: z.union([z.literal(false), z.string().min(1)]).optional(),
     // Declared only so the removed key is rejected instead of silently stripped.
     partitioningFormat: z
@@ -176,6 +217,31 @@ export const mutationConfigSchema = z
       }),
   })
   .superRefine((data, ctx) => {
+    // Paths are relative to the mutation object; the `mutation` union keeps
+    // them reachable at `mutation.<key>` even when sibling fields fail.
+    if (effectiveWriteMethod(data) === "insert") {
+      if (data.basePath !== undefined) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["basePath"],
+          message: `basePath is not used when writeMethod is "insert". Remove it, or use writeMethod "storage".`,
+        })
+      }
+      if (typeof data.partitioning === "string") {
+        ctx.addIssue({
+          code: "custom",
+          path: ["partitioning"],
+          message: `partitioning is not used when writeMethod is "insert". Remove it or set it to false, or use writeMethod "storage".`,
+        })
+      }
+    } else if (data.basePath === undefined || data.basePath === "") {
+      ctx.addIssue({
+        code: "custom",
+        path: ["basePath"],
+        message: `A non-empty basePath is required when writeMethod is "storage".`,
+      })
+    }
+
     // Only a string partitioning value is validated here; `false` and an
     // absent key (which resolves to `false`) disable partitioning entirely.
     if (typeof data.partitioning !== "string") {
@@ -482,6 +548,19 @@ function reportAutoFillMutationIssues(
     return
   }
 
+  // The insert method does not populate auto-fill fields. The load-strategy
+  // check above runs first, so a full_load + insert definition reports once.
+  if (mutation && effectiveWriteMethod(mutation) === "insert") {
+    for (const field of autoFillFields) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["fields", fields.indexOf(field), "options", "autoFill"],
+        message: `autoFill field "${field.name}" requires writeMethod "storage"; the insert method does not populate auto-fill fields.`,
+      })
+    }
+    return
+  }
+
   // Reject any partition segment whose fieldName is a derived companion name,
   // in ANY form (bare `event_year` or `event_year:year`) (C15/FR6.3).
   if (!mutationEnabled || typeof mutation.partitioning !== "string") {
@@ -608,6 +687,53 @@ export const endpointDefinitionSchema = z
   })
 
 export type EndpointDefinitionFormat = z.infer<typeof endpointDefinitionSchema>
+
+/**
+ * A single validation issue with its exact path.
+ */
+export interface FlatEndpointIssue {
+  /** Path of the offending value, for example `["mutation", "writeMethod"]`. */
+  path: (string | number)[]
+  /** Human-readable description of the problem. */
+  message: string
+}
+
+/**
+ * Flattens a parse error of the endpoint schema into a list of issues at their
+ * exact paths. Zod reports an invalid value inside the `mutation` union only as
+ * a generic `invalid_union` at `mutation`; this unwraps it into the issues of
+ * the mutation object branch, prefixed with `mutation`.
+ *
+ * @param error - The error from parsing with {@link endpointDefinitionSchema}.
+ * @returns The issues with exact paths. Issues other than the `mutation` union are returned unchanged.
+ */
+export function flattenEndpointIssues(error: z.ZodError): FlatEndpointIssue[] {
+  const flat: FlatEndpointIssue[] = []
+  for (const issue of error.issues) {
+    // Branch selection is by position and must match the member order of
+    // `mutationSchema`: [z.literal(false), mutationConfigSchema].
+    const objectBranch =
+      issue.code === "invalid_union" &&
+      issue.path.length === 1 &&
+      issue.path[0] === "mutation"
+        ? issue.errors[1]
+        : undefined
+    if (objectBranch === undefined || objectBranch.length === 0) {
+      flat.push({
+        path: issue.path as (string | number)[],
+        message: issue.message,
+      })
+      continue
+    }
+    for (const nested of objectBranch) {
+      flat.push({
+        path: ["mutation", ...(nested.path as (string | number)[])],
+        message: nested.message,
+      })
+    }
+  }
+  return flat
+}
 
 /**
  * Checks for duplicate field names at the same nesting level within a list of field definitions.
