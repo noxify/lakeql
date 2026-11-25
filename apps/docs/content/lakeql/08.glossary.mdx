@@ -9,8 +9,8 @@ Short, plain-language definitions of the recurring terms in these docs. Each ent
 <DescriptionList>
   <DescriptionListItem label="basePath">
     The storage root a write pipeline targets inside the configured object
-    store. It is required on every mutation block, even for the INSERT strategy
-    that writes through SQL and never touches that path. See [Write
+    store. It is required for the `storage` write method and rejected for
+    `insert`, which writes through SQL and never touches that path. See [Write
     config](/docs/data-sources/trino/write-config).
   </DescriptionListItem>
   <DescriptionListItem label="catalog">
@@ -47,5 +47,11 @@ Short, plain-language definitions of the recurring terms in these docs. Each ent
     interactive human user. Writes are denied for a service principal unless a
     matching permission rule grants access. See
     [Authentication](/docs/api/authentication).
+  </DescriptionListItem>
+  <DescriptionListItem label="writeMethod">
+    The mutation field that says how the data source writes records: `storage`
+    (Parquet files under a `basePath`, the default) or `insert` (rows through
+    `INSERT INTO`). It must match the data source's `writeConfig.strategy`. See
+    [Mutations](/docs/lakeql/endpoints/mutations).
   </DescriptionListItem>
 </DescriptionList>

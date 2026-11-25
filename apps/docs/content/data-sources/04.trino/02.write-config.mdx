@@ -9,6 +9,21 @@ The Trino adapter offers two write strategies, selected by the data source's `wr
 - **Storage** (default) serializes records, uploads them to object storage, and registers them through Hive DDL. Select it when `strategy` is `"storage"` or omitted.
 - **INSERT** writes via `INSERT INTO` with no object storage. Select it with `strategy: "insert"`. It supports batching (`batchSize`), optional `autoCreateTable`, and `tableProperties`.
 
+## Matching the endpoint
+
+The endpoint's `mutation.writeMethod` must match the data source's strategy: `writeConfig.strategy: "insert"` pairs with `writeMethod: "insert"`, and `"storage"` (or an omitted strategy) pairs with `writeMethod: "storage"`, which is also the default when the field is absent. When they differ, the write fails before any record is written or any DDL runs, for example:
+
+```text
+Endpoint expects writeMethod "insert", but data source "warehouse" uses the storage write strategy. Set writeConfig.strategy to "insert" for this data source, or use writeMethod "storage" in the endpoint.
+```
+
+<Note>
+  **Migrating existing INSERT endpoints.** Endpoints that target a data source
+  with `writeConfig.strategy: "insert"` must set `mutation.writeMethod:
+  "insert"` and remove `basePath`. Without it, the endpoint defaults to
+  `storage` and every write fails with the mismatch error.
+</Note>
+
 The INSERT strategy needs no object storage:
 
 ```ts

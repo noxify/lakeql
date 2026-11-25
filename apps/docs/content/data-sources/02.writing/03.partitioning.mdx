@@ -60,4 +60,4 @@ A partition string composes the path from one or more `/`-separated segments. A 
   a `PartitionFieldError` that names the field and the offending record index.
 </Warning>
 
-Partitioning applies only to the [external-storage strategy](/docs/data-sources/storage). The INSERT strategy writes rows through SQL and does not partition files.
+Partitioning applies only to the [external-storage strategy](/docs/data-sources/storage), that is, endpoints with `mutation.writeMethod: "storage"` (the default). The INSERT strategy writes rows through SQL and does not partition files, so an endpoint with `writeMethod: "insert"` rejects a partition string.

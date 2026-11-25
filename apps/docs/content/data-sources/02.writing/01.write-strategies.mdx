@@ -16,7 +16,7 @@ records
   → cleanup           (according to the load strategy)
 ```
 
-This path needs a serializer, [storage operations](/docs/data-sources/storage), and a table manager. It suits engines backed by object storage with an external table catalog. A write call without a resolvable `basePath` throws.
+This path needs a serializer, [storage operations](/docs/data-sources/storage), and a table manager. It suits engines backed by object storage with an external table catalog. A write call without a resolvable `basePath` throws. A generated endpoint reaches this path with `mutation.writeMethod: "storage"` (the default); a write that declares `"insert"` is rejected before any upload.
 
 ## INSERT INTO
 
@@ -28,7 +28,7 @@ records
   → optional staging + swap
 ```
 
-This path runs entirely through SQL and does not depend on object storage.
+This path runs entirely through SQL and does not depend on object storage. A generated endpoint reaches it with `mutation.writeMethod: "insert"`. The strategy rejects a write that carries a `basePath`, a partition string or auto-fill fields, and one whose endpoint declares `"storage"`, before any SQL runs.
 
 ## Trino, today the only write-capable adapter
 

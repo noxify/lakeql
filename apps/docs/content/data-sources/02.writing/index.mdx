@@ -17,10 +17,12 @@ You configure this once, on the data source's `writeConfig`.
 
 | Strategy | Use it when | What it does |
 | --- | --- | --- |
-| **External storage** (default) | You back your tables with object storage (a data lake — S3/MinIO/GCS/Azure) and register them through an external table catalog. | Serializes records to a file format, uploads the files, and registers them via table DDL. Needs a `files-sdk` instance, a serializer, and a `basePath`. |
+| **External storage** (default) | You back your tables with object storage (a data lake — S3/MinIO/GCS/Azure) and register them through an external table catalog. | Serializes records to a file format, uploads the files, and registers them via table DDL. Needs a `files-sdk` instance, a serializer, and a `basePath` (from the endpoint's `mutation.basePath`). |
 | **INSERT INTO** | You want rows written directly into an existing engine table, with no object storage. | Writes rows through batched `INSERT INTO` SQL. Supports batching, optional table creation, and a staging-and-swap for full loads. |
 
 For the Trino adapter, the storage strategy is the default. Opt into the SQL path with `writeConfig: { strategy: "insert" }`. See [Trino write config](/docs/data-sources/trino/write-config) for both `writeConfig` shapes side by side.
+
+The endpoint declares which strategy it was written for with `mutation.writeMethod` (`"storage"` by default, or `"insert"`). The two must match: a write whose endpoint expects one method but whose data source uses the other fails before touching any data. An `insert` endpoint has no `basePath`, no partitioning and no auto-fill fields. See [Mutations](/docs/lakeql/endpoints/mutations#write-method), including the migration step for existing INSERT endpoints.
 
 ## Choosing a load strategy
 
