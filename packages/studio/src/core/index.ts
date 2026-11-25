@@ -51,6 +51,13 @@ export {
   serializePartitionSegments,
 } from "./partitioning"
 
+export type { EditorAdapterId, EditorAdapterProfile } from "./adapters"
+export {
+  adapterProfile,
+  DEFAULT_EDITOR_ADAPTER,
+  EDITOR_ADAPTERS,
+} from "./adapters"
+
 export type { WriteMethodChangePlan } from "./write-method"
 export { changeWriteMethod, planWriteMethodChange } from "./write-method"
 

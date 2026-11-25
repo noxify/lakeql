@@ -29,6 +29,7 @@ import type {
   WriteMethodChangePlan,
 } from "@/core"
 import {
+  adapterProfile,
   addField as addFieldOp,
   changeWriteMethod,
   createField,
@@ -387,7 +388,9 @@ export const MutationConfigForm = () => {
             </Select>
           </div>
 
-          <WriteMethodControl mutation={mutation} />
+          {adapterProfile(editor.adapter).writeMethods.length > 1 && (
+            <WriteMethodControl mutation={mutation} />
+          )}
 
           {mutation.writeMethod === "storage" && (
             <>

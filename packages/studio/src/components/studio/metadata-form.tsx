@@ -2,6 +2,15 @@ import { useId } from "react"
 
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import type { EditorAdapterId } from "@/core"
+import { adapterProfile, EDITOR_ADAPTERS } from "@/core"
 
 import { metadataFieldError } from "./field-meta"
 import { metadataInputId } from "./metadata-nav"
@@ -13,10 +22,15 @@ import { metadataKeysWithIssues } from "./validation-readable"
  */
 type MetadataKey = "tableName" | "catalog" | "schema"
 
+/**
+ * Rendered after the adapter and data source, from the broadest coordinate to
+ * the narrowest, because the adapter decides which of these are prefilled or
+ * locked.
+ */
 const METADATA_FIELDS: { key: MetadataKey; label: string }[] = [
-  { key: "tableName", label: "Table name" },
   { key: "catalog", label: "Catalog" },
   { key: "schema", label: "Schema" },
+  { key: "tableName", label: "Table name" },
 ]
 
 /**
@@ -72,9 +86,10 @@ const MetadataField = ({
 }
 
 /**
- * The endpoint metadata form: `tableName`/`catalog`/`schema` (pattern-validated
- * with inline errors), a free-text `dataSource`, and a read-only `version`
- * pinned to the schema literal `"2.0"`.
+ * The endpoint metadata form, ordered from source to table: the editor-only
+ * adapter choice, a free-text `dataSource`, `catalog`/`schema`/`tableName`
+ * (pattern-validated with inline errors), and a read-only `version` pinned to
+ * the schema literal `"2.0"`.
  *
  * All edits flow through the shared editor as continuous edits (coalesced into
  * a single history snapshot on blur). Invalid metadata shows inline here and
@@ -87,12 +102,42 @@ export const MetadataForm = () => {
   // source input; `version` has no navigable target so it keeps a `useId()`.
   const dataSourceId = metadataInputId("dataSource")
   const versionId = useId()
+  const adapterId = useId()
 
   return (
     <div className="grid gap-4">
-      {METADATA_FIELDS.map(({ key, label }) => (
-        <MetadataField key={key} fieldKey={key} label={label} />
-      ))}
+      <div className="grid gap-1.5">
+        <Label htmlFor={adapterId}>Adapter</Label>
+        <Select
+          value={editor.adapter}
+          onValueChange={(next) => editor.setAdapter(next as EditorAdapterId)}
+        >
+          <SelectTrigger id={adapterId} className="w-full" aria-label="Adapter">
+            <SelectValue>
+              {(value: EditorAdapterId) => adapterProfile(value).label}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent alignItemWithTrigger={false}>
+            {EDITOR_ADAPTERS.map((profile) => (
+              <SelectItem
+                key={profile.id}
+                value={profile.id}
+                disabled={!profile.available}
+              >
+                {profile.label}
+                {profile.unavailableHint !== undefined && (
+                  <span className="text-muted-foreground self-center text-xs">
+                    {profile.unavailableHint}
+                  </span>
+                )}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <p className="text-muted-foreground text-xs">
+          Shapes the editor only. It is not part of the exported definition.
+        </p>
+      </div>
 
       <div className="grid gap-1.5">
         <Label htmlFor={dataSourceId}>Data source</Label>
@@ -109,6 +154,10 @@ export const MetadataForm = () => {
           onBlur={() => editor.commitEdits()}
         />
       </div>
+
+      {METADATA_FIELDS.map(({ key, label }) => (
+        <MetadataField key={key} fieldKey={key} label={label} />
+      ))}
 
       <div className="grid gap-1.5">
         <Label htmlFor={versionId}>Version</Label>

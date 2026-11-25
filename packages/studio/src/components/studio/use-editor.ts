@@ -10,6 +10,7 @@ import {
 
 import type {
   CoalescingCommitter,
+  EditorAdapterId,
   EditorArrayItemType,
   EditorField,
   EditorFieldType,
@@ -23,6 +24,7 @@ import type {
   ValidationResult,
 } from "@/core"
 import {
+  adapterProfile,
   addField as addFieldOp,
   canRedo as canRedoOp,
   canUndo as canUndoOp,
@@ -33,6 +35,7 @@ import {
   createFreshState,
   createPersistence,
   currentState,
+  DEFAULT_EDITOR_ADAPTER,
   downloadEndpointJson,
   evaluate,
   importFromFile,
@@ -72,6 +75,17 @@ export interface EditorApi {
   validation: ValidationResult
   /** Whether persistence degraded to in-memory (storage unavailable). */
   persistenceDegraded: boolean
+  /**
+   * The adapter the editor is shaped for. A UI-only choice: it decides which
+   * controls are offered, but it is not part of the endpoint definition, so it
+   * is neither exported, imported, autosaved nor part of undo history.
+   */
+  adapter: EditorAdapterId
+  /**
+   * Selects the adapter. An adapter that is not available yet is ignored, so a
+   * disabled option can never take effect.
+   */
+  setAdapter: (adapter: EditorAdapterId) => void
   /** The `id` of the selected field, or `null` when none is selected. */
   selectedFieldId: string | null
   /** Selects a field so the (future) properties panel can target it. */
@@ -198,6 +212,10 @@ export function useEditor(): EditorApi {
 
   const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null)
 
+  const [selectedAdapter, setSelectedAdapter] = useState<EditorAdapterId>(
+    DEFAULT_EDITOR_ADAPTER
+  )
+
   // Mirror the persistence degraded flag into React state so a post-mount
   // storage failure (a `save` that only fails once storage fills up or is
   // denied mid-session) surfaces the non-blocking warning reactively, instead
@@ -229,6 +247,12 @@ export function useEditor(): EditorApi {
 
   const bump = useCallback(() => {
     setStore((previous) => ({ ...previous, version: previous.version + 1 }))
+  }, [])
+
+  const setAdapter = useCallback((next: EditorAdapterId) => {
+    if (adapterProfile(next).available) {
+      setSelectedAdapter(next)
+    }
   }, [])
 
   const replaceState = useCallback(
@@ -396,6 +420,7 @@ export function useEditor(): EditorApi {
   const reset = useCallback(() => {
     replaceState(createFreshState(), { commit: true })
     setSelectedFieldId(null)
+    setSelectedAdapter(DEFAULT_EDITOR_ADAPTER)
   }, [replaceState])
 
   const validation = useMemo(() => evaluate(state), [state])
@@ -404,6 +429,8 @@ export function useEditor(): EditorApi {
     state,
     validation,
     persistenceDegraded,
+    adapter: selectedAdapter,
+    setAdapter,
     selectedFieldId,
     selectField: setSelectedFieldId,
     replaceState,
