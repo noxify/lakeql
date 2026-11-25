@@ -10,12 +10,17 @@ import { CliError, createAbortError } from "@/errors"
 import { generateEndpoint } from "@/pipeline/generate"
 import {
   ENDPOINT_SCHEMA_VERSION,
+  effectiveWriteMethod,
   endpointDefinitionSchema,
   findDuplicateFieldNames,
+  flattenEndpointIssues,
   findReservedNameCollisions,
   isSupportedVersion,
 } from "@/pipeline/schema"
-import type { FieldDefinition } from "@/pipeline/schema"
+import type {
+  EndpointDefinitionFormat,
+  FieldDefinition,
+} from "@/pipeline/schema"
 
 import { buildCreateEndpointCommandStructure } from "../metadata/create-endpoint-metadata"
 
@@ -55,6 +60,21 @@ export function formatFieldTree(fields: FieldDefinition[], indent = 0): string {
   }
 
   return lines.filter((line) => line.length > 0).join("\n")
+}
+
+/**
+ * Formats the mutation line of the definition summary: the load strategy and
+ * the effective write method, or `disabled`.
+ *
+ * @param definition - The validated endpoint definition.
+ * @returns For example `append (storage)`, or `disabled`.
+ */
+export function formatMutationDisplay(
+  definition: EndpointDefinitionFormat
+): string {
+  return definition.mutation
+    ? `${definition.mutation.loadStrategy} (${effectiveWriteMethod(definition.mutation)})`
+    : "disabled"
 }
 
 /**
@@ -130,7 +150,7 @@ export default function createEndpointCommand() {
     // Validate against endpointDefinitionSchema
     const result = endpointDefinitionSchema.safeParse(parsed)
     if (!result.success) {
-      const issues = result.error.issues
+      const issues = flattenEndpointIssues(result.error)
         .map((issue) => {
           const issuePath =
             issue.path.length > 0 ? issue.path.join(".") : "root"
@@ -194,9 +214,7 @@ export default function createEndpointCommand() {
     console.log(info(`dataSource: ${definition.dataSource ?? "default"}`))
 
     // Display mutation configuration status
-    const mutationDisplay = definition.mutation
-      ? definition.mutation.loadStrategy
-      : "disabled"
+    const mutationDisplay = formatMutationDisplay(definition)
     // oxlint-disable-next-line no-console
     console.log(info(`mutation: ${mutationDisplay}`))
 
@@ -231,6 +249,10 @@ export default function createEndpointCommand() {
       }
     }
 
+    // The adapter is not passed: `generateEndpoint` defaults to "trino", which
+    // is correct while Trino is the only write-capable adapter. Resolving the
+    // real adapter would require loading lakeql.config.ts, which this command
+    // deliberately avoids (it must not trigger env validation).
     await generateEndpoint({
       definition,
       outputDir,

@@ -8,6 +8,20 @@ import ts from "typescript"
 import { describe, expect, it } from "vitest"
 
 import { generateMutationSchema } from "@/pipeline/mutation-schema"
+import type { GenerateMutationSchemaProps } from "@/pipeline/mutation-schema"
+import { buildStorageConfig } from "@/pipeline/storage-config"
+
+/** Calls generateMutationSchema with the storageConfig derived the way generate.ts derives it. */
+function generate(
+  props: Omit<GenerateMutationSchemaProps, "storageConfig">
+): ts.Node[] {
+  return generateMutationSchema({
+    ...props,
+    storageConfig: props.mutationConfig
+      ? buildStorageConfig(props.mutationConfig, props.fieldDefinitions ?? [])
+      : undefined,
+  })
+}
 
 // --- Helpers ---
 
@@ -173,7 +187,7 @@ describe("Field Required/Nullable GraphQL Mapping", () => {
       fc.property(fieldsArb, (fields) => {
         const { models, fieldDefinitions } = buildTestData(fields)
 
-        const result = generateMutationSchema({
+        const result = generate({
           models,
           mutationName: "createTestModel",
           mutationConfig: {
@@ -211,7 +225,7 @@ describe("Field Required/Nullable GraphQL Mapping", () => {
       fc.property(fieldsArb, (fields) => {
         const { models, fieldDefinitions } = buildTestData(fields)
 
-        const result = generateMutationSchema({
+        const result = generate({
           models,
           mutationName: "createTestModel",
           mutationConfig: {

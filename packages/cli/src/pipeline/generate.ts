@@ -18,6 +18,7 @@ import { deriveNames } from "./derive-names"
 import { generateMutationSchema } from "./mutation-schema"
 import type { EndpointDefinitionFormat } from "./schema"
 import { serializeDeterministic } from "./serialize"
+import { buildStorageConfig } from "./storage-config"
 import { generateValidationsSchema } from "./validations-schema"
 
 /**
@@ -147,7 +148,13 @@ export async function generateEndpoint(
     ),
   ]
 
-  // 5. Generate config.ts (with mutationName for mutation support)
+  // 5. Compute the storageConfig once; config.ts emits exactly these keys and
+  // the mutation resolver references exactly these keys.
+  const storageConfig = definition.mutation
+    ? buildStorageConfig(definition.mutation, definition.fields)
+    : undefined
+
+  // Generate config.ts (with mutationName for mutation support)
   const generatedConfig = generateConfig({
     adapter,
     dataSourceName,
@@ -156,27 +163,7 @@ export async function generateEndpoint(
     schema,
     tableName,
     mutationName: [mutationName],
-    storageConfig: definition.mutation
-      ? {
-          loadStrategy: definition.mutation.loadStrategy,
-          basePath: definition.mutation.basePath,
-          partitioning:
-            definition.mutation.loadStrategy === "full_load"
-              ? undefined
-              : definition.mutation.partitioning,
-          // Thread an explicit directive for each declared autoFill field so
-          // the runtime populates its column + companions from the write clock
-          // (DD5). Validation (C11/C16) guarantees autoFill fields only reach
-          // here with an enabled append/full_load_append mutation, so there is
-          // no "null it for full_load" case to handle.
-          autoFillFields: definition.fields
-            .filter((field) => field.options?.autoFill !== undefined)
-            .map((field) => ({
-              name: field.name,
-              kind: "write_timestamp" as const,
-            })),
-        }
-      : undefined,
+    storageConfig,
   })
 
   const configTemplate = await generateCode({
@@ -218,6 +205,7 @@ export async function generateEndpoint(
     models,
     mutationName,
     mutationConfig: definition.mutation,
+    storageConfig,
     hasValidations,
     fieldDefinitions: codegenFields,
   })

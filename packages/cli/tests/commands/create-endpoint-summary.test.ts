@@ -1,16 +1,9 @@
 import { describe, expect, it } from "vitest"
 
+import { formatMutationDisplay } from "@/commands/create-endpoint"
 import type { EndpointDefinitionFormat } from "@/pipeline/schema"
 
-/**
- * Replicates the summary logic from create-endpoint.ts:
- * const mutationDisplay = definition.mutation
- *   ? definition.mutation.loadStrategy
- *   : "disabled"
- */
-function getMutationDisplay(definition: EndpointDefinitionFormat): string {
-  return definition.mutation ? definition.mutation.loadStrategy : "disabled"
-}
+const getMutationDisplay = formatMutationDisplay
 
 /**
  * Replicates the dataSource summary logic from create-endpoint.ts:
@@ -40,7 +33,7 @@ describe("create-endpoint summary mutation display", () => {
       },
     }
 
-    expect(getMutationDisplay(definition)).toBe("full_load")
+    expect(getMutationDisplay(definition)).toBe("full_load (storage)")
   })
 
   it("displays load strategy when mutation config is present with full_load_append", () => {
@@ -56,7 +49,7 @@ describe("create-endpoint summary mutation display", () => {
       },
     }
 
-    expect(getMutationDisplay(definition)).toBe("full_load_append")
+    expect(getMutationDisplay(definition)).toBe("full_load_append (storage)")
   })
 
   it("displays load strategy when mutation config is present with append", () => {
@@ -72,7 +65,19 @@ describe("create-endpoint summary mutation display", () => {
       },
     }
 
-    expect(getMutationDisplay(definition)).toBe("append")
+    expect(getMutationDisplay(definition)).toBe("append (storage)")
+  })
+
+  it("displays the insert write method", () => {
+    const definition: EndpointDefinitionFormat = {
+      version: "2.0",
+      tableName: "events",
+      catalog: "logs",
+      schema: "ingestion",
+      fields: [{ name: "event", type: "String" }],
+      mutation: { loadStrategy: "append", writeMethod: "insert" },
+    }
+    expect(getMutationDisplay(definition)).toBe("append (insert)")
   })
 
   it("displays 'disabled' when mutation is false", () => {

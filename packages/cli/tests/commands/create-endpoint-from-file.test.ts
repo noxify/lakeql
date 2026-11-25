@@ -10,6 +10,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest"
 import {
   endpointDefinitionSchema,
   findDuplicateFieldNames,
+  flattenEndpointIssues,
   findReservedNameCollisions,
   isSupportedVersion,
 } from "../../src/pipeline/schema"
@@ -41,6 +42,21 @@ describe("create-endpoint --from-file validation", () => {
   })
 
   describe("schema validation", () => {
+    it("names mutation.writeMethod for an invalid write method", () => {
+      const result = endpointDefinitionSchema.safeParse({
+        version: "2.0",
+        tableName: "test_table",
+        catalog: "my_catalog",
+        schema: "my_schema",
+        fields: [{ name: "id", type: "String" }],
+        mutation: { loadStrategy: "append", writeMethod: "bulk" },
+      })
+      const paths = result.error
+        ? flattenEndpointIssues(result.error).map((i) => i.path.join("."))
+        : []
+      expect(paths).toContain("mutation.writeMethod")
+    })
+
     it("valid definition passes validation", () => {
       const valid = {
         version: "2.0",

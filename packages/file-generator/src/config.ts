@@ -17,8 +17,13 @@ import {
 export interface StorageConfigProps {
   /** The load strategy for the write pipeline. */
   loadStrategy: string
-  /** Base path for endpoint data. */
-  basePath: string
+  /**
+   * The write method the endpoint was generated for. Always emitted so the
+   * runtime can reject a data source whose write strategy differs.
+   */
+  writeMethod: "storage" | "insert"
+  /** Base path for endpoint data. Emitted only when present (storage). */
+  basePath?: string
   /**
    * Partitioning mode: `false` (off) or a partition-field/custom string. The
    * legacy boolean-`true` "partition by write timestamp" mode is gone — a
@@ -121,9 +126,15 @@ export function generateConfig(props: GenerateConfigProps) {
   // Generate storageConfig when mutation pipeline is configured
   if (storageConfig) {
     const storageProperties: ts.PropertyAssignment[] = [
+      property("writeMethod", stringLiteral(storageConfig.writeMethod)),
       property("loadStrategy", stringLiteral(storageConfig.loadStrategy)),
-      property("basePath", stringLiteral(storageConfig.basePath)),
     ]
+
+    if (storageConfig.basePath !== undefined) {
+      storageProperties.push(
+        property("basePath", stringLiteral(storageConfig.basePath))
+      )
+    }
 
     if (storageConfig.partitioning !== undefined) {
       if (storageConfig.partitioning === false) {

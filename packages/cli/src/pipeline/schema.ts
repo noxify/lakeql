@@ -8,6 +8,8 @@ export {
   findDuplicateFieldNames,
   findReservedNameCollisions,
   deriveAutoFillColumns,
+  effectiveWriteMethod,
+  flattenEndpointIssues,
   ENDPOINT_SCHEMA_VERSION,
   isSupportedVersion,
   type EndpointDefinitionFormat,
