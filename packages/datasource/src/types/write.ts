@@ -17,6 +17,14 @@ export interface DataSourceWriteConfig {
   table: { catalog: string; schema: string; tableName: string }
   /** Behavior to apply when records reach an existing target. */
   loadStrategy?: LoadStrategy
+  /**
+   * The write method the endpoint was generated for. When set, a write
+   * strategy that implements a different method rejects the write before
+   * touching data, so a mismatch between the endpoint and the data source's
+   * configured strategy fails loudly. Absent means "not declared" and skips
+   * the check.
+   */
+  writeMethod?: "storage" | "insert"
   /** Storage base path required by storage-backed write strategies. */
   basePath?: string
   /**

@@ -26,6 +26,37 @@ import {
 } from "./sql-helpers"
 import { renderValuesClause } from "./value-render"
 
+/**
+ * Rejects a write whose endpoint expects the storage method, or whose config
+ * carries values the insert strategy would otherwise silently ignore.
+ */
+function assertInputMatchesInsert(
+  config: DataSourceWriteInput["config"],
+  dataSourceName: string
+): void {
+  if (config.writeMethod === "storage") {
+    throw new Error(
+      `Endpoint expects writeMethod "storage", but data source "${dataSourceName}" uses the insert write strategy. Set writeConfig.strategy to "storage" for this data source, or use writeMethod "insert" in the endpoint.`
+    )
+  }
+
+  const unsupported: string[] = []
+  if (config.basePath !== undefined) {
+    unsupported.push("basePath")
+  }
+  if (typeof config.partitioning === "string") {
+    unsupported.push("partitioning")
+  }
+  if (config.autoFillFields && config.autoFillFields.length > 0) {
+    unsupported.push("autoFillFields")
+  }
+  if (unsupported.length > 0) {
+    throw new Error(
+      `Trino insert write for "${dataSourceName}" does not support ${unsupported.join(", ")}; these apply only to the storage write strategy. Remove them from the write config, or use the storage strategy.`
+    )
+  }
+}
+
 /** A JSON-schema-derived column with its Trino column type. */
 interface ColumnDef {
   name: string
@@ -114,6 +145,10 @@ export function createTrinoInsertWriteStrategy(
 
   return {
     async write(input: DataSourceWriteInput): Promise<void> {
+      // Checked before the empty-records return so a misconfiguration is
+      // never masked by an empty write.
+      assertInputMatchesInsert(input.config, dataSourceName)
+
       const loadStrategy: LoadStrategy = input.config.loadStrategy ?? "append"
       const target = input.config.table
 

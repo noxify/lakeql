@@ -15,6 +15,11 @@ export interface TrinoWriteStrategyConfig {
   files: Files
   /** The DataSource instance for DDL operations. */
   dataSource: DataSource
+  /**
+   * Configured runtime name of the data source. Used only to name the data
+   * source in write-method mismatch errors; direct callers may omit it.
+   */
+  dataSourceName?: string
   /** Serializer for data format conversion (e.g. parquetSerializer()). */
   serializer: Serializer
   /**
@@ -71,6 +76,15 @@ export function createTrinoWriteStrategy(
 
   return {
     async write(input) {
+      if (input.config.writeMethod === "insert") {
+        const subject = config.dataSourceName
+          ? `data source "${config.dataSourceName}"`
+          : "this data source"
+        throw new Error(
+          `Endpoint expects writeMethod "insert", but ${subject} uses the storage write strategy. Set writeConfig.strategy to "insert" for this data source, or use writeMethod "storage" in the endpoint.`
+        )
+      }
+
       if (!input.config.basePath) {
         throw new Error(
           "TrinoWriteStrategy requires a basePath in the write config"

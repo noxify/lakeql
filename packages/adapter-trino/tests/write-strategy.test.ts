@@ -513,3 +513,64 @@ describe(createTrinoWriteStrategy, () => {
     })
   })
 })
+
+function buildStrategy(dataSourceName?: string) {
+  return createTrinoWriteStrategy({
+    files: createMockFiles(),
+    dataSource: createMockDataSource(),
+    dataSourceName,
+    serializer: createMockSerializer(),
+  })
+}
+
+describe("createTrinoWriteStrategy - write method check", () => {
+  const table = { catalog: "hive", schema: "s", tableName: "t" }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockExecuteWritePipeline.mockResolvedValue()
+  })
+
+  it("rejects writeMethod insert before any storage call, naming the data source", async () => {
+    const strategy = buildStrategy("warehouse")
+
+    await expect(
+      strategy.write({
+        records: [{ id: 1 }],
+        schema: {},
+        config: { table, basePath: "p", writeMethod: "insert" },
+      })
+    ).rejects.toThrow(
+      /data source "warehouse" uses the storage write strategy/u
+    )
+
+    expect(mockExecuteWritePipeline).not.toHaveBeenCalled()
+  })
+
+  it("rejects writeMethod insert without a data source name", async () => {
+    await expect(
+      buildStrategy().write({
+        records: [],
+        schema: {},
+        config: { table, writeMethod: "insert" },
+      })
+    ).rejects.toThrow(/this data source uses the storage write strategy/u)
+  })
+
+  it("skips the check when writeMethod is absent or storage", async () => {
+    const strategy = buildStrategy("warehouse")
+
+    await strategy.write({
+      records: [{ id: 1 }],
+      schema: {},
+      config: { table, basePath: "p" },
+    })
+    await strategy.write({
+      records: [{ id: 1 }],
+      schema: {},
+      config: { table, basePath: "p", writeMethod: "storage" },
+    })
+
+    expect(mockExecuteWritePipeline).toHaveBeenCalledTimes(2)
+  })
+})
