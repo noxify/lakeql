@@ -392,6 +392,24 @@ describe("endpointDefinitionSchema - partition segment vs field type", () => {
     expect(parse("event:year/event:month/day_of:day").success).toBeTruthy()
   })
 
+  it("accepts time components on a DateTime field", () => {
+    expect(parse("event:hour/event:minute/event:second").success).toBeTruthy()
+  })
+
+  it.each(["hour", "minute", "second"])(
+    "rejects time component %s on a Date field",
+    (component) => {
+      const issues = messages(`day_of:${component}`)
+      expect(issues).toHaveLength(1)
+      expect(issues[0]?.path).toBe("mutation.partitioning")
+      expect(issues[0]?.message).toContain("year, month, day")
+    }
+  )
+
+  it("reports an unknown component on a Date field only once", () => {
+    expect(messages("day_of:week")).toHaveLength(1)
+  })
+
   it("adds no extra issue for unknown, ambiguous or duplicate segments", () => {
     expect(parse("missing").success).toBeTruthy()
     expect(parse("dup").success).toBeTruthy()

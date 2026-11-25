@@ -370,6 +370,22 @@ describe("type changes that invalidate a segment", () => {
     expect(planTypeChange(date, "String", state).needsConfirmation).toBeTruthy()
   })
 
+  it("needs confirmation when a DateTime with a time component becomes a Date", () => {
+    const state = fromDefinition(
+      definitionWith("load_timestamp:day/load_timestamp:hour")
+    )
+    const loadTs = defined(state.fields[0])
+    const plan = planTypeChange(loadTs, "Date", state)
+    expect(plan.needsConfirmation).toBeTruthy()
+    expect(plan.affectedPartitionSegments).toStrictEqual([
+      "load_timestamp → hour",
+    ])
+    const applied = changeFieldType(state, [0], "Date", { confirm: true })
+    expect(segmentsOf(applied.state)).toStrictEqual([
+      { fieldId: loadTs.id, component: "day" },
+    ])
+  })
+
   it("only removes the changed field's segments, leaving unresolved ones", () => {
     const state = fromDefinition(definitionWith("ghost/load_timestamp:year"))
     const applied = changeFieldType(state, [0], "String", { confirm: true })

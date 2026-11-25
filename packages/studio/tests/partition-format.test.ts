@@ -122,6 +122,15 @@ describe("partitionDateOptions helper", () => {
     })
   })
 
+  it("offers a Date field no time components", () => {
+    const dayCandidate = { ...eventCandidate, id: "f3", type: "Date" } as const
+    expect(
+      partitionDateOptions(dayCandidate, new Set()).map(
+        (option) => option.value
+      )
+    ).toStrictEqual(["f3:date", "f3:year", "f3:month", "f3:day"])
+  })
+
   it("hides chosen components and the combined option once any of its parts is chosen", () => {
     const options = partitionDateOptions(eventCandidate, new Set(["f2:month"]))
     expect(options.map((option) => option.value)).toStrictEqual([

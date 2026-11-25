@@ -1,4 +1,7 @@
-import { partitioningComponents } from "@lakeql/schema-generator/endpoint-schema"
+import {
+  datePartitioningComponents,
+  partitioningComponents,
+} from "@lakeql/schema-generator/endpoint-schema"
 
 import type {
   EditorField,
@@ -95,7 +98,8 @@ function bareOption(candidate: PartitionCandidate): PartitionOption {
 /**
  * The sub-page options of a date-like candidate: first the combined
  * `year / month / day` option (appends all three segments), then one option
- * per `partitioningComponents` entry. Options whose segment is already chosen
+ * per component: every `partitioningComponents` entry for a `DateTime`, only
+ * `datePartitioningComponents` (no time of day) for a `Date`. Options whose segment is already chosen
  * are omitted; the combined option is omitted as soon as any of its three
  * segments is chosen, so it can never create a duplicate.
  *
@@ -123,7 +127,11 @@ export function partitionDateOptions(
       })),
     })
   }
-  for (const component of partitioningComponents) {
+  const components =
+    candidate.type === "Date"
+      ? datePartitioningComponents
+      : partitioningComponents
+  for (const component of components) {
     const value = `${candidate.id}:${component}`
     if (chosen.has(value)) {
       continue

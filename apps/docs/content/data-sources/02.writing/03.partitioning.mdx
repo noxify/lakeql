@@ -47,7 +47,7 @@ This reproduces the old timestamp layout (`year=…/month=…/day=…`) with eve
 
 ## Partition Strings
 
-A partition string composes the path from one or more `/`-separated segments. A bare field name (for example, `region`) partitions by the field's raw value and produces `region=EU`. A `field:component` segment (for example, `event_date:year`) extracts a date component, where the component is one of `year`, `month`, `day`, `hour`, `minute`, or `second`. `Date` and `DateTime` fields can only be partitioned through a component, so use `event_date:year/event_date:month/event_date:day` for daily granularity; a bare date field name is rejected at validation time. Records that share a partition key land in the same file.
+A partition string composes the path from one or more `/`-separated segments. A bare field name (for example, `region`) partitions by the field's raw value and produces `region=EU`. A `field:component` segment (for example, `event_date:year`) extracts a date component, where the component is one of `year`, `month`, `day`, `hour`, `minute`, or `second`. `Date` and `DateTime` fields can only be partitioned through a component, so use `event_date:year/event_date:month/event_date:day` for daily granularity; a bare date field name is rejected at validation time. A `Date` value has no time of day, so `Date` fields accept only `year`, `month`, and `day`; `hour`, `minute`, and `second` require a `DateTime` field. Records that share a partition key land in the same file.
 
 <Note>
   The `partitioningFormat` option no longer exists, and an endpoint definition

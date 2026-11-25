@@ -68,6 +68,17 @@ export const partitioningComponents = [
 export type PartitioningComponent = (typeof partitioningComponents)[number]
 
 /**
+ * The partitioning components valid on a `Date` field. A `Date` value carries
+ * no time of day (it is midnight UTC), so `hour`, `minute` and `second` are
+ * only valid on `DateTime` fields.
+ */
+export const datePartitioningComponents = [
+  "year",
+  "month",
+  "day",
+] as const satisfies readonly PartitioningComponent[]
+
+/**
  * Validates a partitioning string. The string is a `/`-separated list of
  * segments, each of which is one of:
  * - a bare field name (`region`), partitioning by the raw field value;
@@ -495,8 +506,9 @@ function reportAutoFillMutationIssues(
 
 /**
  * Reports partition segments whose form does not fit the referenced top-level
- * field: Date/DateTime fields need a component (`event:year`), every other
- * primitive field must be used bare. Segments that match no field, match more
+ * field: Date/DateTime fields need a component (`event:year`), Date fields only
+ * accept {@link datePartitioningComponents}, and every other primitive field
+ * must be used bare. Segments that match no field, match more
  * than one field, or reference Object/Array fields are not reported here.
  */
 function reportPartitionFieldTypeIssues(
@@ -536,6 +548,18 @@ function reportPartitionFieldTypeIssues(
         code: "custom",
         path: ["mutation", "partitioning"],
         message: `Partition segment "${segment}" uses a date component, which is only valid on Date/DateTime fields; "${segmentField}" is a ${field.type} field. Use "${segmentField}" to partition by its raw value.`,
+      })
+    } else if (
+      field.type === "Date" &&
+      component !== undefined &&
+      partitioningComponents.includes(component as PartitioningComponent) &&
+      !(datePartitioningComponents as readonly string[]).includes(component)
+    ) {
+      // Unknown components are already reported by the grammar check.
+      ctx.addIssue({
+        code: "custom",
+        path: ["mutation", "partitioning"],
+        message: `Partition segment "${segment}" uses the time component "${component}" on Date field "${segmentField}", which has no time of day. Use one of: ${datePartitioningComponents.join(", ")}, or change the field to DateTime.`,
       })
     }
   }

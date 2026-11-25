@@ -123,12 +123,87 @@ function renderPicker(fields: EditorState["fields"]): { get: () => EditorApi } {
 /** The picker's trigger button. */
 const trigger = (): HTMLElement => screen.getByLabelText("Add partition field")
 
+/** The text of an option without its (visual-only) field type badge. */
+function labelOf(option: HTMLElement): string | null {
+  const copy = option.cloneNode(true) as HTMLElement
+  for (const badge of copy.querySelectorAll('[data-slot="field-type-badge"]')) {
+    badge.remove()
+  }
+  return copy.textContent
+}
+
 /** The labels of the currently rendered picker options. */
 const optionLabels = (): (string | null)[] =>
-  screen.getAllByRole("option").map((option) => option.textContent)
+  screen.getAllByRole("option").map(labelOf)
+
+/** The type badges of the currently rendered picker options, in order. */
+const optionTypes = (): (string | null)[] =>
+  screen
+    .getAllByRole("option")
+    .map(
+      (option) =>
+        option.querySelector('[data-slot="field-type-badge"]')?.textContent ??
+        null
+    )
+
+/** The number of drill-down spacers inside the option named `name`. */
+function spacers(name: string): number {
+  return screen
+    .getByRole("option", { name })
+    .querySelectorAll('[data-slot="drill-down-spacer"]').length
+}
 
 describe("PartitioningFieldPicker popover", () => {
   afterEach(cleanup)
+
+  it("aligns the type badges: rows without a drill-down get an arrow-wide spacer", async () => {
+    const user = userEvent.setup()
+    renderPicker([
+      { id: "f1", name: "region", type: "String" },
+      { id: "f2", name: "created_at", type: "DateTime" },
+    ])
+
+    await user.click(trigger())
+    expect([spacers("region"), spacers("created_at")]).toStrictEqual([1, 0])
+
+    // Search results never have an arrow, so they need no spacer either.
+    await user.keyboard("region")
+    expect(spacers("region")).toBe(0)
+  })
+
+  it("adds no spacer when no field on the list has a drill-down", async () => {
+    const user = userEvent.setup()
+    renderPicker([{ id: "f1", name: "region", type: "String" }])
+
+    await user.click(trigger())
+    expect(spacers("region")).toBe(0)
+  })
+
+  it("shows each field's type on the root page and in search results, not on a sub-page", async () => {
+    const user = userEvent.setup()
+    renderPicker([
+      { id: "f1", name: "region", type: "String" },
+      { id: "f2", name: "created_at", type: "DateTime" },
+    ])
+
+    await user.click(trigger())
+    expect(optionTypes()).toStrictEqual(["String", "DateTime"])
+    // The badge is visual only: the option's accessible name is the field name.
+    expect(screen.getByRole("option", { name: "region" })).toBeDefined()
+
+    // Matches `created_at → year` and the combined `year / month / day`.
+    await user.keyboard("created year")
+    const types = optionTypes()
+    expect(types.length).toBeGreaterThan(0)
+    expect(types.every((type) => type === "DateTime")).toBeTruthy()
+
+    await user.clear(
+      screen.getByPlaceholderText("Search fields and date components…")
+    )
+    await user.click(screen.getByRole("option", { name: "created_at" }))
+    // Inside a field's sub-page every row is that field, so no badge.
+    expect(optionTypes().every((type) => type === null)).toBeTruthy()
+  })
 
   it("lists fields on the root page and drills into a date field", async () => {
     const user = userEvent.setup()
@@ -222,6 +297,29 @@ describe("PartitioningFieldPicker popover", () => {
 
     await user.click(screen.getByRole("option", { name: "event → year" }))
     expect(partitionStringOf(harness.get())).toBe("event:year")
+  })
+
+  it("matches search tokens as substrings, not as scattered letters", async () => {
+    const user = userEvent.setup()
+    renderPicker([
+      { id: "f1", name: "datefield", type: "Date" },
+      { id: "f2", name: "datetimefield", type: "DateTime" },
+    ])
+
+    await user.click(trigger())
+    const input = screen.getByPlaceholderText(/Search fields/u)
+    await user.type(input, "datetime")
+    expect(
+      optionLabels().every((label) => label?.startsWith("datetimefield"))
+    ).toBeTruthy()
+
+    // "date" is a substring of both names (and both types).
+    await user.clear(input)
+    await user.type(input, "date")
+    const labels = optionLabels()
+    expect(labels).toContain("datefield → year")
+    expect(labels).toContain("datetimefield → hour")
+    expect(labels).not.toContain("datefield → hour")
   })
 
   it("returns from a sub-page with Escape and with Backspace on an empty search", async () => {

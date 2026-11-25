@@ -34,12 +34,54 @@ import { partitioningIssueMessages } from "./validation-readable"
 /** The picker pages: the root field list, or one date field's components. */
 type PickerPage = "root" | { fieldId: string }
 
+/**
+ * The picker's search filter, replacing cmdk's fuzzy default (which matched
+ * `"datetime"` against `date…` options by scattered letters). An item matches
+ * when every whitespace-separated search token is a case-insensitive substring
+ * of its keywords; the internal item value is never searched. All matches score
+ * equally, so the list keeps its field order.
+ */
+const filterByKeywords = (
+  _value: string,
+  search: string,
+  keywords?: string[]
+): number => {
+  const haystack = (keywords ?? []).join(" ").toLowerCase()
+  const tokens = search.toLowerCase().split(/\s+/u).filter(Boolean)
+  return tokens.every((token) => haystack.includes(token)) ? 1 : 0
+}
+
+/** Never flip the picker to the other side; shift it into view instead. */
+const pickerCollisionAvoidance = {
+  side: "shift",
+  align: "shift",
+  fallbackAxisSide: "none",
+} as const
+
 /** Command item value of a selectable option. */
 const optionItemValue = (option: PartitionOption): string =>
   `option:${option.value}`
 
 /** Command item value of the drill-down row of a date field. */
 const pageItemValue = (fieldId: string): string => `page:${fieldId}`
+
+/**
+ * The field type shown beside a picker row. The type decides what choosing the
+ * row does — a non-date field appends a bare segment, a `Date`/`DateTime`
+ * field opens its component page — so it is visible before the click. Purely
+ * visual (`aria-hidden`): the row's accessible name stays the field name.
+ */
+const FieldTypeBadge = ({ type }: { type: string }) => (
+  <span
+    aria-hidden="true"
+    data-slot="field-type-badge"
+    // On the highlighted row the muted pill would merge into the row's own
+    // highlight, so it switches to the background color there.
+    className="bg-muted text-muted-foreground in-data-[selected=true]:bg-background ml-auto shrink-0 rounded-sm px-1.5 py-0.5 text-[11px] leading-none font-medium"
+  >
+    {type}
+  </span>
+)
 
 /**
  * The partition field picker.
@@ -186,16 +228,43 @@ export const PartitioningFieldPicker = ({
     }
   }
 
-  const renderOption = (option: PartitionOption, label: string) => (
-    <CommandItem
-      key={option.value}
-      value={optionItemValue(option)}
-      keywords={option.keywords}
-      onSelect={() => handleSelect(option)}
-    >
-      {label}
-    </CommandItem>
-  )
+  /** The editor type of the field an option's first segment points at. */
+  const typeOf = (option: PartitionOption): string | undefined => {
+    const fieldId = option.segments[0]?.fieldId
+    return candidates.find((candidate) => candidate.id === fieldId)?.type
+  }
+
+  const renderOption = (
+    option: PartitionOption,
+    label: string,
+    showType: boolean,
+    alignWithDrillDown = false
+  ) => {
+    const type = showType ? typeOf(option) : undefined
+    return (
+      <CommandItem
+        key={option.value}
+        value={optionItemValue(option)}
+        // The type is searchable too, so "date" lists the date fields' options.
+        keywords={
+          type === undefined ? option.keywords : [...option.keywords, type]
+        }
+        onSelect={() => handleSelect(option)}
+      >
+        {label}
+        {type !== undefined && <FieldTypeBadge type={type} />}
+        {alignWithDrillDown && (
+          // Takes the drill-down arrow's width on rows that have none, so the
+          // type badges line up in one column on the root page.
+          <span
+            aria-hidden="true"
+            data-slot="drill-down-spacer"
+            className="size-4 shrink-0"
+          />
+        )}
+      </CommandItem>
+    )
+  }
 
   return (
     <div className="grid gap-1.5">
@@ -219,10 +288,19 @@ export const PartitioningFieldPicker = ({
           <PlusIcon />
           Add partition field
         </PopoverTrigger>
-        <PopoverContent align="start" className="w-80 p-0">
+        <PopoverContent
+          align="start"
+          // Always open above the trigger. The sub-page is taller than the
+          // root page, so letting it flip made the popover jump sides on
+          // drill-down; "shift" keeps the side and only nudges it into view.
+          side="top"
+          collisionAvoidance={pickerCollisionAvoidance}
+          className="w-full min-w-96 p-0"
+        >
           <Command
             value={activeValue}
             onValueChange={setActiveValue}
+            filter={filterByKeywords}
             onKeyDownCapture={onKeyDownCapture}
             aria-label="Partition field suggestions"
           >
@@ -257,7 +335,7 @@ export const PartitioningFieldPicker = ({
               {subCandidate !== undefined && (
                 <CommandGroup heading={subCandidate.name}>
                   {subOptions.map((option) =>
-                    renderOption(option, option.shortLabel)
+                    renderOption(option, option.shortLabel, false)
                   )}
                 </CommandGroup>
               )}
@@ -265,7 +343,7 @@ export const PartitioningFieldPicker = ({
               {subCandidate === undefined && searching && (
                 <CommandGroup>
                   {searchOptions.map((option) =>
-                    renderOption(option, option.label)
+                    renderOption(option, option.label, true)
                   )}
                 </CommandGroup>
               )}
@@ -281,7 +359,8 @@ export const PartitioningFieldPicker = ({
                           onSelect={() => goToPage({ fieldId: candidate.id })}
                         >
                           {candidate.name}
-                          <ChevronRightIcon className="ml-auto opacity-50" />
+                          <FieldTypeBadge type={candidate.type} />
+                          <ChevronRightIcon className="opacity-50" />
                         </CommandItem>
                       ) : null
                     }
@@ -290,7 +369,12 @@ export const PartitioningFieldPicker = ({
                     )
                     return option === undefined
                       ? null
-                      : renderOption(option, option.label)
+                      : renderOption(
+                          option,
+                          option.label,
+                          true,
+                          drillable.size > 0
+                        )
                   })}
                 </CommandGroup>
               )}

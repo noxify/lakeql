@@ -1,3 +1,8 @@
+import {
+  datePartitioningComponents,
+  partitioningComponents,
+} from "@lakeql/schema-generator/endpoint-schema"
+
 import type {
   EditorField,
   EditorFieldType,
@@ -181,8 +186,9 @@ export function partitionSegmentLabel(
 /**
  * Whether a field of `type` is a valid source for a partition segment with the
  * given `component`: never `Object`/`Array`; `Date`/`DateTime` only with a
- * component (a bare date has no raw-value meaning); every other type only
- * without one.
+ * component (a bare date has no raw-value meaning), and `Date` never with a
+ * time component (`hour`/`minute`/`second`, a date has no time of day); every
+ * other type only without one.
  *
  * @param type - The referenced field's type.
  * @param component - The segment's component, if any.
@@ -195,9 +201,20 @@ export function isValidPartitionSource(
   if (type === "Object" || type === "Array") {
     return false
   }
+  if (type === "Date" && component !== undefined) {
+    return !timeComponents.has(component)
+  }
   const isDate = type === "Date" || type === "DateTime"
   return isDate ? component !== undefined : component === undefined
 }
+
+/** The components that need a time of day, so are invalid on a `Date`. */
+const timeComponents: ReadonlySet<string> = new Set(
+  partitioningComponents.filter(
+    (component) =>
+      !(datePartitioningComponents as readonly string[]).includes(component)
+  )
+)
 
 /**
  * Lists the segments of the by-field partitioning that reference any of the
