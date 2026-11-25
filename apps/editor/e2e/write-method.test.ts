@@ -67,7 +67,7 @@ test("switches to insert, confirms, and exports without basePath", async ({
   await page.getByRole("button", { name: "Export" }).click()
   const download = await downloadPromise
   const path = await download.path()
-  const exported = JSON.parse(await readFile(path, "utf8"))
+  const exported = JSON.parse(await readFile(path, "utf-8"))
 
   expect(exported.mutation).toEqual({
     loadStrategy: "append",

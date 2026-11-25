@@ -268,7 +268,7 @@ function useActiveItem(itemIds: string[], activationRatio = 0.2) {
           }
         }
 
-        const bestElementId = bestIndex >= 0 ? itemIds[bestIndex] : undefined
+        const bestElementId = itemIds[bestIndex]
         if (bestElementId) {
           setActiveId(bestElementId)
         } else if (window.scrollY < 50) {
