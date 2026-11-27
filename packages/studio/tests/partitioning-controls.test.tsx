@@ -510,9 +510,14 @@ describe("write-timestamp auto-fill helper in the shell", () => {
 
     // The shell lands on General Settings, which hosts the mutation form.
     await user.click(screen.getByRole("switch", { name: "Enable mutation" }))
-    await user.click(
-      screen.getByRole("button", { name: "Add write-timestamp field" })
+    // The switch commits asynchronously; wait for the mutation form to appear
+    // instead of assuming it is there right after the click (flaky on slow CI).
+    const helper = await screen.findByRole(
+      "button",
+      { name: "Add write-timestamp field" },
+      { timeout: 5000 }
     )
+    await user.click(helper)
 
     await expect(
       screen.findByText("Write-timestamp field added")
