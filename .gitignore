@@ -76,3 +76,4 @@ examples/*
 # out of version control like .agents/. Note: only .kiro/specs/ is ignored —
 # .kiro/steering/, .kiro/hooks/, and .kiro/workflows/ remain tracked.
 .kiro/specs/
+.worktrees/

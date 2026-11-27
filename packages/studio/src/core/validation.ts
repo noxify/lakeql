@@ -1,11 +1,20 @@
 import type { FieldDefinition } from "@lakeql/schema-generator/endpoint-schema"
 import {
+  autoFillCompanionNames,
   endpointDefinitionSchema,
   findDuplicateFieldNames,
+  findReservedNameCollisions,
+  flattenEndpointIssues,
+  effectiveWriteMethod,
+  validatePartitioningString,
 } from "@lakeql/schema-generator/endpoint-schema"
 
 import { toDefinition } from "./mapping"
 import type { EditorField, EditorState } from "./model"
+import {
+  isResolvedPartitionSegment,
+  serializePartitionSegments,
+} from "./partitioning"
 
 /**
  * A single schema-level issue, mapped to the responsible editor field when the
@@ -61,13 +70,103 @@ export interface BadNumberDiagnostic {
 }
 
 /**
+ * A reserved-name collision: a declared top-level field whose name equals an
+ * auto-fill field's own name or one of its derived companion columns
+ * (`<name>_year`/`<name>_month`). Mirrors
+ * `findReservedNameCollisions` (C3/C14) — under Option Y the companions are
+ * computed, never stored, so a plain duplicate check cannot catch them.
+ */
+export interface ReservedNameDiagnostic {
+  /** The colliding declared field's name. */
+  name: string
+  /** The `id` of the colliding editor field, when it resolves. */
+  fieldId?: string
+}
+
+/**
+ * An invalid `autoFill` placement: `autoFill` is only valid on a top-level
+ * `DateTime` field (C12/C13/C17). This finding covers a non-`DateTime`
+ * auto-fill field and an auto-fill field nested at any depth inside an `Object`
+ * or an `Array`-of-`Object`.
+ */
+export interface AutoFillPlacementDiagnostic {
+  /** The offending field's name. */
+  name: string
+  /** Why the placement is invalid. */
+  reason: "non-datetime" | "nested"
+  /** The `id` of the offending editor field, when it resolves. */
+  fieldId?: string
+}
+
+/**
+ * An `autoFill` field without a compatible enabled mutation: `autoFill`
+ * requires an enabled `append`/`full_load_append` mutation (C11/C16) that uses
+ * the `storage` write method. `full_load`, a disabled/absent mutation and the
+ * `insert` write method are all invalid.
+ */
+export interface AutoFillMutationDiagnostic {
+  /** The auto-fill field's name. */
+  name: string
+  /**
+   * Why the auto-fill field is invalid. `"mutation-disabled"`: no enabled
+   * mutation. `"load-strategy"`: the load strategy overwrites the dataset.
+   * `"insert"`: the write method is `"insert"`, which does not populate
+   * auto-fill fields. The load-strategy reason wins when both apply, matching
+   * the endpoint schema.
+   */
+  reason: "mutation-disabled" | "load-strategy" | "insert"
+  /** The `id` of the auto-fill editor field, when it resolves. */
+  fieldId?: string
+}
+
+/**
+ * A partition-string segment that references a derived companion column
+ * (`<name>_year`/`<name>_month`) in any form (C15/FR6.3). Companion columns are
+ * categorically not a partition source; the author should use the primary
+ * field's component form (`<name>:year`).
+ */
+export interface CompanionPartitionDiagnostic {
+  /** The offending partition segment (e.g. `event_year` or `event_year:year`). */
+  segment: string
+  /** The companion column name the segment references. */
+  companionName: string
+  /** The primary auto-fill field name to use instead (for the hint). */
+  primaryName: string
+}
+
+/**
+ * A partition segment that does not point at exactly one top-level field.
+ *
+ * Partition segments are stored by field id. A segment imported from a
+ * `endpoint.json` whose name matches no top-level field, or more than one,
+ * stays "unresolved" (it keeps its raw name so the file round-trips unchanged).
+ * The schema only checks the segment's grammar, not that the field exists, so
+ * without this finding a well-formed segment such as `ghost:year` would pass
+ * the gate and produce a definition the runtime cannot partition by.
+ */
+export interface UnresolvedPartitionDiagnostic {
+  /** The segment's raw field name, exactly as imported. */
+  name: string
+  /** The segment's raw component text, present only for `name:component`. */
+  component?: string
+  /**
+   * Why the name resolves to no single field: `missing` when no top-level field
+   * has the name, `ambiguous` when more than one does.
+   */
+  reason: "missing" | "ambiguous"
+}
+
+/**
  * The result of the "valid for export" gate.
  *
  * `validForExport` is the single boolean the export path consumes. It is the
  * conjunction of a schema parse, the absence of duplicate field names, every
- * `regex` pattern being constructible, and every `min`/`max` bound being a
- * finite number. Each failure kind is reported separately and, where possible,
- * keyed to the editor field `id` so the UI can render inline diagnostics.
+ * `regex` pattern being constructible, every `min`/`max` bound being a finite
+ * number, the four auto-fill rules (reserved-name collision, valid placement, a
+ * compatible enabled mutation, and no companion-column partition segment), and
+ * every partition segment pointing at exactly one top-level field. Each failure
+ * kind is reported separately and, where possible, keyed to the editor field
+ * `id` so the UI can render inline diagnostics.
  */
 export interface ValidationResult {
   /** Whether the current state may be exported. */
@@ -80,15 +179,16 @@ export interface ValidationResult {
   badRegex: BadRegexDiagnostic[]
   /** Non-finite `min`/`max` bounds, empty when every bound is finite. */
   badNumber: BadNumberDiagnostic[]
-}
-
-/**
- * Structural shape of the subset of a Zod issue this module reads. Declared
- * locally so the builder does not take a direct dependency on `zod`.
- */
-interface ParseIssue {
-  path: PropertyKey[]
-  message: string
+  /** Reserved-name collisions against auto-fill names/companions (C3/C14). */
+  reservedNames: ReservedNameDiagnostic[]
+  /** Invalid `autoFill` placements (non-DateTime or nested, C12/C13/C17). */
+  autoFillPlacement: AutoFillPlacementDiagnostic[]
+  /** Auto-fill fields lacking a compatible enabled mutation (C11/C16). */
+  autoFillMutation: AutoFillMutationDiagnostic[]
+  /** Partition segments referencing a derived companion column (C15/FR6.3). */
+  companionPartition: CompanionPartitionDiagnostic[]
+  /** Partition segments naming no single top-level field (missing/ambiguous). */
+  unresolvedPartition: UnresolvedPartitionDiagnostic[]
 }
 
 /**
@@ -309,16 +409,331 @@ function resolveDuplicateField(
 }
 
 /**
+ * Resolves a top-level editor field by name, returning its `id` when exactly
+ * one top-level field carries that name. Returns `undefined` when none or more
+ * than one match, so a collision diagnostic never points at an ambiguous field.
+ */
+function topLevelFieldIdByName(
+  state: EditorState,
+  name: string
+): string | undefined {
+  const matches = state.fields.filter((field) => field.name === name)
+  return matches.length === 1 ? matches[0]?.id : undefined
+}
+
+/**
+ * Collects reserved-name collisions among top-level fields, mirroring
+ * `findReservedNameCollisions` (C3/C14), and keys each to the colliding editor
+ * field's `id` when it resolves.
+ */
+function collectReservedNameCollisions(
+  state: EditorState,
+  defFields: FieldDefinition[]
+): ReservedNameDiagnostic[] {
+  return findReservedNameCollisions(defFields).map((collision) => {
+    const fieldId = topLevelFieldIdByName(state, collision.name)
+    return {
+      name: collision.name,
+      ...(fieldId === undefined ? {} : { fieldId }),
+    }
+  })
+}
+
+/**
+ * Collects invalid `autoFill` placements (C12/C13/C17): a non-`DateTime`
+ * auto-fill field at the top level, and an auto-fill field nested at any depth
+ * inside an `Object` or `Array`-of-`Object`. Keys each to the offending editor
+ * field's `id` by walking the editor tree in lockstep with the definition.
+ */
+function collectAutoFillPlacement(
+  editorFields: EditorField[],
+  defFields: FieldDefinition[]
+): AutoFillPlacementDiagnostic[] {
+  const findings: AutoFillPlacementDiagnostic[] = []
+
+  // Top level: a non-DateTime auto-fill field is an invalid placement. A
+  // top-level DateTime auto-fill field is valid here (other rules check it).
+  for (const [i, def] of defFields.entries()) {
+    if (def.options?.autoFill === undefined || def.type === "DateTime") {
+      continue
+    }
+    const editor = editorFields[i]
+    findings.push({
+      name: def.name,
+      reason: "non-datetime",
+      ...(editor === undefined ? {} : { fieldId: editor.id }),
+    })
+  }
+
+  // Nested (depth > 0): any auto-fill field inside an Object or
+  // Array-of-Object is invalid regardless of type.
+  const walkNested = (
+    editors: EditorField[],
+    defs: FieldDefinition[]
+  ): void => {
+    for (const [i, def] of defs.entries()) {
+      const editor = editors[i]
+      if (def.options?.autoFill !== undefined) {
+        findings.push({
+          name: def.name,
+          reason: "nested",
+          ...(editor === undefined ? {} : { fieldId: editor.id }),
+        })
+      }
+      if (def.type === "Object" && def.fields !== undefined) {
+        walkNested(editor?.fields ?? [], def.fields)
+      } else if (
+        def.type === "Array" &&
+        def.items?.type === "Object" &&
+        def.items.fields !== undefined
+      ) {
+        walkNested(editor?.items?.fields ?? [], def.items.fields)
+      }
+    }
+  }
+
+  for (const [i, def] of defFields.entries()) {
+    const editor = editorFields[i]
+    if (def.type === "Object" && def.fields !== undefined) {
+      walkNested(editor?.fields ?? [], def.fields)
+    } else if (
+      def.type === "Array" &&
+      def.items?.type === "Object" &&
+      def.items.fields !== undefined
+    ) {
+      walkNested(editor?.items?.fields ?? [], def.items.fields)
+    }
+  }
+
+  return findings
+}
+
+/**
+ * Collects auto-fill fields lacking a compatible enabled mutation (C11/C16).
+ * `autoFill` is valid only with an enabled `append`/`full_load_append`
+ * mutation using the `storage` write method; `full_load`, a disabled/absent
+ * mutation and the `insert` write method all invalidate it.
+ */
+function collectAutoFillMutation(
+  state: EditorState,
+  defFields: FieldDefinition[]
+): AutoFillMutationDiagnostic[] {
+  const autoFillTop = defFields
+    .map((def, index) => ({ def, index }))
+    .filter(({ def }) => def.options?.autoFill !== undefined)
+  if (autoFillTop.length === 0) {
+    return []
+  }
+
+  const { mutation } = state
+  const strategy = mutation.enabled ? mutation.loadStrategy : undefined
+  const allowed = strategy === "append" || strategy === "full_load_append"
+  // The load-strategy reason wins over the write method, matching the schema.
+  let reason: AutoFillMutationDiagnostic["reason"] | undefined
+  if (!mutation.enabled) {
+    reason = "mutation-disabled"
+  } else if (!allowed) {
+    reason = "load-strategy"
+  } else if (effectiveWriteMethod(mutation) === "insert") {
+    reason = "insert"
+  }
+  if (reason === undefined) {
+    return []
+  }
+
+  return autoFillTop.map(({ def, index }) => {
+    const editor = state.fields[index]
+    return {
+      name: def.name,
+      reason,
+      ...(editor === undefined ? {} : { fieldId: editor.id }),
+    }
+  })
+}
+
+/**
+ * Collects partition-string segments referencing a derived companion column
+ * (C15/FR6.3). Only runs when a top-level auto-fill field exists and the
+ * mutation carries a string partition value; every segment whose field name is
+ * a companion name is rejected, in any form (bare or with a `:component`).
+ */
+function collectCompanionPartition(
+  state: EditorState,
+  defFields: FieldDefinition[]
+): CompanionPartitionDiagnostic[] {
+  const { mutation } = state
+  if (!mutation.enabled || mutation.partitioning === false) {
+    return []
+  }
+  const partitionString = serializePartitionSegments(
+    mutation.partitioning,
+    state.fields
+  )
+
+  // Map each companion name to its primary auto-fill field name for the hint.
+  const companionToPrimary = new Map<string, string>()
+  for (const def of defFields) {
+    if (def.options?.autoFill === undefined) {
+      continue
+    }
+    for (const companion of autoFillCompanionNames(def)) {
+      if (!companionToPrimary.has(companion)) {
+        companionToPrimary.set(companion, def.name)
+      }
+    }
+  }
+  if (companionToPrimary.size === 0) {
+    return []
+  }
+
+  const findings: CompanionPartitionDiagnostic[] = []
+  for (const segment of partitionString.split("/")) {
+    const [segmentField = ""] = segment.split(":")
+    const primaryName = companionToPrimary.get(segmentField)
+    if (primaryName !== undefined) {
+      findings.push({ segment, companionName: segmentField, primaryName })
+    }
+  }
+  return findings
+}
+
+/**
+ * Collects partition segments that do not point at exactly one top-level field.
+ *
+ * Only unresolved segments are considered: a resolved segment carries a field
+ * id and therefore always names a field. For each unresolved segment the
+ * current top-level fields decide the outcome — no match is `missing`, several
+ * are `ambiguous`, and exactly one match is fine (the exported name resolves
+ * on its own, even though the stored segment never got its id).
+ *
+ * Two kinds of unresolved segment are deliberately left to other findings so
+ * one mistake is never reported twice: a segment whose syntax the schema
+ * already rejects (`validatePartitioningString`), and a segment naming a
+ * derived companion column, which {@link collectCompanionPartition} reports
+ * with a more precise hint.
+ *
+ * @param state - The live editor state.
+ * @param defFields - The candidate definition's top-level fields, used to
+ *   derive the companion column names.
+ * @returns One finding per offending segment, in segment order.
+ */
+function collectUnresolvedPartition(
+  state: EditorState,
+  defFields: FieldDefinition[]
+): UnresolvedPartitionDiagnostic[] {
+  const { mutation } = state
+  if (!mutation.enabled || mutation.partitioning === false) {
+    return []
+  }
+
+  const companionNames = new Set<string>()
+  for (const def of defFields) {
+    if (def.options?.autoFill === undefined) {
+      continue
+    }
+    for (const companion of autoFillCompanionNames(def)) {
+      companionNames.add(companion)
+    }
+  }
+
+  const findings: UnresolvedPartitionDiagnostic[] = []
+  for (const segment of mutation.partitioning) {
+    if (isResolvedPartitionSegment(segment)) {
+      continue
+    }
+    const { unresolvedName: name, component } = segment
+    const raw = component === undefined ? name : `${name}:${component}`
+    if (companionNames.has(name) || validatePartitioningString(raw) !== null) {
+      continue
+    }
+    const matches = state.fields.filter((field) => field.name === name).length
+    if (matches === 1) {
+      continue
+    }
+    findings.push({
+      name,
+      ...(component === undefined ? {} : { component }),
+      reason: matches === 0 ? "missing" : "ambiguous",
+    })
+  }
+  return findings
+}
+
+/**
+ * The message for an enabled by-field partitioning with no segments chosen.
+ */
+export const EMPTY_PARTITIONING_MESSAGE =
+  'Choose at least one partition field, or set partitioning to "Off".'
+
+/** Whether a schema issue addresses the mutation's `partitioning` value. */
+function isPartitioningPath(path: (string | number)[]): boolean {
+  return (
+    path.length === 2 && path[0] === "mutation" && path[1] === "partitioning"
+  )
+}
+
+/**
+ * Collapses the schema issues an empty by-field selection produces into one.
+ *
+ * With "By field / custom format" active and no segments chosen, the exported
+ * partitioning is the empty string, which the schema rejects twice at the same
+ * path (minimum length, and the partition-format check) with raw validator
+ * wording. Both describe one problem, so they are replaced, at the position of
+ * the first, by a single issue with {@link EMPTY_PARTITIONING_MESSAGE}. The gate
+ * still blocks export; only the count and the wording change.
+ *
+ * Only the no-segments case is collapsed: a non-empty selection whose string is
+ * still invalid (for example a segment naming an unnamed field) keeps the
+ * schema's own messages.
+ *
+ * @param state - The live editor state.
+ * @param issues - The raw schema issues.
+ * @returns The issues with an empty selection reported once.
+ */
+function collapseEmptyPartitionSelection(
+  state: EditorState,
+  issues: SchemaDiagnostic[]
+): SchemaDiagnostic[] {
+  const { mutation } = state
+  const emptySelection =
+    mutation.enabled &&
+    mutation.partitioning !== false &&
+    mutation.partitioning.length === 0
+  if (!emptySelection) {
+    return issues
+  }
+  const collapsed: SchemaDiagnostic[] = []
+  let replaced = false
+  for (const issue of issues) {
+    if (!isPartitioningPath(issue.path)) {
+      collapsed.push(issue)
+      continue
+    }
+    if (!replaced) {
+      collapsed.push({ path: issue.path, message: EMPTY_PARTITIONING_MESSAGE })
+      replaced = true
+    }
+  }
+  return collapsed
+}
+
+/**
  * Evaluates the "valid for export" gate for the current editor state.
  *
  * Builds the candidate definition via {@link toDefinition}, then composes the
- * three checks in order: a parse against `endpointDefinitionSchema`, the
+ * checks in order: a parse against `endpointDefinitionSchema`, the
  * duplicate-field-name check (`findDuplicateFieldNames`, which the schema does
  * not itself enforce), regex constructibility (each `regex` pattern must
- * survive `new RegExp(pattern)`, matching how the CLI emits it), and numeric
+ * survive `new RegExp(pattern)`, matching how the CLI emits it), numeric
  * finiteness (each `min`/`max` bound must be a finite number, since `NaN`
- * serializes to `null` and the CLI would then reject it). The definition is
- * valid for export only when all four pass.
+ * serializes to `null` and the CLI would then reject it), and the four
+ * auto-fill rules — reserved-name collisions (`findReservedNameCollisions`,
+ * C3/C14), valid placement (top-level `DateTime` only, C12/C13/C17), a
+ * compatible enabled mutation (`append`/`full_load_append`, C11/C16), and no
+ * partition segment referencing a derived companion column (C15/FR6.3). The
+ * last three mirror the endpoint schema so the field-keyed Studio findings sit
+ * alongside the raw schema issues (FR4.6). The definition is valid for export
+ * only when every check passes.
  *
  * @param state - The live editor state to evaluate.
  * @returns A {@link ValidationResult} with the gate result and field-keyed
@@ -328,12 +743,10 @@ export function evaluate(state: EditorState): ValidationResult {
   const candidate = toDefinition(state)
 
   const parsed = endpointDefinitionSchema.safeParse(candidate)
-  const schemaIssues: SchemaDiagnostic[] = parsed.success
+  const rawSchemaIssues: SchemaDiagnostic[] = parsed.success
     ? []
-    : (parsed.error.issues as ParseIssue[]).map((issue) => {
-        const path = issue.path.map((segment) =>
-          typeof segment === "number" ? segment : String(segment)
-        )
+    : flattenEndpointIssues(parsed.error).map((issue) => {
+        const { path } = issue
         const field = resolveFieldByPath(state, path)
         return {
           path,
@@ -341,6 +754,7 @@ export function evaluate(state: EditorState): ValidationResult {
           ...(field === undefined ? {} : { fieldId: field.id }),
         }
       })
+  const schemaIssues = collapseEmptyPartitionSelection(state, rawSchemaIssues)
 
   const duplicates: DuplicateDiagnostic[] = findDuplicateFieldNames(
     candidate.fields
@@ -360,13 +774,45 @@ export function evaluate(state: EditorState): ValidationResult {
     candidate.fields
   )
 
+  const reservedNames = collectReservedNameCollisions(state, candidate.fields)
+
+  const autoFillPlacement = collectAutoFillPlacement(
+    state.fields,
+    candidate.fields
+  )
+
+  const autoFillMutation = collectAutoFillMutation(state, candidate.fields)
+
+  const companionPartition = collectCompanionPartition(state, candidate.fields)
+
+  const unresolvedPartition = collectUnresolvedPartition(
+    state,
+    candidate.fields
+  )
+
   const validForExport =
     parsed.success &&
     duplicates.length === 0 &&
     badRegex.length === 0 &&
-    badNumber.length === 0
+    badNumber.length === 0 &&
+    reservedNames.length === 0 &&
+    autoFillPlacement.length === 0 &&
+    autoFillMutation.length === 0 &&
+    companionPartition.length === 0 &&
+    unresolvedPartition.length === 0
 
-  return { validForExport, schemaIssues, duplicates, badRegex, badNumber }
+  return {
+    validForExport,
+    schemaIssues,
+    duplicates,
+    badRegex,
+    badNumber,
+    reservedNames,
+    autoFillPlacement,
+    autoFillMutation,
+    companionPartition,
+    unresolvedPartition,
+  }
 }
 
 /**

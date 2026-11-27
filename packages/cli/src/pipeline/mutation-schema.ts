@@ -15,6 +15,8 @@ import {
   property,
   stringLiteral,
 } from "@lakeql/file-generator/ast-builders"
+import type { StorageConfigProps } from "@lakeql/file-generator/config"
+import { autoFillCompanionNames } from "@lakeql/schema-generator/endpoint-schema"
 import type {
   FieldDefinition,
   MutationConfig,
@@ -32,6 +34,11 @@ export interface GenerateMutationSchemaProps {
   mutationName: string
   /** The mutation pipeline configuration from the endpoint definition (false or config object). */
   mutationConfig?: false | MutationConfig
+  /**
+   * The `storageConfig` value emitted into `config.ts`. Required when the
+   * mutation is enabled: the resolver references exactly the keys it carries.
+   */
+  storageConfig?: StorageConfigProps
   /** Whether validations.ts will be generated (at least one field has validations). */
   hasValidations?: boolean
   /** Optional field definitions with options (for required/nullable mapping). */
@@ -53,6 +60,7 @@ export function generateMutationSchema({
   models,
   mutationName,
   mutationConfig,
+  storageConfig,
   hasValidations,
   fieldDefinitions,
 }: GenerateMutationSchemaProps): ts.Node[] {
@@ -72,6 +80,12 @@ export function generateMutationSchema({
   // Build a set of field names that are read-only (excluded from mutation input)
   const excludedSet = buildExcludedSet(fieldDefinitions)
 
+  if (!storageConfig) {
+    throw new Error(
+      "generateMutationSchema requires storageConfig when mutation is enabled"
+    )
+  }
+
   // Separate nested models from root model
   const nestedModels = Object.values(models).filter((model) => !model.root)
 
@@ -85,7 +99,7 @@ export function generateMutationSchema({
     generateRealMutationFields(
       mutationName,
       rootModel,
-      mutationConfig,
+      storageConfig,
       hasValidations
     ),
   ]
@@ -112,8 +126,12 @@ function buildRequiredMap(
 }
 
 /**
- * Builds a set of field names that have readOnly: true.
- * These fields should be excluded from mutation input types.
+ * Builds the set of field names excluded from mutation input types (DD4).
+ *
+ * A field is excluded when it is `readOnly`, when it carries an `autoFill`
+ * directive, or when it is a derived companion column of an `autoFill` field
+ * (`<name>_year`/`<name>_month`). Query and interface generation never apply
+ * this set, so those fields remain query-visible while being mutation-hidden.
  */
 function buildExcludedSet(fieldDefinitions?: FieldDefinition[]): Set<string> {
   const set = new Set<string>()
@@ -123,6 +141,12 @@ function buildExcludedSet(fieldDefinitions?: FieldDefinition[]): Set<string> {
   for (const field of fieldDefinitions) {
     if (field.options?.readOnly === true) {
       set.add(field.name)
+    }
+    if (field.options?.autoFill !== undefined) {
+      set.add(field.name)
+      for (const companion of autoFillCompanionNames(field)) {
+        set.add(companion)
+      }
     }
   }
   return set
@@ -293,7 +317,7 @@ function getPrimitiveListMethod(innerType: string): string | undefined {
 function generateRealMutationFields(
   mutationName: string,
   rootModel: ModelResponse,
-  mutationConfig: MutationConfig,
+  storageConfig: StorageConfigProps,
   hasValidations?: boolean
 ): ts.Node {
   const rootInputTypeName = `${rootModel.modelName}Input`
@@ -336,7 +360,7 @@ function generateRealMutationFields(
     )
   )
 
-  // config: { table: {...}, loadStrategy, basePath, partitioning?, partitioningFormat? }
+  // config: { table: {...}, writeMethod, loadStrategy, basePath?, partitioning?, autoFillFields? }
   const configProperties: ts.PropertyAssignment[] = [
     property(
       "table",
@@ -349,23 +373,26 @@ function generateRealMutationFields(
         false
       )
     ),
+    property("writeMethod", access("storageConfig", "writeMethod")),
     property("loadStrategy", access("storageConfig", "loadStrategy")),
-    property("basePath", access("storageConfig", "basePath")),
   ]
 
   // Mirror the storageConfig shape emitted by generateConfig: only reference
-  // partitioning keys that were actually written to storageConfig.
-  if (mutationConfig.partitioning !== undefined) {
+  // keys that were actually written to storageConfig.
+  if (storageConfig.basePath !== undefined) {
+    configProperties.push(
+      property("basePath", access("storageConfig", "basePath"))
+    )
+  }
+  if (storageConfig.partitioning !== undefined) {
     configProperties.push(
       property("partitioning", access("storageConfig", "partitioning"))
     )
   }
-  if (mutationConfig.partitioningFormat) {
+  // Forward autoFillFields only when the storageConfig actually carries them.
+  if (storageConfig.autoFillFields && storageConfig.autoFillFields.length > 0) {
     configProperties.push(
-      property(
-        "partitioningFormat",
-        access("storageConfig", "partitioningFormat")
-      )
+      property("autoFillFields", access("storageConfig", "autoFillFields"))
     )
   }
 

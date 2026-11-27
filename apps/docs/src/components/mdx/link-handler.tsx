@@ -1,9 +1,9 @@
+import { cn } from "cn"
 import { ExternalLinkIcon } from "lucide-react"
 import Link from "next/link"
 import type { ComponentPropsWithoutRef } from "react"
 
 import { normalizeInternalHref } from "@/lib/normalize-internal-href"
-import { cn } from "@/lib/utils"
 
 type AnchorProps = ComponentPropsWithoutRef<"a">
 

@@ -1,7 +1,7 @@
+import { cn } from "cn"
 import * as React from "react"
 
 import { SidebarProvider } from "@/components/ui/sidebar"
-import { cn } from "@/lib/utils"
 
 // Keep grid-specific desktop behavior isolated from the core shadcn sidebar.
 // This allows replacing `sidebar.tsx` with upstream updates with minimal merge effort.

@@ -115,7 +115,7 @@ describe("config file generator", () => {
     expect(generatedCodeFromFactory.fileName).toBe("vitest_config.ts")
   })
 
-  it("config file w/ storageConfig partitioning: true", async () => {
+  it("config file w/ storageConfig autoFill partition string", async () => {
     const generatedFactoryCode = generateConfig({
       adapter: "trino",
       dataSourceName: "test",
@@ -125,10 +125,11 @@ describe("config file generator", () => {
       schema: "vitest_schema",
       tableName: "vitest_table",
       storageConfig: {
+        writeMethod: "storage",
         loadStrategy: "full_load_append",
         basePath: "data/events",
-        partitioning: true,
-        partitioningFormat: "year/month/day",
+        partitioning: "load_timestamp:year/load_timestamp:month",
+        autoFillFields: [{ name: "load_timestamp", kind: "write_timestamp" }],
       },
     })
 
@@ -154,10 +155,11 @@ describe("config file generator", () => {
       }
 
       export const storageConfig = {
+        writeMethod: "storage",
         loadStrategy: "full_load_append",
         basePath: "data/events",
-        partitioning: true,
-        partitioningFormat: "year/month/day",
+        partitioning: "load_timestamp:year/load_timestamp:month",
+        autoFillFields: [{ name: "load_timestamp", kind: "write_timestamp" }],
       } as const
     `)
 
@@ -174,6 +176,7 @@ describe("config file generator", () => {
       schema: "vitest_schema",
       tableName: "vitest_table",
       storageConfig: {
+        writeMethod: "storage",
         loadStrategy: "append",
         basePath: "data/events",
         partitioning: false,
@@ -202,6 +205,7 @@ describe("config file generator", () => {
       }
 
       export const storageConfig = {
+        writeMethod: "storage",
         loadStrategy: "append",
         basePath: "data/events",
         partitioning: false,
@@ -221,10 +225,10 @@ describe("config file generator", () => {
       schema: "vitest_schema",
       tableName: "vitest_table",
       storageConfig: {
+        writeMethod: "storage",
         loadStrategy: "append",
         basePath: "data/events",
         partitioning: "event_date",
-        partitioningFormat: "year/month",
       },
     })
 
@@ -250,17 +254,17 @@ describe("config file generator", () => {
       }
 
       export const storageConfig = {
+        writeMethod: "storage",
         loadStrategy: "append",
         basePath: "data/events",
         partitioning: "event_date",
-        partitioningFormat: "year/month",
       } as const
     `)
 
     expect(generatedCodeFromFactory.text).toBe(expectedCode)
   })
 
-  it("config file w/ storageConfig partitioningFormat: year", async () => {
+  it("config file w/ storageConfig full_load_append partitioning", async () => {
     const generatedFactoryCode = generateConfig({
       adapter: "trino",
       dataSourceName: "test",
@@ -270,10 +274,10 @@ describe("config file generator", () => {
       schema: "vitest_schema",
       tableName: "vitest_table",
       storageConfig: {
+        writeMethod: "storage",
         loadStrategy: "full_load_append",
         basePath: "data/events",
-        partitioning: true,
-        partitioningFormat: "year",
+        partitioning: "event_date",
       },
     })
 
@@ -299,13 +303,36 @@ describe("config file generator", () => {
       }
 
       export const storageConfig = {
+        writeMethod: "storage",
         loadStrategy: "full_load_append",
         basePath: "data/events",
-        partitioning: true,
-        partitioningFormat: "year",
+        partitioning: "event_date",
       } as const
     `)
 
     expect(generatedCodeFromFactory.text).toBe(expectedCode)
+  })
+
+  it("omits basePath, partitioning and autoFillFields for the insert method", async () => {
+    const nodes = generateConfig({
+      adapter: "trino",
+      dataSourceName: "test",
+      catalog: "vitest_catalog",
+      mutationName: ["vitest_mutation_name"],
+      queryName: "vitest_query_name",
+      schema: "vitest_schema",
+      tableName: "vitest_table",
+      storageConfig: { writeMethod: "insert", loadStrategy: "append" },
+    })
+    const generated = await generateCode({
+      fileName: "vitest_config.ts",
+      nodes,
+    })
+
+    expect(generated.text).toContain('writeMethod: "insert"')
+    expect(generated.text).toContain('loadStrategy: "append"')
+    expect(generated.text).not.toContain("basePath")
+    expect(generated.text).not.toContain("partitioning")
+    expect(generated.text).not.toContain("autoFillFields")
   })
 })

@@ -2,6 +2,7 @@ import type {
   FieldOptions,
   LoadStrategy,
   PrimitiveType,
+  WriteMethod,
 } from "@lakeql/schema-generator/endpoint-schema"
 
 /**
@@ -56,32 +57,73 @@ export interface EditorArrayItem {
 }
 
 /**
+ * One segment of the by-field partition path, held in the editor state by the
+ * stable client-side field `id` rather than by name, so renaming a field keeps
+ * its segments attached and two fields with the same name stay unambiguous.
+ *
+ * `component` is a raw string (not narrowed to the schema's date components) so
+ * an imported, possibly invalid, component survives a round trip unchanged and
+ * is still flagged by validation.
+ */
+export interface EditorResolvedPartitionSegment {
+  /** The `id` of the referenced field. */
+  fieldId: string
+  /** Date component, present only for a `field:component` segment. */
+  component?: string
+}
+
+/**
+ * A partition segment imported from an `endpoint.json` whose field name could
+ * not be resolved to exactly one top-level field (no such field, or the name is
+ * duplicated). It keeps its raw name so validation still flags it and the
+ * export writes it back unchanged.
+ */
+export interface EditorUnresolvedPartitionSegment {
+  /** The raw field name exactly as imported. */
+  unresolvedName: string
+  /** The raw component text, present only for a `name:component` segment. */
+  component?: string
+}
+
+/**
+ * A partition segment in the editor state: either bound to a field by id or an
+ * unresolved imported name. Serialized to the name-based `field` /
+ * `field:component` string on export.
+ */
+export type EditorPartitionSegment =
+  | EditorResolvedPartitionSegment
+  | EditorUnresolvedPartitionSegment
+
+/**
  * Mutation configuration in the editor, modeled with an explicit `enabled`
  * discriminant so the UI can hold a fully-configured-but-disabled state and
  * toggle it without losing values.
  *
  * When disabled it exports as the literal `false`; when enabled it exports as a
- * config object. `partitioning`/`partitioningFormat` always carry their
- * effective-default values here so the UI can show them; the mapping layer
- * omits them from the export when they equal the runtime defaults.
+ * config object. `partitioning` always carries its effective-default
+ * value here so the UI can show it.
  */
 export type EditorMutation =
   | { enabled: false }
   | {
       enabled: true
       loadStrategy: LoadStrategy
+      /**
+       * How the data source writes records. `"insert"` has no base path or
+       * partitioning, so the mapping layer omits both on export.
+       */
+      writeMethod: WriteMethod
+      /** Base path; empty and unused while `writeMethod` is `"insert"`. */
       basePath: string
       /**
-       * Partitioning mode: `true` (by write timestamp), `false` (off), or a
-       * field/custom string.
+       * Partitioning mode: `false` (off, flat layout) or the ordered list of
+       * by-field partition segments (empty while none is chosen yet). Segments
+       * reference fields by id; the mapping layer serializes them to the
+       * name-based partition string on export. The write-timestamp `true` mode
+       * was removed — a write-timestamp column is now an explicit auto-fill
+       * field, not an implicit partitioning mode.
        */
-      partitioning: boolean | string
-      /**
-       * Partition granularity, relevant only in non-custom modes. Always held
-       * so the control has a value to show; omitted on export when it equals
-       * the effective default.
-       */
-      partitioningFormat: string
+      partitioning: false | EditorPartitionSegment[]
     }
 
 /**
@@ -89,7 +131,7 @@ export type EditorMutation =
  * `EndpointDefinitionFormat` that can also represent transient invalid states.
  */
 export interface EditorState {
-  version: "1.0"
+  version: "2.0"
   tableName: string
   catalog: string
   schema: string
@@ -110,18 +152,6 @@ export interface HistoryState {
   /** Index of the active snapshot within {@link snapshots}. */
   cursor: number
 }
-
-/**
- * The effective runtime default for `partitioning` when the key is absent from
- * a mutation config: partition by write timestamp.
- */
-export const DEFAULT_PARTITIONING = true
-
-/**
- * The effective runtime default for `partitioningFormat` when the key is absent
- * from a mutation config.
- */
-export const DEFAULT_PARTITIONING_FORMAT = "year/month/day"
 
 /**
  * The maximum number of snapshots the in-memory history retains. Pushing past
@@ -150,14 +180,14 @@ export function createFieldId(): string {
 let idCounter = 0
 
 /**
- * Creates a fresh, empty editor state for a first-run session: `version "1.0"`,
+ * Creates a fresh, empty editor state for a first-run session: `version "2.0"`,
  * empty metadata, no fields, and mutation disabled.
  *
  * @returns A new {@link EditorState} seeded with the documented defaults.
  */
 export function createFreshState(): EditorState {
   return {
-    version: "1.0",
+    version: "2.0",
     tableName: "",
     catalog: "",
     schema: "",
@@ -213,6 +243,56 @@ export function commitSnapshot(
 }
 
 /**
+ * Whether an undo is possible — the cursor is not already at the oldest
+ * snapshot.
+ *
+ * @param history - The history to inspect.
+ * @returns `true` when {@link undo} would move the cursor.
+ */
+export function canUndo(history: HistoryState): boolean {
+  return history.cursor > 0
+}
+
+/**
+ * Whether a redo is possible — the cursor is not already at the newest
+ * snapshot.
+ *
+ * @param history - The history to inspect.
+ * @returns `true` when {@link redo} would move the cursor.
+ */
+export function canRedo(history: HistoryState): boolean {
+  return history.cursor < history.snapshots.length - 1
+}
+
+/**
+ * Moves the cursor one snapshot toward the past, restoring the previous
+ * committed state. Clamped at the oldest snapshot: undoing past the start is a
+ * no-op that returns an equivalent history.
+ *
+ * @param history - The history to move the cursor in.
+ * @returns A new {@link HistoryState} with the cursor decremented (clamped);
+ *   the input is not mutated. The `snapshots` are unchanged (no truncation).
+ */
+export function undo(history: HistoryState): HistoryState {
+  const cursor = Math.max(0, history.cursor - 1)
+  return { snapshots: history.snapshots, cursor }
+}
+
+/**
+ * Moves the cursor one snapshot toward the future, reapplying the next
+ * committed state. Clamped at the newest snapshot: redoing past the end is a
+ * no-op that returns an equivalent history.
+ *
+ * @param history - The history to move the cursor in.
+ * @returns A new {@link HistoryState} with the cursor incremented (clamped);
+ *   the input is not mutated.
+ */
+export function redo(history: HistoryState): HistoryState {
+  const cursor = Math.min(history.snapshots.length - 1, history.cursor + 1)
+  return { snapshots: history.snapshots, cursor }
+}
+
+/**
  * Replaces the active snapshot in place without adding a new history entry.
  *
  * Used for the live, per-keystroke update of a continuous text edit: the
@@ -252,6 +332,19 @@ export interface CoalescingCommitter {
    * scheduled debounce. A no-op when nothing is pending.
    */
   flush: () => void
+  /**
+   * Replaces the committed history wholesale, after flushing any pending edit
+   * so it is not lost.
+   *
+   * This is the path undo/redo takes: the caller computes an undone/redone
+   * {@link HistoryState} (a cursor move over the same snapshots) and installs
+   * it as the new committed history. Any in-flight continuous edit is settled
+   * into its snapshot first, so switching the cursor never discards a pending
+   * keystroke.
+   *
+   * @param next - The history to install as the committed history.
+   */
+  setHistory: (next: HistoryState) => void
   /** The current history, reflecting live edits and committed snapshots. */
   readonly history: HistoryState
 }
@@ -325,6 +418,13 @@ export function createCoalescingCommitter(
     flush() {
       cancel()
       commitPending()
+    },
+    setHistory(next) {
+      // Settle any in-flight edit into the current committed history first, so
+      // a pending keystroke is not lost when the history is replaced.
+      cancel()
+      commitPending()
+      committed = next
     },
     get history() {
       // While an edit is pending, show it at the cursor without yet committing.

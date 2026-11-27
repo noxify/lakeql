@@ -574,12 +574,7 @@ export async function getSiblings(
     return [undefined, undefined]
   }
 
-  return [
-    currentIndex > 0 ? visibleEntries[currentIndex - 1] : undefined,
-    currentIndex < visibleEntries.length - 1
-      ? visibleEntries[currentIndex + 1]
-      : undefined,
-  ]
+  return [visibleEntries[currentIndex - 1], visibleEntries[currentIndex + 1]]
 }
 
 export function isHidden(

@@ -299,3 +299,71 @@ describe(createTrinoInsertWriteStrategy, () => {
     })
   })
 })
+
+function build() {
+  const fake = createFakeDataSource()
+  const strategy = createTrinoInsertWriteStrategy({
+    dataSource: fake.dataSource,
+    dataSourceName: "src",
+    config: {},
+  })
+  return { fake, strategy }
+}
+
+describe("createTrinoInsertWriteStrategy - write method check", () => {
+  const table = { catalog: "hive", schema: "analytics", tableName: "events" }
+
+  it("rejects writeMethod storage before any SQL, also for empty records", async () => {
+    const { fake, strategy } = build()
+
+    await expect(
+      strategy.write(writeInput({ config: { table, writeMethod: "storage" } }))
+    ).rejects.toThrow(/data source "src" uses the insert write strategy/u)
+    await expect(
+      strategy.write(
+        writeInput({ records: [], config: { table, writeMethod: "storage" } })
+      )
+    ).rejects.toThrow(/writeMethod "storage"/u)
+
+    expect(fake.sqls).toHaveLength(0)
+  })
+
+  it.each([
+    ["basePath", { basePath: "x" }],
+    ["partitioning", { partitioning: "id" }],
+    [
+      "autoFillFields",
+      { autoFillFields: [{ name: "ts", kind: "write_timestamp" as const }] },
+    ],
+  ])(
+    "rejects %s before any SQL, also for empty records",
+    async (key, extra) => {
+      const { fake, strategy } = build()
+
+      await expect(
+        strategy.write(writeInput({ records: [], config: { table, ...extra } }))
+      ).rejects.toThrow(new RegExp(`does not support ${key}`, "u"))
+
+      expect(fake.sqls).toHaveLength(0)
+    }
+  )
+
+  it("accepts writeMethod insert, absent writeMethod and partitioning false", async () => {
+    const { fake, strategy } = build()
+
+    await strategy.write(
+      writeInput({
+        config: {
+          table,
+          loadStrategy: "append",
+          writeMethod: "insert",
+          partitioning: false,
+          autoFillFields: [],
+        },
+      })
+    )
+    await strategy.write(writeInput())
+
+    expect(fake.sqls.filter((s) => s.startsWith("INSERT INTO"))).toHaveLength(2)
+  })
+})

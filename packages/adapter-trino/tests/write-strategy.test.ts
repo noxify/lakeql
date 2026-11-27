@@ -217,7 +217,7 @@ describe(createTrinoWriteStrategy, () => {
           tableManager: mockTableManager,
           serializer: mockSerializer,
           partitioning: undefined,
-          partitioningFormat: undefined,
+          autoFillFields: undefined,
           keepShadowTables: undefined,
         },
       })
@@ -274,7 +274,7 @@ describe(createTrinoWriteStrategy, () => {
       )
     })
 
-    it("passes partitioning and partitioningFormat through", async () => {
+    it("passes partitioning through", async () => {
       const strategy = createTrinoWriteStrategy({
         files: mockFiles,
         dataSource: mockDataSource,
@@ -287,16 +287,45 @@ describe(createTrinoWriteStrategy, () => {
         config: {
           basePath: "warehouse/events",
           table: { catalog: "hive", schema: "db", tableName: "events" },
-          partitioning: true,
-          partitioningFormat: "year/month",
+          partitioning: "event_date:year/event_date:month",
         },
       })
 
       expect(mockExecuteWritePipeline).toHaveBeenCalledWith(
         expect.objectContaining({
           config: expect.objectContaining({
-            partitioning: true,
-            partitioningFormat: "year/month",
+            partitioning: "event_date:year/event_date:month",
+          }),
+        })
+      )
+    })
+
+    it("forwards autoFillFields verbatim into executeWritePipeline (C4)", async () => {
+      const strategy = createTrinoWriteStrategy({
+        files: mockFiles,
+        dataSource: mockDataSource,
+        serializer: mockSerializer,
+      })
+
+      const autoFillFields = [
+        { name: "ingested_at", kind: "write_timestamp" as const },
+      ]
+
+      await strategy.write({
+        records: [{ id: 1 }],
+        schema: {},
+        config: {
+          basePath: "warehouse/events",
+          table: { catalog: "hive", schema: "db", tableName: "events" },
+          loadStrategy: "append",
+          autoFillFields,
+        },
+      })
+
+      expect(mockExecuteWritePipeline).toHaveBeenCalledWith(
+        expect.objectContaining({
+          config: expect.objectContaining({
+            autoFillFields,
           }),
         })
       )
@@ -482,5 +511,66 @@ describe(createTrinoWriteStrategy, () => {
       expect((caught as { phase: string }).phase).toBe("ddl")
       expect((caught as { committed: boolean }).committed).toBeFalsy()
     })
+  })
+})
+
+function buildStrategy(dataSourceName?: string) {
+  return createTrinoWriteStrategy({
+    files: createMockFiles(),
+    dataSource: createMockDataSource(),
+    dataSourceName,
+    serializer: createMockSerializer(),
+  })
+}
+
+describe("createTrinoWriteStrategy - write method check", () => {
+  const table = { catalog: "hive", schema: "s", tableName: "t" }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockExecuteWritePipeline.mockResolvedValue()
+  })
+
+  it("rejects writeMethod insert before any storage call, naming the data source", async () => {
+    const strategy = buildStrategy("warehouse")
+
+    await expect(
+      strategy.write({
+        records: [{ id: 1 }],
+        schema: {},
+        config: { table, basePath: "p", writeMethod: "insert" },
+      })
+    ).rejects.toThrow(
+      /data source "warehouse" uses the storage write strategy/u
+    )
+
+    expect(mockExecuteWritePipeline).not.toHaveBeenCalled()
+  })
+
+  it("rejects writeMethod insert without a data source name", async () => {
+    await expect(
+      buildStrategy().write({
+        records: [],
+        schema: {},
+        config: { table, writeMethod: "insert" },
+      })
+    ).rejects.toThrow(/this data source uses the storage write strategy/u)
+  })
+
+  it("skips the check when writeMethod is absent or storage", async () => {
+    const strategy = buildStrategy("warehouse")
+
+    await strategy.write({
+      records: [{ id: 1 }],
+      schema: {},
+      config: { table, basePath: "p" },
+    })
+    await strategy.write({
+      records: [{ id: 1 }],
+      schema: {},
+      config: { table, basePath: "p", writeMethod: "storage" },
+    })
+
+    expect(mockExecuteWritePipeline).toHaveBeenCalledTimes(2)
   })
 })

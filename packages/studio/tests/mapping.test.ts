@@ -13,7 +13,7 @@ import { defined } from "./helpers"
  * validation kind, and non-default options.
  */
 const nestedDefinition: EndpointDefinitionFormat = {
-  version: "1.0",
+  version: "2.0",
   tableName: "events",
   catalog: "main",
   schema: "public",
@@ -85,7 +85,7 @@ function withMutation(
   mutation: EndpointDefinitionFormat["mutation"]
 ): EndpointDefinitionFormat {
   return {
-    version: "1.0",
+    version: "2.0",
     tableName: "t",
     catalog: "c",
     schema: "s",
@@ -102,11 +102,20 @@ describe("round-trip stability", () => {
     expect(endpointDefinitionSchema.safeParse(round).success).toBeTruthy()
   })
 
-  it.each<{ name: string; mutation: EndpointDefinitionFormat["mutation"] }>([
+  // An enabled mutation always exports an explicit `partitioning` value (C8):
+  // an absent key resolves to `false` (off), so a minimal enabled mutation is
+  // NOT a pure round-trip — the re-export gains `partitioning: false`. Cases
+  // that already carry an explicit `partitioning` round-trip exactly.
+  it.each<{
+    name: string
+    mutation: EndpointDefinitionFormat["mutation"]
+    gainsExplicitOff?: boolean
+  }>([
     { name: "disabled", mutation: false },
     {
-      name: "timestamp default (minimal)",
+      name: "minimal enabled (absent partitioning ⇒ off)",
       mutation: { loadStrategy: "append", basePath: "/data" },
+      gainsExplicitOff: true,
     },
     {
       name: "partitioning off",
@@ -117,22 +126,6 @@ describe("round-trip stability", () => {
       },
     },
     {
-      name: "partitioning year",
-      mutation: {
-        loadStrategy: "full_load_append",
-        basePath: "/d",
-        partitioningFormat: "year",
-      },
-    },
-    {
-      name: "partitioning year/month",
-      mutation: {
-        loadStrategy: "append",
-        basePath: "/d",
-        partitioningFormat: "year/month",
-      },
-    },
-    {
       name: "custom field partitioning",
       mutation: {
         loadStrategy: "append",
@@ -140,19 +133,24 @@ describe("round-trip stability", () => {
         partitioning: "created_at:year/region",
       },
     },
-    {
-      name: "legacy single-field partitioning with format",
-      mutation: {
-        loadStrategy: "append",
-        basePath: "/d",
-        partitioning: "created_at",
-        partitioningFormat: "year/month",
-      },
-    },
-  ])("round-trips mutation mode: $name", ({ mutation }) => {
+  ])("round-trips mutation mode: $name", ({ mutation, gainsExplicitOff }) => {
     const def = withMutation(mutation)
     const round = toDefinition(fromDefinition(def))
-    expect(round).toStrictEqual(def)
+    // An enabled mutation always gains an explicit `writeMethod` (absent ⇒
+    // "storage"), and a minimal one an explicit `partitioning: false` (C8);
+    // every other case round-trips exactly.
+    const expected =
+      mutation === false
+        ? def
+        : {
+            ...def,
+            mutation: {
+              ...mutation,
+              writeMethod: "storage",
+              ...(gainsExplicitOff ? { partitioning: false } : {}),
+            },
+          }
+    expect(round).toStrictEqual(expected)
     expect(endpointDefinitionSchema.safeParse(round).success).toBeTruthy()
   })
 })
@@ -179,33 +177,19 @@ describe("minimal JSON", () => {
     expect(def).toHaveProperty("mutation", false)
   })
 
-  it("omits partitioning when it equals the effective default (true)", () => {
+  it("always emits an explicit partitioning for an enabled mutation (absent ⇒ false)", () => {
     const def = toDefinition(
       fromDefinition(withMutation({ loadStrategy: "append", basePath: "/d" }))
     )
     expect(def.mutation).toStrictEqual({
       loadStrategy: "append",
+      writeMethod: "storage",
       basePath: "/d",
+      partitioning: false,
     })
   })
 
-  it("omits partitioningFormat when it equals the effective default", () => {
-    const def = toDefinition(
-      fromDefinition(
-        withMutation({
-          loadStrategy: "append",
-          basePath: "/d",
-          partitioningFormat: "year/month/day",
-        })
-      )
-    )
-    expect(def.mutation).toStrictEqual({
-      loadStrategy: "append",
-      basePath: "/d",
-    })
-  })
-
-  it("omits partitioningFormat when partitioning is off", () => {
+  it("keeps an explicit false when partitioning is off", () => {
     const def = toDefinition(
       fromDefinition(
         withMutation({
@@ -217,12 +201,13 @@ describe("minimal JSON", () => {
     )
     expect(def.mutation).toStrictEqual({
       loadStrategy: "append",
+      writeMethod: "storage",
       basePath: "/d",
       partitioning: false,
     })
   })
 
-  it("omits partitioningFormat when partitioning is a custom string", () => {
+  it("keeps a custom partitioning string", () => {
     const def = toDefinition(
       fromDefinition(
         withMutation({
@@ -234,6 +219,7 @@ describe("minimal JSON", () => {
     )
     expect(def.mutation).toStrictEqual({
       loadStrategy: "append",
+      writeMethod: "storage",
       basePath: "/d",
       partitioning: "a/b",
     })
@@ -255,15 +241,72 @@ describe("minimal JSON", () => {
   })
 })
 
+describe("no field is injected on export (auto-fill is explicit)", () => {
+  it("never injects a load_timestamp field for any partitioning value", () => {
+    const off = toDefinition(
+      fromDefinition(withMutation({ loadStrategy: "append", basePath: "/d" }))
+    )
+    const fieldMode = toDefinition(
+      fromDefinition(
+        withMutation({
+          loadStrategy: "append",
+          basePath: "/d",
+          partitioning: "created_at",
+        })
+      )
+    )
+    const disabled = toDefinition(fromDefinition(withMutation(false)))
+    for (const def of [off, fieldMode, disabled]) {
+      expect(
+        def.fields.some((field) => field.name === "load_timestamp")
+      ).toBeFalsy()
+    }
+  })
+
+  it("preserves an explicit auto-fill field verbatim on export (no companions injected)", () => {
+    // A declared auto-fill field is an ordinary persisted field; its derived
+    // companions live in codegen, never in the exported fields (Option Y).
+    const def = toDefinition(
+      fromDefinition({
+        version: "2.0",
+        tableName: "t",
+        catalog: "c",
+        schema: "s",
+        fields: [
+          { name: "id", type: "String" },
+          {
+            name: "load_timestamp",
+            type: "DateTime",
+            options: { autoFill: "write_timestamp" },
+          },
+        ],
+        mutation: {
+          loadStrategy: "append",
+          basePath: "/d",
+          partitioning: false,
+        },
+      })
+    )
+    expect(def.fields).toStrictEqual([
+      { name: "id", type: "String" },
+      {
+        name: "load_timestamp",
+        type: "DateTime",
+        options: { autoFill: "write_timestamp" },
+      },
+    ])
+    expect(endpointDefinitionSchema.safeParse(def).success).toBeTruthy()
+  })
+})
+
 describe("fromDefinition materializes effective defaults", () => {
-  it("fills partitioning/partitioningFormat on an enabled minimal mutation", () => {
+  it("resolves an absent partitioning to off (false)", () => {
     const state = fromDefinition(
       withMutation({ loadStrategy: "append", basePath: "/d" })
     )
     expect(state.mutation).toMatchObject({
       enabled: true,
-      partitioning: true,
-      partitioningFormat: "year/month/day",
+      partitioning: false,
     })
   })
 
@@ -284,5 +327,40 @@ describe("fromDefinition materializes effective defaults", () => {
     collect(state.fields)
     expect(ids.every((id) => id.length > 0)).toBeTruthy()
     expect(new Set(ids).size).toBe(ids.length)
+  })
+})
+
+describe("write method mapping", () => {
+  it("imports an absent writeMethod as storage", () => {
+    const state = fromDefinition(
+      withMutation({ loadStrategy: "append", basePath: "/d" })
+    )
+    expect(state.mutation).toMatchObject({
+      enabled: true,
+      writeMethod: "storage",
+      basePath: "/d",
+    })
+  })
+
+  it("round-trips insert and omits basePath and partitioning", () => {
+    const def = withMutation({
+      loadStrategy: "append",
+      writeMethod: "insert",
+      partitioning: false,
+    })
+    const state = fromDefinition(def)
+    const round = toDefinition(state)
+
+    expect(state.mutation).toMatchObject({
+      enabled: true,
+      writeMethod: "insert",
+      basePath: "",
+      partitioning: false,
+    })
+    expect(round.mutation).toStrictEqual({
+      loadStrategy: "append",
+      writeMethod: "insert",
+    })
+    expect(endpointDefinitionSchema.safeParse(round).success).toBeTruthy()
   })
 })

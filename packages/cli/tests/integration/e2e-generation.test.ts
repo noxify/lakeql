@@ -23,15 +23,14 @@ const { generateEndpoint } = await import("@/pipeline/generate")
  * Complex endpoint definition exercising all primitive types, nested objects, and arrays.
  */
 const complexDefinition: EndpointDefinitionFormat = {
-  version: "1.0",
+  version: "2.0",
   tableName: "user_events",
   catalog: "analytics",
   schema: "tracking",
   mutation: {
     loadStrategy: "full_load",
     basePath: "warehouse/analytics/tracking/user_events",
-    partitioning: true,
-    partitioningFormat: "year/month/day",
+    partitioning: "event_date:year/event_date:month/event_date:day",
   },
   fields: [
     { name: "event_id", type: "String" },
@@ -79,15 +78,14 @@ const complexDefinition: EndpointDefinitionFormat = {
  * Endpoint definition with partitioning config (non-full_load strategy).
  */
 const partitionedDefinition: EndpointDefinitionFormat = {
-  version: "1.0",
+  version: "2.0",
   tableName: "partitioned_events",
   catalog: "analytics",
   schema: "tracking",
   mutation: {
     loadStrategy: "append",
     basePath: "warehouse/analytics/tracking/partitioned_events",
-    partitioning: "event_date",
-    partitioningFormat: "year/month",
+    partitioning: "event_date:year/event_date:month",
   },
   fields: [
     { name: "event_id", type: "String" },
@@ -99,15 +97,14 @@ const partitionedDefinition: EndpointDefinitionFormat = {
  * Endpoint definition with full_load strategy (partitioning should be omitted).
  */
 const fullLoadDefinition: EndpointDefinitionFormat = {
-  version: "1.0",
+  version: "2.0",
   tableName: "full_load_events",
   catalog: "analytics",
   schema: "tracking",
   mutation: {
     loadStrategy: "full_load",
     basePath: "warehouse/analytics/tracking/full_load_events",
-    partitioning: "event_date",
-    partitioningFormat: "year/month",
+    partitioning: "event_date:year/event_date:month",
   },
   fields: [
     { name: "event_id", type: "String" },
@@ -116,22 +113,53 @@ const fullLoadDefinition: EndpointDefinitionFormat = {
 }
 
 /**
- * Endpoint definition with partitioning: true (timestamp mode).
+ * Endpoint definition with a write-timestamp auto-fill field (v2 replacement
+ * for the old `partitioning: true` timestamp mode): a top-level DateTime field
+ * carrying `options.autoFill` plus an explicit custom partition string that
+ * partitions by its derived time components.
  */
-const timestampPartitionedDefinition: EndpointDefinitionFormat = {
-  version: "1.0",
+const autoFillPartitionedDefinition: EndpointDefinitionFormat = {
+  version: "2.0",
   tableName: "timestamp_events",
   catalog: "analytics",
   schema: "tracking",
   mutation: {
     loadStrategy: "full_load_append",
     basePath: "warehouse/analytics/tracking/timestamp_events",
-    partitioning: true,
-    partitioningFormat: "year/month/day",
+    partitioning: "load_timestamp:year/load_timestamp:month",
   },
   fields: [
     { name: "event_id", type: "String" },
-    { name: "timestamp", type: "DateTime" },
+    {
+      name: "load_timestamp",
+      type: "DateTime",
+      options: { autoFill: "write_timestamp" },
+    },
+  ],
+}
+
+/**
+ * Endpoint definition with a write-timestamp auto-fill field but
+ * `partitioning: false` (C10): the field is still populated and its column +
+ * companions still exist, but records are written flat (no partition path).
+ */
+const autoFillUnpartitionedDefinition: EndpointDefinitionFormat = {
+  version: "2.0",
+  tableName: "flat_timestamp_events",
+  catalog: "analytics",
+  schema: "tracking",
+  mutation: {
+    loadStrategy: "append",
+    basePath: "warehouse/analytics/tracking/flat_timestamp_events",
+    partitioning: false,
+  },
+  fields: [
+    { name: "event_id", type: "String" },
+    {
+      name: "load_timestamp",
+      type: "DateTime",
+      options: { autoFill: "write_timestamp" },
+    },
   ],
 }
 
@@ -382,7 +410,7 @@ describe("end-to-end generation (integration)", () => {
 
       const parsed = JSON.parse(customEndpointContent)
 
-      expect(parsed.version).toBe("1.0")
+      expect(parsed.version).toBe("2.0")
       expect(parsed.tableName).toBe("user_events")
       expect(parsed.catalog).toBe("analytics")
       expect(parsed.schema).toBe("tracking")
@@ -478,7 +506,7 @@ describe("end-to-end generation (integration)", () => {
 
   describe("namePrefix propagates to generated names end to end", () => {
     const prefixDefinition: EndpointDefinitionFormat = {
-      version: "1.0",
+      version: "2.0",
       tableName: "order_line_items",
       catalog: "analytics",
       schema: "analytics_sales",
@@ -552,7 +580,7 @@ describe("end-to-end generation (integration)", () => {
   })
 
   describe("config.ts includes partitioning fields for non-full_load strategies", () => {
-    it("should include partitioning and partitioningFormat in config.ts when loadStrategy is append", async () => {
+    it("should include partitioning in config.ts when loadStrategy is append", async () => {
       await generateEndpoint({
         definition: partitionedDefinition,
         outputDir,
@@ -565,14 +593,13 @@ describe("end-to-end generation (integration)", () => {
       )
 
       expect(configContent).toContain("partitioning")
-      expect(configContent).toContain('"event_date"')
-      expect(configContent).toContain("partitioningFormat")
-      expect(configContent).toContain('"year/month"')
+      expect(configContent).toContain('"event_date:year/event_date:month"')
+      expect(configContent).not.toContain("partitioningFormat")
     })
 
-    it("should include partitioning: true in config.ts when timestamp partitioning is used", async () => {
+    it("should include the auto-fill partition string in config.ts", async () => {
       await generateEndpoint({
-        definition: timestampPartitionedDefinition,
+        definition: autoFillPartitionedDefinition,
         outputDir,
         skipRegistry: true,
       })
@@ -583,12 +610,12 @@ describe("end-to-end generation (integration)", () => {
       )
 
       expect(configContent).toContain("partitioning")
-      expect(configContent).toContain("true")
-      expect(configContent).toContain("partitioningFormat")
-      expect(configContent).toContain('"year/month/day"')
+      expect(configContent).toContain(
+        '"load_timestamp:year/load_timestamp:month"'
+      )
     })
 
-    it("should NOT include partitioning or partitioningFormat in config.ts when loadStrategy is full_load", async () => {
+    it("should NOT include partitioning in config.ts when loadStrategy is full_load", async () => {
       await generateEndpoint({
         definition: fullLoadDefinition,
         outputDir,
@@ -601,7 +628,123 @@ describe("end-to-end generation (integration)", () => {
       )
 
       expect(configContent).not.toContain("partitioning")
-      expect(configContent).not.toContain("partitioningFormat")
+    })
+  })
+
+  describe("auto-fill field codegen (task 2.6)", () => {
+    it("query-schema + interface + json-schema include the auto-fill field and its companions", async () => {
+      await generateEndpoint({
+        definition: autoFillPartitionedDefinition,
+        outputDir,
+        skipRegistry: true,
+      })
+
+      const [querySchema, interfaceContent, jsonSchemaContent] =
+        await Promise.all([
+          readFile(path.join(outputDir, "query-schema.ts"), "utf-8"),
+          readFile(path.join(outputDir, "interface.ts"), "utf-8"),
+          readFile(path.join(outputDir, "json-schema.json"), "utf-8"),
+        ])
+
+      // Query type exposes the primary field + both companions (never excluded).
+      for (const name of [
+        "load_timestamp",
+        "load_timestamp_year",
+        "load_timestamp_month",
+      ]) {
+        expect(querySchema).toContain(name)
+        expect(interfaceContent).toContain(name)
+      }
+
+      // json-schema.json (the DDL source) carries the companions too.
+      const jsonSchema = JSON.parse(jsonSchemaContent)
+      expect(jsonSchema.properties.load_timestamp).toBeDefined()
+      expect(jsonSchema.properties.load_timestamp_year.type).toBe("integer")
+      expect(jsonSchema.properties.load_timestamp_month.type).toBe("integer")
+    })
+
+    it("mutation input excludes the auto-fill field and its companions", async () => {
+      await generateEndpoint({
+        definition: autoFillPartitionedDefinition,
+        outputDir,
+        skipRegistry: true,
+      })
+
+      const mutationSchema = await readFile(
+        path.join(outputDir, "mutation-schema.ts"),
+        "utf-8"
+      )
+
+      // The input type still carries the client-supplied field...
+      expect(mutationSchema).toContain("event_id")
+      // ...but never the auto-fill field or its derived companions.
+      expect(mutationSchema).not.toContain("load_timestamp_year")
+      expect(mutationSchema).not.toContain("load_timestamp_month")
+      // The bare field name may appear only inside the autoFillFields config
+      // entry; assert it is absent from the input type fields block.
+      const inputBlock = mutationSchema.slice(
+        0,
+        mutationSchema.indexOf("mutationFields")
+      )
+      expect(inputBlock).not.toContain("load_timestamp")
+    })
+
+    it("threads autoFillFields into storageConfig", async () => {
+      await generateEndpoint({
+        definition: autoFillPartitionedDefinition,
+        outputDir,
+        skipRegistry: true,
+      })
+
+      const configContent = await readFile(
+        path.join(outputDir, "config.ts"),
+        "utf-8"
+      )
+
+      expect(configContent).toContain("autoFillFields")
+      expect(configContent).toContain('"load_timestamp"')
+      expect(configContent).toContain('"write_timestamp"')
+    })
+
+    it("keeps companions present with partitioning: false (C10 — not gated on partitioning)", async () => {
+      await generateEndpoint({
+        definition: autoFillUnpartitionedDefinition,
+        outputDir,
+        skipRegistry: true,
+      })
+
+      const [interfaceContent, jsonSchemaContent, configContent] =
+        await Promise.all([
+          readFile(path.join(outputDir, "interface.ts"), "utf-8"),
+          readFile(path.join(outputDir, "json-schema.json"), "utf-8"),
+          readFile(path.join(outputDir, "config.ts"), "utf-8"),
+        ])
+
+      const jsonSchema = JSON.parse(jsonSchemaContent)
+      expect(jsonSchema.properties.load_timestamp_year.type).toBe("integer")
+      expect(jsonSchema.properties.load_timestamp_month.type).toBe("integer")
+      expect(interfaceContent).toContain("load_timestamp_year")
+      // storageConfig still carries autoFillFields and partitioning: false.
+      expect(configContent).toContain("autoFillFields")
+      expect(configContent).toContain("partitioning: false")
+    })
+
+    it("emits NO auto-fill companions when there is no auto-fill field", async () => {
+      await generateEndpoint({
+        definition: partitionedDefinition,
+        outputDir,
+        skipRegistry: true,
+      })
+
+      const [jsonSchemaContent, configContent] = await Promise.all([
+        readFile(path.join(outputDir, "json-schema.json"), "utf-8"),
+        readFile(path.join(outputDir, "config.ts"), "utf-8"),
+      ])
+
+      const jsonSchema = JSON.parse(jsonSchemaContent)
+      expect(jsonSchema.properties.event_date_year).toBeUndefined()
+      expect(jsonSchema.properties.event_date_month).toBeUndefined()
+      expect(configContent).not.toContain("autoFillFields")
     })
   })
 })

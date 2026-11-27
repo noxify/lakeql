@@ -1,5 +1,10 @@
 import type { EndpointDefinitionFormat } from "@lakeql/schema-generator/endpoint-schema"
-import { endpointDefinitionSchema } from "@lakeql/schema-generator/endpoint-schema"
+import {
+  endpointDefinitionSchema,
+  ENDPOINT_SCHEMA_VERSION,
+  flattenEndpointIssues,
+  isSupportedVersion,
+} from "@lakeql/schema-generator/endpoint-schema"
 
 import { fromDefinition, toDefinition } from "./mapping"
 import type { EditorState } from "./model"
@@ -20,10 +25,15 @@ export type ImportResult =
  * Parses raw `endpoint.json` text into an editor state without touching any
  * existing state.
  *
- * The pipeline is: `JSON.parse` → parse against `endpointDefinitionSchema` →
- * {@link fromDefinition}. A failure at any stage returns `{ ok: false }` with
- * messages and produces no state, so a caller that applies the result only on
- * `ok` can never partially apply a bad file.
+ * The pipeline is: `JSON.parse` → a `version` pre-check → parse against
+ * `endpointDefinitionSchema` → {@link fromDefinition}. A failure at any stage
+ * returns `{ ok: false }` with messages and produces no state, so a caller that
+ * applies the result only on `ok` can never partially apply a bad file.
+ *
+ * The `version` pre-check (C9/FR5.2) surfaces the actionable "v1 no longer
+ * supported" message for an unsupported version BEFORE the generic Zod literal
+ * error — a v1 draft (`version: "1.0"`, and `partitioning: true`) fails loudly
+ * with a clear message rather than an opaque union error (R3).
  *
  * @param text - The file contents to import.
  * @returns An {@link ImportResult}: a materialized state, or errors.
@@ -41,15 +51,29 @@ export function importFromText(text: string): ImportResult {
     }
   }
 
-  const parsed = endpointDefinitionSchema.safeParse(json)
-  if (!parsed.success) {
-    const issues = parsed.error.issues as {
-      path: PropertyKey[]
-      message: string
-    }[]
+  // Version pre-check (C9/FR5.2): a wrong `version` gets the actionable message
+  // before the generic Zod literal error. An object carrying any `version` key
+  // that is not the supported one is rejected here; a definition missing the
+  // key entirely falls through to the schema's own "required" issue.
+  if (
+    typeof json === "object" &&
+    json !== null &&
+    "version" in json &&
+    !isSupportedVersion((json as { version: unknown }).version)
+  ) {
     return {
       ok: false,
-      errors: issues.map((issue) => {
+      errors: [
+        `Unsupported endpoint definition version. This editor only supports version "${ENDPOINT_SCHEMA_VERSION}"; v1 definitions are no longer supported and have no automatic migration.`,
+      ],
+    }
+  }
+
+  const parsed = endpointDefinitionSchema.safeParse(json)
+  if (!parsed.success) {
+    return {
+      ok: false,
+      errors: flattenEndpointIssues(parsed.error).map((issue) => {
         const path = issue.path.map(String).join(".")
         return path === "" ? issue.message : `${path}: ${issue.message}`
       }),
@@ -121,6 +145,29 @@ export function exportToJson(state: EditorState): ExportResult {
       ),
       ...result.badNumber.map(
         (bad) => `${bad.kind} bound must be a finite number`
+      ),
+      ...result.reservedNames.map(
+        (collision) =>
+          `Name "${collision.name}" collides with an auto-fill reserved column`
+      ),
+      ...result.autoFillPlacement.map((bad) =>
+        bad.reason === "non-datetime"
+          ? `Auto-fill field "${bad.name}" must be a DateTime field`
+          : `Auto-fill field "${bad.name}" must be top-level, not nested`
+      ),
+      ...result.autoFillMutation.map((bad) =>
+        bad.reason === "insert"
+          ? `Auto-fill field "${bad.name}" requires the storage write method`
+          : `Auto-fill field "${bad.name}" requires an append/full-load-append mutation`
+      ),
+      ...result.companionPartition.map(
+        (bad) =>
+          `Partition segment "${bad.segment}" references derived column "${bad.companionName}"; use "${bad.primaryName}:year"`
+      ),
+      ...result.unresolvedPartition.map((bad) =>
+        bad.reason === "missing"
+          ? `Partition field "${bad.name}" does not exist`
+          : `Partition field "${bad.name}" matches more than one field`
       ),
     ]
     return { ok: false, errors }

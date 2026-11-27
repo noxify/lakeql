@@ -412,7 +412,7 @@ describe("Trino column conversion produces valid definitions", () => {
     )
   })
 
-  it("version is always '1.0' and metadata fields pass through unchanged", () => {
+  it("version is always '2.0' and metadata fields pass through unchanged", () => {
     fc.assert(
       fc.property(
         metadataNameArb,
@@ -428,7 +428,7 @@ describe("Trino column conversion produces valid definitions", () => {
             parsedColumns,
           })
 
-          expect(result.version).toBe("1.0")
+          expect(result.version).toBe("2.0")
           expect(result.tableName).toBe(tableName)
           expect(result.catalog).toBe(catalog)
           expect(result.schema).toBe(schema)

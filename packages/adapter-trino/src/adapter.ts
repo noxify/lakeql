@@ -741,6 +741,7 @@ export const trinoAdapterFactory: AdapterFactory = {
     return createTrinoWriteStrategy({
       ...(raw as Omit<TrinoWriteStrategyConfig, "dataSource">),
       dataSource,
+      dataSourceName,
     })
   },
 }

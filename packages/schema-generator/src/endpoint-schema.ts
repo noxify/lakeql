@@ -1,6 +1,20 @@
 import type { LoadStrategy } from "@lakeql/datasource"
 import { z } from "zod"
 
+import { autoFillCompanionNames } from "./auto-fill"
+
+/**
+ * Re-exports the shared auto-fill derivation helpers so existing
+ * `@lakeql/schema-generator/endpoint-schema` consumers reach them without a new
+ * package.json exports subpath (NFR1).
+ */
+export {
+  AUTO_FILL_WRITE_TIMESTAMP,
+  autoFillCompanionNames,
+  deriveAutoFillColumns,
+  findReservedNameCollisions,
+} from "./auto-fill"
+
 /**
  * Regex pattern for field names: alphanumeric + underscore, no leading digit, max 64 chars.
  */
@@ -41,16 +55,6 @@ const _loadStrategyParity: AssertSame<
 void _loadStrategyParity
 
 /**
- * Supported partitioning format granularities.
- */
-export const partitioningFormats = [
-  "year",
-  "year/month",
-  "year/month/day",
-] as const
-export type PartitioningFormat = (typeof partitioningFormats)[number]
-
-/**
  * Supported date components for custom partition format segments.
  */
 export const partitioningComponents = [
@@ -64,27 +68,37 @@ export const partitioningComponents = [
 export type PartitioningComponent = (typeof partitioningComponents)[number]
 
 /**
- * Validates a custom partitioning format string.
- * - If the value contains no `/` and no `:`, it must match fieldNamePattern (legacy single-field mode).
- * - If it contains `/` or `:`, each segment is validated:
- *   - Plain segments must match fieldNamePattern.
- *   - Colon segments must be `fieldname:component` where fieldname matches pattern
- *     and component is one of the supported partitioning components.
- *
- * Returns null if valid, or an error message string if invalid.
+ * The partitioning components valid on a `Date` field. A `Date` value carries
+ * no time of day (it is midnight UTC), so `hour`, `minute` and `second` are
+ * only valid on `DateTime` fields.
  */
-export function validatePartitioningFormat(value: string): string | null {
-  const isCustomFormat = value.includes("/") || value.includes(":")
+export const datePartitioningComponents = [
+  "year",
+  "month",
+  "day",
+] as const satisfies readonly PartitioningComponent[]
 
-  if (!isCustomFormat) {
-    // Legacy single-field mode: must be a valid field name
+/**
+ * Validates a partitioning string. The string is a `/`-separated list of
+ * segments, each of which is one of:
+ * - a bare field name (`region`), partitioning by the raw field value;
+ * - a `fieldname:component` pair (`event:year`), partitioning by a date
+ *   component, where the component is one of the supported partitioning
+ *   components.
+ *
+ * Field names must match {@link fieldNamePattern}.
+ *
+ * @param value - The partitioning string to validate.
+ * @returns `null` if valid, or an error message string if invalid.
+ */
+export function validatePartitioningString(value: string): string | null {
+  if (!value.includes("/") && !value.includes(":")) {
     if (!fieldNamePattern.test(value)) {
       return `Invalid partition field name "${value}". Must match pattern: letters/underscores, no leading digit, max 64 chars.`
     }
     return null
   }
 
-  // Custom format: parse and validate each segment
   const segments = value.split("/")
   for (const segment of segments) {
     if (segment === "") {
@@ -115,11 +129,11 @@ export function validatePartitioningFormat(value: string): string | null {
 
 /**
  * Partitioning configuration value:
- * - true: partition by write timestamp (default)
  * - false: no partitioning (flat layout)
- * - string: partition by named field
+ * - string: `/`-separated segments, each a bare field name (raw value) or a
+ *   `field:component` date component (e.g. `"region/event:year/event:month"`)
  */
-export type PartitioningValue = boolean | string
+export type PartitioningValue = false | string
 
 /**
  * Mutation pipeline configuration for an endpoint.
@@ -127,19 +141,58 @@ export type PartitioningValue = boolean | string
 export interface MutationConfig {
   /** Load strategy for the write pipeline. */
   loadStrategy: LoadStrategy
-  /** Base path for endpoint data. */
-  basePath: string
   /**
-   * Partitioning mode. `true` partitions by write timestamp, `false` disables partitioning, or a string for field-based/custom partitioning.
-   * @default true
+   * How the data source writes records. An absent value resolves to
+   * `"storage"` (see {@link DEFAULT_WRITE_METHOD}). With `"storage"`,
+   * `basePath` is required and partitioning and auto-fill apply. With
+   * `"insert"`, `basePath`, a partition string and auto-fill are rejected.
+   */
+  writeMethod?: WriteMethod
+  /**
+   * Base path for endpoint data. Required (non-empty) for the `"storage"`
+   * write method and rejected for `"insert"`.
+   */
+  basePath?: string
+  /**
+   * Partitioning mode. `false` disables partitioning (flat layout), or a string
+   * of `/`-separated segments (bare field name or `field:component`). An absent
+   * key resolves to `false`. A string is rejected for the `"insert"` write
+   * method.
    */
   partitioning?: PartitioningValue
-  /**
-   * Partition path granularity. One of `"year"`, `"year/month"`, or `"year/month/day"`.
-   * @default "year/month/day"
-   */
-  partitioningFormat?: string
 }
+
+/**
+ * Supported write methods for a mutation: `"storage"` writes Parquet files
+ * under a base path, `"insert"` writes rows with INSERT statements.
+ */
+export const writeMethods = ["storage", "insert"] as const
+
+/**
+ * Write method of a mutation.
+ */
+export type WriteMethod = (typeof writeMethods)[number]
+
+/**
+ * Write method assumed when a mutation does not declare one.
+ */
+export const DEFAULT_WRITE_METHOD: WriteMethod = "storage"
+
+/**
+ * Resolves the effective write method of a mutation, applying
+ * {@link DEFAULT_WRITE_METHOD} when `writeMethod` is absent.
+ *
+ * @param mutation - The enabled mutation configuration.
+ * @returns The declared write method, or `"storage"` when absent.
+ */
+export function effectiveWriteMethod(
+  mutation: Pick<MutationConfig, "writeMethod">
+): WriteMethod {
+  return mutation.writeMethod ?? DEFAULT_WRITE_METHOD
+}
+
+const partitioningFormatRemovedMessage =
+  '"mutation.partitioningFormat" is no longer supported. Remove it; the bare field name now always partitions by raw value. For date granularity use components, e.g. "event:year/event:month/event:day".'
 
 /**
  * Zod schema for the mutation configuration object.
@@ -147,48 +200,60 @@ export interface MutationConfig {
 export const mutationConfigSchema = z
   .object({
     loadStrategy: z.enum(loadStrategies),
-    basePath: z.string().min(1),
-    partitioning: z.union([z.boolean(), z.string().min(1)]).optional(),
-    partitioningFormat: z.string().optional(),
+    writeMethod: z.enum(writeMethods).optional(),
+    basePath: z.string().optional(),
+    partitioning: z.union([z.literal(false), z.string().min(1)]).optional(),
+    // Declared only so the removed key is rejected instead of silently stripped.
+    partitioningFormat: z
+      .unknown()
+      .optional()
+      .superRefine((value, ctx) => {
+        if (value !== undefined) {
+          ctx.addIssue({
+            code: "custom",
+            message: partitioningFormatRemovedMessage,
+          })
+        }
+      }),
   })
   .superRefine((data, ctx) => {
-    // Skip partitioning validation when partitioning is disabled
-    if (data.partitioning === false) {
-      return
-    }
-
-    // Validate string partitioning values
-    if (typeof data.partitioning === "string") {
-      const error = validatePartitioningFormat(data.partitioning)
-      if (error) {
+    // Paths are relative to the mutation object; the `mutation` union keeps
+    // them reachable at `mutation.<key>` even when sibling fields fail.
+    if (effectiveWriteMethod(data) === "insert") {
+      if (data.basePath !== undefined) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["basePath"],
+          message: `basePath is not used when writeMethod is "insert". Remove it, or use writeMethod "storage".`,
+        })
+      }
+      if (typeof data.partitioning === "string") {
         ctx.addIssue({
           code: "custom",
           path: ["partitioning"],
-          message: error,
+          message: `partitioning is not used when writeMethod is "insert". Remove it or set it to false, or use writeMethod "storage".`,
         })
-        return
       }
-
-      // If it's a custom format (contains / or :), skip partitioningFormat validation
-      const isCustomFormat =
-        data.partitioning.includes("/") || data.partitioning.includes(":")
-      if (isCustomFormat) {
-        return
-      }
+    } else if (data.basePath === undefined || data.basePath === "") {
+      ctx.addIssue({
+        code: "custom",
+        path: ["basePath"],
+        message: `A non-empty basePath is required when writeMethod is "storage".`,
+      })
     }
 
-    // Validate partitioningFormat for true or legacy single-field mode
-    if (
-      data.partitioningFormat !== undefined &&
-      !partitioningFormats.includes(
-        data.partitioningFormat as PartitioningFormat
-      )
-    ) {
+    // Only a string partitioning value is validated here; `false` and an
+    // absent key (which resolves to `false`) disable partitioning entirely.
+    if (typeof data.partitioning !== "string") {
+      return
+    }
+
+    const error = validatePartitioningString(data.partitioning)
+    if (error) {
       ctx.addIssue({
-        code: "invalid_value",
-        values: [...partitioningFormats],
-        path: ["partitioningFormat"],
-        message: `Invalid partitioning format. Expected one of: ${partitioningFormats.join(", ")}`,
+        code: "custom",
+        path: ["partitioning"],
+        message: error,
       })
     }
   })
@@ -242,6 +307,15 @@ export interface FieldOptions {
    * @default false
    */
   readOnly?: boolean
+  /**
+   * Marks the field as server-populated at write time. A `"write_timestamp"`
+   * auto-fill field is stamped from the write clock on every schema-writing
+   * load; it is visible in the query type and the DDL (together with its
+   * derived `_year`/`_month` companion columns) but excluded from the mutation
+   * input. Valid only on a top-level `DateTime` field under an enabled
+   * `append`/`full_load_append` mutation.
+   */
+  autoFill?: "write_timestamp"
 }
 
 /**
@@ -263,6 +337,10 @@ export const fieldOptionsSchema: z.ZodType<FieldOptions> = z.object({
   required: z.boolean().optional(),
   validations: z.array(fieldValidationSchema).optional(),
   readOnly: z.boolean().optional(),
+  // Declared on the SHARED options schema so the key is never silently
+  // stripped on a non-DateTime field; the discriminated-union superRefine
+  // rejects it on every non-DateTime member instead (C12).
+  autoFill: z.literal("write_timestamp").optional(),
 })
 
 export interface ArrayItemDefinition {
@@ -279,77 +357,383 @@ export interface FieldDefinition {
 }
 
 /**
+ * Maximum length of an auto-fill field's primary name. Derived companions
+ * append the longest suffix `_month` (6 chars) and the field-name pattern
+ * allows up to 64 chars, so an auto-fill primary is capped at 58 (= 64 − 6) so
+ * a companion name can never exceed the pattern limit (C14). This is a
+ * deliberate tightening of the field-name pattern for auto-fill fields only.
+ */
+export const AUTO_FILL_NAME_MAX_LENGTH = 58
+
+/**
  * Zod schema for field definitions using a discriminated union on "type".
  * Supports recursive nesting via z.lazy for Object fields and Array items.
+ *
+ * A `superRefine` enforces the per-field auto-fill contract (C6/C12/C14):
+ * `options.autoFill` is rejected on every non-`DateTime` member (proving the
+ * key is not silently stripped), and a `DateTime` member carrying `autoFill`
+ * must have a name no longer than {@link AUTO_FILL_NAME_MAX_LENGTH} chars. The
+ * top-level-only rule (C13/C17) is enforced separately at the endpoint level.
  */
-export const fieldDefinitionSchema: z.ZodType<FieldDefinition> = z.lazy(() =>
-  z.discriminatedUnion("type", [
-    z.object({
-      name: z.string().regex(fieldNamePattern),
-      type: z.literal("String"),
-      options: fieldOptionsSchema.optional(),
-    }),
-    z.object({
-      name: z.string().regex(fieldNamePattern),
-      type: z.literal("Integer"),
-      options: fieldOptionsSchema.optional(),
-    }),
-    z.object({
-      name: z.string().regex(fieldNamePattern),
-      type: z.literal("Float"),
-      options: fieldOptionsSchema.optional(),
-    }),
-    z.object({
-      name: z.string().regex(fieldNamePattern),
-      type: z.literal("Boolean"),
-      options: fieldOptionsSchema.optional(),
-    }),
-    z.object({
-      name: z.string().regex(fieldNamePattern),
-      type: z.literal("Date"),
-      options: fieldOptionsSchema.optional(),
-    }),
-    z.object({
-      name: z.string().regex(fieldNamePattern),
-      type: z.literal("DateTime"),
-      options: fieldOptionsSchema.optional(),
-    }),
-    z.object({
-      name: z.string().regex(fieldNamePattern),
-      type: z.literal("Object"),
-      fields: z.array(fieldDefinitionSchema).min(1),
-      options: fieldOptionsSchema.optional(),
-    }),
-    z.object({
-      name: z.string().regex(fieldNamePattern),
-      type: z.literal("Array"),
-      items: z.union([
-        z.object({ type: z.enum(primitiveTypes) }),
-        z.object({
-          type: z.literal("Object"),
-          fields: z.array(fieldDefinitionSchema).min(1),
-        }),
-      ]),
-      options: fieldOptionsSchema.optional(),
-    }),
-  ])
-)
+export const fieldDefinitionSchema: z.ZodType<FieldDefinition> = z
+  .lazy(() =>
+    z.discriminatedUnion("type", [
+      z.object({
+        name: z.string().regex(fieldNamePattern),
+        type: z.literal("String"),
+        options: fieldOptionsSchema.optional(),
+      }),
+      z.object({
+        name: z.string().regex(fieldNamePattern),
+        type: z.literal("Integer"),
+        options: fieldOptionsSchema.optional(),
+      }),
+      z.object({
+        name: z.string().regex(fieldNamePattern),
+        type: z.literal("Float"),
+        options: fieldOptionsSchema.optional(),
+      }),
+      z.object({
+        name: z.string().regex(fieldNamePattern),
+        type: z.literal("Boolean"),
+        options: fieldOptionsSchema.optional(),
+      }),
+      z.object({
+        name: z.string().regex(fieldNamePattern),
+        type: z.literal("Date"),
+        options: fieldOptionsSchema.optional(),
+      }),
+      z.object({
+        name: z.string().regex(fieldNamePattern),
+        type: z.literal("DateTime"),
+        options: fieldOptionsSchema.optional(),
+      }),
+      z.object({
+        name: z.string().regex(fieldNamePattern),
+        type: z.literal("Object"),
+        fields: z.array(fieldDefinitionSchema).min(1),
+        options: fieldOptionsSchema.optional(),
+      }),
+      z.object({
+        name: z.string().regex(fieldNamePattern),
+        type: z.literal("Array"),
+        items: z.union([
+          z.object({ type: z.enum(primitiveTypes) }),
+          z.object({
+            type: z.literal("Object"),
+            fields: z.array(fieldDefinitionSchema).min(1),
+          }),
+        ]),
+        options: fieldOptionsSchema.optional(),
+      }),
+    ])
+  )
+  .superRefine((field, ctx) => {
+    if (field.options?.autoFill === undefined) {
+      return
+    }
+
+    // autoFill is valid only on a DateTime field (C6/C12).
+    if (field.type !== "DateTime") {
+      ctx.addIssue({
+        code: "custom",
+        path: ["options", "autoFill"],
+        message: `Field "${field.name}" of type "${field.type}" cannot use autoFill. autoFill is only valid on a DateTime field.`,
+      })
+      return
+    }
+
+    // Cap the primary name so derived companions stay within the pattern (C14).
+    if (field.name.length > AUTO_FILL_NAME_MAX_LENGTH) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["name"],
+        message: `autoFill field "${field.name}" exceeds the ${AUTO_FILL_NAME_MAX_LENGTH}-character limit. autoFill fields are capped at ${AUTO_FILL_NAME_MAX_LENGTH} chars (64-char field-name pattern minus the longest "_month" companion suffix).`,
+      })
+    }
+  })
+
+/**
+ * Canonical endpoint-definition schema version emitted by scaffolding and
+ * Studio. The redesign drops v1 support with no compatibility shim (DD6).
+ */
+export const ENDPOINT_SCHEMA_VERSION = "2.0"
+
+/**
+ * Checks whether a value is the supported endpoint-definition schema version.
+ * Used by create-endpoint / Studio pre-checks to surface the actionable
+ * "v1 no longer supported" message before the generic Zod literal error
+ * (FR5.1/DD6/C1).
+ *
+ * @param value - The `version` value read from an endpoint definition.
+ * @returns `true` when `value` equals {@link ENDPOINT_SCHEMA_VERSION}.
+ */
+export function isSupportedVersion(value: unknown): boolean {
+  return value === ENDPOINT_SCHEMA_VERSION
+}
+
+/**
+ * Walks every descendant of the top-level fields (depth > 0) and reports any
+ * field carrying `options.autoFill` at its precise Zod path. autoFill is a
+ * top-level-only rule (C13/C17); a `superRefine` on the recursive field union
+ * cannot know its own depth, so the walk runs at the endpoint level where the
+ * top level is known.
+ */
+function reportNestedAutoFill(
+  fields: FieldDefinition[],
+  basePath: (string | number)[],
+  ctx: z.RefinementCtx
+): void {
+  for (const [index, field] of fields.entries()) {
+    if (field.options?.autoFill !== undefined) {
+      ctx.addIssue({
+        code: "custom",
+        path: [...basePath, index, "options", "autoFill"],
+        message: `Field "${field.name}" cannot use autoFill. autoFill is only valid on a top-level field.`,
+      })
+    }
+
+    if (field.type === "Object" && field.fields) {
+      reportNestedAutoFill(field.fields, [...basePath, index, "fields"], ctx)
+    }
+
+    if (
+      field.type === "Array" &&
+      field.items?.type === "Object" &&
+      field.items.fields
+    ) {
+      reportNestedAutoFill(
+        field.items.fields,
+        [...basePath, index, "items", "fields"],
+        ctx
+      )
+    }
+  }
+}
+
+/**
+ * Reports the autoFill-vs-mutation contract violations at the endpoint level:
+ * an autoFill field requires an enabled `append`/`full_load_append` mutation
+ * (C11/C16), and no partition segment may reference a derived companion column
+ * in any form (C15/FR6.3). Extracted from the endpoint superRefine to keep each
+ * refinement focused.
+ */
+function reportAutoFillMutationIssues(
+  definition: { fields: FieldDefinition[]; mutation?: MutationConfig | false },
+  ctx: z.RefinementCtx
+): void {
+  const { fields, mutation } = definition
+  const autoFillFields = fields.filter(
+    (field) => field.options?.autoFill !== undefined
+  )
+  if (autoFillFields.length === 0) {
+    return
+  }
+
+  const mutationEnabled = mutation !== undefined && mutation !== false
+  const loadStrategy = mutationEnabled ? mutation.loadStrategy : undefined
+  const autoFillAllowed =
+    loadStrategy === "append" || loadStrategy === "full_load_append"
+
+  if (!autoFillAllowed) {
+    for (const field of autoFillFields) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["fields", fields.indexOf(field), "options", "autoFill"],
+        message: mutationEnabled
+          ? `autoFill field "${field.name}" requires loadStrategy "append" or "full_load_append"; "${loadStrategy}" overwrites the dataset and ignores a write-timestamp field.`
+          : `autoFill field "${field.name}" requires an enabled mutation with loadStrategy "append" or "full_load_append". Without a write there is nothing to populate.`,
+      })
+    }
+    return
+  }
+
+  // The insert method does not populate auto-fill fields. The load-strategy
+  // check above runs first, so a full_load + insert definition reports once.
+  if (mutation && effectiveWriteMethod(mutation) === "insert") {
+    for (const field of autoFillFields) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["fields", fields.indexOf(field), "options", "autoFill"],
+        message: `autoFill field "${field.name}" requires writeMethod "storage"; the insert method does not populate auto-fill fields.`,
+      })
+    }
+    return
+  }
+
+  // Reject any partition segment whose fieldName is a derived companion name,
+  // in ANY form (bare `event_year` or `event_year:year`) (C15/FR6.3).
+  if (!mutationEnabled || typeof mutation.partitioning !== "string") {
+    return
+  }
+
+  const companionNames = new Set(
+    autoFillFields.flatMap((field) => autoFillCompanionNames(field))
+  )
+  for (const segment of mutation.partitioning.split("/")) {
+    const [segmentField = ""] = segment.split(":")
+    if (companionNames.has(segmentField)) {
+      const primary = segmentField.replace(/_(?:year|month)$/u, "")
+      ctx.addIssue({
+        code: "custom",
+        path: ["mutation", "partitioning"],
+        message: `Partition segment "${segment}" references derived companion column "${segmentField}", which is not a valid partition source. Use the primary field's component form, e.g. "${primary}:year".`,
+      })
+    }
+  }
+}
+
+/**
+ * Reports partition segments whose form does not fit the referenced top-level
+ * field: Date/DateTime fields need a component (`event:year`), Date fields only
+ * accept {@link datePartitioningComponents}, and every other primitive field
+ * must be used bare. Segments that match no field, match more
+ * than one field, or reference Object/Array fields are not reported here.
+ */
+function reportPartitionFieldTypeIssues(
+  definition: { fields: FieldDefinition[]; mutation?: MutationConfig | false },
+  ctx: z.RefinementCtx
+): void {
+  const { fields, mutation } = definition
+  if (
+    mutation === undefined ||
+    mutation === false ||
+    typeof mutation.partitioning !== "string"
+  ) {
+    return
+  }
+
+  for (const segment of mutation.partitioning.split("/")) {
+    const [segmentField = "", component] = segment.split(":")
+    const matches = fields.filter((field) => field.name === segmentField)
+    const field = matches.length === 1 ? matches[0] : undefined
+    if (
+      field === undefined ||
+      field.type === "Object" ||
+      field.type === "Array"
+    ) {
+      continue
+    }
+
+    const isDate = field.type === "Date" || field.type === "DateTime"
+    if (isDate && component === undefined) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["mutation", "partitioning"],
+        message: `Partition segment "${segment}" references ${field.type} field "${segmentField}" without a date component. Use a component form, e.g. "${segmentField}:year".`,
+      })
+    } else if (!isDate && component !== undefined) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["mutation", "partitioning"],
+        message: `Partition segment "${segment}" uses a date component, which is only valid on Date/DateTime fields; "${segmentField}" is a ${field.type} field. Use "${segmentField}" to partition by its raw value.`,
+      })
+    } else if (
+      field.type === "Date" &&
+      component !== undefined &&
+      partitioningComponents.includes(component as PartitioningComponent) &&
+      !(datePartitioningComponents as readonly string[]).includes(component)
+    ) {
+      // Unknown components are already reported by the grammar check.
+      ctx.addIssue({
+        code: "custom",
+        path: ["mutation", "partitioning"],
+        message: `Partition segment "${segment}" uses the time component "${component}" on Date field "${segmentField}", which has no time of day. Use one of: ${datePartitioningComponents.join(", ")}, or change the field to DateTime.`,
+      })
+    }
+  }
+}
 
 /**
  * Zod schema for the complete endpoint definition format.
  */
-export const endpointDefinitionSchema = z.object({
-  version: z.literal("1.0"),
-  tableName: z.string().regex(metadataFieldPattern),
-  catalog: z.string().regex(metadataFieldPattern),
-  schema: z.string().regex(metadataFieldPattern),
-  /** Name of the configured DataSource this endpoint targets. When omitted, generation uses `"default"`. */
-  dataSource: z.string().min(1).optional(),
-  fields: z.array(fieldDefinitionSchema),
-  mutation: mutationSchema.optional(),
-})
+export const endpointDefinitionSchema = z
+  .object({
+    version: z.literal(ENDPOINT_SCHEMA_VERSION),
+    tableName: z.string().regex(metadataFieldPattern),
+    catalog: z.string().regex(metadataFieldPattern),
+    schema: z.string().regex(metadataFieldPattern),
+    /** Name of the configured DataSource this endpoint targets. When omitted, generation uses `"default"`. */
+    dataSource: z.string().min(1).optional(),
+    fields: z.array(fieldDefinitionSchema),
+    mutation: mutationSchema.optional(),
+  })
+  .superRefine((definition, ctx) => {
+    // (a) Top-level-only rule: reject autoFill on any nested descendant (C13/C17).
+    for (const [index, field] of definition.fields.entries()) {
+      if (field.type === "Object" && field.fields) {
+        reportNestedAutoFill(field.fields, ["fields", index, "fields"], ctx)
+      }
+
+      if (
+        field.type === "Array" &&
+        field.items?.type === "Object" &&
+        field.items.fields
+      ) {
+        reportNestedAutoFill(
+          field.items.fields,
+          ["fields", index, "items", "fields"],
+          ctx
+        )
+      }
+    }
+
+    // (b) autoFill requires an enabled append/full_load_append mutation, and no
+    // partition segment may reference a derived companion column (C11/C15/C16).
+    reportAutoFillMutationIssues(definition, ctx)
+
+    // (c) Partition segments must match their field's type.
+    reportPartitionFieldTypeIssues(definition, ctx)
+  })
 
 export type EndpointDefinitionFormat = z.infer<typeof endpointDefinitionSchema>
+
+/**
+ * A single validation issue with its exact path.
+ */
+export interface FlatEndpointIssue {
+  /** Path of the offending value, for example `["mutation", "writeMethod"]`. */
+  path: (string | number)[]
+  /** Human-readable description of the problem. */
+  message: string
+}
+
+/**
+ * Flattens a parse error of the endpoint schema into a list of issues at their
+ * exact paths. Zod reports an invalid value inside the `mutation` union only as
+ * a generic `invalid_union` at `mutation`; this unwraps it into the issues of
+ * the mutation object branch, prefixed with `mutation`.
+ *
+ * @param error - The error from parsing with {@link endpointDefinitionSchema}.
+ * @returns The issues with exact paths. Issues other than the `mutation` union are returned unchanged.
+ */
+export function flattenEndpointIssues(error: z.ZodError): FlatEndpointIssue[] {
+  const flat: FlatEndpointIssue[] = []
+  for (const issue of error.issues) {
+    // Branch selection is by position and must match the member order of
+    // `mutationSchema`: [z.literal(false), mutationConfigSchema].
+    const objectBranch =
+      issue.code === "invalid_union" &&
+      issue.path.length === 1 &&
+      issue.path[0] === "mutation"
+        ? issue.errors[1]
+        : undefined
+    if (objectBranch === undefined || objectBranch.length === 0) {
+      flat.push({
+        path: issue.path as (string | number)[],
+        message: issue.message,
+      })
+      continue
+    }
+    for (const nested of objectBranch) {
+      flat.push({
+        path: ["mutation", ...(nested.path as (string | number)[])],
+        message: nested.message,
+      })
+    }
+  }
+  return flat
+}
 
 /**
  * Checks for duplicate field names at the same nesting level within a list of field definitions.

@@ -1,3 +1,4 @@
+import { cn } from "cn"
 import type { Metadata } from "next"
 import { Space_Grotesk } from "next/font/google"
 import { notFound } from "next/navigation"
@@ -18,7 +19,6 @@ import { DocsPageActions } from "@/components/docs-page-actions"
 import { ApiReference } from "@/components/mdx/api-reference"
 import SectionGrid from "@/components/section-grid"
 import Siblings from "@/components/siblings"
-import { cn } from "@/lib/utils"
 import { toRawHref } from "@/shared/doc-paths"
 
 const spaceGrotesk = Space_Grotesk({ subsets: ["latin"] })

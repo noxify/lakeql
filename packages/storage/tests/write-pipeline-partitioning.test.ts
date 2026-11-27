@@ -19,7 +19,10 @@ vi.mock(import("node:crypto"), async (importOriginal) => {
 })
 
 // oxlint-disable-next-line import/first -- vi.mock must precede imports per vitest design
-import { executeWritePipeline } from "../src/write-pipeline"
+import {
+  executeWritePipeline,
+  resolvePartitioningConfig,
+} from "../src/write-pipeline"
 // oxlint-disable-next-line import/first -- vi.mock must precede imports per vitest design
 import type { WritePipelineInput } from "../src/write-pipeline"
 
@@ -243,39 +246,16 @@ describe("executeWritePipeline — partitioning modes", () => {
     })
   })
 
-  describe("timestamp mode × append", () => {
-    it("writes to partition path based on current timestamp", async () => {
+  describe("auto-fill populate (field-driven, independent of partitioning)", () => {
+    const autoFill = [{ name: "ingested_at", kind: "write_timestamp" as const }]
+
+    it("populates the declared field, year and month companions on every record", async () => {
       await executeWritePipeline(
-        createInput({ loadStrategy: "append", partitioning: true })
-      )
-
-      expect(mockUpload).toHaveBeenCalledExactlyOnceWith(
-        expect.any(Uint8Array),
-        expect.stringMatching(
-          /warehouse\/analytics\/users\/all\.parquet\/year=\d{4}\/month=\d{2}\/day=\d{2}\/test-uuid-1234\.parquet/u
-        ),
-        expect.objectContaining({})
-      )
-    })
-
-    it("enriches schema with load_timestamp before serializing", async () => {
-      await executeWritePipeline(
-        createInput({ loadStrategy: "append", partitioning: true })
-      )
-
-      expect(mockSerialize).toHaveBeenCalledWith(
-        expect.anything(),
-        expect.objectContaining({
-          properties: expect.objectContaining({
-            load_timestamp: { type: "string", format: "date-time" },
-          }),
+        createInput({
+          loadStrategy: "append",
+          partitioning: false,
+          autoFillFields: autoFill,
         })
-      )
-    })
-
-    it("injects load_timestamp into records before serializing", async () => {
-      await executeWritePipeline(
-        createInput({ loadStrategy: "append", partitioning: true })
       )
 
       expect(mockSerialize).toHaveBeenCalledWith(
@@ -283,183 +263,198 @@ describe("executeWritePipeline — partitioning modes", () => {
           expect.objectContaining({
             name: "Alice",
             age: 30,
-            load_timestamp: expect.stringMatching(
+            ingested_at: expect.stringMatching(
               /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/u
             ),
+            ingested_at_year: expect.any(Number),
+            ingested_at_month: expect.any(Number),
           }),
         ]),
         expect.anything()
       )
     })
 
-    it("includes load_timestamp in DDL columns", async () => {
+    it("uses the declared field name, not a hard-coded load_timestamp", async () => {
       await executeWritePipeline(
-        createInput({ loadStrategy: "append", partitioning: true })
+        createInput({
+          loadStrategy: "append",
+          partitioning: false,
+          autoFillFields: autoFill,
+        })
       )
 
-      expect(mockRecreateTable).toHaveBeenCalledWith(
-        expect.objectContaining({
-          columns: expect.arrayContaining([
-            { name: "load_timestamp", type: "TIMESTAMP(3)" },
-          ]),
-        }),
-        expect.objectContaining({})
-      )
+      const records = mockSerialize.mock.calls[0]?.[0] as Record<
+        string,
+        unknown
+      >[]
+      expect(records[0]).not.toHaveProperty("load_timestamp")
+      expect(records[0]).toHaveProperty("ingested_at")
     })
 
-    it("recreates single table pointing to all.parquet/", async () => {
+    it("enriches schema with the declared field plus companions as columns", async () => {
       await executeWritePipeline(
-        createInput({ loadStrategy: "append", partitioning: true })
+        createInput({
+          loadStrategy: "append",
+          partitioning: false,
+          autoFillFields: autoFill,
+        })
       )
 
-      expect(mockRecreateTable).toHaveBeenCalledWith(
-        expect.objectContaining({
-          tableName: "users",
-          externalLocation:
-            "s3a://my-bucket/warehouse/analytics/users/all.parquet/",
-        }),
-        expect.objectContaining({})
-      )
-    })
-  })
-
-  describe("timestamp mode × full_load_append", () => {
-    it("uploads to both latest.parquet/ and partitioned all.parquet path", async () => {
-      await executeWritePipeline(
-        createInput({ loadStrategy: "full_load_append", partitioning: true })
-      )
-
-      expect(mockUpload).toHaveBeenCalledTimes(2)
-      expect(mockUpload).toHaveBeenCalledWith(
-        expect.any(Uint8Array),
-        "warehouse/analytics/users/latest.parquet/test-uuid-1234.parquet",
-        expect.objectContaining({})
-      )
-      expect(mockUpload).toHaveBeenCalledWith(
-        expect.any(Uint8Array),
-        expect.stringMatching(
-          /warehouse\/analytics\/users\/all\.parquet\/year=\d{4}\/month=\d{2}\/day=\d{2}\/test-uuid-1234\.parquet/u
-        ),
-        expect.objectContaining({})
-      )
-    })
-
-    it("enriches schema with load_timestamp for serialization", async () => {
-      await executeWritePipeline(
-        createInput({ loadStrategy: "full_load_append", partitioning: true })
-      )
-
-      // serializer is called once (same buffer used for both uploads)
       expect(mockSerialize).toHaveBeenCalledWith(
         expect.anything(),
         expect.objectContaining({
           properties: expect.objectContaining({
-            load_timestamp: { type: "string", format: "date-time" },
+            ingested_at: { type: "string", format: "date-time" },
+            ingested_at_year: { type: "integer" },
+            ingested_at_month: { type: "integer" },
           }),
         })
       )
     })
 
-    it("recreates table pair with load_timestamp in columns", async () => {
+    it("includes the auto-fill columns in the DDL even when partitioning is disabled (C10)", async () => {
       await executeWritePipeline(
-        createInput({ loadStrategy: "full_load_append", partitioning: true })
+        createInput({
+          loadStrategy: "append",
+          partitioning: false,
+          autoFillFields: autoFill,
+        })
       )
 
-      expect(mockRecreateTablePair).toHaveBeenCalledWith(
-        expect.objectContaining({
-          tableName: "users_latest",
-          columns: expect.arrayContaining([
-            { name: "load_timestamp", type: "TIMESTAMP(3)" },
-          ]),
-        }),
-        expect.objectContaining({
-          tableName: "users_all",
-          columns: expect.arrayContaining([
-            { name: "load_timestamp", type: "TIMESTAMP(3)" },
-          ]),
-        }),
+      const call = mockRecreateTable.mock.calls[0]?.[0] as {
+        columns: { name: string; type: string }[]
+      }
+      expect(call.columns).toStrictEqual(
+        expect.arrayContaining([
+          { name: "ingested_at", type: "TIMESTAMP(3)" },
+          { name: "ingested_at_year", type: "BIGINT" },
+          { name: "ingested_at_month", type: "BIGINT" },
+        ])
+      )
+    })
+
+    it("writes a flat path (no partition directories) when partitioning is disabled (C10)", async () => {
+      await executeWritePipeline(
+        createInput({
+          loadStrategy: "append",
+          partitioning: false,
+          autoFillFields: autoFill,
+        })
+      )
+
+      expect(mockUpload).toHaveBeenCalledExactlyOnceWith(
+        expect.any(Uint8Array),
+        "warehouse/analytics/users/all.parquet/test-uuid-1234.parquet",
         expect.objectContaining({})
       )
     })
+
+    it("shares one write-clock value across multiple auto-fill fields (C14)", async () => {
+      await executeWritePipeline(
+        createInput({
+          loadStrategy: "append",
+          partitioning: false,
+          autoFillFields: [
+            { name: "created_at", kind: "write_timestamp" },
+            { name: "updated_at", kind: "write_timestamp" },
+          ],
+        })
+      )
+
+      const records = mockSerialize.mock.calls[0]?.[0] as Record<
+        string,
+        unknown
+      >[]
+      expect(records[0]?.created_at).toBe(records[0]?.updated_at)
+      expect(records[0]?.created_at_year).toBe(records[0]?.updated_at_year)
+      expect(records[0]?.created_at_month).toBe(records[0]?.updated_at_month)
+    })
   })
 
-  describe("field mode × append", () => {
-    const recordsWithDates = [
-      { name: "Alice", age: 30, event_date: "2024-01-15" },
-      { name: "Bob", age: 25, event_date: "2024-01-15" },
-      { name: "Charlie", age: 35, event_date: "2024-02-20" },
+  describe("auto-fill populate × custom partition (R1 regression, C5)", () => {
+    it("partitions over the populated field even when input records omit it", async () => {
+      // Records do NOT carry ingested_at; the pipeline must populate it before
+      // the custom grouping reads it, otherwise PartitionFieldError('missing').
+      await executeWritePipeline(
+        createInput(
+          {
+            loadStrategy: "append",
+            partitioning: "ingested_at:year/ingested_at:month",
+            autoFillFields: [{ name: "ingested_at", kind: "write_timestamp" }],
+          },
+          [
+            { name: "Alice", age: 30 },
+            { name: "Bob", age: 25 },
+          ]
+        )
+      )
+
+      // Both records share the single write clock → one partition group.
+      expect(mockUpload).toHaveBeenCalledExactlyOnceWith(
+        expect.any(Uint8Array),
+        expect.stringMatching(
+          /warehouse\/analytics\/users\/all\.parquet\/year=\d{4}\/month=\d{2}\/test-uuid-1234\.parquet/u
+        ),
+        expect.objectContaining({})
+      )
+      expect(mockRecreateTable).toHaveBeenCalledOnce()
+    })
+  })
+
+  describe("resolvePartitioningConfig never returns timestamp", () => {
+    it("treats true and false alike as disabled; strings select field/custom", () => {
+      expect(resolvePartitioningConfig(false).mode).toBe("disabled")
+      expect(resolvePartitioningConfig(undefined).mode).toBe("disabled")
+      expect(resolvePartitioningConfig("event_date").mode).toBe("custom")
+      expect(resolvePartitioningConfig("event_date:year").mode).toBe("custom")
+    })
+  })
+
+  describe("bare field name × append (raw value)", () => {
+    const records = [
+      { name: "Alice", age: 30, region: "EU" },
+      { name: "Bob", age: 25, region: "EU" },
+      { name: "Charlie", age: 35, region: "US" },
     ]
 
-    const schemaWithDate: JsonSchema = {
+    const schema: JsonSchema = {
       type: "object",
       properties: {
         name: { type: "string" },
         age: { type: "integer" },
-        event_date: { type: "string" },
+        region: { type: "string" },
       },
-      required: ["name", "event_date"],
+      required: ["name", "region"],
     }
 
-    function createFieldInput(
-      overrides: Partial<WritePipelineInput["config"]> = {},
-      records?: WritePipelineInput["records"]
+    function createRegionInput(
+      overrides: Partial<WritePipelineInput["config"]> = {}
     ): WritePipelineInput {
       return {
-        records: records ?? recordsWithDates,
-        jsonSchema: schemaWithDate,
-        config: { ...baseConfig, ...overrides },
+        records,
+        jsonSchema: schema,
+        config: { ...baseConfig, loadStrategy: "append", ...overrides },
       }
     }
 
-    it("groups records by partition field and writes separate files per group", async () => {
-      await executeWritePipeline(
-        createFieldInput({
-          loadStrategy: "append",
-          partitioning: "event_date",
-        })
-      )
+    it("writes region=EU for a bare non-date field and does not throw", async () => {
+      await executeWritePipeline(createRegionInput({ partitioning: "region" }))
 
-      // Two different dates should produce 2 uploads (both use same mocked UUID)
-      // Since UUID is mocked to be the same, the partition paths differ by date components
       expect(mockUpload).toHaveBeenCalledTimes(2)
       expect(mockUpload).toHaveBeenCalledWith(
         expect.any(Uint8Array),
-        expect.stringContaining(
-          "year=2024/month=01/day=15/test-uuid-1234.parquet"
-        ),
+        "warehouse/analytics/users/all.parquet/region=EU/test-uuid-1234.parquet",
         expect.objectContaining({})
       )
       expect(mockUpload).toHaveBeenCalledWith(
         expect.any(Uint8Array),
-        expect.stringContaining(
-          "year=2024/month=02/day=20/test-uuid-1234.parquet"
-        ),
+        "warehouse/analytics/users/all.parquet/region=US/test-uuid-1234.parquet",
         expect.objectContaining({})
       )
     })
 
-    it("does not enrich schema with load_timestamp when serializing", async () => {
-      await executeWritePipeline(
-        createFieldInput({
-          loadStrategy: "append",
-          partitioning: "event_date",
-        })
-      )
-
-      // Every serialize call should use original schema (without load_timestamp)
-      for (const call of mockSerialize.mock.calls) {
-        const schema = call[1] as JsonSchema
-        expect(schema.properties).not.toHaveProperty("load_timestamp")
-      }
-    })
-
-    it("recreates single table after all uploads", async () => {
-      await executeWritePipeline(
-        createFieldInput({
-          loadStrategy: "append",
-          partitioning: "event_date",
-        })
-      )
+    it("recreates the single table once after all uploads", async () => {
+      await executeWritePipeline(createRegionInput({ partitioning: "region" }))
 
       expect(mockRecreateTable).toHaveBeenCalledExactlyOnceWith(
         expect.objectContaining({
@@ -471,15 +466,13 @@ describe("executeWritePipeline — partitioning modes", () => {
       )
     })
 
-    it("DDL is only performed once regardless of number of groups", async () => {
-      await executeWritePipeline(
-        createFieldInput({
-          loadStrategy: "append",
-          partitioning: "event_date",
-        })
-      )
+    it("does not enrich schema with load_timestamp when serializing", async () => {
+      await executeWritePipeline(createRegionInput({ partitioning: "region" }))
 
-      expect(mockRecreateTable).toHaveBeenCalledOnce()
+      for (const call of mockSerialize.mock.calls) {
+        const serialized = call[1] as JsonSchema
+        expect(serialized.properties).not.toHaveProperty("load_timestamp")
+      }
     })
   })
 
@@ -515,44 +508,6 @@ describe("executeWritePipeline — partitioning modes", () => {
         expect.objectContaining({})
       )
       expect(mockRecreateTable).toHaveBeenCalledOnce()
-    })
-  })
-
-  describe("partitioningFormat support", () => {
-    it("timestamp mode with year format generates year-only partition path", async () => {
-      await executeWritePipeline(
-        createInput({
-          loadStrategy: "append",
-          partitioning: true,
-          partitioningFormat: "year",
-        })
-      )
-
-      expect(mockUpload).toHaveBeenCalledExactlyOnceWith(
-        expect.any(Uint8Array),
-        expect.stringMatching(
-          /warehouse\/analytics\/users\/all\.parquet\/year=\d{4}\/test-uuid-1234\.parquet/u
-        ),
-        expect.objectContaining({})
-      )
-    })
-
-    it("timestamp mode with year/month format generates year+month partition path", async () => {
-      await executeWritePipeline(
-        createInput({
-          loadStrategy: "append",
-          partitioning: true,
-          partitioningFormat: "year/month",
-        })
-      )
-
-      expect(mockUpload).toHaveBeenCalledExactlyOnceWith(
-        expect.any(Uint8Array),
-        expect.stringMatching(
-          /warehouse\/analytics\/users\/all\.parquet\/year=\d{4}\/month=\d{2}\/test-uuid-1234\.parquet/u
-        ),
-        expect.objectContaining({})
-      )
     })
   })
 

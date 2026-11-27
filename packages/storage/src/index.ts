@@ -19,17 +19,17 @@ export type {
 } from "./table-manager/types"
 export {
   executeWritePipeline,
-  generatePartitionPath,
   generateFlatPath,
   resolvePartitioningConfig,
-  enrichJsonSchemaWithTimestamp,
-  injectLoadTimestamp,
+  enrichJsonSchemaWithAutoFill,
+  injectAutoFillValues,
   PartitionFieldError,
   parsePartitioningFormat,
   generateCustomPartitionPath,
   groupRecordsByCustomPartition,
 } from "./write-pipeline"
 export type {
+  AutoFillField,
   PartitionMode,
   ResolvedPartitioning,
   WritePipelineConfig,

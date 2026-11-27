@@ -12,7 +12,7 @@ function definition(
   overrides: Partial<EndpointDefinitionFormat> = {}
 ): EndpointDefinitionFormat {
   return {
-    version: "1.0",
+    version: "2.0",
     tableName: "test_table",
     catalog: "my_catalog",
     schema: "my_schema",

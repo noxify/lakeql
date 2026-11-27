@@ -7,6 +7,6 @@
     "strictNullChecks": true,
     "types": ["node"]
   },
-  "include": ["*.ts", "src"],
+  "include": ["*.ts", "src", "e2e"],
   "exclude": ["node_modules", "dist"]
 }

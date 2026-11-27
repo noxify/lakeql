@@ -1,5 +1,6 @@
 "use client"
 
+import { cn } from "cn"
 import { ChevronRight, ExternalLinkIcon } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
@@ -12,7 +13,6 @@ import {
 import { current } from "@/lib/helpers"
 import { getNavIconComponent } from "@/lib/nav-icons"
 import type { NavBadge, TreeItem } from "@/lib/navigation"
-import { cn } from "@/lib/utils"
 
 import { RenderIcon } from "./render-icon"
 import {

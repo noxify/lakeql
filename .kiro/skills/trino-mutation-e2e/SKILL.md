@@ -121,7 +121,7 @@ Each generated endpoint bakes its load strategy into `config.ts` at generation t
 
 ```json
 {
-  "version": "1.0",
+  "version": "2.0",
   "dataSource": "trino",
   "catalog": "hive",
   "schema": "test",

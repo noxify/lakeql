@@ -1,3 +1,4 @@
+import { cn } from "cn"
 import { createSlug } from "renoun"
 import type { ContentSection } from "renoun/file-system"
 import { isFile } from "renoun/file-system"
@@ -33,7 +34,6 @@ import {
 } from "@/lib/navigation"
 import { analyzeSyntacticExports } from "@/lib/ts-morph-analysis"
 import type { SyntacticExportInfo } from "@/lib/ts-morph-analysis"
-import { cn } from "@/lib/utils"
 
 function createDocsLayoutConfig(input: {
   layoutWidth: string

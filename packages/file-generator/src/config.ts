@@ -17,12 +17,24 @@ import {
 export interface StorageConfigProps {
   /** The load strategy for the write pipeline. */
   loadStrategy: string
-  /** Base path for endpoint data. */
-  basePath: string
-  /** Partitioning mode (true, false, or field name string). */
-  partitioning?: boolean | string
-  /** Partition format granularity. */
-  partitioningFormat?: string
+  /**
+   * The write method the endpoint was generated for. Always emitted so the
+   * runtime can reject a data source whose write strategy differs.
+   */
+  writeMethod: "storage" | "insert"
+  /** Base path for endpoint data. Emitted only when present (storage). */
+  basePath?: string
+  /**
+   * Partitioning mode: `false` (off) or a partition-field/custom string. The
+   * legacy boolean-`true` "partition by write timestamp" mode is gone — a
+   * write-timestamp column is now an explicit `autoFill` field (C7).
+   */
+  partitioning?: false | string
+  /**
+   * Declared auto-fill directives threaded into the generated `storageConfig`
+   * so the runtime populates these columns on every schema-writing load.
+   */
+  autoFillFields?: { name: string; kind: "write_timestamp" }[]
 }
 
 /**
@@ -114,19 +126,20 @@ export function generateConfig(props: GenerateConfigProps) {
   // Generate storageConfig when mutation pipeline is configured
   if (storageConfig) {
     const storageProperties: ts.PropertyAssignment[] = [
+      property("writeMethod", stringLiteral(storageConfig.writeMethod)),
       property("loadStrategy", stringLiteral(storageConfig.loadStrategy)),
-      property("basePath", stringLiteral(storageConfig.basePath)),
     ]
 
+    if (storageConfig.basePath !== undefined) {
+      storageProperties.push(
+        property("basePath", stringLiteral(storageConfig.basePath))
+      )
+    }
+
     if (storageConfig.partitioning !== undefined) {
-      if (typeof storageConfig.partitioning === "boolean") {
+      if (storageConfig.partitioning === false) {
         storageProperties.push(
-          property(
-            "partitioning",
-            storageConfig.partitioning
-              ? ts.factory.createTrue()
-              : ts.factory.createFalse()
-          )
+          property("partitioning", ts.factory.createFalse())
         )
       } else {
         storageProperties.push(
@@ -135,11 +148,25 @@ export function generateConfig(props: GenerateConfigProps) {
       }
     }
 
-    if (storageConfig.partitioningFormat) {
+    if (
+      storageConfig.autoFillFields &&
+      storageConfig.autoFillFields.length > 0
+    ) {
       storageProperties.push(
         property(
-          "partitioningFormat",
-          stringLiteral(storageConfig.partitioningFormat)
+          "autoFillFields",
+          ts.factory.createArrayLiteralExpression(
+            storageConfig.autoFillFields.map((entry) =>
+              objectLiteral(
+                [
+                  property("name", stringLiteral(entry.name)),
+                  property("kind", stringLiteral(entry.kind)),
+                ],
+                false
+              )
+            ),
+            false
+          )
         )
       )
     }

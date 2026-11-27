@@ -1,6 +1,6 @@
 // Logos are powered by https://thesvg.org/
 
-import { cn } from "@/lib/utils"
+import { cn } from "cn"
 
 export const TrinoLogo = ({
   className,

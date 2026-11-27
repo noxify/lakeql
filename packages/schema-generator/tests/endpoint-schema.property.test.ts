@@ -203,7 +203,7 @@ const endpointDefinitionArb = fc
   )
   .map(([tableName, catalog, schema, fields, mutation]) => {
     const def: Record<string, unknown> = {
-      version: "1.0",
+      version: "2.0",
       tableName,
       catalog,
       schema,
@@ -222,7 +222,7 @@ describe("Extended Endpoint Definition Schema Validation", () => {
     const endpointWithMutationFalseArb = fc
       .tuple(metadataNameArb, metadataNameArb, metadataNameArb, fieldsArb)
       .map(([tableName, catalog, schema, fields]) => ({
-        version: "1.0",
+        version: "2.0",
         tableName,
         catalog,
         schema,
@@ -260,7 +260,7 @@ describe("Extended Endpoint Definition Schema Validation", () => {
           bucket,
           basePath,
         ]) => ({
-          version: "1.0",
+          version: "2.0",
           tableName,
           catalog,
           schema,
@@ -282,7 +282,7 @@ describe("Extended Endpoint Definition Schema Validation", () => {
     const endpointWithoutMutationArb = fc
       .tuple(metadataNameArb, metadataNameArb, metadataNameArb, fieldsArb)
       .map(([tableName, catalog, schema, fields]) => ({
-        version: "1.0",
+        version: "2.0",
         tableName,
         catalog,
         schema,
@@ -324,7 +324,7 @@ describe("Extended Endpoint Definition Schema Validation", () => {
         )
       )
       .map(([tableName, catalog, schema, fields]) => ({
-        version: "1.0",
+        version: "2.0",
         tableName,
         catalog,
         schema,

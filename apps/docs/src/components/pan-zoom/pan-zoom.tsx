@@ -1,8 +1,9 @@
 "use client"
 
+import { cn } from "cn"
+
 import { PanZoomLightbox } from "@/components/pan-zoom/pan-zoom-lightbox"
 import { PanZoomViewport } from "@/components/pan-zoom/pan-zoom-viewport"
-import { cn } from "@/lib/utils"
 
 export interface PanZoomProps {
   /**

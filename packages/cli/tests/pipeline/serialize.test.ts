@@ -112,7 +112,7 @@ describe(serializeDeterministic, () => {
 
   it("produces byte-identical output on re-serialization (round-trip)", () => {
     const input = {
-      version: "1.0",
+      version: "2.0",
       tableName: "user_events",
       catalog: "analytics",
       schema: "tracking",

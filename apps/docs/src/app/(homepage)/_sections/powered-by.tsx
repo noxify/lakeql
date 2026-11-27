@@ -1,8 +1,8 @@
 import { SiGraphql, SiHono } from "@icons-pack/react-simple-icons"
+import { cn } from "cn"
 import { Space_Grotesk } from "next/font/google"
 
 import { PageContainer } from "@/components/page-container"
-import { cn } from "@/lib/utils"
 
 const spaceGrotesk = Space_Grotesk({ subsets: ["latin"] })
 

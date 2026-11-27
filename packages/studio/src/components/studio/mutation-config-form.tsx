@@ -1,0 +1,428 @@
+import type {
+  LoadStrategy,
+  WriteMethod,
+} from "@lakeql/schema-generator/endpoint-schema"
+import {
+  AUTO_FILL_NAME_MAX_LENGTH,
+  loadStrategies,
+} from "@lakeql/schema-generator/endpoint-schema"
+import { ClockIcon } from "lucide-react"
+import { useId, useState } from "react"
+
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { RadioCardGroup, RadioCardItem } from "@/components/ui/radio-card-group"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Switch } from "@/components/ui/switch"
+import { toast } from "@/components/ui/toast"
+import type {
+  EditorField,
+  EditorMutation,
+  EditorPartitionSegment,
+  WriteMethodChangePlan,
+} from "@/core"
+import {
+  adapterProfile,
+  addField as addFieldOp,
+  changeWriteMethod,
+  createField,
+  planWriteMethodChange,
+} from "@/core"
+
+import { metadataInputId } from "./metadata-nav"
+import { PartitioningFieldPicker } from "./partitioning-field-picker"
+import { useOptionalShellView } from "./shell-view"
+import { useEditorContext } from "./use-editor"
+import { WriteMethodChangeDialog } from "./write-method-change-dialog"
+
+/**
+ * The default name of the write-timestamp auto-fill field added by the helper
+ * button. A short literal well within the {@link AUTO_FILL_NAME_MAX_LENGTH}
+ * cap; sliced defensively so the default can never exceed the cap even if the
+ * literal is lengthened later.
+ */
+const AUTO_FILL_DEFAULT_FIELD_NAME = "load_timestamp".slice(
+  0,
+  AUTO_FILL_NAME_MAX_LENGTH
+)
+
+/**
+ * The effective-default enabled mutation config, prefilled so the controls have
+ * concrete values to show. A freshly-enabled mutation starts in `off`
+ * partitioning mode (`partitioning: false`): nothing is imposed on the author,
+ * and the export always serializes an explicit `partitioning` value (C8).
+ */
+function defaultEnabledMutation(): Extract<EditorMutation, { enabled: true }> {
+  return {
+    enabled: true,
+    loadStrategy: "append",
+    writeMethod: "storage",
+    basePath: "",
+    partitioning: false,
+  }
+}
+
+const LOAD_STRATEGY_LABELS: Record<LoadStrategy, string> = {
+  full_load: "Full load",
+  full_load_append: "Full load append",
+  append: "Append",
+}
+
+/**
+ * The write method control: a radio-card choice between Storage and Insert.
+ *
+ * Switching storage to insert discards the base path, partitioning and
+ * auto-fill options. When any of those is set, the change waits in a confirm
+ * dialog; confirming applies everything in one history snapshot, so one undo
+ * restores it. Cancelling leaves the state, and so the selection, unchanged.
+ * Every other switch applies immediately.
+ */
+const WriteMethodControl = ({
+  mutation,
+}: {
+  mutation: Extract<EditorMutation, { enabled: true }>
+}) => {
+  const editor = useEditorContext()
+  const labelId = useId()
+  const hintId = useId()
+  const [pending, setPending] = useState<WriteMethodChangePlan | null>(null)
+
+  const request = (next: WriteMethod): void => {
+    if (next === mutation.writeMethod) {
+      return
+    }
+    const plan = planWriteMethodChange(editor.state, next)
+    if (plan.needsConfirmation) {
+      setPending(plan)
+      return
+    }
+    editor.replaceState(changeWriteMethod(editor.state, next), { commit: true })
+  }
+
+  return (
+    <div className="grid gap-1.5">
+      <span id={labelId} className="text-sm font-medium">
+        Write method
+      </span>
+      <RadioCardGroup
+        aria-labelledby={labelId}
+        aria-describedby={hintId}
+        value={mutation.writeMethod}
+        onValueChange={(next) => request(next as WriteMethod)}
+      >
+        <RadioCardItem
+          value="storage"
+          title="Storage"
+          description="Writes Parquet files under a base path and manages an external table."
+        />
+        <RadioCardItem
+          value="insert"
+          title="Insert"
+          description="Writes rows with INSERT statements through the data source."
+        />
+      </RadioCardGroup>
+      <span id={hintId} className="text-muted-foreground text-xs">
+        Must match the data source&apos;s <code>writeConfig.strategy</code>.
+      </span>
+      <WriteMethodChangeDialog
+        plan={pending}
+        onConfirm={() => {
+          setPending(null)
+          editor.replaceState(changeWriteMethod(editor.state, "insert"), {
+            commit: true,
+          })
+        }}
+        onCancel={() => setPending(null)}
+      />
+    </div>
+  )
+}
+
+/**
+ * The partitioning sub-form: an on/off radio-card choice and the multi-field
+ * {@link PartitioningFieldPicker} when partitioning is on.
+ *
+ * A write-timestamp column is an explicit auto-fill field (added via the
+ * helper button below), not an implicit partitioning setting. Turning
+ * partitioning off stores `false` and discards the chosen segments (undo
+ * restores them); turning it on seeds an empty segment list.
+ */
+const PartitioningControls = ({
+  mutation,
+}: {
+  mutation: Extract<EditorMutation, { enabled: true }>
+}) => {
+  const editor = useEditorContext()
+  const enabled = mutation.partitioning !== false
+
+  const setEnabled = (next: boolean): void => {
+    editor.setMutation({
+      ...mutation,
+      partitioning: next ? mutation.partitioning || [] : false,
+    })
+  }
+
+  return (
+    <div className="grid gap-3">
+      <div className="grid gap-1.5">
+        <span className="text-sm font-medium">Partitioning</span>
+        <RadioCardGroup
+          aria-label="Partitioning mode"
+          value={enabled ? "on" : "off"}
+          onValueChange={(next) => setEnabled(next === "on")}
+        >
+          <RadioCardItem
+            value="off"
+            title="Off (flat layout)"
+            description="No partitioning (flat layout)."
+          />
+          <RadioCardItem
+            value="on"
+            title="By fields"
+            description="Choose fields (and date components) to build the partition path."
+          />
+        </RadioCardGroup>
+      </div>
+
+      {enabled && <PartitioningFieldPicker mutation={mutation} />}
+    </div>
+  )
+}
+
+/**
+ * The partition path a write-timestamp auto-fill field is prefilled with:
+ * year, month, and day components of that field, bound to it by id so a later
+ * rename keeps the path attached.
+ *
+ * @param fieldId - The auto-fill field's id.
+ * @returns The ordered segments.
+ */
+function writeTimestampPartitioning(fieldId: string): EditorPartitionSegment[] {
+  return [
+    { fieldId, component: "year" },
+    { fieldId, component: "month" },
+    { fieldId, component: "day" },
+  ]
+}
+
+/**
+ * The write-timestamp auto-fill helper: a button that appends a real top-level
+ * `DateTime` field carrying `options.autoFill: "write_timestamp"` with the
+ * default name {@link AUTO_FILL_DEFAULT_FIELD_NAME}. Unlike the removed implicit
+ * timestamp mode, this adds an ordinary, editable, persisted field to
+ * `state.fields` (FR7.3) — the author can rename it, and the schema derives its
+ * `_year`/`_month` companions.
+ *
+ * The button is disabled when a top-level field already uses the default name,
+ * so a single click never introduces a duplicate-name collision. A successful
+ * add confirms with a success toast; inside the studio shell the toast offers a
+ * "Show field" action that opens the Fields view with the new field selected.
+ *
+ * When partitioning is on and no partition segments are
+ * chosen yet (`partitioning` is an empty list), the click also prefills the partition
+ * path with {@link writeTimestampPartitioning}. A partitioning that is off or
+ * already has segments is never touched. Field and partitioning land in one
+ * history snapshot, so a single undo reverts both.
+ *
+ * @param props.mutation - The enabled mutation whose partitioning may be
+ *   prefilled.
+ */
+const AutoFillHelper = ({
+  mutation,
+}: {
+  mutation: Extract<EditorMutation, { enabled: true }>
+}) => {
+  const editor = useEditorContext()
+  const shell = useOptionalShellView()
+  const existing = editor.state.fields.find(
+    (field) => field.name === AUTO_FILL_DEFAULT_FIELD_NAME
+  )
+  const alreadyAdded = existing?.options?.autoFill === "write_timestamp"
+
+  const addAutoFillField = (): void => {
+    const base = createField("DateTime")
+    const field: EditorField = {
+      ...base,
+      name: AUTO_FILL_DEFAULT_FIELD_NAME,
+      options: { autoFill: "write_timestamp" },
+    }
+
+    // Prefill only an empty by-field selection; never override a chosen path
+    // or switch the mode on the author's behalf.
+    const prefill =
+      mutation.partitioning !== false && mutation.partitioning.length === 0
+    const withField = addFieldOp(editor.state, [], field)
+    const next = prefill
+      ? {
+          ...withField,
+          mutation: {
+            ...mutation,
+            partitioning: writeTimestampPartitioning(field.id),
+          },
+        }
+      : withField
+    editor.replaceState(next, { commit: true })
+    editor.selectField(field.id)
+
+    const toastId = toast.add({
+      type: "success",
+      title: "Write-timestamp field added",
+      description: prefill
+        ? `${field.name} (DateTime) is filled by the server on every write. Partitioning set to ${field.name} → year / month / day.`
+        : `${field.name} (DateTime) is filled by the server on every write.`,
+      actionProps:
+        shell === null
+          ? undefined
+          : {
+              children: "Show field",
+              onClick: () => {
+                shell.setView("fields")
+                editor.selectField(field.id)
+                toast.close(toastId)
+              },
+            },
+    })
+  }
+
+  return (
+    <div className="grid gap-1.5">
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        disabled={existing !== undefined}
+        onClick={addAutoFillField}
+      >
+        <ClockIcon className="size-4" />
+        Add write-timestamp field
+      </Button>
+      <span className="text-muted-foreground text-xs">
+        {existing === undefined
+          ? "Adds a DateTime field stamped by the server on every write (append / full-load-append), with derived _year and _month columns."
+          : alreadyAdded
+            ? `${AUTO_FILL_DEFAULT_FIELD_NAME} is part of this endpoint and filled by the server on every write.`
+            : `A field named ${AUTO_FILL_DEFAULT_FIELD_NAME} already exists. Rename it to add the write-timestamp field.`}
+      </span>
+    </div>
+  )
+}
+
+/**
+ * The mutation configuration form (task 14).
+ *
+ * A switch enables or disables mutation — disabled exports `mutation: false`,
+ * enabled exports a config object (Req 5.1). When enabled it exposes
+ * `loadStrategy`, `basePath`, the partitioning controls, and the
+ * write-timestamp auto-fill helper, with the effective defaults prefilled so
+ * the JSON stays minimal (the mapping layer always emits an explicit
+ * `partitioning`).
+ *
+ * All edits route through the editor's `setMutation` so the single source of
+ * state stays in `@/core`; `basePath` and the partition string are continuous
+ * edits settled on blur, everything else commits immediately.
+ */
+export const MutationConfigForm = () => {
+  const editor = useEditorContext()
+  const { mutation } = editor.state
+  const loadStrategyId = useId()
+  // A stable, deterministic id so the Validations jump can target the base path
+  // input (it exists only while mutation is enabled, which is also the only
+  // state in which a basePath issue can arise).
+  const basePathId = metadataInputId("basePath")
+  const enabledId = useId()
+
+  return (
+    <div className="grid gap-4">
+      <div className="flex items-center justify-between gap-3">
+        <div className="grid gap-0.5">
+          <Label htmlFor={enabledId}>Enable mutation</Label>
+          <span className="text-muted-foreground text-xs">
+            Off exports <code>mutation: false</code>.
+          </span>
+        </div>
+        <Switch
+          id={enabledId}
+          checked={mutation.enabled}
+          onCheckedChange={(next) => {
+            editor.setMutation(
+              next ? defaultEnabledMutation() : { enabled: false }
+            )
+          }}
+        />
+      </div>
+
+      {mutation.enabled && (
+        <>
+          <div className="grid gap-1.5">
+            <Label htmlFor={loadStrategyId}>Load strategy</Label>
+            <Select
+              value={mutation.loadStrategy}
+              onValueChange={(next) => {
+                editor.setMutation({
+                  ...mutation,
+                  loadStrategy: next as LoadStrategy,
+                })
+              }}
+            >
+              <SelectTrigger
+                id={loadStrategyId}
+                className="w-full"
+                aria-label="Load strategy"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {loadStrategies.map((strategy) => (
+                  <SelectItem key={strategy} value={strategy}>
+                    {LOAD_STRATEGY_LABELS[strategy]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {adapterProfile(editor.adapter).writeMethods.length > 1 && (
+            <WriteMethodControl mutation={mutation} />
+          )}
+
+          {mutation.writeMethod === "storage" && (
+            <>
+              <div className="grid gap-1.5">
+                <Label htmlFor={basePathId}>Base path</Label>
+                <Input
+                  id={basePathId}
+                  placeholder="/warehouse/events"
+                  aria-invalid={mutation.basePath === ""}
+                  value={mutation.basePath}
+                  onChange={(event) => {
+                    editor.setMutation(
+                      { ...mutation, basePath: event.target.value },
+                      { commit: false }
+                    )
+                  }}
+                  onBlur={() => editor.commitEdits()}
+                />
+                {mutation.basePath === "" && (
+                  <p className="text-destructive text-xs">
+                    A non-empty base path is required when mutation is enabled.
+                  </p>
+                )}
+              </div>
+
+              <PartitioningControls mutation={mutation} />
+
+              <AutoFillHelper mutation={mutation} />
+            </>
+          )}
+        </>
+      )}
+    </div>
+  )
+}

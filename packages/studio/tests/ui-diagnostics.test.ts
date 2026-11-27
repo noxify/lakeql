@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest"
 
+import { summarizeDiagnostics } from "@/components/studio/diagnostics"
 import type { ValidationResult } from "@/core"
 import { evaluate } from "@/core"
 import { fromDefinition } from "@/core/mapping"
 import { createFreshState } from "@/core/model"
-import { summarizeDiagnostics } from "@/ui/diagnostics"
 
 describe("diagnostic summary", () => {
   it("returns no lines for a valid state", () => {
@@ -14,6 +14,11 @@ describe("diagnostic summary", () => {
       duplicates: [],
       badRegex: [],
       badNumber: [],
+      reservedNames: [],
+      autoFillPlacement: [],
+      autoFillMutation: [],
+      companionPartition: [],
+      unresolvedPartition: [],
     }
     expect(summarizeDiagnostics(valid)).toStrictEqual([])
   })
@@ -25,6 +30,11 @@ describe("diagnostic summary", () => {
       duplicates: [],
       badRegex: [],
       badNumber: [],
+      reservedNames: [],
+      autoFillPlacement: [],
+      autoFillMutation: [],
+      companionPartition: [],
+      unresolvedPartition: [],
     }
     expect(summarizeDiagnostics(result)).toStrictEqual([
       "fields.0.name: Invalid input",
@@ -40,6 +50,11 @@ describe("diagnostic summary", () => {
         { pattern: "(", message: "Unterminated group", fieldId: "f1" },
       ],
       badNumber: [],
+      reservedNames: [],
+      autoFillPlacement: [],
+      autoFillMutation: [],
+      companionPartition: [],
+      unresolvedPartition: [],
     }
     expect(summarizeDiagnostics(result)).toStrictEqual([
       'Duplicate field "id"',
@@ -54,6 +69,11 @@ describe("diagnostic summary", () => {
       duplicates: [],
       badRegex: [],
       badNumber: [{ kind: "min", value: Number.NaN, fieldId: "f1" }],
+      reservedNames: [],
+      autoFillPlacement: [],
+      autoFillMutation: [],
+      companionPartition: [],
+      unresolvedPartition: [],
     }
     expect(summarizeDiagnostics(result)).toStrictEqual([
       "Min must be a finite number",
@@ -70,7 +90,7 @@ describe("diagnostic summary", () => {
 
   it("surfaces a duplicate-name gate result", () => {
     const state = fromDefinition({
-      version: "1.0",
+      version: "2.0",
       tableName: "t",
       catalog: "c",
       schema: "s",
@@ -84,5 +104,29 @@ describe("diagnostic summary", () => {
     expect(
       lines.some((line) => line.includes('Duplicate field "id"'))
     ).toBeTruthy()
+  })
+})
+
+describe("diagnostic summary — unresolved partition segments", () => {
+  it("names a missing and an ambiguous partition field", () => {
+    const result: ValidationResult = {
+      validForExport: false,
+      schemaIssues: [],
+      duplicates: [],
+      badRegex: [],
+      badNumber: [],
+      reservedNames: [],
+      autoFillPlacement: [],
+      autoFillMutation: [],
+      companionPartition: [],
+      unresolvedPartition: [
+        { name: "ghost", reason: "missing" },
+        { name: "dup", component: "year", reason: "ambiguous" },
+      ],
+    }
+    expect(summarizeDiagnostics(result)).toStrictEqual([
+      'Partition field "ghost" does not exist',
+      'Partition field "dup" matches more than one field',
+    ])
   })
 })

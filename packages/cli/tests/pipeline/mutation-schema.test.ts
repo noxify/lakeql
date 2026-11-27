@@ -4,6 +4,20 @@ import ts from "typescript"
 import { describe, expect, it } from "vitest"
 
 import { generateMutationSchema } from "@/pipeline/mutation-schema"
+import type { GenerateMutationSchemaProps } from "@/pipeline/mutation-schema"
+import { buildStorageConfig } from "@/pipeline/storage-config"
+
+/** Calls generateMutationSchema with the storageConfig derived the way generate.ts derives it. */
+function generate(
+  props: Omit<GenerateMutationSchemaProps, "storageConfig">
+): ts.Node[] {
+  return generateMutationSchema({
+    ...props,
+    storageConfig: props.mutationConfig
+      ? buildStorageConfig(props.mutationConfig, props.fieldDefinitions ?? [])
+      : undefined,
+  })
+}
 
 /**
  * Helper to print AST nodes to a string for assertion.
@@ -61,7 +75,7 @@ describe(generateMutationSchema, () => {
       },
     }
 
-    const result = generateMutationSchema({
+    const result = generate({
       models,
       mutationName: "createTrackingUserEvents",
     })
@@ -136,7 +150,7 @@ describe(generateMutationSchema, () => {
       },
     }
 
-    const result = generateMutationSchema({
+    const result = generate({
       models,
       mutationName: "createTrackingUserEvents",
       mutationConfig: {
@@ -185,7 +199,7 @@ describe(generateMutationSchema, () => {
       },
     }
 
-    const result = generateMutationSchema({
+    const result = generate({
       models,
       mutationName: "createTrackingUserEvents",
       mutationConfig: {
@@ -255,7 +269,7 @@ describe(generateMutationSchema, () => {
       },
     }
 
-    const result = generateMutationSchema({
+    const result = generate({
       models,
       mutationName: "createTrackingUserEvents",
       mutationConfig: {
@@ -276,7 +290,7 @@ describe(generateMutationSchema, () => {
   it("returns empty array when no root model exists", () => {
     const models: Record<string, ModelResponse> = {}
 
-    const result = generateMutationSchema({
+    const result = generate({
       models,
       mutationName: "createSomething",
       mutationConfig: {
@@ -312,7 +326,7 @@ describe(generateMutationSchema, () => {
       },
     }
 
-    const result = generateMutationSchema({
+    const result = generate({
       models,
       mutationName: "createTestModel",
       mutationConfig: {
@@ -355,7 +369,7 @@ describe(generateMutationSchema, () => {
       },
     }
 
-    const result = generateMutationSchema({
+    const result = generate({
       models,
       mutationName: "createTestModel",
       mutationConfig: false,
@@ -388,7 +402,7 @@ describe(generateMutationSchema, () => {
       },
     }
 
-    const result = generateMutationSchema({
+    const result = generate({
       models,
       mutationName: "createTestModel",
       mutationConfig: {
@@ -464,7 +478,7 @@ describe(generateMutationSchema, () => {
     }
 
     const withoutPartitioning = printNodes(
-      generateMutationSchema({
+      generate({
         models,
         mutationName: "createTestModel",
         mutationConfig: {
@@ -476,19 +490,18 @@ describe(generateMutationSchema, () => {
     expect(withoutPartitioning).not.toContain("storageConfig.partitioning")
 
     const withPartitioning = printNodes(
-      generateMutationSchema({
+      generate({
         models,
         mutationName: "createTestModel",
         mutationConfig: {
           loadStrategy: "full_load_append",
           basePath: "warehouse/test/data",
-          partitioning: "event_date",
-          partitioningFormat: "year/month/day",
+          partitioning: "event_date:year/event_date:month/event_date:day",
         },
       })
     )
     expect(withPartitioning).toContain("storageConfig.partitioning")
-    expect(withPartitioning).toContain("storageConfig.partitioningFormat")
+    expect(withPartitioning).not.toContain("partitioningFormat")
   })
 
   it("imports validationSchema when hasValidations is true", () => {
@@ -515,7 +528,7 @@ describe(generateMutationSchema, () => {
       },
     }
 
-    const result = generateMutationSchema({
+    const result = generate({
       models,
       mutationName: "createTestModel",
       mutationConfig: {
@@ -560,7 +573,7 @@ describe(generateMutationSchema, () => {
       },
     }
 
-    const result = generateMutationSchema({
+    const result = generate({
       models,
       mutationName: "createTestModel",
       mutationConfig: {

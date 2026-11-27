@@ -1,5 +1,6 @@
 "use client"
 
+import { cn } from "cn"
 import {
   ChevronRightIcon,
   FileIcon,
@@ -14,7 +15,6 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
-import { cn } from "@/lib/utils"
 
 interface FileTreeContextType {
   expandedPaths: Set<string>

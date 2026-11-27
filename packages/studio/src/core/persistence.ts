@@ -2,6 +2,7 @@ import { createCollection, localStorageCollectionOptions } from "@tanstack/db"
 
 import type { EditorState } from "./model"
 import { createFreshState } from "./model"
+import { migrateEditorState } from "./partitioning"
 
 /**
  * A persisted draft record. The collection is keyed by {@link id} and holds the
@@ -194,7 +195,9 @@ function stripRowMetadata(row: Record<string, unknown>): DraftRecord {
   const { id, state, updatedAt } = row as Partial<DraftRecord>
   return {
     id: String(id),
-    state: state as EditorState,
+    // Drafts saved before partition segments were id-based hold the name
+    // string; convert them so an old draft keeps loading.
+    state: migrateEditorState(state as EditorState),
     updatedAt: typeof updatedAt === "number" ? updatedAt : 0,
   }
 }

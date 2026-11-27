@@ -17,6 +17,14 @@ export interface DataSourceWriteConfig {
   table: { catalog: string; schema: string; tableName: string }
   /** Behavior to apply when records reach an existing target. */
   loadStrategy?: LoadStrategy
+  /**
+   * The write method the endpoint was generated for. When set, a write
+   * strategy that implements a different method rejects the write before
+   * touching data, so a mismatch between the endpoint and the data source's
+   * configured strategy fails loudly. Absent means "not declared" and skips
+   * the check.
+   */
+  writeMethod?: "storage" | "insert"
   /** Storage base path required by storage-backed write strategies. */
   basePath?: string
   /**
@@ -33,8 +41,14 @@ export interface DataSourceWriteConfig {
   writeId?: string
   /** Adapter-owned partitioning configuration. */
   partitioning?: unknown
-  /** Adapter-owned format for partition values. */
-  partitioningFormat?: string
+  /**
+   * Server-populated auto-fill fields for this write. Each entry names a
+   * top-level field the write pipeline fills at write time (and whose derived
+   * companion columns it also populates). Currently only the
+   * `"write_timestamp"` kind is supported, which stamps the field and its
+   * `_year`/`_month` companions from the single write-clock value.
+   */
+  autoFillFields?: { name: string; kind: "write_timestamp" }[]
 }
 
 /**

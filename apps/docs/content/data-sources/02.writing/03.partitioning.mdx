@@ -4,30 +4,60 @@ navTitle: Partitioning
 description: Control how written files are partitioned in object storage.
 ---
 
-The external-storage write strategy can partition the files it writes, producing Hive-style partition paths. Two fields on the write config control it: `partitioning` and `partitioningFormat`.
+The external-storage write strategy can partition the files it writes, producing Hive-style partition paths. The `partitioning` field on the write config controls it.
 
 ## Partitioning Modes
 
-`partitioning` accepts a boolean or a string, resolving to one of four modes:
+`partitioning` accepts `false` or a string, resolving to one of two modes:
 
 | Value | Mode | Behavior |
 | --- | --- | --- |
-| `true` (default) | timestamp | Partition by the write timestamp. |
-| `false` | disabled | Write a flat path, no partitioning. |
-| `"fieldName"` | field | Partition by a record field's date value. |
-| `"a:year/b"` | custom | Partition by a custom format string (contains `/` or `:`). |
+| `false` (default) | disabled | Write a flat path, no partitioning. |
+| any string | custom | Partition by a format string of `/`-separated segments. |
 
-## Format Granularity
+There is no implicit timestamp mode. To partition by the write time, declare an [auto-fill field](/docs/lakeql/endpoints/mutations#auto-fill-fields) and reference it in a partition string (see [Partitioning by write time](#partitioning-by-write-time) below). An absent `partitioning` key resolves to `false`, never to a timestamp.
 
-`partitioningFormat` sets the granularity for timestamp and field modes. It defaults to `"year/month/day"`, producing paths like `year=2026/month=08/day=29/<uuid>.parquet`.
+## Partitioning by Write Time
 
-## Field and Custom Partitioning
+Partitioning by a server-assigned write time uses a declared auto-fill `DateTime` field rather than an implicit mode. Given an endpoint field:
 
-In **field** mode, each record is grouped by the date value of the named field. In **custom** mode, a format string composes the path from one or more fields, optionally extracting a date component per segment (for example, `event_date:year` extracts the year from an ISO date). Records that share a partition key land in the same file.
+```json
+{
+  "name": "load_timestamp",
+  "type": "DateTime",
+  "options": { "autoFill": "write_timestamp" }
+}
+```
+
+the write pipeline populates `load_timestamp` from the write clock on every `append`/`full_load_append` write and derives two companion `Integer` columns, `load_timestamp_year` and `load_timestamp_month`, from the same value. All three are visible in the query type and exist as table columns; none appears in the mutation input.
+
+Reference the primary field with the component form in the partition string to lay the files out by those components:
+
+```json
+"partitioning": "load_timestamp:year/load_timestamp:month/load_timestamp:day"
+```
+
+This reproduces the old timestamp layout (`year=…/month=…/day=…`) with every column explicit and self-describing. Reference the **primary** field (`load_timestamp:year`), not the derived companion columns: a segment whose field name is a companion (`load_timestamp_year`, in any form) is rejected at validation time, because a companion holds an integer rather than a parseable date.
+
+<Warning>
+  Auto-fill fields require a `version: "2.0"` endpoint definition. Version
+  `"1.0"` is no longer supported and is rejected with a clear message; there is
+  no compatibility shim.
+</Warning>
+
+## Partition Strings
+
+A partition string composes the path from one or more `/`-separated segments. A bare field name (for example, `region`) partitions by the field's raw value and produces `region=EU`. A `field:component` segment (for example, `event_date:year`) extracts a date component, where the component is one of `year`, `month`, `day`, `hour`, `minute`, or `second`. `Date` and `DateTime` fields can only be partitioned through a component, so use `event_date:year/event_date:month/event_date:day` for daily granularity; a bare date field name is rejected at validation time. A `Date` value has no time of day, so `Date` fields accept only `year`, `month`, and `day`; `hour`, `minute`, and `second` require a `DateTime` field. Records that share a partition key land in the same file.
+
+<Note>
+  The `partitioningFormat` option no longer exists, and an endpoint definition
+  that sets `mutation.partitioningFormat` is rejected. Express date granularity
+  with components in `partitioning` instead.
+</Note>
 
 <Warning>
   A record whose partition field is missing, null, or an unparseable date raises
   a `PartitionFieldError` that names the field and the offending record index.
 </Warning>
 
-Partitioning applies only to the [external-storage strategy](/docs/data-sources/storage). The INSERT strategy writes rows through SQL and does not partition files.
+Partitioning applies only to the [external-storage strategy](/docs/data-sources/storage), that is, endpoints with `mutation.writeMethod: "storage"` (the default). The INSERT strategy writes rows through SQL and does not partition files, so an endpoint with `writeMethod: "insert"` rejects a partition string.

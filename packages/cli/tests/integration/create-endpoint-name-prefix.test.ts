@@ -47,7 +47,7 @@ const { default: createEndpointCommandFactory } =
 // carries a namePrefix. create-endpoint never reads that config, so the prefix
 // must not appear in the generated output.
 const definition = {
-  version: "1.0",
+  version: "2.0",
   tableName: "order_line_items",
   catalog: "hive",
   schema: "analytics_sales",

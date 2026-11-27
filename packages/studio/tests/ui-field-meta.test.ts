@@ -5,7 +5,7 @@ import {
   fieldNameError,
   fieldTypeOptions,
   metadataFieldError,
-} from "@/ui/field-meta"
+} from "@/components/studio/field-meta"
 
 describe("field type option lists", () => {
   it("offers the six primitives plus Object and Array as field types", () => {

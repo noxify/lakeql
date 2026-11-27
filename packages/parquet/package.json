@@ -56,10 +56,10 @@
     "@lakeql/tsconfig": "workspace:*",
     "@lakeql/vitest-config": "workspace:*",
     "@types/node": "24.19.2",
-    "fast-check": "4.10.2",
-    "hyparquet": "1.32.0",
+    "fast-check": "4.11.0",
+    "hyparquet": "1.33.2",
     "tsdown": "0.23.7",
     "typescript": "6.0.3",
-    "vitest": "5.1.0"
+    "vitest": "5.1.2"
   }
 }

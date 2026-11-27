@@ -4,7 +4,7 @@ navTitle: Mutations
 description: The optional mutation block and its load strategies.
 ---
 
-Add a `mutation` block to `endpoint.json` to make the endpoint writable. It's either `false` (explicitly disabled, same as omitting it) or a config object with a `loadStrategy` and a `basePath`.
+Add a `mutation` block to `endpoint.json` to make the endpoint writable. It's either `false` (explicitly disabled, same as omitting it) or a config object with a `loadStrategy`, an optional `writeMethod`, and, for the default `storage` write method, a `basePath`.
 
 <ApiReference
   variant="table"
@@ -12,13 +12,51 @@ Add a `mutation` block to `endpoint.json` to make the endpoint writable. It's ei
   name="MutationConfig"
 />
 
-`loadStrategy` accepts one of three values: `full_load`, `full_load_append`, or `append`. [Load strategies](#load-strategies) below defines each one. `basePath` is required for every one of them, even those that don't use it (see the note below).
+`loadStrategy` accepts one of three values: `full_load`, `full_load_append`, or `append`. [Load strategies](#load-strategies) below defines each one.
+
+### Write method
+
+`writeMethod` says how the data source writes records. It accepts `storage` or `insert`, and an absent value means `storage`. Set it to the same value as the data source's `writeConfig.strategy`.
+
+| Field | `storage` (default) | `insert` |
+| --- | --- | --- |
+| `basePath` | Required, non-empty | Rejected |
+| `partitioning` | `false` or a partition string | `false` or absent |
+| `autoFill` | Allowed with `append` / `full_load_append` | Rejected |
+
+The generated write config carries `writeMethod`. The Trino write strategies compare it with their own method and throw before any write when they differ, so a mismatch fails loudly instead of silently ignoring `basePath` or `partitioning`.
+
+<Note>
+  **Migrating existing INSERT endpoints.** An endpoint that targets a data
+  source with `writeConfig.strategy: "insert"` must set `mutation.writeMethod:
+  "insert"` and remove `basePath`. Without it, the endpoint defaults to
+  `storage` and every write fails with the mismatch error. Regenerate the
+  endpoint with `create-endpoint` afterwards.
+</Note>
 
 ### Where the data goes
 
-`basePath`, `partitioning`, and `partitioningFormat` describe _where inside the configured object store_ this endpoint's data lands and how it is laid out. They do **not** configure the store itself. The bucket, region, and credentials come from the `files-sdk` instance on the data source's `writeConfig`, not from the endpoint. For example, with `basePath: "sales/orders"` and timestamp partitioning, an `append` write lands at `sales/orders/all.parquet/year=2026/month=08/day=29/<uuid>.parquet` in whatever bucket the data source is wired to.
+With the `storage` write method, `basePath` and `partitioning` describe _where inside the configured object store_ this endpoint's data lands and how it is laid out. They do **not** configure the store itself. The bucket, region, and credentials come from the `files-sdk` instance on the data source's `writeConfig`, not from the endpoint. `partitioning` is either `false` (write flat, no partition path) or a partition string that names the fields to lay out by. A bare field name partitions by the raw value (`region=EU`); `Date` and `DateTime` fields are only valid with a component such as `event:year`. The removed `partitioningFormat` key is rejected. For example, with `basePath: "sales/orders"` and `partitioning: "load_timestamp:year/load_timestamp:month/load_timestamp:day"`, an `append` write lands at `sales/orders/all.parquet/year=2026/month=08/day=29/<uuid>.parquet` in whatever bucket the data source is wired to.
 
 See [Writing data](/docs/data-sources/writing) for how the storage write strategy is configured and [Partitioning](/docs/data-sources/writing/partitioning) for the full path layout.
+
+### Auto-fill fields
+
+Partitioning by a write time needs a column that carries that timestamp. Rather than synthesizing one implicitly, declare a field with `options.autoFill`. A write-timestamp auto-fill field is a top-level `DateTime` field:
+
+```json
+{
+  "name": "load_timestamp",
+  "type": "DateTime",
+  "options": { "autoFill": "write_timestamp" }
+}
+```
+
+The server populates it from the write clock on every `append` and `full_load_append` write, and it is **excluded from the mutation input** — clients neither send it nor can override it. It is visible in the GraphQL query type and becomes a real table column, alongside two derived companion columns, `load_timestamp_year` and `load_timestamp_month` (both `Integer`), so you can partition by the extracted components without the client supplying them.
+
+Auto-fill and partitioning are independent. The field is populated and its columns created whenever auto-fill is declared, regardless of `partitioning`; `partitioning` only governs the on-disk path layout. To partition by the derived components, reference the primary field with the component form in the partition string — `load_timestamp:year/load_timestamp:month` — never the companion column names directly. See [Partitioning](/docs/data-sources/writing/partitioning) for the full path layout.
+
+Auto-fill is only valid under an enabled `append` or `full_load_append` mutation with the `storage` write method; combining it with `full_load`, placing it on a nested or non-`DateTime` field, or declaring it without an enabled mutation is a validation error.
 
 ## Load strategies
 
@@ -31,19 +69,17 @@ Set `loadStrategy` to one of three values. Each one picks how a write combines w
 These are the config-facing meanings. For the full runtime behavior of each value, see [Load strategies](/docs/data-sources/writing/load-strategies). It covers ordering, atomicity, partial writes, retries, and failure modes.
 
 <Note>
-  `basePath` is required by the `mutation` schema regardless of which write
-  strategy ends up handling the write. The `basePath`, `partitioning`, and
-  `partitioningFormat` fields are only meaningful for the **storage** write
-  strategy. `full_load` ignores partitioning, and the Trino adapter's `INSERT
-  INTO` strategy ignores all three — it writes directly through SQL — but
-  `basePath` must still be present for the definition to validate.
+  `basePath` and `partitioning` apply to the **storage** write method only.
+  `full_load` ignores partitioning. With `writeMethod: "insert"` the schema
+  rejects `basePath`, a partition string and auto-fill fields, because the Trino
+  `INSERT INTO` strategy writes rows through SQL and uses none of them.
 </Note>
 
 ## Example
 
 ```json
 {
-  "version": "1.0",
+  "version": "2.0",
   "catalog": "hive",
   "schema": "sales",
   "tableName": "orders",
@@ -55,13 +91,32 @@ These are the config-facing meanings. For the full runtime behavior of each valu
       "type": "String",
       "options": { "required": true, "validations": [{ "type": "email" }] }
     },
-    { "name": "status", "type": "String", "options": { "readOnly": true } }
+    { "name": "status", "type": "String", "options": { "readOnly": true } },
+    {
+      "name": "load_timestamp",
+      "type": "DateTime",
+      "options": { "autoFill": "write_timestamp" }
+    }
   ],
   "mutation": {
     "loadStrategy": "append",
-    "basePath": "sales/orders"
+    "basePath": "sales/orders",
+    "partitioning": "load_timestamp:year/load_timestamp:month/load_timestamp:day"
   }
 }
 ```
+
+An INSERT endpoint sets the write method and leaves out the storage-only fields:
+
+```json
+{
+  "mutation": {
+    "loadStrategy": "append",
+    "writeMethod": "insert"
+  }
+}
+```
+
+The `load_timestamp` field in the storage example above is server-populated and excluded from the mutation input; the write lays out under `year=/month=/day=` from its derived components. See [Auto-fill fields](#auto-fill-fields) above.
 
 Generating this definition with [`create-endpoint`](/docs/cli/commands/create-endpoint) also writes a `mutation-schema.ts` file and registers a mutation field in the GraphQL schema, alongside the query field every endpoint gets. See the [mutations guide](/docs/lakeql/guides/mutations) for how that field is authorized and resolved at runtime, or [Set Up a Trino Mutation](/docs/lakeql/guides/set-up-a-trino-mutation) for the end-to-end task.

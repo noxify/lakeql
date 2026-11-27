@@ -17,6 +17,20 @@ export default defineConfig({
 
   overrides: [
     {
+      // Playwright a11y E2E (apps/editor): a separate, browser-driven suite
+      // with Playwright conventions that differ from the Vitest unit rules —
+      // `@playwright/test`'s own `test`/`expect` (not Vitest globals), the
+      // `.spec.ts` filename, `process.env.CI` in the runner config, and chained
+      // `await`-member access on async locator helpers. Relax only those here.
+      files: ["**/e2e/**/*.ts", "**/playwright.config.ts"],
+      rules: {
+        "import/no-named-as-default": "off",
+        "no-restricted-properties": "off",
+        "unicorn/no-await-expression-member": "off",
+        "vitest/prefer-importing-vitest-globals": "off",
+      },
+    },
+    {
       files: [
         "apps/docs/src/app/**/*.{ts,tsx}",
         "packages/cli/src/**/*.ts",
@@ -54,10 +68,22 @@ export default defineConfig({
       // function-declaration components and the primitive's own label/control
       // composition. Keep them byte-compatible with the registry so component
       // upgrades stay a clean swap, mirroring how apps/docs treats the same
-      // generated code.
-      files: ["packages/studio/src/components/ui/**/*.{ts,tsx}"],
+      // generated code. The `sidebar`/`sheet` primitives (added in iteration 3)
+      // carry a few more registry idioms the stricter rules would otherwise
+      // flag — the internal `_open` state pair, shadowed `open`, a cookie write,
+      // a `type`-less rail button, a reassigned `tooltip` prop — all left as the
+      // registry emits them so the swap stays clean.
+      files: [
+        "packages/studio/src/components/ui/**/*.{ts,tsx}",
+        "packages/studio/src/hooks/**/*.{ts,tsx}",
+      ],
       rules: {
+        "arrow-body-style": "off",
         "jsx-a11y/label-has-associated-control": "off",
+        "no-negated-condition": "off",
+        "no-param-reassign": "off",
+        "no-shadow": "off",
+        "react/button-has-type": "off",
         "react/function-component-definition": [
           "error",
           {
@@ -65,6 +91,11 @@ export default defineConfig({
             unnamedComponents: "arrow-function",
           },
         ],
+        "react/hook-use-state": "off",
+        "react/set-state-in-effect": "off",
+        "typescript/consistent-type-definitions": "off",
+        "unicorn/no-document-cookie": "off",
+        "unicorn/no-negated-condition": "off",
       },
     },
   ],

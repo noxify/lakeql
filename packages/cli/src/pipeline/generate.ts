@@ -7,6 +7,7 @@ import { generateCode } from "@lakeql/file-generator"
 import { generateConfig } from "@lakeql/file-generator/config"
 import { generateInterface } from "@lakeql/file-generator/interface"
 import { generateQuerySchema } from "@lakeql/file-generator/query-schema"
+import { deriveAutoFillColumns } from "@lakeql/schema-generator/endpoint-schema"
 import type { GenerateModelProps } from "@lakeql/schema-generator/graphql-schema"
 import { generateModel } from "@lakeql/schema-generator/graphql-schema"
 import { generateJsonSchemaFromFields } from "@lakeql/schema-generator/json-schema"
@@ -17,6 +18,7 @@ import { deriveNames } from "./derive-names"
 import { generateMutationSchema } from "./mutation-schema"
 import type { EndpointDefinitionFormat } from "./schema"
 import { serializeDeterministic } from "./serialize"
+import { buildStorageConfig } from "./storage-config"
 import { generateValidationsSchema } from "./validations-schema"
 
 /**
@@ -95,8 +97,18 @@ export async function generateEndpoint(
     dataSourceName
   )
 
-  // 2. Convert FieldDefinition[] → JSON Schema
-  const jsonSchema = generateJsonSchemaFromFields(fields)
+  // Codegen-local field list (Option Y): declared fields plus the derived
+  // companion columns of any autoFill field. These companions drive the query
+  // type, the TS interface, and the DDL (json-schema.json) but are NEVER
+  // persisted into endpoint.json, which stays minimal and self-describing
+  // (NFR2). deriveAutoFillColumns returns [] for non-autoFill fields, and
+  // validation (C11/C16) guarantees an autoFill field only reaches here with an
+  // enabled append/full_load_append mutation, so expansion is field-driven and
+  // never gated on the partitioning mode (C10).
+  const codegenFields = [...fields, ...fields.flatMap(deriveAutoFillColumns)]
+
+  // 2. Convert the codegen-local fields → JSON Schema (companions included)
+  const jsonSchema = generateJsonSchemaFromFields(codegenFields)
 
   // 3. Generate models from JSON Schema
   const models = generateModel({
@@ -136,7 +148,13 @@ export async function generateEndpoint(
     ),
   ]
 
-  // 5. Generate config.ts (with mutationName for mutation support)
+  // 5. Compute the storageConfig once; config.ts emits exactly these keys and
+  // the mutation resolver references exactly these keys.
+  const storageConfig = definition.mutation
+    ? buildStorageConfig(definition.mutation, definition.fields)
+    : undefined
+
+  // Generate config.ts (with mutationName for mutation support)
   const generatedConfig = generateConfig({
     adapter,
     dataSourceName,
@@ -145,20 +163,7 @@ export async function generateEndpoint(
     schema,
     tableName,
     mutationName: [mutationName],
-    storageConfig: definition.mutation
-      ? {
-          loadStrategy: definition.mutation.loadStrategy,
-          basePath: definition.mutation.basePath,
-          partitioning:
-            definition.mutation.loadStrategy === "full_load"
-              ? undefined
-              : definition.mutation.partitioning,
-          partitioningFormat:
-            definition.mutation.loadStrategy === "full_load"
-              ? undefined
-              : definition.mutation.partitioningFormat,
-        }
-      : undefined,
+    storageConfig,
   })
 
   const configTemplate = await generateCode({
@@ -193,15 +198,16 @@ export async function generateEndpoint(
   // validations at any nesting level (root, nested Object, Array-of-Object),
   // mirroring the recursive field structure. When it is non-null the mutation
   // schema imports and uses `./validations`, so the file must be written too.
-  const generatedValidationsSchema = generateValidationsSchema(fields)
+  const generatedValidationsSchema = generateValidationsSchema(codegenFields)
   const hasValidations = generatedValidationsSchema !== null
 
   const generatedMutationSchema = generateMutationSchema({
     models,
     mutationName,
     mutationConfig: definition.mutation,
+    storageConfig,
     hasValidations,
-    fieldDefinitions: fields,
+    fieldDefinitions: codegenFields,
   })
 
   // Only generate the file if there are nodes (stub returns empty)

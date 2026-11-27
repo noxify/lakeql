@@ -16,10 +16,15 @@ export type {
   EditorField,
   EditorFieldType,
   EditorMutation,
+  EditorPartitionSegment,
+  EditorResolvedPartitionSegment,
   EditorState,
+  EditorUnresolvedPartitionSegment,
   HistoryState,
 } from "./model"
 export {
+  canRedo,
+  canUndo,
   COMMIT_DEBOUNCE_MS,
   commitSnapshot,
   createCoalescingCommitter,
@@ -27,32 +32,72 @@ export {
   createFreshHistory,
   createFreshState,
   currentState,
-  DEFAULT_PARTITIONING,
-  DEFAULT_PARTITIONING_FORMAT,
   HISTORY_CAP,
+  redo,
   replaceCurrent,
+  undo,
 } from "./model"
 
 export { fromDefinition, toDefinition } from "./mapping"
+export {
+  collectFieldIds,
+  isResolvedPartitionSegment,
+  isValidPartitionSource,
+  migrateEditorState,
+  partitionSegmentLabel,
+  partitionSegmentsReferencing,
+  removePartitionSegments,
+  resolvePartitionString,
+  serializePartitionSegments,
+} from "./partitioning"
+
+export type { EditorAdapterId, EditorAdapterProfile } from "./adapters"
+export {
+  adapterProfile,
+  DEFAULT_EDITOR_ADAPTER,
+  EDITOR_ADAPTERS,
+} from "./adapters"
+
+export type { WriteMethodChangePlan } from "./write-method"
+export { changeWriteMethod, planWriteMethodChange } from "./write-method"
 
 export type { EndpointDefinitionFormat } from "@lakeql/schema-generator/endpoint-schema"
 export type {
+  AutoFillMutationDiagnostic,
+  AutoFillPlacementDiagnostic,
   BadNumberDiagnostic,
   BadRegexDiagnostic,
+  CompanionPartitionDiagnostic,
   DuplicateDiagnostic,
+  ReservedNameDiagnostic,
+  UnresolvedPartitionDiagnostic,
   SchemaDiagnostic,
   ValidationResult,
 } from "./validation"
 export { evaluate, isValidForExport } from "./validation"
 
-export type { FieldPath, TypeChangePlan } from "./field-ops"
+export type {
+  FieldPath,
+  FieldRemovalPlan,
+  MovePlan,
+  MoveSlot,
+  MoveTarget,
+  TypeChangePlan,
+} from "./field-ops"
 export {
   addField,
   changeArrayItemType,
   changeFieldType,
   createField,
+  enumerateMoveSlots,
+  fieldAt,
+  fieldNamePath,
+  findContainerPath,
   findFieldPath,
+  moveField,
   planArrayItemTypeChange,
+  planFieldRemoval,
+  planMove,
   planTypeChange,
   removeField,
   renameField,

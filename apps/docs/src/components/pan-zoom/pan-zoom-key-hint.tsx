@@ -1,7 +1,8 @@
 "use client"
 
+import { cn } from "cn"
+
 import { Kbd } from "@/components/ui/kbd"
-import { cn } from "@/lib/utils"
 
 /**
  * Keyboard-shortcut hint overlay for the pan/zoom viewport.

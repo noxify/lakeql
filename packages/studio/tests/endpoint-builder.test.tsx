@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 
+import type { DragEndEvent } from "@dnd-kit/core"
 import type { EndpointDefinitionFormat } from "@lakeql/schema-generator/endpoint-schema"
 import {
+  act,
   cleanup,
   render,
   screen,
@@ -9,16 +11,40 @@ import {
   within,
 } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
+import type { ReactNode } from "react"
+import { useEffect } from "react"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 
-import { EndpointBuilder } from "@/ui/endpoint-builder"
+import { CanvasSurface } from "@/components/studio/canvas/canvas"
+import type { CanvasDropData } from "@/components/studio/canvas/dnd-types"
+import { paletteDraggableId } from "@/components/studio/canvas/dnd-types"
+import { Palette } from "@/components/studio/canvas/palette"
+import { CanvasShellRoot } from "@/components/studio/canvas/shell-root"
+import type { CanvasDndApi } from "@/components/studio/canvas/use-canvas-dnd"
+import { useCanvasDndContext } from "@/components/studio/canvas/use-canvas-dnd"
+import { EndpointBuilder } from "@/components/studio/endpoint-builder"
+import { FieldPropertiesPanel } from "@/components/studio/field-properties-panel"
+import type { EditorApi } from "@/components/studio/use-editor"
+import { EditorProvider, useEditor } from "@/components/studio/use-editor"
+import type { EditorFieldType } from "@/core"
+
+import { defined } from "./helpers"
 
 /**
- * Rendered-UI integration tests for the Phase-2/3 criteria that the pure core
- * tests cannot reach (Req 8.1, 8.2, 9.1, 9.3, 3.10). They render the real
- * `EndpointBuilder` in jsdom and drive it the way a user would, so they assert
- * the wiring between the UI and the already-unit-tested core — not the core
- * logic again.
+ * Rendered-UI integration tests for the Endpoint Builder — the Iteration-1
+ * behaviours the pure core tests cannot reach (Req 1.5 parity, 8.1, 8.2, 9.1,
+ * 9.3, 3.10), rewritten for the Iteration-2 **canvas** surface (the tree is
+ * gone). They render the real UI in jsdom and drive it the way a user would, so
+ * they assert the wiring between the UI and the already-unit-tested core.
+ *
+ * The canvas reuses the Iteration-1 `aria-label`s (`"Field name"`,
+ * `"Field type"`, `"Array item type"`, `"Remove field"`), so the metadata /
+ * import / export / dialog assertions survive the surface swap and drive the
+ * full {@link EndpointBuilder}. Only the structural actions differ: on the
+ * canvas, adding and nesting a field is drag-driven. jsdom cannot perform real
+ * pointer drags, so — exactly as the Phase-C canvas component tests do — those
+ * actions are exercised by invoking the `@dnd-kit` drop handler with
+ * constructed events over a live `Canvas`.
  *
  * Assertions use plain Vitest matchers over DOM properties (no `jest-dom`
  * dependency), reading `.value`/`.disabled`/`aria-checked` directly.
@@ -27,7 +53,7 @@ import { EndpointBuilder } from "@/ui/endpoint-builder"
 const EXPORT_NAME = /export/iu
 
 const validDefinition: EndpointDefinitionFormat = {
-  version: "1.0",
+  version: "2.0",
   tableName: "events",
   catalog: "main",
   schema: "public",
@@ -57,14 +83,14 @@ function fileInput(): HTMLInputElement {
   return input
 }
 
-/** The current values of every "Field name" input in the tree. */
+/** The current values of every "Field name" input on the canvas. */
 function fieldNameValues(): string[] {
   return screen
     .getAllByLabelText("Field name")
     .map((node) => (node as HTMLInputElement).value)
 }
 
-/** The "Field type" select at a given tree-row index. */
+/** The "Field type" select at a given canvas-node index. */
 function typeSelectAt(index: number): HTMLElement {
   const select = screen.getAllByLabelText("Field type")[index]
   if (select === undefined) {
@@ -90,7 +116,103 @@ async function selectOption(
   await user.click(option)
 }
 
-describe("EndpointBuilder rendered-UI integration", () => {
+/**
+ * Navigates the shell to the Fields view by activating the rail's Fields item.
+ * The sidebar-based shell lands on General Settings by default, so a test that
+ * needs the canvas (field inputs, type selects) must switch to Fields first —
+ * the same navigate-to-Fields step the Playwright E2E takes after `goto("/")`.
+ * The rail item is the only "Fields" control before the canvas mounts, so the
+ * role query is unambiguous at this point.
+ */
+async function gotoFields(
+  user: ReturnType<typeof userEvent.setup>
+): Promise<void> {
+  await user.click(screen.getByRole("button", { name: "Fields" }))
+}
+
+/** The active descriptor for a palette source of the given field type. */
+function paletteActive(fieldType: EditorFieldType): DragEndEvent["active"] {
+  return {
+    id: paletteDraggableId(fieldType),
+    data: { current: { kind: "new-field", fieldType } },
+    rect: { current: { initial: null, translated: null } },
+  } as unknown as DragEndEvent["active"]
+}
+
+/** A drag-end event dropping the given active draggable over `over`. */
+function dropEvent(
+  active: DragEndEvent["active"],
+  over: CanvasDropData
+): DragEndEvent {
+  return {
+    active,
+    over: { id: "over", data: { current: over }, rect: {}, disabled: false },
+    delta: { x: 0, y: 0 },
+  } as unknown as DragEndEvent
+}
+
+/**
+ * A probe that captures the hoisted canvas DnD API from context. Rendered
+ * inside {@link CanvasShellRoot} so it reads the single DnD instance the canvas
+ * surface and palette share.
+ */
+const DndProbe = ({
+  capture,
+}: {
+  capture: (dnd: CanvasDndApi) => void
+}): null => {
+  const dnd = useCanvasDndContext()
+  useEffect(() => {
+    capture(dnd)
+  })
+  return null
+}
+
+/**
+ * Renders the decomposed canvas ({@link Palette} + {@link CanvasSurface}) and
+ * {@link FieldPropertiesPanel} under one live editor and the hoisted
+ * {@link CanvasShellRoot}, exposing both the editor API and the shared canvas
+ * DnD API so a test can invoke the drop handler (the drag-driven add/nest path)
+ * and then assert against the rendered canvas DOM. After the Phase-B
+ * decomposition the providers/`DndContext` live in the shell root, not a
+ * self-providing `Canvas`.
+ */
+function renderCanvasBuilder(): {
+  get: () => { editor: EditorApi; dnd: CanvasDndApi }
+} {
+  const bag: { editor: EditorApi | null; dnd: CanvasDndApi | null } = {
+    editor: null,
+    dnd: null,
+  }
+
+  const Harness = (): ReactNode => {
+    const editor = useEditor()
+    useEffect(() => {
+      bag.editor = editor
+    })
+    return (
+      <EditorProvider value={editor}>
+        <CanvasShellRoot>
+          <DndProbe
+            capture={(dnd) => {
+              bag.dnd = dnd
+            }}
+          />
+          <Palette />
+          <CanvasSurface />
+        </CanvasShellRoot>
+        <FieldPropertiesPanel />
+      </EditorProvider>
+    )
+  }
+
+  render(<Harness />)
+  return {
+    get: () => ({ editor: defined(bag.editor), dnd: defined(bag.dnd) }),
+  }
+}
+
+describe("EndpointBuilder rendered-UI integration (canvas)", () => {
   beforeEach(() => {
     // Each test starts from empty persistence so the fresh default seeds.
     window.localStorage.clear()
@@ -100,8 +222,141 @@ describe("EndpointBuilder rendered-UI integration", () => {
     cleanup()
   })
 
+  describe("authoring on the canvas — Req 1.5 parity", () => {
+    it("adds a field of every type via a palette drop onto the canvas", () => {
+      const { get } = renderCanvasBuilder()
+      const types: EditorFieldType[] = [
+        "String",
+        "Integer",
+        "Float",
+        "Boolean",
+        "Date",
+        "DateTime",
+        "Object",
+        "Array",
+      ]
+
+      for (const type of types) {
+        act(() =>
+          get().dnd.onDragEnd(
+            dropEvent(paletteActive(type), {
+              kind: "container-zone",
+              containerId: null,
+            })
+          )
+        )
+      }
+
+      // One canvas node per dropped type, each carrying the dropped type.
+      expect(get().editor.state.fields.map((f) => f.type)).toStrictEqual(types)
+      // The canvas rendered a "Field type" control per node.
+      expect(screen.getAllByLabelText("Field type")).toHaveLength(types.length)
+    })
+
+    it("nests a field two levels deep, into an Array-of-Object container", () => {
+      const { get } = renderCanvasBuilder()
+
+      // Level 1: drop an Object at the top level.
+      act(() =>
+        get().dnd.onDragEnd(
+          dropEvent(paletteActive("Object"), {
+            kind: "container-zone",
+            containerId: null,
+          })
+        )
+      )
+      const objectId = defined(get().editor.state.fields[0]).id
+
+      // Level 2: drop an Array into that Object, then make its items Object so
+      // the Array itself becomes a field-holding container (Array-of-Object).
+      act(() =>
+        get().dnd.onDragEnd(
+          dropEvent(paletteActive("Array"), {
+            kind: "container-zone",
+            containerId: objectId,
+          })
+        )
+      )
+      // The Array lives at objectField.fields[0] → path [0, 0].
+      act(() => get().editor.changeArrayItemType([0, 0], "Object"))
+      const [arrayField] = defined(defined(get().editor.state.fields[0]).fields)
+      expect(defined(arrayField).type).toBe("Array")
+      expect(defined(arrayField).items?.type).toBe("Object")
+      const arrayId = defined(arrayField).id
+
+      // Level 3: drop a String into the Array-of-Object's item fields, through
+      // the real canvas drop handler (findContainerPath resolves the Array's
+      // item fields from its id).
+      act(() =>
+        get().dnd.onDragEnd(
+          dropEvent(paletteActive("String"), {
+            kind: "container-zone",
+            containerId: arrayId,
+          })
+        )
+      )
+
+      // The String landed inside the Array-of-Object's item fields — two
+      // container levels below the top (top → Object → Array-of-Object).
+      const nestedArray = defined(
+        defined(defined(get().editor.state.fields[0]).fields)[0]
+      )
+      const itemFields = defined(nestedArray.items?.fields)
+      expect(itemFields).toHaveLength(1)
+      expect(defined(itemFields[0]).type).toBe("String")
+
+      // The three named nodes (Object, Array, nested String) each render a
+      // "Field name" input on the canvas.
+      expect(screen.getAllByLabelText("Field name")).toHaveLength(3)
+    })
+
+    it("selects a node (drives the panel) and removes it from the canvas", async () => {
+      const user = userEvent.setup()
+      const { get } = renderCanvasBuilder()
+
+      act(() =>
+        get().dnd.onDragEnd(
+          dropEvent(paletteActive("String"), {
+            kind: "container-zone",
+            containerId: null,
+          })
+        )
+      )
+      act(() =>
+        get().dnd.onDragEnd(
+          dropEvent(paletteActive("Integer"), {
+            kind: "container-zone",
+            containerId: null,
+          })
+        )
+      )
+      expect(fieldNameValues()).toHaveLength(2)
+
+      // A palette drop auto-selects the dropped node; clear the selection so
+      // the panel shows its hint, proving selection genuinely drives it.
+      act(() => get().editor.selectField(null))
+      expect(
+        screen.getByText(/Select a field to edit its options/u)
+      ).toBeDefined()
+
+      // Selecting a node (focusing its name input) drives the properties panel
+      // from its hint to the per-field option controls.
+      const firstName = defined(screen.getAllByLabelText("Field name")[0])
+      await user.click(firstName)
+      expect(
+        screen.queryByText(/Select a field to edit its options/u)
+      ).toBeNull()
+      expect(screen.getByText("Validations")).toBeDefined()
+
+      // Removing a node drops it from the canvas.
+      const removeButtons = screen.getAllByLabelText("Remove field")
+      await user.click(defined(removeButtons[0]))
+      expect(fieldNameValues()).toHaveLength(1)
+    })
+  })
+
   describe("import into the rendered builder (Req 9.1, 9.3)", () => {
-    it("populates the tree, metadata, and mutation from a valid file", async () => {
+    it("populates the canvas, metadata, and mutation from a valid file", async () => {
       const user = userEvent.setup()
       render(<EndpointBuilder />)
 
@@ -117,14 +372,18 @@ describe("EndpointBuilder rendered-UI integration", () => {
         "main"
       )
 
-      // The tree is populated — the two top-level field names are present.
-      expect(fieldNameValues()).toContain("id")
-      expect(fieldNameValues()).toContain("profile")
-
-      // Mutation was enabled from the file.
+      // Mutation was enabled from the file (the switch lives in the Settings
+      // view, asserted before navigating away to the Fields view).
       expect(screen.getByRole("switch").getAttribute("aria-checked")).toBe(
         "true"
       )
+
+      // The canvas lives in the Fields view; switch to it, then assert the
+      // populated field names (top-level plus the nested "city").
+      await gotoFields(user)
+      expect(fieldNameValues()).toContain("id")
+      expect(fieldNameValues()).toContain("profile")
+      expect(fieldNameValues()).toContain("city")
     })
 
     it("rejects a malformed file, shows errors, and leaves state untouched (no partial apply)", async () => {
@@ -150,6 +409,7 @@ describe("EndpointBuilder rendered-UI integration", () => {
       expect(
         (screen.getByLabelText("Table name") as HTMLInputElement).value
       ).toBe("events")
+      await gotoFields(user)
       expect(fieldNameValues()).toContain("profile")
     })
   })
@@ -197,8 +457,11 @@ describe("EndpointBuilder rendered-UI integration", () => {
         ).toBe("events")
       })
 
-      // The "profile" row is the Object with a child; find its type select by
-      // matching the row index of the "profile" name input.
+      // The canvas type selects live in the Fields view.
+      await gotoFields(user)
+
+      // The "profile" node is the Object with a child; find its type select by
+      // matching the index of the "profile" name input on the canvas.
       const profileIndex = fieldNameValues().indexOf("profile")
       expect(profileIndex).toBeGreaterThanOrEqual(0)
 

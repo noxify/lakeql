@@ -51,7 +51,7 @@ describe(columnsToDefinition, () => {
   it("sets version, tableName, catalog, and schema from options", () => {
     const result = columnsToDefinition({ ...baseOptions, parsedColumns: {} })
 
-    expect(result.version).toBe("1.0")
+    expect(result.version).toBe("2.0")
     expect(result.tableName).toBe("user_events")
     expect(result.catalog).toBe("analytics")
     expect(result.schema).toBe("tracking")

@@ -151,7 +151,7 @@ function validDefinitionArb(
         string,
         FieldDefinition[],
       ]) => ({
-        version: "1.0" as const,
+        version: "2.0" as const,
         tableName,
         catalog,
         schema,

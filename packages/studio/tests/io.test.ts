@@ -10,7 +10,7 @@ import { createFreshState } from "@/core/model"
 import { defined, expectErr, expectOk } from "./helpers"
 
 const validDefinition: EndpointDefinitionFormat = {
-  version: "1.0",
+  version: "2.0",
   tableName: "events",
   catalog: "main",
   schema: "public",
@@ -38,9 +38,81 @@ describe("import", () => {
 
   it("rejects a schema-invalid file and reports errors (no state)", () => {
     const result = expectErr(
-      importFromText(JSON.stringify({ version: "1.0", tableName: "1bad" }))
+      importFromText(JSON.stringify({ version: "2.0", tableName: "1bad" }))
     )
     expect(result.errors.length).toBeGreaterThan(0)
+  })
+
+  it("rejects an invalid writeMethod at its exact path, with no state", () => {
+    const result = expectErr(
+      importFromText(
+        JSON.stringify({
+          ...validDefinition,
+          mutation: {
+            loadStrategy: "append",
+            basePath: "/data",
+            writeMethod: "bulk",
+          },
+        })
+      )
+    )
+
+    expect(result.errors.join("\n")).toContain("mutation.writeMethod")
+  })
+
+  it("rejects a v2 file that still sets mutation.partitioningFormat", () => {
+    const result = expectErr(
+      importFromText(
+        JSON.stringify({
+          ...validDefinition,
+          mutation: {
+            loadStrategy: "append",
+            basePath: "/data",
+            partitioning: "id",
+            partitioningFormat: "year/month",
+          },
+        })
+      )
+    )
+    const joined = result.errors.join("\n")
+    expect(joined).toContain("mutation.partitioningFormat")
+    expect(joined).toContain("no longer supported")
+  })
+
+  it("rejects a bare date segment and hints at the component form", () => {
+    const result = expectErr(
+      importFromText(
+        JSON.stringify({
+          ...validDefinition,
+          fields: [{ name: "event", type: "DateTime" }],
+          mutation: {
+            loadStrategy: "append",
+            basePath: "/data",
+            partitioning: "event",
+          },
+        })
+      )
+    )
+    const joined = result.errors.join("\n")
+    expect(joined).toContain("mutation.partitioning")
+    expect(joined).toContain("event:year")
+  })
+
+  it("rejects a v1 file with a clear 'version no longer supported' message (C9/R3)", () => {
+    const v1Draft = JSON.stringify({
+      version: "1.0",
+      tableName: "events",
+      catalog: "main",
+      schema: "public",
+      fields: [{ name: "id", type: "String" }],
+      mutation: { loadStrategy: "append", basePath: "/d", partitioning: true },
+    })
+    const result = expectErr(importFromText(v1Draft))
+    // The actionable message, not a generic Zod literal error.
+    expect(defined(result.errors[0])).toContain("version")
+    expect(
+      result.errors.some((error) => error.includes("no longer supported"))
+    ).toBeTruthy()
   })
 
   it("populates state from a valid file", () => {
@@ -75,8 +147,50 @@ describe("export gate", () => {
 
   it("produces minimal JSON for a valid state", () => {
     const result = expectOk(exportToJson(goodState()))
-    // Round-trips back to the original definition.
-    expect(JSON.parse(result.json)).toStrictEqual(validDefinition)
+    // `validDefinition` omits `partitioning`, which now resolves to off; the
+    // enabled mutation always exports an explicit `partitioning: false` (C8).
+    // No field is injected on export.
+    expect(JSON.parse(result.json)).toStrictEqual({
+      ...validDefinition,
+      mutation: {
+        ...validDefinition.mutation,
+        writeMethod: "storage",
+        partitioning: false,
+      },
+    })
+  })
+
+  it("exports insert with writeMethod and no basePath", () => {
+    const state = fromDefinition({
+      ...validDefinition,
+      mutation: { loadStrategy: "append", writeMethod: "insert" },
+    })
+    const result = expectOk(exportToJson(state))
+
+    expect(JSON.parse(result.json).mutation).toStrictEqual({
+      loadStrategy: "append",
+      writeMethod: "insert",
+    })
+  })
+
+  it("blocks export of auto-fill under insert with the storage hint", () => {
+    const state = fromDefinition({
+      ...validDefinition,
+      fields: [
+        { name: "id", type: "String" },
+        {
+          name: "load_timestamp",
+          type: "DateTime",
+          options: { autoFill: "write_timestamp" },
+        },
+      ],
+      mutation: { loadStrategy: "append", writeMethod: "insert" },
+    })
+    const result = expectErr(exportToJson(state))
+
+    expect(result.errors).toContain(
+      'Auto-fill field "load_timestamp" requires the storage write method'
+    )
   })
 })
 
@@ -113,5 +227,20 @@ describe("download path", () => {
     expect(result.ok).toBeFalsy()
     expect(env.createObjectURL).not.toHaveBeenCalled()
     expect(env.triggerDownload).not.toHaveBeenCalled()
+  })
+})
+
+describe("export gate — unresolved partition segment", () => {
+  it("blocks export and explains why in the error list", () => {
+    const state = fromDefinition({
+      ...validDefinition,
+      mutation: {
+        loadStrategy: "append",
+        basePath: "/data",
+        partitioning: "ghost",
+      },
+    })
+    const result = expectErr(exportToJson(state))
+    expect(result.errors).toContain('Partition field "ghost" does not exist')
   })
 })

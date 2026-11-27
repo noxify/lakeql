@@ -33,12 +33,9 @@ export default async function Siblings({ entry }: { entry: EntryType }) {
     return null
   }
 
-  const previousItem =
-    currentIndex > 0 ? orderedItems[currentIndex - 1] : undefined
-  const nextItem =
-    currentIndex < orderedItems.length - 1
-      ? orderedItems[currentIndex + 1]
-      : undefined
+  // Out-of-range indexed access (including index -1) yields undefined.
+  const previousItem = orderedItems[currentIndex - 1]
+  const nextItem = orderedItems[currentIndex + 1]
 
   if (!previousItem && !nextItem) {
     return null

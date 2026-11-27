@@ -2,12 +2,9 @@ import { describe, expect, it } from "vitest"
 
 import {
   createValidation,
-  isCustomPartitioning,
-  offersPartitioningFormat,
-  partitioningModeOf,
   validationError,
   validationKindsForType,
-} from "@/ui/validation-meta"
+} from "@/components/studio/validation-meta"
 
 describe("validation kinds per field type (task 13)", () => {
   it("offers all refinements for String", () => {
@@ -78,37 +75,5 @@ describe("validation error surfacing", () => {
 
   it("flags a non-numeric min/max value", () => {
     expect(validationError({ type: "min", value: Number.NaN })).toBeDefined()
-  })
-})
-
-describe("partitioning mode derivation (task 14)", () => {
-  it("maps the boolean/string value to a mode", () => {
-    expect(partitioningModeOf(true)).toBe("timestamp")
-    expect(partitioningModeOf(false)).toBe("off")
-    expect(partitioningModeOf("created_at")).toBe("field")
-    expect(partitioningModeOf("year/month")).toBe("field")
-  })
-
-  it("detects custom partition strings", () => {
-    expect(isCustomPartitioning(true)).toBeFalsy()
-    expect(isCustomPartitioning(false)).toBeFalsy()
-    expect(isCustomPartitioning("created_at")).toBeFalsy()
-    expect(isCustomPartitioning("year/month")).toBeTruthy()
-    expect(isCustomPartitioning("created_at:day")).toBeTruthy()
-  })
-
-  it("offers partitioningFormat only in non-custom, enabled modes", () => {
-    expect(offersPartitioningFormat(true)).toBeTruthy()
-    expect(offersPartitioningFormat("created_at")).toBeTruthy()
-    expect(offersPartitioningFormat(false)).toBeFalsy()
-    expect(offersPartitioningFormat("year/month/day")).toBeFalsy()
-    expect(offersPartitioningFormat("created_at:day")).toBeFalsy()
-  })
-
-  it("hides the format control for the transient empty 'field' seed", () => {
-    // Entering field mode seeds "", which is incomplete, not a legacy
-    // single-field string — the granularity select must stay hidden until a
-    // field name is typed.
-    expect(offersPartitioningFormat("")).toBeFalsy()
   })
 })

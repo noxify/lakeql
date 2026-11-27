@@ -4,6 +4,7 @@ import type {
   FieldDefinition,
   FieldOptions,
 } from "@lakeql/schema-generator/endpoint-schema"
+import { effectiveWriteMethod } from "@lakeql/schema-generator/endpoint-schema"
 
 import type {
   EditorArrayItem,
@@ -11,11 +12,11 @@ import type {
   EditorMutation,
   EditorState,
 } from "./model"
+import { createFieldId } from "./model"
 import {
-  createFieldId,
-  DEFAULT_PARTITIONING,
-  DEFAULT_PARTITIONING_FORMAT,
-} from "./model"
+  resolvePartitionString,
+  serializePartitionSegments,
+} from "./partitioning"
 
 /**
  * Returns `true` when a field's options carry no authored value and should be
@@ -29,13 +30,14 @@ function optionsAreEmpty(options: FieldOptions | undefined): boolean {
   const hasReadOnly = options.readOnly === true
   const hasValidations =
     options.validations !== undefined && options.validations.length > 0
-  return !hasRequired && !hasReadOnly && !hasValidations
+  const hasAutoFill = options.autoFill !== undefined
+  return !hasRequired && !hasReadOnly && !hasValidations && !hasAutoFill
 }
 
 /**
  * Normalizes a field's options for export: drops `required`/`readOnly` when
- * `false` and an empty `validations` array, and returns `undefined` when
- * nothing meaningful remains.
+ * `false` and an empty `validations` array, preserves an `autoFill` marker, and
+ * returns `undefined` when nothing meaningful remains.
  */
 function toDefinitionOptions(
   options: FieldOptions | undefined
@@ -56,6 +58,9 @@ function toDefinitionOptions(
     result.validations = source.validations.map((validation) => ({
       ...validation,
     }))
+  }
+  if (source.autoFill !== undefined) {
+    result.autoFill = source.autoFill
   }
   return result
 }
@@ -103,12 +108,12 @@ function toDefinitionField(field: EditorField): FieldDefinition {
  * Maps the editor mutation to its export value: the literal `false` when
  * disabled, or a config object when enabled.
  *
- * When enabled, `partitioning` is omitted when it equals the effective default
- * (`true`), and `partitioningFormat` is omitted when partitioning is disabled,
- * a custom string, or equal to the effective default (`"year/month/day"`).
+ * When enabled, `partitioning` is always emitted explicitly (an enabled
+ * mutation never relies on the absent-key default, which is now `false`, C8).
  */
 function toDefinitionMutation(
-  mutation: EditorMutation
+  mutation: EditorMutation,
+  fields: EditorField[]
 ): EndpointDefinitionFormat["mutation"] {
   if (!mutation.enabled) {
     return false
@@ -118,29 +123,28 @@ function toDefinitionMutation(
     Exclude<EndpointDefinitionFormat["mutation"], false>
   > = {
     loadStrategy: mutation.loadStrategy,
-    basePath: mutation.basePath,
+    // Always emitted explicitly: an absent key resolves to "storage".
+    writeMethod: mutation.writeMethod,
   }
 
-  const { partitioning, partitioningFormat } = mutation
-
-  // Omit `partitioning` when it equals the effective runtime default.
-  if (partitioning !== DEFAULT_PARTITIONING) {
-    config.partitioning = partitioning
+  // The insert method uses neither a base path nor partitioning.
+  if (mutation.writeMethod === "insert") {
+    return config
   }
 
-  // `partitioningFormat` is only meaningful in the non-custom modes:
-  // `partitioning === true` (absent, treated as true) or a legacy single-field
-  // string (no `/` or `:`). It is omitted when partitioning is off, a custom
-  // format string, or equal to the effective default.
-  const partitioningIsOff = partitioning === false
-  const partitioningIsCustom =
-    typeof partitioning === "string" &&
-    (partitioning.includes("/") || partitioning.includes(":"))
-  const formatIsDefault = partitioningFormat === DEFAULT_PARTITIONING_FORMAT
+  config.basePath = mutation.basePath
 
-  if (!partitioningIsOff && !partitioningIsCustom && !formatIsDefault) {
-    config.partitioningFormat = partitioningFormat
-  }
+  // Segments are held by field id; the export is the unchanged name-based
+  // string, resolved against the live field names.
+  const partitioning =
+    mutation.partitioning === false
+      ? false
+      : serializePartitionSegments(mutation.partitioning, fields)
+
+  // Always emit an explicit `partitioning` for an enabled mutation: an absent
+  // key now resolves to `false`, so omitting it would silently change meaning
+  // (C8/FR2.2). The exporter never relies on the absent-key default.
+  config.partitioning = partitioning
 
   return config
 }
@@ -158,17 +162,23 @@ function toDefinitionMutation(
  * (the editor may hold transient invalid states). Validation is the concern of
  * the validity gate, which is built on top of this function.
  *
+ * No field is injected on export: a write-timestamp column is now an explicit
+ * auto-fill field the author declares (`options.autoFill`), so the exported
+ * `fields` are exactly the authored fields.
+ *
  * @param state - The live editor state.
  * @returns A candidate {@link EndpointDefinitionFormat} with minimal keys.
  */
 export function toDefinition(state: EditorState): EndpointDefinitionFormat {
+  const fields = state.fields.map(toDefinitionField)
+
   const definition: EndpointDefinitionFormat = {
     version: state.version,
     tableName: state.tableName,
     catalog: state.catalog,
     schema: state.schema,
-    fields: state.fields.map(toDefinitionField),
-    mutation: toDefinitionMutation(state.mutation),
+    fields,
+    mutation: toDefinitionMutation(state.mutation, state.fields),
   }
 
   if (state.dataSource !== "") {
@@ -227,24 +237,33 @@ function fromDefinitionField(field: FieldDefinition): EditorField {
 
 /**
  * Materializes the export mutation value back into an {@link EditorMutation},
- * filling in the effective-default `partitioning`/`partitioningFormat` so the
- * UI controls always have a concrete value to display.
+ * resolving an absent `partitioning` to `false` (off, C8).
  */
 function fromDefinitionMutation(
-  mutation: EndpointDefinitionFormat["mutation"]
+  mutation: EndpointDefinitionFormat["mutation"],
+  fields: EditorField[]
 ): EditorMutation {
   if (mutation === undefined || mutation === false) {
     return { enabled: false }
   }
 
-  const partitioning = mutation.partitioning ?? DEFAULT_PARTITIONING
+  // An absent `partitioning` key now resolves to `false` (off), not timestamp
+  // (C8). The editor's narrowed `partitioning` type excludes `true`, so a
+  // legacy `true` is coerced to `false` here as well.
+  const rawPartitioning = mutation.partitioning ?? false
+  // A string is resolved to id-based segments against the imported fields; a
+  // name that cannot be resolved uniquely stays an unresolved segment.
+  const partitioning =
+    typeof rawPartitioning === "string"
+      ? resolvePartitionString(rawPartitioning, fields)
+      : false
   return {
     enabled: true,
     loadStrategy: mutation.loadStrategy,
-    basePath: mutation.basePath,
+    // An absent writeMethod resolves to "storage".
+    writeMethod: effectiveWriteMethod(mutation),
+    basePath: mutation.basePath ?? "",
     partitioning,
-    partitioningFormat:
-      mutation.partitioningFormat ?? DEFAULT_PARTITIONING_FORMAT,
   }
 }
 
@@ -255,19 +274,22 @@ function fromDefinitionMutation(
  * Assigns fresh client-side `id`s throughout and materializes the effective
  * defaults into the controls (empty `dataSource` when absent, concrete
  * partitioning values) so the UI shows what each value is. The identity
- * `toDefinition(fromDefinition(def))` is semantically equal to `def`.
+ * `toDefinition(fromDefinition(def))` is semantically equal to `def`. Partition
+ * segments are resolved from names to field ids; a name that is missing or
+ * duplicated stays an unresolved segment so it round-trips unchanged.
  *
  * @param def - A definition already parsed against the canonical schema.
  * @returns A live {@link EditorState} seeded from the definition.
  */
 export function fromDefinition(def: EndpointDefinitionFormat): EditorState {
+  const fields = def.fields.map(fromDefinitionField)
   return {
     version: def.version,
     tableName: def.tableName,
     catalog: def.catalog,
     schema: def.schema,
     dataSource: def.dataSource ?? "",
-    fields: def.fields.map(fromDefinitionField),
-    mutation: fromDefinitionMutation(def.mutation),
+    fields,
+    mutation: fromDefinitionMutation(def.mutation, fields),
   }
 }

@@ -47,11 +47,11 @@ For the storage strategy the shape is identical. You swap `writeConfig` for the 
 
 ## Author the Endpoint Definition
 
-Write an `endpoint.json` that sets `dataSource` explicitly and adds a `mutation` block. The schema requires both `loadStrategy` and `basePath`, even for the INSERT strategy. INSERT ignores `basePath`, but the definition does not validate without it.
+Write an `endpoint.json` that sets `dataSource` explicitly and adds a `mutation` block. Set `writeMethod` to `"insert"` to match the data source's `writeConfig.strategy`. The INSERT method uses no `basePath`, so the schema rejects one. Without `writeMethod`, the endpoint defaults to `storage` and every write fails with a mismatch error.
 
 ```json
 {
-  "version": "1.0",
+  "version": "2.0",
   "catalog": "hive",
   "schema": "sales",
   "tableName": "orders",
@@ -62,7 +62,7 @@ Write an `endpoint.json` that sets `dataSource` explicitly and adds a `mutation`
   ],
   "mutation": {
     "loadStrategy": "append",
-    "basePath": "sales/orders"
+    "writeMethod": "insert"
   }
 }
 ```

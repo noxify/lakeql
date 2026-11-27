@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { announcementFor } from "@/ui/announcement"
+import { announcementFor } from "@/components/studio/announcement"
 
 describe("validation live-region wording (task 17, Req 12.5)", () => {
   it("announces the valid, ready-to-export state", () => {
